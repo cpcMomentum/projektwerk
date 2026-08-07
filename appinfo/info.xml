@@ -1,0 +1,61 @@
+<?xml version="1.0"?>
+<info xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="https://apps.nextcloud.com/schema/apps/info.xsd">
+
+    <id>projektwerk</id>
+    <name>ProjektWerk</name>
+    <summary>Projekte gemeinsam mit dem Kunden fuehren</summary>
+    <description><![CDATA[
+# ProjektWerk
+
+Kanban-Werkzeug fuer die eigene Nextcloud, mit dem ein Dienstleister seine Projekte **gemeinsam mit dem Kunden** fuehrt: ein Board pro Projekt, auf dem interne und kundensichtbare Vorgaenge nebeneinander liegen, getrennt durch eine Sichtbarkeit am einzelnen Ticket.
+
+Der eigentliche Zweck ist nicht das Board, sondern die **sichtbare Zustaendigkeit**: Liegt ein Vorgang beim Kunden, steht das am Ticket — als geteilter Zustand, den beide Seiten sehen, statt als Behauptung in einer E-Mail.
+
+## Features
+
+- **Ein Board, zwei Sichten** — Sichtbarkeit am einzelnen Ticket (Alle Beteiligten / Intern / Nur ich) statt zweier getrennter Boards
+- **Symmetrisch** — auch die Kundenseite hat interne Vorgaenge; es gibt keine Admin-Ausnahme
+- **Wartet auf Kunde** — abgeleiteter, beidseitig sichtbarer Zustand mit Datum, statt Nachfassen per E-Mail
+- **Arbeitsschritte** — einzeln zuweisbar, ausdruecklich auch an Personen der Kundenseite
+- **Dateien bleiben Dateien** — Anhaenge liegen in den echten Projektordnern, der Ablageort ist die Sichtbarkeit
+- **Meine Aufgaben** — projektuebergreifende Sicht ueber Tickets und Arbeitsschritte
+- **Kunden ohne Fremdkonto** — Zusammenarbeit auf der eigenen Nextcloud, wahlweise per Gastzugang
+    ]]></description>
+
+    <version>0.1.0</version>
+    <licence>AGPL-3.0-or-later</licence>
+
+    <author mail="axel.deffner@cpcmomentum.com" homepage="https://github.com/cpcMomentum">Axel Deffner</author>
+
+    <namespace>Projektwerk</namespace>
+
+    <category>organization</category>
+    <category>tools</category>
+
+    <bugs>https://github.com/cpcMomentum/projektwerk/issues</bugs>
+    <repository type="git">https://github.com/cpcMomentum/projektwerk.git</repository>
+
+    <dependencies>
+        <php min-version="8.2"/>
+        <database>sqlite</database>
+        <database>mysql</database>
+        <database>pgsql</database>
+        <nextcloud min-version="32" max-version="34"/>
+    </dependencies>
+    <!-- Die <database>-Deklaration ist PFLICHT (Lehre rechnungswerk #118):
+         Ohne sie nimmt NC an, die App unterstuetze auch Oracle, und erzwingt
+         auf NC <= 32 Oracle-Namenslimits bei Migrationen (Tabellenname ohne
+         oc_-Praefix max. 22 Zeichen). Genau deshalb lautet das Tabellen-
+         praefix dieser App `pwerk_` und nicht `projektwerk_`.
+         Element-Reihenfolge laut Store-XSD: php -> database -> nextcloud. -->
+
+    <navigations>
+        <navigation>
+            <name>ProjektWerk</name>
+            <route>projektwerk.page.index</route>
+            <icon>app.svg</icon>
+            <order>10</order>
+        </navigation>
+    </navigations>
+</info>
