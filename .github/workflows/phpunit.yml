@@ -12,7 +12,7 @@ name: phpunit
 # decken dieselben Kombinationen ab und kosten ein Viertel.
 #
 # Nebeneffekt, der einen latenten Fehler behebt: die Job-Namen sind jetzt stabil
-# ("PHP 8.2"/"PHP 8.4") statt von min/max-version abhaengig. Vorher haette ein
+# ("PHP 8.4"/"PHP 8.5") statt von min/max-version abhaengig. Vorher haette ein
 # min-version-Bump den Required-Status-Check "PHP 8.2 / ocp ^32.0" verschwinden
 # lassen — und damit JEDEN PR gegen develop dauerhaft blockiert.
 
@@ -43,7 +43,17 @@ jobs:
       fail-fast: false
       matrix:
         # PHP-Raender des unterstuetzten Bereichs; NC/ocp kommt aus info.xml.
-        php-version: ['8.2', '8.4']
+        # 8.4 ist die deklarierte Untergrenze (info.xml <php min-version>) und
+        # zugleich das, was das offizielle nextcloud:33-Image liefert; 8.5 ist
+        # die Basis des nextcloud:34-Images. Die Matrix deckt damit genau die
+        # beiden real ausgelieferten Kombinationen ab.
+        # Beim Verschieben dieser Werte MUESSEN die Required-Status-Checks des
+        # develop-Rulesets mitgezogen werden — die Kontexte heissen "PHP <ver>".
+        # Ein Kontext, der nie mehr meldet, blockiert jeden PR dauerhaft, ohne
+        # dass etwas rot wird. Reihenfolge: Checks loesen -> Workflow landen ->
+        # neue Namen live beobachten -> Ruleset per PUT auf die beobachteten
+        # Namen setzen (PATCH ist keine gueltige Route und liefert 404).
+        php-version: ['8.4', '8.5']
     name: PHP ${{ matrix.php-version }}
     steps:
       - uses: actions/checkout@v4

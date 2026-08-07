@@ -45,8 +45,8 @@ Freigabeliste stehen — sonst bekommen Gäste eine 403-Seite. Die App prüft da
 
 ## Anforderungen
 
-- Nextcloud 32–34
-- PHP 8.2+
+- Nextcloud 33–34
+- PHP 8.4+
 - Node 20+ für den Frontend-Build
 
 ## Entwicklung
