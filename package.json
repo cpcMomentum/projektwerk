@@ -2,39 +2,47 @@
   "name": "projektwerk",
   "version": "0.1.0",
   "description": "Projekte gemeinsam mit dem Kunden fuehren — Kanban fuer Nextcloud",
-  "license": "AGPL-3.0-or-later",
-  "author": "cpcMomentum",
-  "type": "module",
+  "bugs": {
+    "url": "https://github.com/cpcMomentum/projektwerk/issues"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/cpcMomentum/projektwerk.git"
   },
-  "bugs": {
-    "url": "https://github.com/cpcMomentum/projektwerk/issues"
-  },
+  "license": "AGPL-3.0-or-later",
+  "author": "cpcMomentum",
+  "type": "module",
   "scripts": {
-    "dev": "vite",
     "build": "vite build && mkdir -p js css && cp -r dist/js/* js/ && cp -r dist/css/* css/",
+    "dev": "vite",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "prepare": "git config core.hooksPath .githooks || true",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit",
-    "prepare": "git config core.hooksPath .githooks || true"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@nextcloud/axios": "^2.5.2",
-    "@nextcloud/l10n": "^1.6.0",
+    "@nextcloud/dialogs": "^7.4.1",
+    "@nextcloud/initial-state": "^3.0.0",
+    "@nextcloud/l10n": "^3.4.1",
     "@nextcloud/router": "^3.1.0",
     "@nextcloud/vue": "^9.5.0",
-    "pinia": "^2.3.1",
+    "pinia": "^4.0.2",
     "vue": "^3.5.13",
+    "vue-draggable-plus": "0.6.1",
     "vue-material-design-icons": "^5.3.1",
-    "vue-router": "^4.6.4"
+    "vue-router": "^5.2.0"
   },
   "devDependencies": {
-    "@nextcloud/eslint-config": "^6.1.0",
+    "@nextcloud/eslint-config": "^9.0.1",
+    "@types/sortablejs": "^1.15.9",
     "@vitejs/plugin-vue": "^6.0.0",
+    "@vue/devtools-api": "^8.2.1",
     "@vue/test-utils": "^2.4.6",
     "@vue/tsconfig": "^0.7.0",
+    "eslint": "^10.8.0",
     "happy-dom": "^20.9.0",
     "sass": "^1.70.0",
     "typescript": "^5.7.2",
