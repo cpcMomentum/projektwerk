@@ -2,13 +2,15 @@
 	<div class="tasks-view">
 		<h2>{{ t('projektwerk', 'Meine Aufgaben') }}</h2>
 		<NcEmptyContent :name="t('projektwerk', 'Zurzeit wartet nichts auf Sie.')">
-			<template #icon><FormatListChecksIcon :size="20" /></template>
+			<template #icon>
+				<FormatListChecksIcon :size="20" />
+			</template>
 		</NcEmptyContent>
 	</div>
 </template>
 
 <script>
-import { translate as t } from '@nextcloud/l10n'
+import { t } from '@nextcloud/l10n'
 import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
 import FormatListChecksIcon from 'vue-material-design-icons/FormatListChecks.vue'
 

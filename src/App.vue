@@ -1,8 +1,10 @@
 <template>
-	<NcContent app-name="projektwerk">
+	<NcContent appName="projektwerk">
 		<NcAppNavigation>
 			<NcAppNavigationItem :name="t('projektwerk', 'Meine Aufgaben')" :to="{ name: 'tasks' }">
-				<template #icon><FormatListChecksIcon :size="20" /></template>
+				<template #icon>
+					<FormatListChecksIcon :size="20" />
+				</template>
 			</NcAppNavigationItem>
 		</NcAppNavigation>
 		<NcAppContent>
@@ -12,8 +14,10 @@
 </template>
 
 <script>
-import { translate as t } from '@nextcloud/l10n'
-import { NcContent, NcAppNavigation, NcAppNavigationItem, NcAppContent } from '@nextcloud/vue'
+// Bewusst `t` statt `translate as t`: die l10n-Extraktionsskripte erkennen nur
+// den Alias-freien Import, ein umbenannter Import bleibt fuer sie unsichtbar.
+import { t } from '@nextcloud/l10n'
+import { NcAppContent, NcAppNavigation, NcAppNavigationItem, NcContent } from '@nextcloud/vue'
 import FormatListChecksIcon from 'vue-material-design-icons/FormatListChecks.vue'
 
 export default {
