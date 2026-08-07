@@ -266,6 +266,34 @@ Konten antworten dort mit `207` auf WebDAV, die Sitzung ist also echt. Für die 
 - Zeigt die konfigurierte Adresse auf eine lokale Adresse, blockt Nextclouds HTTP-Client den
   Selbstaufruf; dann ist eine Konfigurationsausnahme nötig. **Beim ersten Test zu prüfen.**
 
+### S2 — gemessen am 2026-08-07 (NC 34.0.0, Team folders 22.0.6)
+
+Aufbau: Team-Ordner `Projekt-Spike` mit `90_Austausch` und `91_Tickets_intern`, eine Datei im
+Kundenordner, direkt an das Gastkonto freigegeben, dann per WebDAV `MOVE` in den internen Ordner.
+
+**Der Umzug erhält die Datei-ID.** `1010` vorher, `1010` nachher. Referenzen über die Datei-ID
+überleben also, wie die Architektur es annimmt.
+
+**Und genau deshalb überlebt auch die Freigabe.** Die Freigabe wandert mit und zeigt danach auf
+`/Projekt-Spike/91_Tickets_intern/angebot.txt`. Der Gast liest die Datei **weiter mit HTTP 200**,
+nachgeprüft aus seiner eigenen Sitzung, obwohl sie jetzt im internen Ordner liegt.
+
+> **Der Ablageort ist nicht die Zugriffskontrolle.** Er ist die organisatorische Wahrheit; der
+> Zugriff hängt an der Freigabe, und die klebt an der Datei-ID, nicht am Pfad. Ein Sichtbarkeits-
+> wechsel, der die Datei nur verschiebt, **entzieht dem Kunden nichts**. Die App muss die Freigabe
+> **ausdrücklich aufheben** und das Ergebnis prüfen — sonst ist R3 kein Risiko mehr, sondern der
+> Normalfall: DB-seitig `internal`, physisch weiter beim Kunden, und niemandem fällt es auf.
+
+**Team-Ordner brauchen das Freigaberecht explizit.** Mit `occ groupfolders:group <id> <gruppe> write`
+scheitert jede Freigabe aus dem Ordner heraus mit „Die Freigabe von … ist Ihnen nicht erlaubt" — die
+Meldung nennt den Grund nicht. Nötig ist `read write share delete`. Gehört in die
+Installationsanleitung und in den Setup-Check.
+
+**Nicht beantwortet: Versionen.** Trotz `files_versions` 1.27.0 und dreier Schreibvorgänge lag vor
+dem Umzug **keine** Version vor — Nextcloud fasst schnell aufeinanderfolgende Schreibvorgänge
+zusammen. Damit ist die Frage „überleben Versionen den Umzug?" mangels Versionen offen und braucht
+einen zweiten Anlauf mit zeitlichem Abstand.
+
 ### S4 — gemessen am 2026-08-07 (NC 34.0.0, PHP 8.4, Symfony Mailer)
 
 Aufbau: `nextcloud-dev` gegen `mailhog-dev` (SMTP 1025), Versand über `occ user:welcome` — der Weg
