@@ -178,7 +178,7 @@ App nicht auf dessen Freigabeliste.
 
 ## info.xml, Icons, Release
 
-- `min-version="32"`, `max-version="34"`; `max-version` **niemals weglassen**, der App Store weist
+- `min-version="33"`, `max-version="34"`; `max-version` **niemals weglassen**, der App Store weist
   sonst ab. Die Bootstrap-Vorlage im Haus setzt noch `max-version="33"` — bewusst überschreiben.
 - Kategorie `organization` (optional zusätzlich `office`), deckungsgleich mit Deck und
   RechnungsWerk.
