@@ -106,12 +106,16 @@ App nicht auf dessen Freigabeliste.
 ## Gast-Accounts
 
 - `projektwerk` **muss** in die Freigabeliste der Guests-App. Ohne diesen Schritt liefert jeder
-  Request unter `/apps/projektwerk/...` eine HTML-403-Seite — **auch API-Requests**, das Frontend
+  Request unter `/apps/projektwerk/...` eine HTML-Fehlerseite — **auch API-Requests**, das Frontend
   stirbt dann an einem unverständlichen Parse-Fehler. Gehört als expliziter Schritt in die
   Installationsanleitung, plus ein Frontend-Wächter, der eine Nicht-JSON-Antwort als „App für Gäste
   nicht freigeschaltet" meldet.
-- Bestehende Liste **zuerst lesen, ergänzt zurückschreiben**. Blindes Setzen schaltet Talk für alle
-  Kunden ab. Verschärfend: Der Konfigurationswert ist **im Auslieferungszustand gar nicht gesetzt**
+
+  **Gemessen in S1 (2026-08-07, NC 34.0.0, Guests 4.9.0): Der Status ist `500`, nicht `403`.**
+  Der Rumpf sagt „Access to this resource (projektwerk) is forbidden for guests" — ein
+  Berechtigungsfall im Gewand eines Serverfehlers. Für den Wächter in `api.ts` heißt das: Er darf
+  **nicht** am Statuscode hängen. `500` mit HTML ist hier der Normalfall, nicht die Ausnahme.
+- Bestehende Liste **zuerst lesen, ergänzt zurückschreiben**. Verschärfend: Der Konfigurationswert ist **im Auslieferungszustand gar nicht gesetzt**
   (auf `nextcloud-dev` mit Guests 4.9.0 geprüft) — die Vorgabe steckt als Konstante im Code. Wer die
   Liste zum ersten Mal schreibt, **ersetzt damit die gesamte eingebaute Vorgabe** und muss sie
   vollständig mit übernehmen. Sie lautet in Guests 4.9.0 (`lib/AppWhitelist.php`):
@@ -142,6 +146,59 @@ App nicht auf dessen Freigabeliste.
 - Die Guests-Zusicherung „Gäste können keine Dateien außerhalb von Freigaben anlegen" ist im
   aktuellen Code **nicht mehr durchgesetzt**. Keine Sichtbarkeitsannahme darauf stützen — nur auf den
   Ablageort und die eigenen Rechteprüfungen.
+
+### S1 — gemessen am 2026-08-07 (NC 34.0.0, Guests 4.9.0, PHP 8.4)
+
+Drei der sechs Punkte aus §11.2 sind beantwortet. Was dabei **anders war als angenommen**, steht
+zuerst.
+
+**Die Freigabeliste ist gesetzt, auch wenn sie leer aussieht.** `occ config:app:get guests whitelist`
+gibt im Auslieferungszustand **nichts** aus — trotzdem ist die Liste wirksam, denn Guests 4.9.0
+hinterlegt sie als Lexikon-Vorgabe (`ConfigLexicon`, Eintrag `whitelist`, Vorgabewert
+`AppWhitelist::DEFAULT_WHITELIST`). `usewhitelist` steht ebenso auf Vorgabe **`true`**, ohne Zeile in
+der Konfiguration. Wer den Ist-Zustand über `occ` oder rohes `IAppConfig` liest und das Ergebnis
+„leer" als „keine Liste" deutet, schreibt anschließend eine Ein-Element-Liste und verliert die zwölf
+Vorgabe-Apps. Der Setup-Check muss über denselben Weg lesen wie die App selbst.
+
+**Zwei Ebenen, nicht eine.** Neben `DEFAULT_WHITELIST` gibt es `WHITELIST_ALWAYS` — `core`, `files`,
+`dav`, `settings`, `theming`, `guests`, `dashboard`, `user_status` und die Zwei-Faktor-Apps. Die
+stehen in keiner Konfiguration und können durch einen Fehlgriff auch nicht verloren gehen. Der
+Setup-Check darf sie nicht als fehlend melden.
+
+**Talk war nie freigeschaltet.** Die frühere Formulierung „blindes Setzen schaltet Talk für alle
+Kunden ab" trifft nicht zu: `spreed` steht in keiner der beiden Listen. Ein Gast bekommt auf
+`/apps/spreed/` **vorher wie nachher** dieselbe Fehlerseite. Was ein blindes Setzen tatsächlich
+kostet, sind die zwölf Vorgabe-Apps — `files_sharing`, `text`, `photos`, `activity`,
+`notifications` und die übrigen. Das ist Schaden genug, aber ein anderer.
+
+**Der Statuscode ist 500.** Siehe oben. Für den Wächter in `api.ts` maßgeblich.
+
+**Die Änderung wirkt nicht im selben Atemzug.** Der erste Request unmittelbar nach
+`occ config:app:set` lief noch gegen den alten Wert (`fast cache`, hier Redis), der zweite war grün.
+Wer den Setup-Check nach einer Korrektur sofort erneut abfragt, sieht unter Umständen noch den
+Fehlstand.
+
+| §11.2 | Frage | Befund |
+|---|---|---|
+| 1 | Freigabeliste lesen und ergänzt zurückschreiben | **geht**, aber nur über die App-Konfiguration mit Lexikon-Vorgabe; `occ`-Sicht ist irreführend |
+| 5 | Gast-UID-Länge | **exakt 64 Zeichen.** Bei aktivem Datenschutzschalter ist die Kennung ein Hex-Hash der Adresse, nicht die Adresse. `varchar(64)` passt — mit **null** Spielraum |
+| 5 | Quota > 0 | **Nein: `0 B` im Auslieferungszustand.** Die Vorgabe hängt am Instanz-Preset, und der Standardzweig liefert `0 B`. Gehört als eigener Punkt in den Setup-Check und in die Betriebsanleitung |
+| 6 | Auffindbarkeit von Gästen beim Hinzufügen | **Gäste sind auffindbar.** Ein interner Nutzer findet den Gast über Anzeigename und Adresse (OCS `sharees`), zurück kommt die Hash-Kennung |
+| 6 | Personensuche **durch** einen Gast | **Nur exakte Treffer.** Die Suche eines Gasts nach `admin` liefert `users: []` und ausschließlich `exact`. Kein Durchblättern, keine Teiltreffer — die Begründung für den App-eigenen Personen-Endpunkt bleibt gültig, ist aber genauer: nicht „leer", sondern „nur wer exakt benannt wird" |
+
+**Offen aus S1** — braucht einen Team-Ordner und eine Server-Route, beides existiert noch nicht:
+
+- §11.2 Punkt 2: ein `#[NoAdminRequired]`-JSON-Endpunkt in echter Gast-Sitzung. Die App hat bisher
+  nur `page#index`; nachzuholen, sobald Phase 1 die erste API-Route legt.
+- §11.2 Punkt 3: `viewer` auf einer Datei in `90_Austausch`.
+- §11.2 Punkt 4: fragmentfreier Deep-Link aus abgemeldetem Zustand.
+
+**Zur Methode:** Das Anmeldeformular ließ sich per `curl` nicht bedienen (die Anmeldung fällt auf
+`/login?direct=1` zurück, auch mit gültigen Zugangsdaten und frischem `requesttoken`) — die
+Gegenprobe mit einem regulären Konto scheiterte genauso, es liegt also am Ablauf und nicht am
+Gastkonto. Gemessen wurde deshalb über **Basic Auth** gegen `/apps/...` und `/ocs/v2.php/...`; beide
+Konten antworten dort mit `207` auf WebDAV, die Sitzung ist also echt. Für die drei offenen Punkte
+(Weiterleitung nach Login, Viewer im Browser) reicht das nicht — die brauchen einen echten Browser.
 
 ## Theming und Barrierefreiheit
 
