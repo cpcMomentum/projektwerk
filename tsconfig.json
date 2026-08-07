@@ -1,8 +1,14 @@
 {
   "extends": "@vue/tsconfig/tsconfig.json",
-  "include": ["src/**/*", "vite.config.js", "vitest.config.ts"],
+  "include": ["src/**/*", "vite.config.ts", "vitest.config.ts", "eslint.config.mjs"],
   "compilerOptions": {
     "allowJs": true,
+    // Vite baut, tsc prueft nur — deshalb noEmit. Das ist zugleich die
+    // Voraussetzung fuer allowImportingTsExtensions, das die von
+    // @nextcloud/eslint-config geforderten expliziten .ts-Endungen in
+    // relativen Importen erlaubt.
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
     "outDir": "dist",
     "baseUrl": ".",
     "paths": {

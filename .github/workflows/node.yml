@@ -26,7 +26,10 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          # Node 20 ist seit 2026-04-30 EOL. @nextcloud/eslint-config@9 verlangt
+          # ^22.14 || ^24 || >=26, @nextcloud/vue@9 deklariert devEngines ^24.
+          # 24 ist LTS bis 2028-04-30.
+          node-version: '24'
 
       - name: Abhaengigkeiten installieren
         # npm/cli#4828: ein auf anderem OS erzeugter Lock laesst das plattform-
