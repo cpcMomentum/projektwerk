@@ -149,7 +149,7 @@ App nicht auf dessen Freigabeliste.
 
 ### S1 — gemessen am 2026-08-07 (NC 34.0.0, Guests 4.9.0, PHP 8.4)
 
-Vier der sechs Punkte aus §11.2 sind beantwortet. Was dabei **anders war als angenommen**, steht
+Drei der sechs Punkte aus §11.2 sind beantwortet. Was dabei **anders war als angenommen**, steht
 zuerst.
 
 **Die Freigabeliste ist gesetzt, auch wenn sie leer aussieht.** `occ config:app:get guests whitelist`
