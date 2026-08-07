@@ -266,6 +266,40 @@ Konten antworten dort mit `207` auf WebDAV, die Sitzung ist also echt. Für die 
 - Zeigt die konfigurierte Adresse auf eine lokale Adresse, blockt Nextclouds HTTP-Client den
   Selbstaufruf; dann ist eine Konfigurationsausnahme nötig. **Beim ersten Test zu prüfen.**
 
+### S4 — gemessen am 2026-08-07 (NC 34.0.0, PHP 8.4, Symfony Mailer)
+
+Aufbau: `nextcloud-dev` gegen `mailhog-dev` (SMTP 1025), Versand über `occ user:welcome` — der Weg
+läuft durch `IMailer` wie der spätere App-Versand. Gemessen wurde die Wanduhr des gesamten
+`docker exec`, der reine Versand liegt also unter den genannten Werten.
+
+| Fall | Dauer | Verhalten |
+|---|---|---|
+| SMTP erreichbar | **0,23 s** | Mail kommt an |
+| Port zu (Connection refused) | **0,19 s** | keine Mail, **Exitcode 0, keine Ausgabe** |
+| Host verschluckt Pakete, Vorgabe | **10,3 s** | keine Mail, Exitcode 0 |
+| dasselbe mit `mail_smtptimeout=3` | **3,2 s** | keine Mail, Exitcode 0 |
+
+**Das Zeitbudget für den synchronen Versand ist damit eine Zahl: rund 10 Sekunden je Versuch**, wenn
+die Gegenstelle Pakete verschluckt statt abzulehnen. Genau dieser Fall — Firewall, falscher Host,
+abgelaufenes Relay — ist der wahrscheinliche, nicht der geschlossene Port. Zehn Sekunden hängen
+sonst in der Schreibanfrage des Nutzers, der gerade ein Ticket anlegt.
+
+`mail_smtptimeout` wirkt **exakt** und ist der Hebel dafür. Der `InstanceConfigCheck` prüft ihn mit:
+ungesetzt bedeutet 10 s.
+
+**Der Fehlschlag ist auf Aufruferebene still.** `occ user:welcome` liefert Exitcode 0 und keine
+Ausgabe, obwohl keine Mail rausgeht. Im Log steht er sehr wohl — Level 3, `app: core`,
+`Symfony\Component\Mailer\Exception\TransportException` mit dem Text „Connection could not be
+established with host …". Für die App heißt das: **`IMailer::send()` wirft**, und wer nicht fängt,
+merkt nichts. Das ist der gemessene Beleg für die Outbox aus E2; ihre Spalten stehen damit fest:
+Empfänger, Betreffschlüssel, Versuchszähler, Zeitpunkt des letzten Versuchs und der Ausnahmetext.
+
+**`overwrite.cli.url` schlägt auf die Links in der Mail durch — belegt.** Die zugestellte Mail
+enthält `http://localhost/`, weil der Versand aus einem CLI-Kontext lief. Für einen Kunden ist das
+ein toter Link, und es fällt niemandem auf, der die Mail nicht liest: Versand und Zustellung sind
+erfolgreich. Der `InstanceConfigCheck` muss den Wert deshalb nicht nur auf „gesetzt" prüfen, sondern
+auf „von außen erreichbar" — mindestens auf „nicht `localhost`".
+
 ## Noch nicht belegt
 
 - Ob Talk-Bot-Nachrichten von der Produktivinstanz aus zugestellt werden (Selbstaufruf hinter
