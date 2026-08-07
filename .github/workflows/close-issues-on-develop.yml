@@ -39,7 +39,16 @@ jobs:
             // Die Schluesselwoerter, die GitHub selbst auswertet — plus die
             // deutschen Entsprechungen, weil die PR-Texte in diesem Repo deutsch
             // sind und "Behebt #212" sonst wirkungslos bliebe.
-            const pattern = /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?|behebt|behebe[nt]?|behoben|schliesst|geschlossen|loest|geloest|umgesetzt)(?:\s+(?:durch|in))?\s*:?\s+#(\d+)/gi
+            //
+            // Die deutschen Woerter stehen in BEIDEN Schreibweisen: mit ss und
+            // mit ss-Ligatur. Vorher gab es nur die ss-Form — wer "Schliesst #4"
+            // schreibt (also das, was ein deutscher Text natuerlicherweise
+            // enthaelt), traf das Muster nicht, und das Issue blieb offen. Genau
+            // so ist projektwerk#4 am 07.08.2026 durchgerutscht und musste von
+            // Hand geschlossen werden. Der Workflow meldet dabei "success" — der
+            // Fehlschlag ist also still, wie schon bei den Faellen, die diesen
+            // Workflow ueberhaupt ausgeloest haben.
+            const pattern = /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?|behebt|behebe[nt]?|behoben|schlie(?:ss|ß)t|geschlossen|l(?:oe|ö)st|gel(?:oe|ö)st|umgesetzt)(?:\s+(?:durch|in))?\s*:?\s+#(\d+)/gi
             const numbers = [...new Set(
               [...haystack.matchAll(pattern)].map(m => Number(m[1]))
             )]
