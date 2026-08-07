@@ -1,6 +1,12 @@
 {
   "extends": "@vue/tsconfig/tsconfig.json",
-  "include": ["src/**/*", "vite.config.ts", "vitest.config.ts", "eslint.config.mjs"],
+  "include": [
+    "src/**/*",
+    "tests/ci/**/*",
+    "vite.config.ts",
+    "vitest.config.ts",
+    "eslint.config.mjs"
+  ],
   "compilerOptions": {
     "allowJs": true,
     // Vite baut, tsc prueft nur — deshalb noEmit. Das ist zugleich die
