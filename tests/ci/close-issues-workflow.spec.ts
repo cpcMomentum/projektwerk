@@ -102,3 +102,43 @@ describe('close-issues: Fliesstext und Code nebeneinander', () => {
 		expect(referenced('Titel', '```\nfixes #30\n```\n\nSchließt #31.')).toEqual([31])
 	})
 })
+
+/**
+ * Aus dem Review zu PR #26. Zwei der drei Befunde waren echt und versagten zur
+ * falschen Seite — sie gaben Code als Fliesstext aus und haetten wieder
+ * schliessen koennen, was niemand schliessen wollte: die vorige Fassung las
+ * aus dem 4er-Zaun `#40` und aus dem mehrzeiligen Span `#50, #51`.
+ *
+ * Der dritte Befund (CRLF breche die $-Pruefung am Schlusszaun) traf nicht zu:
+ * JavaScript zaehlt \r selbst als Zeilenende. Der Fall bleibt trotzdem als
+ * Test stehen, damit die Annahme belegt ist und nicht erneut geraten wird.
+ */
+describe('close-issues: Randfaelle aus dem Review zu #26', () => {
+	it('beendet einen 4er-Zaun nicht an einem inneren 3er-Zaun', () => {
+		const body = [
+			'````markdown',
+			'Beispiel fuer die Doku:',
+			'```',
+			'behebt #40',
+			'```',
+			'und ausserdem loest #41',
+			'````',
+		].join('\n')
+		expect(referenced('Titel', body)).toEqual([])
+	})
+
+	it('entfernt Inline-Code, der ueber eine Zeile hinausgeht', () => {
+		expect(referenced('Titel', 'Beispiel: `Schliesst #50\nund behebt #51` als Zitat.')).toEqual([])
+	})
+
+	it('verschluckt ueber eine Leerzeile hinweg nichts', () => {
+		// Zwei verirrte Backticks in getrennten Absaetzen sind kein Code-Span.
+		// Wuerde die Grenze fehlen, ginge die Referenz dazwischen verloren.
+		expect(referenced('Titel', 'Ein ` Backtick.\n\nBehebt #60.\n\nNoch ein ` Backtick.')).toEqual([60])
+	})
+
+	it('kommt mit CRLF-Zeilenenden zurecht', () => {
+		const body = 'Behebt #70.\r\n\r\n```\r\nbehebt #71\r\n```\r\n\r\nUnd loest #72.'
+		expect(referenced('Titel', body)).toEqual([70, 72])
+	})
+})
