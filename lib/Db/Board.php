@@ -34,6 +34,10 @@ use OCP\DB\Types;
  * @method void setDescription(?string $description)
  * @method string getOwnerUserId()
  * @method void setOwnerUserId(string $ownerUserId)
+ * @method ?string getOrgInternal()
+ * @method void setOrgInternal(?string $orgInternal)
+ * @method ?string getOrgExternal()
+ * @method void setOrgExternal(?string $orgExternal)
  * @method ?int getFolderPublicId()
  * @method void setFolderPublicId(?int $folderPublicId)
  * @method ?string getFolderPublicPath()
@@ -62,6 +66,8 @@ class Board extends Entity implements JsonSerializable {
 	protected ?string $title = null;
 	protected ?string $description = null;
 	protected ?string $ownerUserId = null;
+	protected ?string $orgInternal = null;
+	protected ?string $orgExternal = null;
 	protected ?int $folderPublicId = null;
 	protected ?string $folderPublicPath = null;
 	protected ?int $folderInternalId = null;
@@ -78,6 +84,8 @@ class Board extends Entity implements JsonSerializable {
 		$this->addType('title', Types::STRING);
 		$this->addType('description', Types::TEXT);
 		$this->addType('ownerUserId', Types::STRING);
+		$this->addType('orgInternal', Types::STRING);
+		$this->addType('orgExternal', Types::STRING);
 		$this->addType('folderPublicId', Types::INTEGER);
 		$this->addType('folderPublicPath', Types::STRING);
 		$this->addType('folderInternalId', Types::INTEGER);
@@ -103,6 +111,8 @@ class Board extends Entity implements JsonSerializable {
 			'title' => $this->getTitle(),
 			'description' => $this->getDescription(),
 			'ownerUserId' => $this->getOwnerUserId(),
+			'orgInternal' => $this->getOrgInternal(),
+			'orgExternal' => $this->getOrgExternal(),
 			'folderPublicId' => $this->getFolderPublicId(),
 			'folderPublicPath' => $this->getFolderPublicPath(),
 			'folderInternalId' => $this->getFolderInternalId(),

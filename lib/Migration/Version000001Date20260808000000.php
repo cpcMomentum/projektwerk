@@ -78,6 +78,18 @@ class Version000001Date20260808000000 extends SimpleMigrationStep {
 		$table->addColumn('title', Types::STRING, ['notnull' => true, 'length' => 255]);
 		$table->addColumn('description', Types::TEXT, ['notnull' => false]);
 		$table->addColumn('owner_user_id', Types::STRING, ['notnull' => true, 'length' => 64]);
+		// Die Namen der beiden Seiten. Am Board und nicht am Mitglied, weil ein
+		// Board genau zwei Parteien kennt — mehr ist ausdruecklich nicht
+		// abgedeckt. Ein Feld je Mitglied koennte auseinanderlaufen (zwei
+		// Schreibweisen derselben Firma), zwei Felder am Board koennen es nicht.
+		//
+		// Sie stehen unter JEDEM Namen, auch unter den internen: In der
+		// Personenauswahl eines oeffentlichen Tickets erscheinen beide Seiten
+		// gemeinsam und ohne Trennung (§9). Traege nur die Kundenseite eine
+		// Firma, waere die interne stumm "der Normalfall" — die Trennung waere
+		// durch die Hintertuer zurueck.
+		$table->addColumn('org_internal', Types::STRING, ['notnull' => false, 'length' => 128]);
+		$table->addColumn('org_external', Types::STRING, ['notnull' => false, 'length' => 128]);
 		// Hinterlegt wird die Datei-ID; der Pfad dient nur der Anzeige und darf
 		// veralten. In S2 (07.08.2026) bestaetigt: Die Datei-ID ueberlebt einen
 		// Umzug innerhalb des Team-Ordners, der Pfad nicht.
@@ -115,6 +127,17 @@ class Version000001Date20260808000000 extends SimpleMigrationStep {
 		// Bezeichnungen sind reine Anzeigetexte aus der Uebersetzungsdatei.
 		$table->addColumn('role', Types::STRING, ['notnull' => true, 'length' => 16]);
 		$table->addColumn('is_manager', Types::SMALLINT, ['notnull' => true, 'default' => 0]);
+		// Vor- und Nachname fuer dieses Board. NULL heisst: Anzeigename aus
+		// Nextcloud verwenden.
+		//
+		// Nextclouds Anzeigename ist oft ein Kuerzel — intern gleichgueltig,
+		// gegenueber dem Kunden nicht. Verschaerfend der Befund aus S1: Ohne
+		// gepflegten Namen steht die E-Mail-Adresse eines Gastes als Klartext
+		// auf jeder Ticketkarte, auch fuer die uebrigen Mitarbeiter der
+		// Kundenseite. Ein Feld an der Mitgliedschaft macht das behebbar, ohne
+		// fremde Konten anzufassen — und passt zur Hausregel, dass die Rolle an
+		// der Mitgliedschaft haengt und nicht am Konto.
+		$table->addColumn('display_name', Types::STRING, ['notnull' => false, 'length' => 128]);
 		$table->addColumn('added_by', Types::STRING, ['notnull' => true, 'length' => 64]);
 		$table->addColumn('added_at', Types::DATETIME, ['notnull' => true]);
 		$table->setPrimaryKey(['id']);
