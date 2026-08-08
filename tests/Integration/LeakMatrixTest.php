@@ -165,7 +165,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'board#show' => 'testBoardShowEndpointRefusesNonMembers',
 		'ticket#index' => 'testTicketIndexEndpointMatchesTheVisibleSet',
 		'ticket#show' => 'testTicketShowEndpointMatchesTheVisibleSet',
-		'ticket#visibilityImpact' => 'testTheTwoFacesOfTheRuleAgree',
+		'ticket#visibilityImpact' => 'testVisibilityImpactNamesWhoLosesAccess',
 	];
 
 	private LeakMatrixFixture $fixture;
@@ -739,26 +739,42 @@ class LeakMatrixTest extends IntegrationTestCase {
 
 	/**
 	 * Was ein Herunterstufen kostet: Namen und Zahlen, keine Warnung.
+	 *
+	 * Ueber den Controller, nicht den Service direkt — sonst bliebe die
+	 * eigentliche Route (Parameterbindung, Fehlerabbildung auf HTTP-Status)
+	 * ungeprueft, obwohl {@see ReadPathRegistry::ROUTE_PATHS} sie als
+	 * gefahren fuehrt.
 	 */
 	public function testVisibilityImpactNamesWhoLosesAccess(): void {
-		$service = Server::get(TicketService::class);
-		$anna = $this->contextFor(self::ANNA);
+		$controller = $this->ticketController(self::ANNA);
+		$boardId = $this->fixture->boardId;
+		$publicAnna = $this->fixture->ticketIds['public/anna'];
 
 		// public/anna sehen alle vier. Auf 'internal' verlieren die beiden
 		// Externen den Zugriff, auf 'private' zusaetzlich Bert.
-		$internal = $service->visibilityImpact($anna, $this->fixture->ticketIds['public/anna'], 'internal');
+		$response = $controller->visibilityImpact($boardId, $publicAnna, 'internal');
+		$this->assertSame(Http::STATUS_OK, $response->getStatus());
+		$internal = $response->getData();
 		sort($internal['losing']);
 		$this->assertSame([self::CARLA, self::DIRK], $internal['losing']);
 		$this->assertSame(1, $internal['comments'], 'Jedes Ticket der Fixture hat genau einen Kommentar.');
 		$this->assertSame(1, $internal['attachments']);
 
-		$private = $service->visibilityImpact($anna, $this->fixture->ticketIds['public/anna'], 'private');
+		$private = $controller->visibilityImpact($boardId, $publicAnna, 'private')->getData();
 		sort($private['losing']);
 		$this->assertSame([self::BERT, self::CARLA, self::DIRK], $private['losing']);
 
 		// Hochstufen nimmt niemandem etwas.
-		$public = $service->visibilityImpact($anna, $this->fixture->ticketIds['private/anna'], 'public');
+		$public = $controller->visibilityImpact($boardId, $this->fixture->ticketIds['private/anna'], 'public')->getData();
 		$this->assertSame([], $public['losing']);
+
+		// Ein unbekannter Wert ist eine 400, kein durchgereichter Serverfehler.
+		$badRequest = $controller->visibilityImpact($boardId, $publicAnna, 'gestohlen');
+		$this->assertSame(Http::STATUS_BAD_REQUEST, $badRequest->getStatus());
+
+		// Das Nichtmitglied bekommt 404 wie an jedem anderen Lesepfad.
+		$fremdResponse = $this->ticketController(self::FREMD)->visibilityImpact($boardId, $publicAnna, 'internal');
+		$this->assertSame(Http::STATUS_NOT_FOUND, $fremdResponse->getStatus());
 	}
 
 	/**
