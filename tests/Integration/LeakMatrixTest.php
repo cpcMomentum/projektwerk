@@ -9,7 +9,9 @@ declare(strict_types=1);
 
 namespace OCA\Projektwerk\Tests\Integration;
 
+use OCA\Projektwerk\Access\BoardAccess;
 use OCA\Projektwerk\Access\ViewerContext;
+use OCA\Projektwerk\Controller\BoardController;
 use OCA\Projektwerk\Db\AttachmentMapper;
 use OCA\Projektwerk\Db\BoardMapper;
 use OCA\Projektwerk\Db\ColumnMapper;
@@ -21,6 +23,8 @@ use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Db\TicketUserMapper;
 use OCA\Projektwerk\Tests\ReadPathRegistry;
 use OCP\AppFramework\Db\DoesNotExistException;
+use OCP\AppFramework\Http;
+use OCP\IRequest;
 use OCP\Server;
 use ReflectionClass;
 
@@ -144,6 +148,16 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'AttachmentMapper::countForTickets' => 'testChildCountersFollowTheFilteredTicketSet',
 		'TicketUserMapper::findForTickets' => 'testChildrenFollowTheFilteredTicketSet',
 		'TicketUserMapper::countForTickets' => 'testChildCountersFollowTheFilteredTicketSet',
+	];
+
+	/**
+	 * Welcher Test deckt welche Lese-Route.
+	 *
+	 * @var array<string, string>
+	 */
+	private const ROUTE_COVERAGE = [
+		'board#index' => 'testBoardIndexEndpointFollowsMembership',
+		'board#show' => 'testBoardShowEndpointRefusesNonMembers',
 	];
 
 	private LeakMatrixFixture $fixture;
@@ -449,31 +463,143 @@ class LeakMatrixTest extends IntegrationTestCase {
 	}
 
 	/**
-	 * Jeder registrierte Lesepfad wird von dieser Matrix auch wirklich gefahren.
+	 * Die Boardliste am Endpunkt — dieselbe Erwartung wie am Mapper.
 	 *
-	 * Ohne diesen Test koennte ein Pfad in der Registry stehen (und damit den
+	 * Dass beide dasselbe liefern muessen, ist der Punkt: Der Endpunkt ist die
+	 * Stelle, an der jemand spaeter „nur schnell" etwas dazunimmt.
+	 */
+	public function testBoardIndexEndpointFollowsMembership(): void {
+		foreach ([self::ANNA, self::BERT, self::CARLA, self::DIRK] as $userId) {
+			$response = $this->boardController($userId)->index();
+
+			$this->assertSame(Http::STATUS_OK, $response->getStatus(), $userId);
+			$this->assertSame(
+				['Leak-Matrix'],
+				array_map(static fn ($b): string => (string)$b->getTitle(), $response->getData()),
+				$userId . ' bekommt eine andere Boardliste als erwartet.',
+			);
+		}
+
+		$response = $this->boardController(self::FREMD)->index();
+
+		$this->assertSame(Http::STATUS_OK, $response->getStatus());
+		$this->assertSame([], $response->getData(), 'Das Nichtmitglied bekommt eine Boardliste.');
+	}
+
+	/**
+	 * Der Einzelabruf am Endpunkt — und die Probe auf die Fehlerform.
+	 *
+	 * Hier greift `BoardAccess`, anders als bei den Mapper-Pfaden mit selbst
+	 * gebautem Kontext: Das Nichtmitglied bekommt **404**, nicht 403. Ein 403
+	 * beantwortete die Frage, die die Abfrage nicht beantwortet — naemlich dass
+	 * es dieses Projekt gibt.
+	 */
+	public function testBoardShowEndpointRefusesNonMembers(): void {
+		foreach ([self::ANNA, self::BERT, self::CARLA, self::DIRK] as $userId) {
+			$response = $this->boardController($userId)->show($this->fixture->boardId);
+			$data = $response->getData();
+
+			$this->assertSame(Http::STATUS_OK, $response->getStatus(), $userId);
+			$this->assertSame('Leak-Matrix', $data['board']->getTitle(), $userId);
+			$this->assertCount(4, $data['members'], $userId . ': Mitgliederliste weicht ab.');
+			$this->assertCount(2, $data['columns'], $userId . ': Spalten weichen ab.');
+			$this->assertSame($userId, $data['viewer']['userId']);
+		}
+
+		$response = $this->boardController(self::FREMD)->show($this->fixture->boardId);
+
+		$this->assertSame(
+			Http::STATUS_NOT_FOUND,
+			$response->getStatus(),
+			'Das Nichtmitglied bekommt nicht 404 — die Fehlerform verrät, dass es das Board gibt.',
+		);
+		$this->assertSame([], $response->getData());
+	}
+
+	/**
+	 * Ein Ticket geht ohne `position` über die Leitung (§5.8).
+	 *
+	 * Das Ticket ist die einzige je Betrachter gefilterte Entität; eine
+	 * ausgelieferte Sortierposition verriete die Lücken. Der Test steht in der
+	 * Matrix und nicht bei den Entities, weil er hier an einem **echten**
+	 * gelesenen Ticket hängt und nicht an einem von Hand gebauten.
+	 */
+	public function testSerializedTicketsCarryNoPosition(): void {
+		$tickets = Server::get(TicketMapper::class)
+			->findVisibleInBoard($this->contextFor(self::ANNA));
+
+		$this->assertNotEmpty($tickets);
+
+		foreach ($tickets as $ticket) {
+			$serialized = $ticket->jsonSerialize();
+
+			$this->assertArrayNotHasKey(
+				'position',
+				$serialized,
+				'Die Sortierposition geht über die Leitung — sie verrät genau das, was der Filter verbirgt.',
+			);
+			// Gegenprobe, dass der Test nicht einfach ein leeres Feld prueft.
+			$this->assertArrayHasKey('number', $serialized);
+		}
+	}
+
+	/**
+	 * Jeder registrierte Lesepfad und jede registrierte Route werden von dieser
+	 * Matrix auch wirklich gefahren.
+	 *
+	 * Ohne diesen Test koennte ein Eintrag in der Registry stehen (und damit den
 	 * Vollstaendigkeitstest zufriedenstellen), ohne dass je eine Erwartung an ihn
 	 * geprueft wuerde. Die Registry waere dann eine Liste, kein Waechter.
 	 */
 	public function testTheMatrixCoversEveryRegisteredPath(): void {
-		$covered = array_keys(self::COVERAGE);
-		$registered = ReadPathRegistry::MAPPER_PATHS;
-		sort($covered);
-		sort($registered);
-
-		$this->assertSame($registered, $covered, implode("\n", [
-			'Registry und Matrix laufen auseinander.',
-			'Fehlt hier: ' . implode(', ', array_diff($registered, $covered)),
-			'Zu viel hier: ' . implode(', ', array_diff($covered, $registered)),
-		]));
+		$this->assertCoverage(
+			ReadPathRegistry::MAPPER_PATHS,
+			array_keys(self::COVERAGE),
+			'Mapper-Lesepfade',
+		);
+		$this->assertCoverage(
+			ReadPathRegistry::ROUTE_PATHS,
+			array_keys(self::ROUTE_COVERAGE),
+			'Lese-Routen',
+		);
 
 		$reflection = new ReflectionClass($this);
-		foreach (self::COVERAGE as $path => $method) {
+		foreach (self::COVERAGE + self::ROUTE_COVERAGE as $path => $method) {
 			$this->assertTrue(
 				$reflection->hasMethod($method),
-				'COVERAGE nennt fuer ' . $path . ' die Methode ' . $method . ', die es nicht gibt.',
+				'Die Abdeckung nennt fuer ' . $path . ' die Methode ' . $method . ', die es nicht gibt.',
 			);
 		}
+	}
+
+	/**
+	 * @param string[] $registered
+	 * @param string[] $covered
+	 */
+	private function assertCoverage(array $registered, array $covered, string $what): void {
+		sort($registered);
+		sort($covered);
+
+		$this->assertSame($registered, $covered, implode("\n", [
+			'Registry und Matrix laufen auseinander (' . $what . ').',
+			'Fehlt in der Matrix: ' . implode(', ', array_diff($registered, $covered)),
+			'Zu viel in der Matrix: ' . implode(', ', array_diff($covered, $registered)),
+		]));
+	}
+
+	/**
+	 * Der Controller, wie ihn Nextcloud baut — nur mit der Benutzerkennung von
+	 * Hand statt aus der Sitzung.
+	 */
+	private function boardController(string $userId): BoardController {
+		return new BoardController(
+			$this->createStub(IRequest::class),
+			Server::get(BoardMapper::class),
+			Server::get(MemberMapper::class),
+			Server::get(ColumnMapper::class),
+			Server::get(BoardAccess::class),
+			$userId,
+		);
 	}
 
 	/**
