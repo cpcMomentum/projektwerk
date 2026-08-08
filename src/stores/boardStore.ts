@@ -16,6 +16,7 @@ import type { Ticket, TicketList } from '@/types/ticket'
 import { defineStore } from 'pinia'
 import { fetchBoard, fetchBoards } from '@/services/boards'
 import { fetchTickets, moveTicket as moveTicketRequest } from '@/services/tickets'
+import { showError } from '@/services/toast'
 
 interface State {
 	boards: Board[]
@@ -100,6 +101,7 @@ export const useBoardStore = defineStore('board', {
 				this.boards = await fetchBoards()
 			} catch (e) {
 				this.error = (e as { message?: string }).message ?? 'Unbekannter Fehler'
+				showError(this.error)
 			} finally {
 				this.loading = false
 			}
@@ -123,6 +125,7 @@ export const useBoardStore = defineStore('board', {
 				this.applyTickets(await fetchTickets(boardId))
 			} catch (e) {
 				this.error = (e as { message?: string }).message ?? 'Unbekannter Fehler'
+				showError(this.error)
 			} finally {
 				this.loading = false
 			}
