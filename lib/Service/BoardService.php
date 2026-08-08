@@ -117,10 +117,10 @@ class BoardService {
 			$member->setAddedAt($now);
 			$this->members->insert($member);
 
-			foreach (self::DEFAULT_COLUMNS as $position => $title) {
+			foreach (self::DEFAULT_COLUMNS as $position => $columnTitle) {
 				$column = new Column();
 				$column->setBoardId((int)$board->getId());
-				$column->setTitle($this->l10n->t($title));
+				$column->setTitle($this->l10n->t($columnTitle));
 				$column->setPosition($position);
 				$this->columns->insert($column);
 			}
