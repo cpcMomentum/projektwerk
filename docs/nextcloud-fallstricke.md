@@ -106,12 +106,16 @@ App nicht auf dessen Freigabeliste.
 ## Gast-Accounts
 
 - `projektwerk` **muss** in die Freigabeliste der Guests-App. Ohne diesen Schritt liefert jeder
-  Request unter `/apps/projektwerk/...` eine HTML-403-Seite — **auch API-Requests**, das Frontend
+  Request unter `/apps/projektwerk/...` eine HTML-Fehlerseite — **auch API-Requests**, das Frontend
   stirbt dann an einem unverständlichen Parse-Fehler. Gehört als expliziter Schritt in die
   Installationsanleitung, plus ein Frontend-Wächter, der eine Nicht-JSON-Antwort als „App für Gäste
   nicht freigeschaltet" meldet.
-- Bestehende Liste **zuerst lesen, ergänzt zurückschreiben**. Blindes Setzen schaltet Talk für alle
-  Kunden ab. Verschärfend: Der Konfigurationswert ist **im Auslieferungszustand gar nicht gesetzt**
+
+  **Gemessen in S1 (2026-08-07, NC 34.0.0, Guests 4.9.0): Der Status ist `500`, nicht `403`.**
+  Der Rumpf sagt „Access to this resource (projektwerk) is forbidden for guests" — ein
+  Berechtigungsfall im Gewand eines Serverfehlers. Für den Wächter in `api.ts` heißt das: Er darf
+  **nicht** am Statuscode hängen. `500` mit HTML ist hier der Normalfall, nicht die Ausnahme.
+- Bestehende Liste **zuerst lesen, ergänzt zurückschreiben**. Verschärfend: Der Konfigurationswert ist **im Auslieferungszustand gar nicht gesetzt**
   (auf `nextcloud-dev` mit Guests 4.9.0 geprüft) — die Vorgabe steckt als Konstante im Code. Wer die
   Liste zum ersten Mal schreibt, **ersetzt damit die gesamte eingebaute Vorgabe** und muss sie
   vollständig mit übernehmen. Sie lautet in Guests 4.9.0 (`lib/AppWhitelist.php`):
@@ -142,6 +146,59 @@ App nicht auf dessen Freigabeliste.
 - Die Guests-Zusicherung „Gäste können keine Dateien außerhalb von Freigaben anlegen" ist im
   aktuellen Code **nicht mehr durchgesetzt**. Keine Sichtbarkeitsannahme darauf stützen — nur auf den
   Ablageort und die eigenen Rechteprüfungen.
+
+### S1 — gemessen am 2026-08-07 (NC 34.0.0, Guests 4.9.0, PHP 8.4)
+
+Drei der sechs Punkte aus §11.2 sind beantwortet. Was dabei **anders war als angenommen**, steht
+zuerst.
+
+**Die Freigabeliste ist gesetzt, auch wenn sie leer aussieht.** `occ config:app:get guests whitelist`
+gibt im Auslieferungszustand **nichts** aus — trotzdem ist die Liste wirksam, denn Guests 4.9.0
+hinterlegt sie als Lexikon-Vorgabe (`ConfigLexicon`, Eintrag `whitelist`, Vorgabewert
+`AppWhitelist::DEFAULT_WHITELIST`). `usewhitelist` steht ebenso auf Vorgabe **`true`**, ohne Zeile in
+der Konfiguration. Wer den Ist-Zustand über `occ` oder rohes `IAppConfig` liest und das Ergebnis
+„leer" als „keine Liste" deutet, schreibt anschließend eine Ein-Element-Liste und verliert die zwölf
+Vorgabe-Apps. Der Setup-Check muss über denselben Weg lesen wie die App selbst.
+
+**Zwei Ebenen, nicht eine.** Neben `DEFAULT_WHITELIST` gibt es `WHITELIST_ALWAYS` — `core`, `files`,
+`dav`, `settings`, `theming`, `guests`, `dashboard`, `user_status` und die Zwei-Faktor-Apps. Die
+stehen in keiner Konfiguration und können durch einen Fehlgriff auch nicht verloren gehen. Der
+Setup-Check darf sie nicht als fehlend melden.
+
+**Talk war nie freigeschaltet.** Die frühere Formulierung „blindes Setzen schaltet Talk für alle
+Kunden ab" trifft nicht zu: `spreed` steht in keiner der beiden Listen. Ein Gast bekommt auf
+`/apps/spreed/` **vorher wie nachher** dieselbe Fehlerseite. Was ein blindes Setzen tatsächlich
+kostet, sind die zwölf Vorgabe-Apps — `files_sharing`, `text`, `photos`, `activity`,
+`notifications` und die übrigen. Das ist Schaden genug, aber ein anderer.
+
+**Der Statuscode ist 500.** Siehe oben. Für den Wächter in `api.ts` maßgeblich.
+
+**Die Änderung wirkt nicht im selben Atemzug.** Der erste Request unmittelbar nach
+`occ config:app:set` lief noch gegen den alten Wert (`fast cache`, hier Redis), der zweite war grün.
+Wer den Setup-Check nach einer Korrektur sofort erneut abfragt, sieht unter Umständen noch den
+Fehlstand.
+
+| §11.2 | Frage | Befund |
+|---|---|---|
+| 1 | Freigabeliste lesen und ergänzt zurückschreiben | **geht**, aber nur über die App-Konfiguration mit Lexikon-Vorgabe; `occ`-Sicht ist irreführend |
+| 5 | Gast-UID-Länge | **exakt 64 Zeichen.** Bei aktivem Datenschutzschalter ist die Kennung ein Hex-Hash der Adresse, nicht die Adresse. `varchar(64)` passt — mit **null** Spielraum |
+| 5 | Quota > 0 | **Nein: `0 B` im Auslieferungszustand.** Die Vorgabe hängt am Instanz-Preset, und der Standardzweig liefert `0 B`. Gehört als eigener Punkt in den Setup-Check und in die Betriebsanleitung |
+| 6 | Auffindbarkeit von Gästen beim Hinzufügen | **Gäste sind auffindbar.** Ein interner Nutzer findet den Gast über Anzeigename und Adresse (OCS `sharees`), zurück kommt die Hash-Kennung |
+| 6 | Personensuche **durch** einen Gast | **Nur exakte Treffer.** Die Suche eines Gasts nach `admin` liefert `users: []` und ausschließlich `exact`. Kein Durchblättern, keine Teiltreffer — die Begründung für den App-eigenen Personen-Endpunkt bleibt gültig, ist aber genauer: nicht „leer", sondern „nur wer exakt benannt wird" |
+
+**Offen aus S1** — braucht einen Team-Ordner und eine Server-Route, beides existiert noch nicht:
+
+- §11.2 Punkt 2: ein `#[NoAdminRequired]`-JSON-Endpunkt in echter Gast-Sitzung. Die App hat bisher
+  nur `page#index`; nachzuholen, sobald Phase 1 die erste API-Route legt.
+- §11.2 Punkt 3: `viewer` auf einer Datei in `90_Austausch`.
+- §11.2 Punkt 4: fragmentfreier Deep-Link aus abgemeldetem Zustand.
+
+**Zur Methode:** Das Anmeldeformular ließ sich per `curl` nicht bedienen (die Anmeldung fällt auf
+`/login?direct=1` zurück, auch mit gültigen Zugangsdaten und frischem `requesttoken`) — die
+Gegenprobe mit einem regulären Konto scheiterte genauso, es liegt also am Ablauf und nicht am
+Gastkonto. Gemessen wurde deshalb über **Basic Auth** gegen `/apps/...` und `/ocs/v2.php/...`; beide
+Konten antworten dort mit `207` auf WebDAV, die Sitzung ist also echt. Für die drei offenen Punkte
+(Weiterleitung nach Login, Viewer im Browser) reicht das nicht — die brauchen einen echten Browser.
 
 ## Theming und Barrierefreiheit
 
@@ -208,6 +265,68 @@ App nicht auf dessen Freigabeliste.
   `talk:bot:uninstall` gehören in die Betriebsanleitung.
 - Zeigt die konfigurierte Adresse auf eine lokale Adresse, blockt Nextclouds HTTP-Client den
   Selbstaufruf; dann ist eine Konfigurationsausnahme nötig. **Beim ersten Test zu prüfen.**
+
+### S2 — gemessen am 2026-08-07 (NC 34.0.0, Team folders 22.0.6)
+
+Aufbau: Team-Ordner `Projekt-Spike` mit `90_Austausch` und `91_Tickets_intern`, eine Datei im
+Kundenordner, direkt an das Gastkonto freigegeben, dann per WebDAV `MOVE` in den internen Ordner.
+
+**Der Umzug erhält die Datei-ID.** `1010` vorher, `1010` nachher. Referenzen über die Datei-ID
+überleben also, wie die Architektur es annimmt.
+
+**Und genau deshalb überlebt auch die Freigabe.** Die Freigabe wandert mit und zeigt danach auf
+`/Projekt-Spike/91_Tickets_intern/angebot.txt`. Der Gast liest die Datei **weiter mit HTTP 200**,
+nachgeprüft aus seiner eigenen Sitzung, obwohl sie jetzt im internen Ordner liegt.
+
+> **Der Ablageort ist nicht die Zugriffskontrolle.** Er ist die organisatorische Wahrheit; der
+> Zugriff hängt an der Freigabe, und die klebt an der Datei-ID, nicht am Pfad. Ein Sichtbarkeits-
+> wechsel, der die Datei nur verschiebt, **entzieht dem Kunden nichts**. Die App muss die Freigabe
+> **ausdrücklich aufheben** und das Ergebnis prüfen — sonst ist R3 kein Risiko mehr, sondern der
+> Normalfall: DB-seitig `internal`, physisch weiter beim Kunden, und niemandem fällt es auf.
+
+**Team-Ordner brauchen das Freigaberecht explizit.** Mit `occ groupfolders:group <id> <gruppe> write`
+scheitert jede Freigabe aus dem Ordner heraus mit „Die Freigabe von … ist Ihnen nicht erlaubt" — die
+Meldung nennt den Grund nicht. Nötig ist `read write share delete`. Gehört in die
+Installationsanleitung und in den Setup-Check.
+
+**Nicht beantwortet: Versionen.** Trotz `files_versions` 1.27.0 und dreier Schreibvorgänge lag vor
+dem Umzug **keine** Version vor — Nextcloud fasst schnell aufeinanderfolgende Schreibvorgänge
+zusammen. Damit ist die Frage „überleben Versionen den Umzug?" mangels Versionen offen und braucht
+einen zweiten Anlauf mit zeitlichem Abstand.
+
+### S4 — gemessen am 2026-08-07 (NC 34.0.0, PHP 8.4, Symfony Mailer)
+
+Aufbau: `nextcloud-dev` gegen `mailhog-dev` (SMTP 1025), Versand über `occ user:welcome` — der Weg
+läuft durch `IMailer` wie der spätere App-Versand. Gemessen wurde die Wanduhr des gesamten
+`docker exec`, der reine Versand liegt also unter den genannten Werten.
+
+| Fall | Dauer | Verhalten |
+|---|---|---|
+| SMTP erreichbar | **0,23 s** | Mail kommt an |
+| Port zu (Connection refused) | **0,19 s** | keine Mail, **Exitcode 0, keine Ausgabe** |
+| Host verschluckt Pakete, Vorgabe | **10,3 s** | keine Mail, Exitcode 0 |
+| dasselbe mit `mail_smtptimeout=3` | **3,2 s** | keine Mail, Exitcode 0 |
+
+**Das Zeitbudget für den synchronen Versand ist damit eine Zahl: rund 10 Sekunden je Versuch**, wenn
+die Gegenstelle Pakete verschluckt statt abzulehnen. Genau dieser Fall — Firewall, falscher Host,
+abgelaufenes Relay — ist der wahrscheinliche, nicht der geschlossene Port. Zehn Sekunden hängen
+sonst in der Schreibanfrage des Nutzers, der gerade ein Ticket anlegt.
+
+`mail_smtptimeout` wirkt **exakt** und ist der Hebel dafür. Der `InstanceConfigCheck` prüft ihn mit:
+ungesetzt bedeutet 10 s.
+
+**Der Fehlschlag ist auf Aufruferebene still.** `occ user:welcome` liefert Exitcode 0 und keine
+Ausgabe, obwohl keine Mail rausgeht. Im Log steht er sehr wohl — Level 3, `app: core`,
+`Symfony\Component\Mailer\Exception\TransportException` mit dem Text „Connection could not be
+established with host …". Für die App heißt das: **`IMailer::send()` wirft**, und wer nicht fängt,
+merkt nichts. Das ist der gemessene Beleg für die Outbox aus E2; ihre Spalten stehen damit fest:
+Empfänger, Betreffschlüssel, Versuchszähler, Zeitpunkt des letzten Versuchs und der Ausnahmetext.
+
+**`overwrite.cli.url` schlägt auf die Links in der Mail durch — belegt.** Die zugestellte Mail
+enthält `http://localhost/`, weil der Versand aus einem CLI-Kontext lief. Für einen Kunden ist das
+ein toter Link, und es fällt niemandem auf, der die Mail nicht liest: Versand und Zustellung sind
+erfolgreich. Der `InstanceConfigCheck` muss den Wert deshalb nicht nur auf „gesetzt" prüfen, sondern
+auf „von außen erreichbar" — mindestens auf „nicht `localhost`".
 
 ## Noch nicht belegt
 
