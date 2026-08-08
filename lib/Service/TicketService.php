@@ -128,7 +128,7 @@ class TicketService {
 
 			$ticket->setColumnId($targetColumnId);
 			$ticket->setPosition($this->positions->between($before, $after));
-			$this->touch($ticket);
+			$this->touch($ticket, $viewer);
 
 			$saved = $this->tickets->update($ticket);
 			$this->db->commit();
@@ -170,7 +170,7 @@ class TicketService {
 			$ticket->setClosedAt($changes['closed'] ? new \DateTime() : null);
 		}
 
-		$this->touch($ticket);
+		$this->touch($ticket, $viewer);
 
 		return $this->tickets->update($ticket);
 	}
@@ -211,7 +211,7 @@ class TicketService {
 		}
 
 		$ticket->setVisibility($visibility);
-		$this->touch($ticket);
+		$this->touch($ticket, $viewer);
 
 		return $this->tickets->update($ticket);
 	}
@@ -296,8 +296,22 @@ class TicketService {
 		}
 	}
 
-	private function touch(Ticket $ticket): void {
+	/**
+	 * Ein Schreibvorgang: Version hoch, Zeitstempel neu, Urheber vermerkt.
+	 *
+	 * **`last_editor_user_id` benennt genau, wer den aktuellen `version`-Stand
+	 * verursacht hat** — nicht mehr und nicht weniger. Deshalb wird es an jedem
+	 * Schreibweg gesetzt, auch beim Verschieben und beim Sichtbarkeitswechsel:
+	 * Stünde `version` auf 3 und der Urheber noch bei dem von Version 2, wäre
+	 * das Paar eine Lüge, und jede Anzeige, die darauf baut, ebenfalls.
+	 *
+	 * Beim Anlegen wird es **nicht** gesetzt. `null` heißt „seit dem Anlegen
+	 * unverändert"; wer es angelegt hat, steht in `creator_user_id` und wird
+	 * hier nicht wiederholt.
+	 */
+	private function touch(Ticket $ticket, ViewerContext $viewer): void {
 		$ticket->setVersion((int)$ticket->getVersion() + 1);
+		$ticket->setLastEditorUserId($viewer->userId);
 		$ticket->setUpdatedAt(new \DateTime());
 	}
 

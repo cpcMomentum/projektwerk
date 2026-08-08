@@ -28,6 +28,13 @@ export interface Ticket {
 	closedAt: string | null
 	/** Für die Konflikterkennung; unverändert zurückschicken. */
 	version: number
+	/**
+	 * Wer den aktuellen `version`-Stand verursacht hat.
+	 *
+	 * `null` heißt: seit dem Anlegen unverändert. Wer es angelegt hat, steht in
+	 * `creatorUserId` — die beiden Felder sagen bewusst Verschiedenes.
+	 */
+	lastEditorUserId: string | null
 	githubIssueNumber: number | null
 	githubIssueUrl: string | null
 	createdAt: string | null
