@@ -31,6 +31,8 @@ use OCP\DB\Types;
  * @method void setRole(string $role)
  * @method int getIsManager()
  * @method void setIsManager(int $isManager)
+ * @method ?string getDisplayName()
+ * @method void setDisplayName(?string $displayName)
  * @method string getAddedBy()
  * @method void setAddedBy(string $addedBy)
  * @method DateTime getAddedAt()
