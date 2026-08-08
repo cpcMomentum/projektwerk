@@ -243,7 +243,7 @@ class SettingsWritePathTest extends IntegrationTestCase {
 	}
 
 	/**
-	 * **Ein neues Board bringt fünf Spalten mit — und die erste ist der
+	 * **Ein neues Board bringt sechs Spalten mit — und die erste ist der
 	 * Eingang, nicht die Zusage.**
 	 *
 	 * Auf einem geteilten Board meldet der Kunde etwas. Ohne erste Spalte fiele
