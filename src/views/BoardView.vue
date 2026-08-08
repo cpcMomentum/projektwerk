@@ -60,11 +60,11 @@
 						v-for="ticket in store.ticketsIn(column.id)"
 						:key="ticket.id"
 						:ticket="ticket"
-						:showVisibility="showVisibility"
-						:responsibleName="store.nameOf(ticket.responsibleUserId)"
-						:lastEditorName="store.nameOf(ticket.lastEditorUserId)"
-						:commentCount="count('comments', ticket.id)"
-						:stepCount="count('steps', ticket.id)"
+						:show-visibility="showVisibility"
+						:responsible-name="store.nameOf(ticket.responsibleUserId)"
+						:last-editor-name="store.nameOf(ticket.lastEditorUserId)"
+						:comment-count="count('comments', ticket.id)"
+						:step-count="count('steps', ticket.id)"
 						@open="openTicket" />
 
 					<!-- Leerzustaende sprechen (§9). -->

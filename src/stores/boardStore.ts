@@ -75,7 +75,8 @@ export const useBoardStore = defineStore('board', {
 		 * Boardliste braucht die Zeile für jede Karte, das geöffnete Board für
 		 * genau eine.
 		 */
-		orgLine: () => (board: Pick<Board, 'orgInternal' | 'orgExternal'>): string => [board.orgInternal, board.orgExternal].filter(Boolean).join(' · '),
+		orgLine: () => (board: Pick<Board, 'orgInternal' | 'orgExternal'>): string =>
+			[board.orgInternal, board.orgExternal].filter(Boolean).join(' · '),
 
 		/**
 		 * Der anzuzeigende Name einer Person.
