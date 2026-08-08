@@ -1,0 +1,193 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * SPDX-FileCopyrightText: 2026 cpcMomentum
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
+namespace OCA\Projektwerk\Controller;
+
+use OCA\Projektwerk\Access\BoardAccess;
+use OCA\Projektwerk\Access\NotAMemberException;
+use OCA\Projektwerk\Access\ViewerContext;
+use OCA\Projektwerk\AppInfo\Application;
+use OCA\Projektwerk\Service\BoardService;
+use OCA\Projektwerk\Service\ColumnService;
+use OCA\Projektwerk\Service\MemberService;
+use OCA\Projektwerk\Service\NotManagerException;
+use OCP\AppFramework\Controller;
+use OCP\AppFramework\Db\DoesNotExistException;
+use OCP\AppFramework\Http;
+use OCP\AppFramework\Http\Attribute\NoAdminRequired;
+use OCP\AppFramework\Http\JSONResponse;
+use OCP\IRequest;
+
+/**
+ * Die Schreibwege der Board-Einstellungen: Projekt, Spalten, Mitglieder.
+ *
+ * Ein Controller für alle drei, weil sie dieselbe Sperre teilen und in der
+ * Oberfläche auf **einer** Seite liegen (§9: Board-Einstellungen mit den
+ * Abschnitten Mitglieder, Spalten, Dateiablage, Projektchat). Drei Controller
+ * hätten dreimal denselben Rahmen getragen.
+ *
+ * **Kein Lese-Endpunkt.** Die Einstellungsseite liest über `board#show` — den
+ * gibt es schon, er liefert Board, Mitglieder und Spalten in einem Zug und ist
+ * in der Leak-Matrix registriert. Ein zweiter Lesepfad für dieselben Daten wäre
+ * genau der sechste, gegen den die ganze Bauform gerichtet ist.
+ */
+class SettingsController extends Controller {
+
+	public function __construct(
+		IRequest $request,
+		private BoardService $boardService,
+		private ColumnService $columnService,
+		private MemberService $memberService,
+		private BoardAccess $access,
+		private ?string $userId,
+	) {
+		parent::__construct(Application::APP_ID, $request);
+	}
+
+	/**
+	 * Ein neues Projekt. Ohne Board-Kontext — den gibt es vorher noch nicht.
+	 */
+	#[NoAdminRequired]
+	public function createBoard(
+		string $title,
+		?string $description = null,
+		?string $orgInternal = null,
+		?string $orgExternal = null,
+	): JSONResponse {
+		if ($this->userId === null) {
+			return new JSONResponse([], Http::STATUS_UNAUTHORIZED);
+		}
+
+		try {
+			return new JSONResponse(
+				$this->boardService->create($this->userId, $title, $description, $orgInternal, $orgExternal),
+				Http::STATUS_CREATED,
+			);
+		} catch (\InvalidArgumentException $e) {
+			return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+		}
+	}
+
+	#[NoAdminRequired]
+	public function updateBoard(
+		int $boardId,
+		?string $title = null,
+		?string $description = null,
+		?string $orgInternal = null,
+		?string $orgExternal = null,
+		?string $chatUrl = null,
+	): JSONResponse {
+		$changes = $this->onlyGiven([
+			'title' => $title,
+			'description' => $description,
+			'orgInternal' => $orgInternal,
+			'orgExternal' => $orgExternal,
+			'chatUrl' => $chatUrl,
+		]);
+
+		return $this->write($boardId, fn (ViewerContext $viewer): mixed
+			=> $this->boardService->update($viewer, $changes));
+	}
+
+	#[NoAdminRequired]
+	public function archiveBoard(int $boardId, bool $archived): JSONResponse {
+		return $this->write($boardId, fn (ViewerContext $viewer): mixed
+			=> $this->boardService->setArchived($viewer, $archived));
+	}
+
+	#[NoAdminRequired]
+	public function createColumn(int $boardId, string $title, ?string $color = null): JSONResponse {
+		return $this->write($boardId, fn (ViewerContext $viewer): mixed
+			=> $this->columnService->create($viewer, $title, $color), Http::STATUS_CREATED);
+	}
+
+	#[NoAdminRequired]
+	public function renameColumn(int $boardId, int $columnId, string $title): JSONResponse {
+		return $this->write($boardId, fn (ViewerContext $viewer): mixed
+			=> $this->columnService->rename($viewer, $columnId, $title));
+	}
+
+	/**
+	 * @param int[] $columnIds alle Spalten des Boards in Sollreihenfolge
+	 */
+	#[NoAdminRequired]
+	public function reorderColumns(int $boardId, array $columnIds): JSONResponse {
+		return $this->write($boardId, fn (ViewerContext $viewer): mixed
+			=> $this->columnService->reorder($viewer, $columnIds));
+	}
+
+	#[NoAdminRequired]
+	public function addMember(
+		int $boardId,
+		string $userId,
+		string $role,
+		bool $isManager = false,
+		?string $displayName = null,
+	): JSONResponse {
+		return $this->write($boardId, fn (ViewerContext $viewer): mixed
+			=> $this->memberService->add($viewer, $userId, $role, $isManager, $displayName), Http::STATUS_CREATED);
+	}
+
+	#[NoAdminRequired]
+	public function updateMember(
+		int $boardId,
+		string $userId,
+		?string $role = null,
+		?bool $isManager = null,
+		?string $displayName = null,
+	): JSONResponse {
+		$changes = $this->onlyGiven([
+			'role' => $role,
+			'isManager' => $isManager,
+			'displayName' => $displayName,
+		]);
+
+		return $this->write($boardId, fn (ViewerContext $viewer): mixed
+			=> $this->memberService->update($viewer, $userId, $changes));
+	}
+
+	/**
+	 * Nur das übernehmen, was tatsächlich geschickt wurde — ein nicht genanntes
+	 * Feld darf nicht auf null zurückfallen.
+	 *
+	 * @param array<string, mixed> $fields
+	 * @return array<string, mixed>
+	 */
+	private function onlyGiven(array $fields): array {
+		return array_filter($fields, static fn ($value): bool => $value !== null);
+	}
+
+	/**
+	 * @param callable(ViewerContext): mixed $write
+	 */
+	private function write(int $boardId, callable $write, int $status = Http::STATUS_OK): JSONResponse {
+		if ($this->userId === null) {
+			return new JSONResponse([], Http::STATUS_UNAUTHORIZED);
+		}
+
+		try {
+			$viewer = $this->access->contextFor($this->userId, $boardId);
+		} catch (NotAMemberException) {
+			// Dieselbe Antwort wie für ein Board, das es nicht gibt.
+			return new JSONResponse([], Http::STATUS_NOT_FOUND);
+		}
+
+		try {
+			return new JSONResponse($write($viewer), $status);
+		} catch (NotManagerException $e) {
+			// 403, nicht 404: Der Betrachter ist Mitglied und sieht das Board.
+			// Zu verbergen gibt es nichts mehr — nur zu erklären.
+			return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_FORBIDDEN);
+		} catch (DoesNotExistException) {
+			return new JSONResponse([], Http::STATUS_NOT_FOUND);
+		} catch (\InvalidArgumentException $e) {
+			return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+		}
+	}
+}
