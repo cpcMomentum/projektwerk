@@ -65,7 +65,13 @@
 
 .app-projektwerk .pw-col__head .pw-n {
 	font-variant-numeric: tabular-nums;
-	font-weight: 400;
+	font-weight: 600;
+	min-width: 20px;
+	padding: 1px 7px;
+	border-radius: 10px;
+	text-align: center;
+	background: var(--color-main-background);
+	color: var(--color-text-maxcontrast);
 }
 
 /* ---- Chip mit Zähler (rw-chip) ------------------------------------------ */
@@ -132,9 +138,18 @@
 	}
 }
 
+/*
+ * Die Spalte bekommt einen leicht getoenten Grund, damit die Karten darin
+ * liegen statt daneben. Vorher standen Karte und Spalte auf demselben Weiss
+ * und nur Haarlinien trennten sie — das war der Hauptgrund, warum die Ansicht
+ * flach wirkte.
+ */
 .app-projektwerk .pw-col {
 	min-width: 0;
 	scroll-snap-align: start;
+	padding: 10px 10px 12px;
+	border-radius: var(--border-radius-large);
+	background: var(--color-background-hover);
 }
 
 .app-projektwerk .pw-stack {
@@ -148,20 +163,29 @@
 .app-projektwerk .pw-card {
 	display: flex;
 	flex-direction: column;
-	gap: 7px;
-	padding: 12px 13px 11px;
+	gap: 9px;
+	padding: 14px 15px 13px;
 	background: var(--color-main-background);
-	border: 1px solid var(--color-border-dark);
+	border: 1px solid transparent;
 	border-radius: var(--border-radius-large);
+	box-shadow: 0 1px 2px rgba(0, 0, 0, .06), 0 1px 1px rgba(0, 0, 0, .04);
 	cursor: pointer;
 	text-align: left;
 	font: inherit;
 	color: inherit;
 	width: 100%;
+	transition: box-shadow .12s ease, transform .12s ease;
 }
 
+/* Etwas Auftrieb statt eines Farbwechsels — der Rest bleibt ruhig. */
 .app-projektwerk .pw-card:hover {
-	background: var(--color-background-hover);
+	box-shadow: 0 2px 4px rgba(0, 0, 0, .1), 0 4px 12px rgba(0, 0, 0, .06);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.app-projektwerk .pw-card:hover {
+		transform: translateY(-1px);
+	}
 }
 
 /*
@@ -171,12 +195,13 @@
  */
 .app-projektwerk .pw-card--public {
 	border-top: 3px solid var(--color-primary-element);
-	padding-top: 10px;
+	padding-top: 12px;
 }
 
+/* Der Entwurf traegt weiter einen gestrichelten Rand — er soll auffallen. */
 .app-projektwerk .pw-card--private {
-	border-style: dashed;
-	border-color: var(--color-text-maxcontrast);
+	border: 1px dashed var(--color-text-maxcontrast);
+	box-shadow: none;
 }
 
 .app-projektwerk .pw-card--closed .pw-card__title {
@@ -235,9 +260,9 @@
 
 .app-projektwerk .pw-card__title {
 	margin: 0;
-	font-size: 14px;
+	font-size: 15px;
 	font-weight: 500;
-	line-height: 1.35;
+	line-height: 1.4;
 	overflow-wrap: anywhere;
 }
 
@@ -263,18 +288,12 @@
 	font-variant-numeric: tabular-nums;
 }
 
-.app-projektwerk .pw-avatar {
-	width: 20px;
-	height: 20px;
-	border-radius: 50%;
-	display: grid;
-	place-items: center;
-	font-size: 9px;
-	font-weight: 700;
-	color: var(--color-primary-element-text, #fff);
-	background: var(--color-primary-element);
-	flex: none;
-}
+/*
+ * Kein selbst gezeichneter Initialenkreis mehr: NcAvatar zeigt das echte Bild
+ * der Person und faellt selbst auf Initialen zurueck. Das sieht nicht nur
+ * weniger gebastelt aus, es ist auch das, was in jeder anderen Nextcloud-App
+ * steht — der Wiedererkennungswert kommt von der Plattform, nicht von uns.
+ */
 
 /* ---- Personenzeile ------------------------------------------------------ */
 
@@ -320,13 +339,15 @@
 /* ---- Leerzustand und Skelett -------------------------------------------- */
 
 /* Leerzustände sprechen (§9) — „Hier liegt gerade nichts." statt eines Strichs. */
+/*
+ * Ohne Rahmen: Im getoenten Spaltengrund wirkte der gestrichelte Kasten wie
+ * ein Fehler statt wie eine ruhige Leerstelle.
+ */
 .app-projektwerk .pw-empty {
-	padding: 20px 14px;
+	padding: 18px 14px;
 	text-align: center;
 	color: var(--color-text-maxcontrast);
 	font-size: 13px;
-	border: 1px dashed var(--color-border-dark);
-	border-radius: var(--border-radius-large);
 }
 
 /* Skelett-Karten statt Ladebalken (§9): Die Seite behält ihre Form. */
@@ -334,9 +355,9 @@
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
-	padding: 12px 13px;
-	border: 1px solid var(--color-border);
+	padding: 14px 15px;
 	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
 }
 
 .app-projektwerk .pw-skel i {
@@ -376,19 +397,21 @@
 	display: flex;
 	flex-direction: column;
 	gap: 4px;
-	padding: 16px 18px;
+	padding: 18px 20px;
 	min-height: var(--default-clickable-area, 44px);
 	background: var(--color-main-background);
-	border: 1px solid var(--color-border-dark);
+	border: 1px solid transparent;
 	border-radius: var(--border-radius-large);
+	box-shadow: 0 1px 2px rgba(0, 0, 0, .06), 0 1px 1px rgba(0, 0, 0, .04);
 	cursor: pointer;
 	text-align: left;
 	font: inherit;
 	color: inherit;
+	transition: box-shadow .12s ease;
 }
 
 .app-projektwerk .pw-boardcard:hover {
-	background: var(--color-background-hover);
+	box-shadow: 0 2px 4px rgba(0, 0, 0, .1), 0 4px 12px rgba(0, 0, 0, .06);
 }
 
 .app-projektwerk .pw-boardcard__title {

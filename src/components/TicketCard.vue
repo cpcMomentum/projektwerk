@@ -24,9 +24,12 @@
 		</h3>
 
 		<span class="pw-card__foot">
-			<span v-if="ticket.responsibleUserId" class="pw-avatar" :title="responsibleName">
-				{{ initials }}
-			</span>
+			<NcAvatar
+				v-if="ticket.responsibleUserId"
+				:user="ticket.responsibleUserId"
+				:displayName="responsibleName"
+				:size="22"
+				:disableMenu="true" />
 			<span class="pw-right">
 				<CommentOutlineIcon v-if="commentCount > 0" :size="13" :title="commentTitle" />
 				<span v-if="stepCount > 0" class="pw-steps" :title="stepTitle">
@@ -44,6 +47,7 @@ import type { Ticket } from '@/types/ticket'
 
 import { t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
+import NcAvatar from '@nextcloud/vue/components/NcAvatar'
 import AccountMultipleIcon from 'vue-material-design-icons/AccountMultiple.vue'
 import CommentOutlineIcon from 'vue-material-design-icons/CommentOutline.vue'
 import FormatListChecksIcon from 'vue-material-design-icons/FormatListChecks.vue'
@@ -54,6 +58,7 @@ export default defineComponent({
 	name: 'TicketCard',
 
 	components: {
+		NcAvatar,
 		AccountMultipleIcon,
 		CommentOutlineIcon,
 		FormatListChecksIcon,
@@ -113,16 +118,6 @@ export default defineComponent({
 				return t('projektwerk', 'Intern')
 			}
 			return t('projektwerk', 'Nur ich')
-		},
-
-		initials(): string {
-			const name = this.responsibleName || (this.ticket.responsibleUserId ?? '')
-			return name
-				.split(/\s+/)
-				.filter((part) => part.length > 0)
-				.slice(0, 2)
-				.map((part) => part[0]?.toUpperCase() ?? '')
-				.join('')
 		},
 
 		commentTitle(): string {
