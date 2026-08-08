@@ -3,6 +3,11 @@
 declare(strict_types=1);
 
 /**
+ * SPDX-FileCopyrightText: 2026 cpcMomentum
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
+/**
  * Handpruefung: Bauen und laufen alle Lese-Abfragen gegen ein echtes Schema?
  *
  * Prueft SQL-Gueltigkeit — Aliasse, Verbunde, Parameterbindung, Autowiring —
