@@ -35,8 +35,9 @@ export interface ApiError {
 }
 
 /**
+ * Baut die volle App-URL fuer einen API-Pfad.
  *
- * @param path
+ * @param path Pfad relativ zu `/apps/projektwerk/api/v1`, z. B. `/boards`.
  */
 export function apiUrl(path: string): string {
 	return generateUrl(`/apps/${APP_ID}/api/v1${path}`)
@@ -93,8 +94,9 @@ function reportNotJson(): void {
 }
 
 /**
+ * Verpackt einen abgelehnten Axios-Aufruf als `ApiError`.
  *
- * @param error
+ * @param error der von axios geworfene Fehler, ungeprueft
  */
 function wrapError(error: unknown): ApiError {
 	const axiosError = error as AxiosError<{ error?: string }>
@@ -143,8 +145,9 @@ function unwrap<T>(response: AxiosResponse<T>): T {
 }
 
 /**
+ * GET gegen die App-API, durch den Nicht-JSON-Wächter geprüft.
  *
- * @param path
+ * @param path Pfad relativ zu `/apps/projektwerk/api/v1`.
  */
 export async function apiGet<T>(path: string): Promise<T> {
 	try {
@@ -155,9 +158,10 @@ export async function apiGet<T>(path: string): Promise<T> {
 }
 
 /**
+ * POST gegen die App-API, durch den Nicht-JSON-Wächter geprüft.
  *
- * @param path
- * @param body
+ * @param path Pfad relativ zu `/apps/projektwerk/api/v1`.
+ * @param body Nutzlast, wird als JSON gesendet.
  */
 export async function apiPost<T, B = unknown>(path: string, body: B): Promise<T> {
 	try {
@@ -168,9 +172,10 @@ export async function apiPost<T, B = unknown>(path: string, body: B): Promise<T>
 }
 
 /**
+ * PUT gegen die App-API, durch den Nicht-JSON-Wächter geprüft.
  *
- * @param path
- * @param body
+ * @param path Pfad relativ zu `/apps/projektwerk/api/v1`.
+ * @param body Nutzlast, wird als JSON gesendet.
  */
 export async function apiPut<T, B = unknown>(path: string, body: B): Promise<T> {
 	try {
@@ -181,9 +186,10 @@ export async function apiPut<T, B = unknown>(path: string, body: B): Promise<T> 
 }
 
 /**
+ * PATCH gegen die App-API, durch den Nicht-JSON-Wächter geprüft.
  *
- * @param path
- * @param body
+ * @param path Pfad relativ zu `/apps/projektwerk/api/v1`.
+ * @param body Nutzlast, wird als JSON gesendet.
  */
 export async function apiPatch<T, B = unknown>(path: string, body: B): Promise<T> {
 	try {
@@ -194,8 +200,9 @@ export async function apiPatch<T, B = unknown>(path: string, body: B): Promise<T
 }
 
 /**
+ * DELETE gegen die App-API, durch den Nicht-JSON-Wächter geprüft.
  *
- * @param path
+ * @param path Pfad relativ zu `/apps/projektwerk/api/v1`.
  */
 export async function apiDelete<T = void>(path: string): Promise<T> {
 	try {

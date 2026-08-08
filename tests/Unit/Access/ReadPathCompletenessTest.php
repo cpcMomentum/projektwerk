@@ -79,9 +79,9 @@ class ReadPathCompletenessTest extends TestCase {
 	/**
 	 * Jede Lese-Route ist registriert oder ausdruecklich als datenlos vermerkt.
 	 *
-	 * Heute traegt `routes.php` nur `page#index`, und der steht als datenlos
-	 * vermerkt. Ab Phase 2 ist das der Waechter, der eine neue GET-Route in die
-	 * Matrix zwingt.
+	 * `page#index` steht als datenlos vermerkt, `board#index` und `board#show`
+	 * stehen in der Matrix. Der Waechter zwingt jede weitere GET-Route in eine
+	 * der beiden Listen.
 	 */
 	public function testEveryReadRouteIsRegisteredOrExempt(): void {
 		$unregistered = $this->unregisteredRoutes(
