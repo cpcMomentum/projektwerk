@@ -12,7 +12,6 @@ namespace OCA\Projektwerk\Db;
 use DateTime;
 use JsonSerializable;
 use OCA\Projektwerk\Access\TicketScope;
-use OCA\Projektwerk\Access\ViewerContext;
 use OCP\AppFramework\Db\Entity;
 use OCP\DB\Types;
 
@@ -31,6 +30,13 @@ use OCP\DB\Types;
  *   'internal' seine Symmetrie, sobald jemand die Rolle wechselt oder das Board
  *   verlaesst — ein bereits geschriebenes internes Ticket wechselte dann still
  *   die Leserschaft.
+ *
+ * **Wer ein Ticket aendern darf, steht hier bewusst noch nicht.** Die
+ * Produktbeschreibung sagt zu Schreibrechten am einzelnen Ticket nichts; sie
+ * regelt Rollen (§ Rollentabelle) und das Verwaltungsrecht am Board. Eine hier
+ * erfundene Regel waere genau die Art Festlegung, die eine spaetere Schicht
+ * uebernimmt, ohne sie noch einmal herzuleiten. Sie entsteht mit dem ersten
+ * Schreibpfad in Phase 2.
  *
  * @method int getBoardId()
  * @method void setBoardId(int $boardId)
@@ -101,22 +107,6 @@ class Ticket extends Entity implements JsonSerializable {
 		$this->addType('githubIssueUrl', Types::STRING);
 		$this->addType('createdAt', Types::DATETIME);
 		$this->addType('updatedAt', Types::DATETIME);
-	}
-
-	/**
-	 * Ob dieser Betrachter das Ticket bearbeiten darf.
-	 *
-	 * Nicht zu verwechseln mit dem Sehen: Was jemand sieht, entscheidet
-	 * ausschliesslich {@see TicketScope}. Diese Frage stellt sich also erst,
-	 * wenn das Ticket bereits durch den Filter gekommen ist.
-	 */
-	public function isEditableBy(ViewerContext $viewer): bool {
-		if ($viewer->boardId !== $this->getBoardId()) {
-			return false;
-		}
-		return $viewer->isManager
-			|| $this->getCreatorUserId() === $viewer->userId
-			|| $this->getResponsibleUserId() === $viewer->userId;
 	}
 
 	public function jsonSerialize(): array {

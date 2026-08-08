@@ -12,7 +12,6 @@ namespace OCA\Projektwerk\Tests\Unit\Db;
 use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Db\Member;
 use OCA\Projektwerk\Db\Step;
-use OCA\Projektwerk\Db\Ticket;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -23,36 +22,6 @@ use PHPUnit\Framework\TestCase;
  * das, was **nach** dem Filter gilt.
  */
 class EntityBehaviourTest extends TestCase {
-
-	/**
-	 * Bearbeiten darf, wer verwaltet, erzeugt hat oder verantwortlich ist.
-	 */
-	public function testEditableByManagerCreatorAndResponsible(): void {
-		$ticket = $this->ticket(boardId: 7, creator: 'anna', responsible: 'bert');
-
-		$this->assertTrue($ticket->isEditableBy($this->viewer('anna', 7)), 'Erzeugerin');
-		$this->assertTrue($ticket->isEditableBy($this->viewer('bert', 7)), 'Verantwortlicher');
-		$this->assertTrue(
-			$ticket->isEditableBy($this->viewer('chef', 7, isManager: true)),
-			'Verwaltungsrecht',
-		);
-		$this->assertFalse($ticket->isEditableBy($this->viewer('carla', 7)), 'nur Mitglied');
-	}
-
-	/**
-	 * Ein Kontext aus einem **anderen** Board berechtigt zu nichts.
-	 *
-	 * Der Fall ist kein Hirngespinst: Wer eine Ticket-ID aus Board A in einen
-	 * Aufruf mit dem Kontext von Board B legt, hat genau diese Konstellation.
-	 * Der Lesepfad faengt das ueber `TicketScope` ab, der Schreibpfad braucht
-	 * seine eigene Sperre.
-	 */
-	public function testNotEditableWithForeignBoardContext(): void {
-		$ticket = $this->ticket(boardId: 7, creator: 'anna', responsible: 'anna');
-
-		$this->assertFalse($ticket->isEditableBy($this->viewer('anna', 8)));
-		$this->assertFalse($ticket->isEditableBy($this->viewer('chef', 8, isManager: true)));
-	}
 
 	/**
 	 * „Wartet auf Kunde" haengt an offen **und** extern zugewiesen.
@@ -78,20 +47,6 @@ class EntityBehaviourTest extends TestCase {
 			$this->member(ViewerContext::ROLE_EXTERNAL, 1)->jsonSerialize()['isManager'],
 			'Auch die Ausgabe ans Frontend darf das Flag nicht weiterreichen.',
 		);
-	}
-
-	private function ticket(int $boardId, string $creator, string $responsible): Ticket {
-		$ticket = new Ticket();
-		$ticket->setId(42);
-		$ticket->setBoardId($boardId);
-		$ticket->setCreatorUserId($creator);
-		$ticket->setResponsibleUserId($responsible);
-
-		return $ticket;
-	}
-
-	private function viewer(string $userId, int $boardId, bool $isManager = false): ViewerContext {
-		return ViewerContext::forMember($userId, $boardId, ViewerContext::ROLE_INTERNAL, $isManager);
 	}
 
 	private function stepOf(?string $assignedRole, int $done): Step {
