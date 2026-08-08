@@ -62,6 +62,8 @@ use OCP\DB\Types;
  * @method void setClosedAt(?DateTime $closedAt)
  * @method int getVersion()
  * @method void setVersion(int $version)
+ * @method ?string getLastEditorUserId()
+ * @method void setLastEditorUserId(?string $lastEditorUserId)
  * @method ?int getGithubIssueNumber()
  * @method void setGithubIssueNumber(?int $githubIssueNumber)
  * @method ?string getGithubIssueUrl()
@@ -85,6 +87,7 @@ class Ticket extends Entity implements JsonSerializable {
 	protected ?int $position = null;
 	protected ?DateTime $closedAt = null;
 	protected ?int $version = null;
+	protected ?string $lastEditorUserId = null;
 	protected ?int $githubIssueNumber = null;
 	protected ?string $githubIssueUrl = null;
 	protected ?DateTime $createdAt = null;
@@ -103,6 +106,7 @@ class Ticket extends Entity implements JsonSerializable {
 		$this->addType('position', Types::INTEGER);
 		$this->addType('closedAt', Types::DATETIME);
 		$this->addType('version', Types::INTEGER);
+		$this->addType('lastEditorUserId', Types::STRING);
 		$this->addType('githubIssueNumber', Types::INTEGER);
 		$this->addType('githubIssueUrl', Types::STRING);
 		$this->addType('createdAt', Types::DATETIME);
@@ -146,6 +150,8 @@ class Ticket extends Entity implements JsonSerializable {
 			// `position` fehlt hier absichtlich — siehe Methodenkommentar.
 			'closedAt' => $this->getClosedAt()?->format(DateTime::ATOM),
 			'version' => $this->getVersion(),
+			// NULL heisst: seit dem Anlegen unveraendert.
+			'lastEditorUserId' => $this->getLastEditorUserId(),
 			'githubIssueNumber' => $this->getGithubIssueNumber(),
 			'githubIssueUrl' => $this->getGithubIssueUrl(),
 			'createdAt' => $this->getCreatedAt()?->format(DateTime::ATOM),

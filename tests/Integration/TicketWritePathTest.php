@@ -66,6 +66,70 @@ class TicketWritePathTest extends IntegrationTestCase {
 	}
 
 	/**
+	 * **Ein frisch angelegtes Ticket hat keinen letzten Bearbeiter.**
+	 *
+	 * `null` heißt „seit dem Anlegen unverändert". Wer es angelegt hat, steht
+	 * in `creator_user_id` und wird hier nicht wiederholt — sonst gäbe es zwei
+	 * Felder mit derselben Aussage, die auseinanderlaufen können.
+	 */
+	public function testCreateLeavesTheLastEditorEmpty(): void {
+		$ticket = $this->service->create(
+			$this->viewer(LeakMatrixFixture::ANNA),
+			'Frisch',
+			null,
+			TicketScope::VISIBILITY_PUBLIC,
+			$this->fixture->columnIds[LeakMatrixFixture::COLUMN_A],
+		);
+
+		$this->assertNull($ticket->getLastEditorUserId());
+		$this->assertSame(1, (int)$ticket->getVersion());
+	}
+
+	/**
+	 * **Jeder Schreibweg vermerkt den Urheber — auch Verschieben und
+	 * Sichtbarkeitswechsel.**
+	 *
+	 * `last_editor_user_id` benennt, wer den aktuellen `version`-Stand
+	 * verursacht hat. Stünde `version` auf 3 und der Urheber noch bei dem von
+	 * Version 2, wäre das Paar eine Lüge — und jede Anzeige, die darauf baut,
+	 * ebenfalls.
+	 */
+	public function testEveryWritePathRecordsTheEditor(): void {
+		$anna = $this->viewer(LeakMatrixFixture::ANNA);
+		$bert = $this->viewer(LeakMatrixFixture::BERT);
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+
+		$updated = $this->service->update($bert, $ticketId, 1, ['title' => 'Von Bert']);
+		$this->assertSame(LeakMatrixFixture::BERT, $updated->getLastEditorUserId());
+
+		$moved = $this->service->move(
+			$anna,
+			$ticketId,
+			(int)$updated->getVersion(),
+			$this->fixture->columnIds[LeakMatrixFixture::COLUMN_B],
+			null,
+			null,
+		);
+		$this->assertSame(
+			LeakMatrixFixture::ANNA,
+			$moved->getLastEditorUserId(),
+			'Verschieben erhöht die Version, vermerkt aber niemanden.',
+		);
+
+		$hidden = $this->service->changeVisibility(
+			$bert,
+			$ticketId,
+			(int)$moved->getVersion(),
+			TicketScope::VISIBILITY_INTERNAL,
+		);
+		$this->assertSame(
+			LeakMatrixFixture::BERT,
+			$hidden->getLastEditorUserId(),
+			'Sichtbarkeitswechsel erhöht die Version, vermerkt aber niemanden.',
+		);
+	}
+
+	/**
 	 * **`creator_role` wird eingefroren, nicht zur Laufzeit ermittelt.**
 	 *
 	 * Sonst bräche die Symmetrie von `internal`, sobald jemand die Rolle

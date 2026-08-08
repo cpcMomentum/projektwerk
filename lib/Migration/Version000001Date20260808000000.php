@@ -167,6 +167,17 @@ class Version000001Date20260808000000 extends SimpleMigrationStep {
 		$table->addColumn('position', Types::BIGINT, ['notnull' => true, 'default' => 0, 'length' => 20]);
 		$table->addColumn('closed_at', Types::DATETIME, ['notnull' => false]);
 		$table->addColumn('version', Types::BIGINT, ['notnull' => true, 'default' => 1, 'length' => 20]);
+		// Wer den aktuellen Stand von `version` verursacht hat. NULL heisst:
+		// seit dem Anlegen unveraendert — der Ersteller steht in
+		// creator_user_id und wird hier nicht wiederholt.
+		//
+		// Steht ab Migration 1 hier, obwohl die Anzeige dazu erst spaeter
+		// kommt. Der Grund ist derselbe wie bei visibility und creator_role
+		// (siehe Kopf dieser Datei): Solange es kein Release gibt, kostet die
+		// Spalte eine Zeile; danach kostet sie fuer immer eine
+		// Zusatzmigration. varchar(64), weil Gast-Kennungen Hashes mit exakt
+		// 64 Zeichen sind.
+		$table->addColumn('last_editor_user_id', Types::STRING, ['notnull' => false, 'length' => 64]);
 		$table->addColumn('github_issue_number', Types::BIGINT, ['notnull' => false, 'length' => 20]);
 		$table->addColumn('github_issue_url', Types::STRING, ['notnull' => false, 'length' => 4000]);
 		$table->addColumn('created_at', Types::DATETIME, ['notnull' => true]);
