@@ -63,8 +63,8 @@ class BoardService {
 			$board->setTitle(trim($title));
 			$board->setDescription($description);
 			$board->setOwnerUserId($userId);
-			$board->setOrgInternal($orgInternal);
-			$board->setOrgExternal($orgExternal);
+			$board->setOrgInternal($this->trimOrNull($orgInternal));
+			$board->setOrgExternal($this->trimOrNull($orgExternal));
 			$board->setArchived(0);
 			$board->setCreatedAt($now);
 			$board->setUpdatedAt($now);
