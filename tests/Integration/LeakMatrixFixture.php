@@ -136,7 +136,8 @@ final class LeakMatrixFixture {
 		$board->setArchived(0);
 		$board->setCreatedAt($now);
 		$board->setUpdatedAt($now);
-		$this->boardId = (int)$boards->insert($board)->getId();
+		$board = $boards->insert($board);
+		$this->boardId = (int)$board->getId();
 
 		foreach (self::MEMBERS as $userId => [$role, $isManager]) {
 			$member = new Member();
@@ -221,6 +222,18 @@ final class LeakMatrixFixture {
 			$ticketUser->setAddedAt($now);
 			$ticketUsers->insert($ticketUser);
 		}
+
+		// Der Zaehler muss mitziehen, weil die Fixture die Nummern selbst
+		// vergibt und dabei am Dienst vorbeigeht.
+		//
+		// Das ist nicht Kosmetik: Ohne diese Zeile stuende der Zaehler auf 0,
+		// waehrend die Nummern 1 bis 9 bereits vergeben sind — das naechste
+		// ueber TicketService angelegte Ticket bekaeme die 1 und liefe in den
+		// eindeutigen Index. Genau so ist es beim ersten Lauf passiert. Eine
+		// Fixture, die einen Zustand herstellt, den der Produktivcode nie
+		// erzeugen kann, prueft den Produktivcode gegen eine Fiktion.
+		$board->setTicketCounter($number);
+		$boards->update($board);
 	}
 
 	/**

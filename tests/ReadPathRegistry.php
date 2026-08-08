@@ -43,6 +43,9 @@ final class ReadPathRegistry {
 		'TicketMapper::findVisible',
 		'TicketMapper::findVisibleAcrossBoards',
 		'TicketMapper::countVisibleInBoard',
+		// Liest ungefiltert (§3.8) und ist deshalb der einzige Pfad, dessen
+		// Erwartung lautet: fuer jeden Betrachter derselbe Wert.
+		'TicketMapper::findLastPositionInColumn',
 
 		// Board, Mitglieder, Spalten. Nicht ticketgefiltert, aber
 		// betrachterabhaengig — und damit ebenso eine Frage, die die Matrix
@@ -83,6 +86,8 @@ final class ReadPathRegistry {
 	public const ROUTE_PATHS = [
 		'board#index',
 		'board#show',
+		'ticket#index',
+		'ticket#show',
 	];
 
 	/**
