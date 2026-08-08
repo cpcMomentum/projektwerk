@@ -62,6 +62,8 @@ use OCP\DB\Types;
  * @method void setClosedAt(?DateTime $closedAt)
  * @method int getVersion()
  * @method void setVersion(int $version)
+ * @method ?string getLastEditorUserId()
+ * @method void setLastEditorUserId(?string $lastEditorUserId)
  * @method ?int getGithubIssueNumber()
  * @method void setGithubIssueNumber(?int $githubIssueNumber)
  * @method ?string getGithubIssueUrl()
