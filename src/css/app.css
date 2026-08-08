@@ -160,11 +160,16 @@
 
 /* ---- Ticketkarte -------------------------------------------------------- */
 
+/*
+ * Die Karte ist jetzt ein Behaelter mit zwei Bedienelementen: der Flaeche zum
+ * Oeffnen und dem Menue „Verschieben nach …". Ein Knopf im Knopf waere
+ * ungueltiges HTML und fuer Tastatur und Screenreader kaputt.
+ */
 .app-projektwerk .pw-card {
+	position: relative;
 	display: flex;
 	flex-direction: column;
-	gap: 9px;
-	padding: 14px 15px 13px;
+	padding: 0;
 	background: var(--color-main-background);
 	border: 1px solid transparent;
 	border-radius: var(--border-radius-large);
@@ -175,6 +180,29 @@
 	color: inherit;
 	width: 100%;
 	transition: box-shadow .12s ease, transform .12s ease;
+}
+
+/* Die Flaeche zum Oeffnen traegt die Polsterung, nicht die Karte. */
+.app-projektwerk .pw-card__open {
+	display: flex;
+	flex-direction: column;
+	gap: 9px;
+	width: 100%;
+	padding: 14px 44px 13px 15px;
+	border: 0;
+	border-radius: inherit;
+	background: transparent;
+	font: inherit;
+	color: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+/* Das Menue liegt in der freien Ecke, die die Polsterung oben rechts laesst. */
+.app-projektwerk .pw-card__menu {
+	position: absolute;
+	top: 6px;
+	right: 6px;
 }
 
 /* Etwas Auftrieb statt eines Farbwechsels — der Rest bleibt ruhig. */
@@ -195,7 +223,6 @@
  */
 .app-projektwerk .pw-card--public {
 	border-top: 3px solid var(--color-primary-element);
-	padding-top: 12px;
 }
 
 /* Der Entwurf traegt weiter einen gestrichelten Rand — er soll auffallen. */

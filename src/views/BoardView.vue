@@ -60,12 +60,14 @@
 						v-for="ticket in store.ticketsIn(column.id)"
 						:key="ticket.id"
 						:ticket="ticket"
-						:show-visibility="showVisibility"
-						:responsible-name="store.nameOf(ticket.responsibleUserId)"
-						:last-editor-name="store.nameOf(ticket.lastEditorUserId)"
-						:comment-count="count('comments', ticket.id)"
-						:step-count="count('steps', ticket.id)"
-						@open="openTicket" />
+						:showVisibility="showVisibility"
+						:responsibleName="store.nameOf(ticket.responsibleUserId)"
+						:columns="store.columns"
+						:lastEditorName="store.nameOf(ticket.lastEditorUserId)"
+						:commentCount="count('comments', ticket.id)"
+						:stepCount="count('steps', ticket.id)"
+						@open="openTicket"
+						@move="move" />
 
 					<!-- Leerzustaende sprechen (§9). -->
 					<div v-if="store.ticketsIn(column.id).length === 0" class="pw-empty">
@@ -146,6 +148,27 @@ export default defineComponent({
 
 		count(kind: 'comments' | 'steps', ticketId: number): number {
 			return this.store.counts?.[kind]?.[ticketId] ?? 0
+		},
+
+		/**
+		 * Verschieben über das Kartenmenü: ans Ende der Zielspalte.
+		 *
+		 * Der Aufrufer nennt keine Position, sondern den letzten Nachbarn dort
+		 * — das ist derselbe Weg, den später auch Drag & Drop nimmt.
+		 *
+		 * @param payload Ticket und Zielspalte.
+		 * @param payload.ticket
+		 * @param payload.columnId
+		 */
+		async move(payload: { ticket: Ticket, columnId: number }) {
+			const inTarget = this.store.ticketsIn(payload.columnId)
+			const last = inTarget.length > 0 ? inTarget[inTarget.length - 1].id : null
+
+			try {
+				await this.store.moveTicket(payload.ticket.id, payload.columnId, last, null)
+			} catch (e) {
+				showError((e as { message?: string }).message ?? t('projektwerk', 'Verschieben fehlgeschlagen'))
+			}
 		},
 
 		openTicket(ticket: Ticket) {
