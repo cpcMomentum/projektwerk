@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OCA\Projektwerk\Tests\Integration;
 
 use OCA\Projektwerk\Access\BoardAccess;
+use OCA\Projektwerk\Access\TicketScope;
 use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Controller\BoardController;
 use OCA\Projektwerk\Controller\TicketController;
@@ -164,6 +165,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'board#show' => 'testBoardShowEndpointRefusesNonMembers',
 		'ticket#index' => 'testTicketIndexEndpointMatchesTheVisibleSet',
 		'ticket#show' => 'testTicketShowEndpointMatchesTheVisibleSet',
+		'ticket#visibilityImpact' => 'testVisibilityImpactNamesWhoLosesAccess',
 	];
 
 	private LeakMatrixFixture $fixture;
@@ -684,6 +686,95 @@ class LeakMatrixTest extends IntegrationTestCase {
 				}
 			}
 		}
+	}
+
+	/**
+	 * **Die beiden Fassungen der Sichtbarkeitsregel sagen dasselbe.**
+	 *
+	 * `TicketScope::apply()` ist die Regel als JOIN, `TicketScope::wouldSee()`
+	 * dieselbe Regel als Prädikat. Die zweite gibt es, weil der
+	 * Herunterstufen-Dialog eine Frage nach einem Zustand stellt, den es noch
+	 * nicht gibt — das kann keine Abfrage über gespeicherte Werte beantworten.
+	 *
+	 * Zwei Fassungen einer Regel sind der Anfang jedes Lecks. Deshalb prüft
+	 * dieser Test sie **gegeneinander**: für jedes der neun Tickets und jedes
+	 * der vier Mitglieder muss das Prädikat dasselbe sagen wie der JOIN. 36
+	 * Vergleiche, und keiner darf abweichen.
+	 */
+	public function testTheTwoFacesOfTheRuleAgree(): void {
+		$scope = Server::get(TicketScope::class);
+		$tickets = Server::get(TicketMapper::class);
+		$members = Server::get(MemberMapper::class);
+
+		$byUser = [];
+		foreach ($members->findForBoard($this->contextFor(self::ANNA)) as $member) {
+			$byUser[(string)$member->getUserId()] = (string)$member->getRole();
+		}
+
+		$vergleiche = 0;
+		foreach (LeakMatrixFixture::TICKETS as $label => [$visibility, $creator, $creatorRole, $_col, $_closed]) {
+			$ticketId = $this->fixture->ticketIds[$label];
+
+			foreach ($byUser as $userId => $role) {
+				$predicate = $scope->wouldSee($visibility, $creator, $creatorRole, $userId, $role);
+
+				$join = true;
+				try {
+					$tickets->findVisible($this->contextFor($userId), $ticketId);
+				} catch (DoesNotExistException) {
+					$join = false;
+				}
+
+				$this->assertSame(
+					$join,
+					$predicate,
+					'Die beiden Fassungen der Regel widersprechen sich bei ' . $label . ' / ' . $userId . '.',
+				);
+				$vergleiche++;
+			}
+		}
+
+		$this->assertSame(36, $vergleiche, 'Neun Tickets mal vier Mitglieder — sonst prüft der Test zu wenig.');
+	}
+
+	/**
+	 * Was ein Herunterstufen kostet: Namen und Zahlen, keine Warnung.
+	 *
+	 * Ueber den Controller, nicht den Service direkt — sonst bliebe die
+	 * eigentliche Route (Parameterbindung, Fehlerabbildung auf HTTP-Status)
+	 * ungeprueft, obwohl {@see ReadPathRegistry::ROUTE_PATHS} sie als
+	 * gefahren fuehrt.
+	 */
+	public function testVisibilityImpactNamesWhoLosesAccess(): void {
+		$controller = $this->ticketController(self::ANNA);
+		$boardId = $this->fixture->boardId;
+		$publicAnna = $this->fixture->ticketIds['public/anna'];
+
+		// public/anna sehen alle vier. Auf 'internal' verlieren die beiden
+		// Externen den Zugriff, auf 'private' zusaetzlich Bert.
+		$response = $controller->visibilityImpact($boardId, $publicAnna, 'internal');
+		$this->assertSame(Http::STATUS_OK, $response->getStatus());
+		$internal = $response->getData();
+		sort($internal['losing']);
+		$this->assertSame([self::CARLA, self::DIRK], $internal['losing']);
+		$this->assertSame(1, $internal['comments'], 'Jedes Ticket der Fixture hat genau einen Kommentar.');
+		$this->assertSame(1, $internal['attachments']);
+
+		$private = $controller->visibilityImpact($boardId, $publicAnna, 'private')->getData();
+		sort($private['losing']);
+		$this->assertSame([self::BERT, self::CARLA, self::DIRK], $private['losing']);
+
+		// Hochstufen nimmt niemandem etwas.
+		$public = $controller->visibilityImpact($boardId, $this->fixture->ticketIds['private/anna'], 'public')->getData();
+		$this->assertSame([], $public['losing']);
+
+		// Ein unbekannter Wert ist eine 400, kein durchgereichter Serverfehler.
+		$badRequest = $controller->visibilityImpact($boardId, $publicAnna, 'gestohlen');
+		$this->assertSame(Http::STATUS_BAD_REQUEST, $badRequest->getStatus());
+
+		// Das Nichtmitglied bekommt 404 wie an jedem anderen Lesepfad.
+		$fremdResponse = $this->ticketController(self::FREMD)->visibilityImpact($boardId, $publicAnna, 'internal');
+		$this->assertSame(Http::STATUS_NOT_FOUND, $fremdResponse->getStatus());
 	}
 
 	/**

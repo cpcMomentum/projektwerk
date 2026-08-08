@@ -53,6 +53,49 @@ class TicketScope {
 	public const MEMBER_ALIAS = 'pwerk_scope_m';
 
 	/**
+	 * Dieselbe Regel als Praedikat — fuer Fragen, die keine Abfrage
+	 * beantworten kann.
+	 *
+	 * **Das ist eine zweite Fassung derselben Regel, und das ist gefaehrlich.**
+	 * Sie steht deshalb hier, unmittelbar neben dem JOIN, und nicht im Service
+	 * oder gar im Frontend: Wer die eine aendert, sieht die andere.
+	 *
+	 * Gebraucht wird sie fuer den Herunterstufen-Dialog (§9), der vor der
+	 * Aenderung nennen muss, **wer den Zugriff verlieren wird**. Das ist eine
+	 * Frage nach einem Zustand, den es noch nicht gibt — `apply()` kann sie
+	 * prinzipiell nicht beantworten, weil sie den gespeicherten Wert liest.
+	 *
+	 * Damit die beiden Fassungen nicht auseinanderlaufen, prueft die
+	 * Leak-Matrix sie **gegeneinander**: fuer jedes Ticket der Fixture und
+	 * jedes Mitglied muss dieses Praedikat dasselbe sagen wie der JOIN.
+	 *
+	 * @param string $visibility     die gepruefte Stufe — auch eine kuenftige
+	 * @param string $creatorUserId  wer das Ticket angelegt hat
+	 * @param string $creatorRole    die am Ticket eingefrorene Rolle
+	 * @param string $memberUserId   wer schauen wuerde
+	 * @param string $memberRole     dessen Rolle auf diesem Board
+	 */
+	public function wouldSee(
+		string $visibility,
+		string $creatorUserId,
+		string $creatorRole,
+		string $memberUserId,
+		string $memberRole,
+	): bool {
+		if ($visibility === self::VISIBILITY_PUBLIC) {
+			return true;
+		}
+
+		if ($visibility === self::VISIBILITY_INTERNAL) {
+			// Die Symmetrie von 'internal': sichtbar fuer alle mit derselben
+			// Rolle wie die erzeugende Person.
+			return $creatorRole === $memberRole;
+		}
+
+		return $creatorUserId === $memberUserId;
+	}
+
+	/**
 	 * Haengt Verbund und Bedingung an eine bestehende Abfrage.
 	 *
 	 * Der Aufrufer hat `from('pwerk_tickets', $ticketAlias)` bereits gesetzt.
