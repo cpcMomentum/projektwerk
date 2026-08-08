@@ -128,10 +128,7 @@ export default defineComponent({
 
 		orgLine(): string {
 			const board = this.store.board
-			if (board === null) {
-				return ''
-			}
-			return [board.orgInternal, board.orgExternal].filter(Boolean).join(' · ')
+			return board === null ? '' : this.store.orgLine(board)
 		},
 	},
 

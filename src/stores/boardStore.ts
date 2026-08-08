@@ -69,11 +69,14 @@ export const useBoardStore = defineStore('board', {
 		hasExternalMembers: (state): boolean => state.members.some((m) => m.role === 'external'),
 
 		/**
-		 * Der Name der Firma zu einer Rolle.
+		 * Die Firmenzeile eines Boards — beide Seiten, nicht nur eine.
 		 *
-		 * @param state Der Speicher.
+		 * Nimmt ein beliebiges Board entgegen statt nur das geöffnete: Die
+		 * Boardliste braucht die Zeile für jede Karte, das geöffnete Board für
+		 * genau eine.
 		 */
-		orgFor: (state) => (role: string): string | null => role === 'internal' ? (state.board?.orgInternal ?? null) : (state.board?.orgExternal ?? null),
+		orgLine: () => (board: Pick<Board, 'orgInternal' | 'orgExternal'>): string =>
+			[board.orgInternal, board.orgExternal].filter(Boolean).join(' · '),
 
 		/**
 		 * Der anzuzeigende Name einer Person.

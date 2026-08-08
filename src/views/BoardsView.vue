@@ -31,15 +31,13 @@
 					Beide Firmennamen, nicht nur der des Kunden: Traege nur die
 					Gegenseite einen, waere die eigene stumm „der Normalfall".
 				-->
-				<span v-if="orgLine(board)" class="pw-boardcard__org">{{ orgLine(board) }}</span>
+				<span v-if="store.orgLine(board)" class="pw-boardcard__org">{{ store.orgLine(board) }}</span>
 			</button>
 		</div>
 	</div>
 </template>
 
 <script lang="ts">
-import type { Board } from '@/types/board'
-
 import { t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
 import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
@@ -61,10 +59,6 @@ export default defineComponent({
 
 	methods: {
 		t,
-
-		orgLine(board: Board): string {
-			return [board.orgInternal, board.orgExternal].filter(Boolean).join(' · ')
-		},
 
 		open(boardId: number) {
 			this.$router.push({ name: 'board', params: { boardId: String(boardId) } })
