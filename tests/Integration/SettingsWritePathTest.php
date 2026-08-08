@@ -243,18 +243,53 @@ class SettingsWritePathTest extends IntegrationTestCase {
 	}
 
 	/**
-	 * Ein Board hat nach dem Anlegen keine Spalten.
+	 * **Ein neues Board bringt fünf Spalten mit — und die erste ist der
+	 * Eingang, nicht die Zusage.**
 	 *
-	 * Bewusst keine erfundene Vorgabe: Spaltennamen stehen beim Kunden auf dem
-	 * Schirm, und die Produktbeschreibung nennt keine. Die Ansicht führt
-	 * stattdessen zur ersten Spalte.
+	 * Auf einem geteilten Board meldet der Kunde etwas. Ohne erste Spalte fiele
+	 * „wir haben es" mit „wir machen es" zusammen, weil jedes neue Ticket sofort
+	 * unter „Eingeplant" stünde.
+	 *
+	 * Keine Spalte heißt „Wartet auf Kunde": Der Wartezustand liegt laut §9 quer
+	 * zu den Spalten und ist ein Filterschalter, kein Ort. Der Test hält das
+	 * fest, weil es beim nächsten Nachdenken über die Vorgabe die naheliegendste
+	 * falsche Ergänzung wäre.
 	 */
-	public function testANewBoardStartsWithoutColumns(): void {
-		$board = $this->boardService->create('lm-neu', 'Ohne Spalten');
+	public function testANewBoardStartsWithTheDefaultColumns(): void {
+		$board = $this->boardService->create('lm-neu', 'Mit Vorgabe');
 		$viewer = Server::get(BoardAccess::class)->contextFor('lm-neu', (int)$board->getId());
 
-		$this->assertSame([], Server::get(ColumnMapper::class)->findForBoard($viewer));
+		$columns = Server::get(ColumnMapper::class)->findForBoard($viewer);
+		$titles = array_map(static fn ($c): string => (string)$c->getTitle(), $columns);
+
+		// Verglichen wird gegen die uebersetzte Vorgabe, nicht gegen deutsche
+		// Woerter: Die Spalten entstehen in der Sprache der anlegenden Person,
+		// und die Testumgebung laeuft auf Englisch. Welche Woerter in der
+		// Vorgabe stehen, prueft DefaultColumnsTest containerfrei.
+		$l10n = Server::get(\OCP\L10N\IFactory::class)->get('projektwerk');
+		$expected = array_map(
+			static fn (string $title): string => $l10n->t($title),
+			BoardService::DEFAULT_COLUMNS,
+		);
+
+		$this->assertSame($expected, $titles);
+		$this->assertSame($l10n->t('Eingegangen'), $titles[0], 'Die erste Spalte ist der Eingang.');
+		$this->assertNotContains($l10n->t('Wartet auf Kunde'), $titles);
 		$this->assertCount(1, Server::get(MemberMapper::class)->findForBoard($viewer));
+	}
+
+	/**
+	 * Die Vorgabe ist eine Vorgabe, kein Gesetz: Sie lässt sich sofort
+	 * umbenennen und umsortieren.
+	 */
+	public function testTheDefaultColumnsAreOrdinaryData(): void {
+		$board = $this->boardService->create('lm-neu', 'Mit Vorgabe');
+		$viewer = Server::get(BoardAccess::class)->contextFor('lm-neu', (int)$board->getId());
+
+		$columns = Server::get(ColumnMapper::class)->findForBoard($viewer);
+		$renamed = $this->columnService->rename($viewer, (int)$columns[0]->getId(), 'Posteingang');
+
+		$this->assertSame('Posteingang', $renamed->getTitle());
 	}
 
 	private function manager(): ViewerContext {
