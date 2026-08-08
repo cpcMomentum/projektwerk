@@ -13,9 +13,12 @@ use OCA\Projektwerk\Access\BoardAccess;
 use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Db\Board;
 use OCA\Projektwerk\Db\BoardMapper;
+use OCA\Projektwerk\Db\Column;
+use OCA\Projektwerk\Db\ColumnMapper;
 use OCA\Projektwerk\Db\Member;
 use OCA\Projektwerk\Db\MemberMapper;
 use OCP\IDBConnection;
+use OCP\IL10N;
 
 /**
  * Projekte anlegen und ihre Einstellungen pflegen.
@@ -26,11 +29,39 @@ use OCP\IDBConnection;
  */
 class BoardService {
 
+	/**
+	 * Die Spalten, die ein neues Projekt mitbringt.
+	 *
+	 * **Die ersten drei Spalten sind eine Leiter der Verbindlichkeit:**
+	 * „wir haben es" (Eingegangen), „wir machen es" (Bestätigt), „wir wissen
+	 * wann" (Eingeplant). Auf einem geteilten Board meldet der Kunde etwas, und
+	 * jede dieser Stufen ist ein Vorgang, den jemand auslöst — fielen sie
+	 * zusammen, sagte schon das Anlegen eines Tickets eine Zusage zu, die
+	 * niemand gegeben hat.
+	 *
+	 * **„Bestätigt" heißt nicht „Backlog".** Der Begriff bezeichnet
+	 * üblicherweise den unsortierten Eingangsstapel — also die *erste* Spalte.
+	 * An zweiter Stelle läse ihn falsch herum, wer ihn kennt, und gar nicht,
+	 * wer ihn nicht kennt.
+	 *
+	 * Alle sechs sind deutsch und ohne Fachjargon: Der Kunde sieht dieselben
+	 * Spalten (§8, keine kundenspezifischen Spaltennamen), und §7 benennt
+	 * „nach dem Publikum, nicht nach der Technik".
+	 *
+	 * Keine Spalte heißt „Wartet auf Kunde". Der Wartezustand liegt laut §9
+	 * **quer zu den Spalten** und ist ein Filterschalter, kein Ort.
+	 *
+	 * @var string[]
+	 */
+	public const DEFAULT_COLUMNS = ['Eingegangen', 'Bestätigt', 'Eingeplant', 'In Arbeit', 'Erledigt', 'Verworfen'];
+
 	public function __construct(
 		private IDBConnection $db,
 		private BoardMapper $boards,
 		private MemberMapper $members,
+		private ColumnMapper $columns,
 		private BoardAccess $access,
+		private IL10N $l10n,
 	) {
 	}
 
@@ -45,6 +76,13 @@ class BoardService {
 	 * Wer anlegt, wird Eigentümer und internes Mitglied mit Verwaltungsrecht.
 	 * Eine Rechteprüfung gibt es davor nicht: Ein eigenes Projekt anzulegen
 	 * setzt nichts voraus.
+	 *
+	 * Die Spalten aus {@see DEFAULT_COLUMNS} entstehen gleich mit — **einmalig
+	 * übersetzt in der Sprache der anlegenden Person**, danach sind es normale
+	 * Daten und jederzeit umbenennbar. Bei jeder Anzeige zu übersetzen wäre
+	 * falsch: Dann sähe ein englischsprachiger Kunde andere Spalten als die
+	 * interne Seite, und §8 verlangt ausdrücklich, dass beide Seiten dieselben
+	 * sehen.
 	 */
 	public function create(
 		string $userId,
@@ -78,6 +116,14 @@ class BoardService {
 			$member->setAddedBy($userId);
 			$member->setAddedAt($now);
 			$this->members->insert($member);
+
+			foreach (self::DEFAULT_COLUMNS as $position => $columnTitle) {
+				$column = new Column();
+				$column->setBoardId((int)$board->getId());
+				$column->setTitle($this->l10n->t($columnTitle));
+				$column->setPosition($position);
+				$this->columns->insert($column);
+			}
 
 			$this->db->commit();
 
