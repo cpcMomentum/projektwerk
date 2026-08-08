@@ -16,7 +16,7 @@ use OCP\Migration\IOutput;
 use OCP\Migration\SimpleMigrationStep;
 
 /**
- * Schema v0.1.0 — alle elf Tabellen auf einen Schlag.
+ * Schema v0.1.0 — alle zehn Tabellen auf einen Schlag.
  *
  * Vollstaendig, obwohl Anhaenge erst in Phase 5 und die Outbox erst in Phase 6
  * ausgeliefert werden: Released Migrationen werden nie editiert, und
