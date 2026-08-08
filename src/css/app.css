@@ -517,3 +517,64 @@
 .app-projektwerk .pw-visopt[aria-pressed='true'] .pw-visopt__hint {
 	color: inherit;
 }
+
+/* ---- Ticket-Detail ------------------------------------------------------ */
+
+/*
+ * Auf breiten Schirmen ein Overlay, auf schmalen vollflächig (§9) — derselbe
+ * Pfad, damit Direktlinks immer tragen. NcModal macht genau das.
+ */
+.app-projektwerk .pw-detail {
+	padding: 20px 24px 28px;
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+}
+
+.app-projektwerk .pw-detail__head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px;
+}
+
+.app-projektwerk .pw-detail__column {
+	font-size: 12px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-detail__closed {
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-detail__title {
+	margin: 0;
+	font-size: 22px;
+	font-weight: 700;
+	line-height: 1.25;
+	overflow-wrap: anywhere;
+}
+
+.app-projektwerk .pw-detail__body {
+	margin: 0;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	line-height: 1.55;
+}
+
+.app-projektwerk .pw-detail__empty {
+	margin: 0;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-detail__section {
+	display: flex;
+	flex-direction: column;
+	padding-top: 6px;
+	border-top: 1px solid var(--color-border);
+}
