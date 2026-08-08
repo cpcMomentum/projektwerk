@@ -152,6 +152,10 @@ App nicht auf dessen Freigabeliste.
 Drei der sechs Punkte aus §11.2 sind beantwortet. Was dabei **anders war als angenommen**, steht
 zuerst.
 
+> **Nachtrag 2026-08-08:** Punkt 2 ist inzwischen ebenfalls beantwortet — er hing an der ersten
+> API-Route und wurde nachgeholt, sobald es sie gab. Damit sind es **vier von sechs**; die Zeile
+> steht in der Tabelle unten, der ausführliche Befund am Ende dieses Abschnitts.
+
 **Die Freigabeliste ist gesetzt, auch wenn sie leer aussieht.** `occ config:app:get guests whitelist`
 gibt im Auslieferungszustand **nichts** aus — trotzdem ist die Liste wirksam, denn Guests 4.9.0
 hinterlegt sie als Lexikon-Vorgabe (`ConfigLexicon`, Eintrag `whitelist`, Vorgabewert
@@ -181,17 +185,34 @@ Fehlstand.
 | §11.2 | Frage | Befund |
 |---|---|---|
 | 1 | Freigabeliste lesen und ergänzt zurückschreiben | **geht**, aber nur über die App-Konfiguration mit Lexikon-Vorgabe; `occ`-Sicht ist irreführend |
+| 2 | `#[NoAdminRequired]`-JSON-Endpunkt in echter Gast-Sitzung | **geht** (nachgeholt am 2026-08-08). 200 mit `application/json`, Rolle kommt als `external` zurück. Voraussetzung ist `projektwerk` auf der Freigabeliste; ohne sie 500 mit HTML |
 | 5 | Gast-UID-Länge | **exakt 64 Zeichen.** Bei aktivem Datenschutzschalter ist die Kennung ein Hex-Hash der Adresse, nicht die Adresse. `varchar(64)` passt — mit **null** Spielraum |
 | 5 | Quota > 0 | **Nein: `0 B` im Auslieferungszustand.** Die Vorgabe hängt am Instanz-Preset, und der Standardzweig liefert `0 B`. Gehört als eigener Punkt in den Setup-Check und in die Betriebsanleitung |
 | 6 | Auffindbarkeit von Gästen beim Hinzufügen | **Gäste sind auffindbar.** Ein interner Nutzer findet den Gast über Anzeigename und Adresse (OCS `sharees`), zurück kommt die Hash-Kennung |
 | 6 | Personensuche **durch** einen Gast | **Nur exakte Treffer.** Die Suche eines Gasts nach `admin` liefert `users: []` und ausschließlich `exact`. Kein Durchblättern, keine Teiltreffer — die Begründung für den App-eigenen Personen-Endpunkt bleibt gültig, ist aber genauer: nicht „leer", sondern „nur wer exakt benannt wird" |
 
-**Offen aus S1** — braucht einen Team-Ordner und eine Server-Route, beides existiert noch nicht:
+**§11.2 Punkt 2 — beantwortet am 2026-08-08 (NC 34.0.0, Guests 4.9.0).** Mit der ersten API-Route
+(`board#index`, `board#show`) nachgeholt: Ein Gastkonto erreicht einen `#[NoAdminRequired]`-Endpunkt
+und bekommt **200 mit `application/json`** — die Freigabeliste muss dafür `projektwerk` enthalten.
+Die Rolle kommt korrekt als `external` zurück, dieselbe Anfrage als internes Mitglied liefert
+`internal`. Der Kundenzugriff auf die Schnittstelle ist damit belegt und nicht mehr angenommen.
 
-- §11.2 Punkt 2: ein `#[NoAdminRequired]`-JSON-Endpunkt in echter Gast-Sitzung. Die App hat bisher
-  nur `page#index`; nachzuholen, sobald Phase 1 die erste API-Route legt.
-- §11.2 Punkt 3: `viewer` auf einer Datei in `90_Austausch`.
-- §11.2 Punkt 4: fragmentfreier Deep-Link aus abgemeldetem Zustand.
+**Nebenbefund, der jedes Skript betrifft: App-Routen brauchen den Header `OCS-APIRequest: true`.**
+Basic Auth allein genügt nicht — Nextcloud legt dabei eine Sitzung an, und die CSRF-Prüfung
+antwortet dann mit **412 `CSRF check failed`**, auch auf reine Lese-Endpunkte. Das gilt für
+`/apps/…`-Routen ebenso wie für `/ocs/…`. Wer ohne Browser gegen die App prüft, setzt den Header;
+wer ihn vergisst, misst die CSRF-Schicht statt der App.
+
+**Der Administrator bekommt 404, nicht 403.** Am selben Durchlauf gemessen: `admin` ist kein Mitglied
+des Boards und erhält beim Einzelabruf `404` und bei der Liste `[]`. Die Zusage „keine
+Admin-Ausnahme" ist damit über HTTP belegt, nicht nur im Test.
+
+**Offen aus S1** — beide brauchen einen echten Browser, einer zusätzlich einen Team-Ordner:
+
+- §11.2 Punkt 3: `viewer` auf einer Datei in `90_Austausch`. Braucht den Team-Ordner, den es noch
+  nicht gibt.
+- §11.2 Punkt 4: fragmentfreier Deep-Link aus abgemeldetem Zustand. Braucht die Deep-Link-Route
+  `/t/{id}` aus Phase 2 und einen Browser für den Anmeldeumweg.
 
 **Zur Methode:** Das Anmeldeformular ließ sich per `curl` nicht bedienen (die Anmeldung fällt auf
 `/login?direct=1` zurück, auch mit gültigen Zugangsdaten und frischem `requesttoken`) — die

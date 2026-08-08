@@ -11,10 +11,12 @@ return [
 	'routes' => [
 		['name' => 'page#index', 'url' => '/', 'verb' => 'GET'],
 
-		// REST-Routen folgen, z.B.:
-		// ['name' => 'board#index',   'url' => '/api/v1/boards',              'verb' => 'GET'],
-		// ['name' => 'board#create',  'url' => '/api/v1/boards',              'verb' => 'POST'],
-		// ['name' => 'ticket#index',  'url' => '/api/v1/boards/{boardId}/tickets', 'verb' => 'GET'],
+		// Jede GET-Route hier muss in tests/ReadPathRegistry.php stehen —
+		// entweder in ROUTE_PATHS mit einer Erwartung je Betrachter in der
+		// Leak-Matrix, oder in ROUTES_WITHOUT_DATA mit Begruendung. Der
+		// Vollstaendigkeitstest laesst jede nicht registrierte Route fallen.
+		['name' => 'board#index', 'url' => '/api/v1/boards', 'verb' => 'GET'],
+		['name' => 'board#show', 'url' => '/api/v1/boards/{boardId}', 'verb' => 'GET'],
 
 		// Hinweis: Deep-Links aus E-Mail und Glocke duerfen NIEMALS ein '#'
 		// enthalten — ein Fragment erreicht den Server nie und geht beim

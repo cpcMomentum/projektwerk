@@ -109,6 +109,28 @@ class Ticket extends Entity implements JsonSerializable {
 		$this->addType('updatedAt', Types::DATETIME);
 	}
 
+	/**
+	 * **`position` geht nicht mit über die Leitung.**
+	 *
+	 * Das Ticket ist die einzige Entität, die je Betrachter gefiltert wird —
+	 * und eine ausgelieferte Sortierposition verriete genau das, was der Filter
+	 * verbirgt: Sieht ein Kunde in einer Spalte die Positionen 1, 3 und 7, weiss
+	 * er, dass es dazwischen Vorgaenge gibt. §5.8 nennt Sortierpositionen
+	 * ausdruecklich neben den Zaehlern.
+	 *
+	 * §11 nimmt diese Auskunft **nur fuer die Ticketnummer** bewusst in Kauf,
+	 * weil die Nummer Dateinamen und Direktlinks traegt. Fuer die Position gilt
+	 * die Ausnahme nicht.
+	 *
+	 * Es kostet auch nichts: Die Reihenfolge steckt in der Reihenfolge des
+	 * gelieferten Feldes, und `moveTicket()` nimmt laut §3.6 **Nachbar-IDs statt
+	 * einer Position** entgegen. Wer nie eine Position sendet, muss auch keine
+	 * lesen. `position` bleibt damit vollstaendig serverseitig.
+	 *
+	 * `Column::position` und `Step::position` sind davon nicht betroffen: Weder
+	 * Spalten noch die Schritte eines sichtbaren Tickets werden je Betrachter
+	 * gefiltert, dort verraet eine Luecke nichts.
+	 */
 	public function jsonSerialize(): array {
 		return [
 			'id' => $this->getId(),
@@ -121,7 +143,7 @@ class Ticket extends Entity implements JsonSerializable {
 			'creatorUserId' => $this->getCreatorUserId(),
 			'creatorRole' => $this->getCreatorRole(),
 			'responsibleUserId' => $this->getResponsibleUserId(),
-			'position' => $this->getPosition(),
+			// `position` fehlt hier absichtlich — siehe Methodenkommentar.
 			'closedAt' => $this->getClosedAt()?->format(DateTime::ATOM),
 			'version' => $this->getVersion(),
 			'githubIssueNumber' => $this->getGithubIssueNumber(),

@@ -69,13 +69,20 @@ final class ReadPathRegistry {
 	/**
 	 * Lese-Routen aus `appinfo/routes.php`, die die Matrix faehrt.
 	 *
-	 * Heute leer — es gibt noch keinen Lese-Endpunkt. Ab Phase 2 traegt sich
-	 * hier jede GET-Route ein; der Vollstaendigkeitstest laesst eine Route, die
-	 * weder hier noch in {@see ROUTES_WITHOUT_DATA} steht, fallen.
+	 * Jede GET-Route steht hier oder in {@see ROUTES_WITHOUT_DATA}; der
+	 * Vollstaendigkeitstest laesst jede andere fallen. Was hier steht, wird von
+	 * der Leak-Matrix mit **jedem** Betrachter gefahren.
+	 *
+	 * Der Unterschied zu {@see MAPPER_PATHS} ist nicht bloss die Ebene: Am
+	 * Endpunkt greift zusaetzlich `BoardAccess`. Ein Nichtmitglied bekommt hier
+	 * 404 — und nicht bloss eine leere Menge wie beim Mapper mit selbst
+	 * gebautem Kontext.
 	 *
 	 * @var string[] Routennamen in der Schreibweise aus routes.php
 	 */
 	public const ROUTE_PATHS = [
+		'board#index',
+		'board#show',
 	];
 
 	/**
