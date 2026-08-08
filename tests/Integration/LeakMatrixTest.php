@@ -140,6 +140,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'TicketMapper::countVisibleInBoard' => 'testCountersNeverCountWhatIsHidden',
 		'TicketMapper::findLastPositionInColumn' => 'testLastPositionIsTheSameForEveryViewer',
 		'BoardMapper::findForViewer' => 'testBoardMetadataPathsTrustTheContextAlone',
+		// zusaetzlich gefahren von testBothCompanyNamesReachEveryViewer
 		'BoardMapper::findAllForUser' => 'testBoardListFollowsMembership',
 		'MemberMapper::findForBoard' => 'testBoardMetadataPathsTrustTheContextAlone',
 		'ColumnMapper::findForBoard' => 'testBoardMetadataPathsTrustTheContextAlone',
@@ -442,6 +443,49 @@ class LeakMatrixTest extends IntegrationTestCase {
 				$userId . ': Spalten weichen ab.',
 			);
 		}
+	}
+
+	/**
+	 * **Beide Firmennamen gehen an jeden Betrachter — auch der eigene.**
+	 *
+	 * In der Personenauswahl eines öffentlichen Tickets stehen interne und
+	 * externe Personen gemeinsam und ohne Trennung (§9). Bekäme ein Betrachter
+	 * nur den Namen der *anderen* Seite, wäre die eigene stumm „der Normalfall"
+	 * — und die Trennung wäre durch die Hintertür zurück.
+	 *
+	 * Das ist ausdrücklich **kein** Leck: Der Firmenname der Gegenseite ist
+	 * keine geschützte Information, sondern steht im Projektnamen und auf jeder
+	 * Rechnung.
+	 */
+	public function testBothCompanyNamesReachEveryViewer(): void {
+		$boards = Server::get(BoardMapper::class);
+
+		foreach ([self::ANNA, self::BERT, self::CARLA, self::DIRK] as $userId) {
+			$board = $boards->findForViewer($this->contextFor($userId));
+
+			$this->assertSame(LeakMatrixFixture::ORG_INTERNAL, $board->getOrgInternal(), $userId);
+			$this->assertSame(LeakMatrixFixture::ORG_EXTERNAL, $board->getOrgExternal(), $userId);
+		}
+	}
+
+	/**
+	 * Der Name für dieses Board übersteuert den aus Nextcloud — und `null`
+	 * heißt „nimm den aus Nextcloud", nicht „kein Name".
+	 *
+	 * Bert trägt bewusst keinen. Ohne diesen Fall prüfte die Suite nur die
+	 * Übersteuerung und nicht den Normalfall.
+	 */
+	public function testMembershipCarriesAnOptionalName(): void {
+		$members = Server::get(MemberMapper::class);
+
+		$byUser = [];
+		foreach ($members->findForBoard($this->contextFor(self::CARLA)) as $member) {
+			$byUser[(string)$member->getUserId()] = $member->getDisplayName();
+		}
+
+		$this->assertSame('Anna Reuter', $byUser[self::ANNA]);
+		$this->assertSame('Carla Mueller', $byUser[self::CARLA]);
+		$this->assertNull($byUser[self::BERT], 'Ohne Eintrag muss der Anzeigename aus Nextcloud gelten.');
 	}
 
 	/**

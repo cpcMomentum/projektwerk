@@ -99,12 +99,21 @@ final class LeakMatrixFixture {
 		'private/carla' => [TicketScope::VISIBILITY_PRIVATE, self::CARLA, ViewerContext::ROLE_EXTERNAL, self::COLUMN_A, false],
 	];
 
-	/** Mitglied => [Rolle, Verwaltungsrecht] */
+	public const ORG_INTERNAL = 'cpcMomentum';
+	public const ORG_EXTERNAL = 'Mueller Elektrotechnik';
+
+	/**
+	 * Mitglied => [Rolle, Verwaltungsrecht, Name fuer dieses Board].
+	 *
+	 * Bert traegt bewusst **keinen** Namen: Das ist der Normalfall (Anzeigename
+	 * aus Nextcloud) und muss neben dem uebersteuerten Fall stehen, sonst
+	 * prueft die Suite nur den Sonderfall.
+	 */
 	private const MEMBERS = [
-		self::ANNA => [ViewerContext::ROLE_INTERNAL, true],
-		self::BERT => [ViewerContext::ROLE_INTERNAL, false],
-		self::CARLA => [ViewerContext::ROLE_EXTERNAL, false],
-		self::DIRK => [ViewerContext::ROLE_EXTERNAL, false],
+		self::ANNA => [ViewerContext::ROLE_INTERNAL, true, 'Anna Reuter'],
+		self::BERT => [ViewerContext::ROLE_INTERNAL, false, null],
+		self::CARLA => [ViewerContext::ROLE_EXTERNAL, false, 'Carla Mueller'],
+		self::DIRK => [ViewerContext::ROLE_EXTERNAL, false, 'Dirk Sommer'],
 	];
 
 	public int $boardId;
@@ -134,17 +143,20 @@ final class LeakMatrixFixture {
 		// findAllForUser() filtert auf archived = 0, und eine Erwartung soll
 		// nicht an einer Vorgabe haengen, die jemand spaeter aendert.
 		$board->setArchived(0);
+		$board->setOrgInternal(self::ORG_INTERNAL);
+		$board->setOrgExternal(self::ORG_EXTERNAL);
 		$board->setCreatedAt($now);
 		$board->setUpdatedAt($now);
 		$board = $boards->insert($board);
 		$this->boardId = (int)$board->getId();
 
-		foreach (self::MEMBERS as $userId => [$role, $isManager]) {
+		foreach (self::MEMBERS as $userId => [$role, $isManager, $displayName]) {
 			$member = new Member();
 			$member->setBoardId($this->boardId);
 			$member->setUserId($userId);
 			$member->setRole($role);
 			$member->setIsManager($isManager ? 1 : 0);
+			$member->setDisplayName($displayName);
 			$member->setAddedBy(self::ANNA);
 			$member->setAddedAt($now);
 			$members->insert($member);

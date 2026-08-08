@@ -42,6 +42,7 @@ class Member extends Entity implements JsonSerializable {
 	protected ?string $userId = null;
 	protected ?string $role = null;
 	protected ?int $isManager = null;
+	protected ?string $displayName = null;
 	protected ?string $addedBy = null;
 	protected ?DateTime $addedAt = null;
 
@@ -50,6 +51,7 @@ class Member extends Entity implements JsonSerializable {
 		$this->addType('userId', Types::STRING);
 		$this->addType('role', Types::STRING);
 		$this->addType('isManager', Types::SMALLINT);
+		$this->addType('displayName', Types::STRING);
 		$this->addType('addedBy', Types::STRING);
 		$this->addType('addedAt', Types::DATETIME);
 	}
@@ -75,6 +77,8 @@ class Member extends Entity implements JsonSerializable {
 			'userId' => $this->getUserId(),
 			'role' => $this->getRole(),
 			'isManager' => $this->isManagerEffective(),
+			// NULL heisst: Anzeigename aus Nextcloud verwenden.
+			'displayName' => $this->getDisplayName(),
 			'addedBy' => $this->getAddedBy(),
 			'addedAt' => $this->getAddedAt()?->format(DateTime::ATOM),
 		];
