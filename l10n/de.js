@@ -36,6 +36,11 @@ OC.L10N.register(
     "Geändert von {name}": "Geändert von {name}",
     "{count} Kommentare": "{count} Kommentare",
     "{done} von {count} Arbeitsschritten erledigt": "{done} von {count} Arbeitsschritten erledigt",
-    "ProjektWerk ist für Gastkonten nicht freigeschaltet. Die Administration muss die App auf die Freigabeliste der Guests-App setzen.": "ProjektWerk ist für Gastkonten nicht freigeschaltet. Die Administration muss die App auf die Freigabeliste der Guests-App setzen."
+    "ProjektWerk ist für Gastkonten nicht freigeschaltet. Die Administration muss die App auf die Freigabeliste der Guests-App setzen.": "ProjektWerk ist für Gastkonten nicht freigeschaltet. Die Administration muss die App auf die Freigabeliste der Guests-App setzen.",
+    "Geschlossen": "Geschlossen",
+    "Keine Beschreibung hinterlegt.": "Keine Beschreibung hinterlegt.",
+    "Personen": "Personen",
+    "angelegt": "angelegt",
+    "zuständig": "zuständig"
 },
 "nplurals=2; plural=(n != 1);");

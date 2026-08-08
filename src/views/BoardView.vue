@@ -77,6 +77,16 @@
 			</div>
 		</div>
 
+		<TicketDetail
+			:ticket="openTicketData"
+			:columns="store.columns"
+			:members="store.members"
+			:viewer="store.viewer"
+			:orgInternal="store.board?.orgInternal ?? ''"
+			:orgExternal="store.board?.orgExternal ?? ''"
+			:showVisibility="showVisibility"
+			@close="openTicketData = null" />
+
 		<CreateTicketDialog
 			:open="creating"
 			:columns="store.columns"
@@ -97,6 +107,7 @@ import FolderMultipleIcon from 'vue-material-design-icons/FolderMultiple.vue'
 import PlusIcon from 'vue-material-design-icons/Plus.vue'
 import CreateTicketDialog from '@/components/CreateTicketDialog.vue'
 import TicketCard from '@/components/TicketCard.vue'
+import TicketDetail from '@/components/TicketDetail.vue'
 import { createTicket } from '@/services/tickets'
 import { showError } from '@/services/toast'
 import { useBoardStore } from '@/stores/boardStore'
@@ -104,14 +115,14 @@ import { useBoardStore } from '@/stores/boardStore'
 export default defineComponent({
 	name: 'BoardView',
 
-	components: { CreateTicketDialog, FolderMultipleIcon, NcButton, NcEmptyContent, PlusIcon, TicketCard },
+	components: { CreateTicketDialog, FolderMultipleIcon, NcButton, NcEmptyContent, PlusIcon, TicketCard, TicketDetail },
 
 	setup() {
 		return { store: useBoardStore() }
 	},
 
 	data() {
-		return { creating: false }
+		return { creating: false, openTicketData: null as Ticket | null }
 	},
 
 	computed: {
@@ -172,9 +183,7 @@ export default defineComponent({
 		},
 
 		openTicket(ticket: Ticket) {
-			// Das Ticket-Detail kommt im naechsten Schnitt; bis dahin passiert
-			// bewusst nichts, statt eine halbe Ansicht zu oeffnen.
-			void ticket
+			this.openTicketData = ticket
 		},
 
 		async create(data: { title: string, description: string | null, visibility: Visibility, columnId: number }) {
