@@ -113,6 +113,29 @@ export async function moveTicket(
 }
 
 /**
+ * Was ein Sichtbarkeitswechsel kosten würde.
+ *
+ * Für den Rückfragedialog aus §9, der konkrete Zahlen und Namen nennen soll
+ * statt einer allgemeinen Warnung.
+ *
+ * **Bewusst ein Serveraufruf**, obwohl das Frontend die Mitgliederliste schon
+ * hat: Wer den Zugriff verliert, folgt aus der Sichtbarkeitsregel — und die
+ * gehört an genau eine Stelle. Im Browser nachzurechnen wäre eine zweite
+ * Umsetzung derselben Regel.
+ *
+ * @param boardId Kennung des Projekts.
+ * @param ticketId Kennung des Tickets.
+ * @param visibility Die angedachte neue Stufe.
+ */
+export async function fetchVisibilityImpact(
+	boardId: number,
+	ticketId: number,
+	visibility: Visibility,
+): Promise<{ losing: string[], comments: number, attachments: number }> {
+	return apiGet(`/boards/${boardId}/tickets/${ticketId}/visibility-impact?visibility=${visibility}`)
+}
+
+/**
  * Die Sichtbarkeit ändern.
  *
  * Antwortet mit 403, wenn das Ticket der anderen Seite gehört — nicht mit 404:

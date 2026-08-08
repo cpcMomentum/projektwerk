@@ -184,6 +184,26 @@ class TicketController extends Controller {
 	}
 
 	/**
+	 * Was ein Sichtbarkeitswechsel kosten würde — für den Rückfragedialog.
+	 *
+	 * Ein Lese-Endpunkt, obwohl er zu einem Schreibvorgang gehört: Er ändert
+	 * nichts und beantwortet nur eine Frage. Deshalb steht er in der
+	 * Leak-Matrix wie jeder andere Lesepfad.
+	 */
+	#[NoAdminRequired]
+	public function visibilityImpact(int $boardId, int $ticketId, string $visibility): JSONResponse {
+		return $this->withViewer($boardId, function (ViewerContext $viewer) use ($ticketId, $visibility): JSONResponse {
+			try {
+				return new JSONResponse($this->service->visibilityImpact($viewer, $ticketId, $visibility));
+			} catch (DoesNotExistException) {
+				return new JSONResponse([], Http::STATUS_NOT_FOUND);
+			} catch (\InvalidArgumentException $e) {
+				return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+			}
+		});
+	}
+
+	/**
 	 * Die Sichtbarkeit ändern — eigener Weg, weil sie als einziges Feld eine
 	 * Schreibregel hat.
 	 */

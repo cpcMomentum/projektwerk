@@ -88,6 +88,7 @@ final class ReadPathRegistry {
 		'board#show',
 		'ticket#index',
 		'ticket#show',
+		'ticket#visibilityImpact',
 	];
 
 	/**

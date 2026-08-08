@@ -27,6 +27,7 @@ return [
 		// Seite), und ein Sammel-Update waere die Stelle, an der die Regel beim
 		// naechsten Feld vergessen wird.
 		['name' => 'ticket#move', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/move', 'verb' => 'POST'],
+		['name' => 'ticket#visibilityImpact', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/visibility-impact', 'verb' => 'GET'],
 		['name' => 'ticket#visibility', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/visibility', 'verb' => 'PUT'],
 
 		// Board-Einstellungen. Ausschliesslich Schreibwege — gelesen wird ueber
