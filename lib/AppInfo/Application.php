@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace OCA\Projektwerk\AppInfo;
 
+use OCA\Projektwerk\SetupCheck\GuestsWhitelistCheck;
+use OCA\Projektwerk\SetupCheck\InstanceConfigCheck;
 use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
@@ -22,6 +24,13 @@ class Application extends App implements IBootstrap {
 	}
 
 	public function register(IRegistrationContext $context): void {
+		// Die Instanz meldet ihre eigenen Fehlkonfigurationen. Beide Checks
+		// lesen und melden nur — GuestsWhitelistCheck schreibt ausdruecklich
+		// nicht (Entscheidung E5), weil ein blindes Setzen der Freigabeliste
+		// deren eingebaute Vorgabe ersetzen wuerde.
+		$context->registerSetupCheck(InstanceConfigCheck::class);
+		$context->registerSetupCheck(GuestsWhitelistCheck::class);
+
 		// Hier kommt spaeter u.a. der Listener auf UserDeletedEvent hin:
 		// Beim Loeschen eines Kontos muessen dessen private Tickets entfernt
 		// und offene Zuweisungen aufgehoben werden — mangels Admin-Ausnahme
