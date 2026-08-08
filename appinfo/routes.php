@@ -18,6 +18,17 @@ return [
 		['name' => 'board#index', 'url' => '/api/v1/boards', 'verb' => 'GET'],
 		['name' => 'board#show', 'url' => '/api/v1/boards/{boardId}', 'verb' => 'GET'],
 
+		['name' => 'ticket#index', 'url' => '/api/v1/boards/{boardId}/tickets', 'verb' => 'GET'],
+		['name' => 'ticket#show', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}', 'verb' => 'GET'],
+		['name' => 'ticket#create', 'url' => '/api/v1/boards/{boardId}/tickets', 'verb' => 'POST'],
+		['name' => 'ticket#update', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}', 'verb' => 'PATCH'],
+		// Verschieben und Sichtbarkeit sind eigene Wege, keine Felder im
+		// PATCH: Beide haben eigene Regeln (Nachbar-IDs bzw. die besitzende
+		// Seite), und ein Sammel-Update waere die Stelle, an der die Regel beim
+		// naechsten Feld vergessen wird.
+		['name' => 'ticket#move', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/move', 'verb' => 'POST'],
+		['name' => 'ticket#visibility', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/visibility', 'verb' => 'PUT'],
+
 		// Hinweis: Deep-Links aus E-Mail und Glocke duerfen NIEMALS ein '#'
 		// enthalten — ein Fragment erreicht den Server nie und geht beim
 		// Login-Umweg verloren, also genau bei den Gaesten, die den Link am

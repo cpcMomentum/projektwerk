@@ -12,6 +12,7 @@ namespace OCA\Projektwerk\Tests\Integration;
 use OCA\Projektwerk\Access\BoardAccess;
 use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Controller\BoardController;
+use OCA\Projektwerk\Controller\TicketController;
 use OCA\Projektwerk\Db\AttachmentMapper;
 use OCA\Projektwerk\Db\BoardMapper;
 use OCA\Projektwerk\Db\ColumnMapper;
@@ -21,6 +22,7 @@ use OCA\Projektwerk\Db\StepMapper;
 use OCA\Projektwerk\Db\TaskFilter;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Db\TicketUserMapper;
+use OCA\Projektwerk\Service\TicketService;
 use OCA\Projektwerk\Tests\ReadPathRegistry;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
@@ -136,6 +138,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'TicketMapper::findVisible' => 'testSingleTicketAccessMatchesTheSameSet',
 		'TicketMapper::findVisibleAcrossBoards' => 'testMyTasksNeverWidensBeyondTheVisibleSet',
 		'TicketMapper::countVisibleInBoard' => 'testCountersNeverCountWhatIsHidden',
+		'TicketMapper::findLastPositionInColumn' => 'testLastPositionIsTheSameForEveryViewer',
 		'BoardMapper::findForViewer' => 'testBoardMetadataPathsTrustTheContextAlone',
 		'BoardMapper::findAllForUser' => 'testBoardListFollowsMembership',
 		'MemberMapper::findForBoard' => 'testBoardMetadataPathsTrustTheContextAlone',
@@ -158,6 +161,8 @@ class LeakMatrixTest extends IntegrationTestCase {
 	private const ROUTE_COVERAGE = [
 		'board#index' => 'testBoardIndexEndpointFollowsMembership',
 		'board#show' => 'testBoardShowEndpointRefusesNonMembers',
+		'ticket#index' => 'testTicketIndexEndpointMatchesTheVisibleSet',
+		'ticket#show' => 'testTicketShowEndpointMatchesTheVisibleSet',
 	];
 
 	private LeakMatrixFixture $fixture;
@@ -544,6 +549,100 @@ class LeakMatrixTest extends IntegrationTestCase {
 	}
 
 	/**
+	 * **Die ungefilterte Position ist für jeden Betrachter dieselbe.**
+	 *
+	 * `findLastPositionInColumn()` liest bewusst an `TicketScope` vorbei (§3.8).
+	 * Die Erwartung dazu ist deshalb umgekehrt zu allen anderen in dieser Datei:
+	 * nicht „jeder sieht seine Menge", sondern „alle sehen denselben Wert".
+	 *
+	 * Wäre der Wert betrachterabhängig, wäre genau das der Beweis, dass er etwas
+	 * über die gefilterte Menge aussagt — und dann verriete die Position eines
+	 * neuen Tickets, wie viele verborgene darüber liegen.
+	 */
+	public function testLastPositionIsTheSameForEveryViewer(): void {
+		$tickets = Server::get(TicketMapper::class);
+
+		foreach ([LeakMatrixFixture::COLUMN_A, LeakMatrixFixture::COLUMN_B] as $columnTitle) {
+			$columnId = $this->fixture->columnIds[$columnTitle];
+
+			$values = [];
+			foreach (array_keys(self::VISIBLE) as $userId) {
+				$values[$userId] = $tickets->findLastPositionInColumn($this->contextFor($userId), $columnId);
+			}
+
+			$this->assertCount(
+				1,
+				array_unique($values),
+				$columnTitle . ': Die ungefilterte Position unterscheidet sich je Betrachter — '
+				. 'dann sagt sie etwas über die gefilterte Menge aus. ' . json_encode($values),
+			);
+			$this->assertNotNull(reset($values), $columnTitle . ' ist leer, der Test prüft nichts.');
+		}
+	}
+
+	/**
+	 * Der Listen-Endpunkt liefert dieselbe Menge wie der Mapper — und seine
+	 * Zähler zählen nur die sichtbaren Tickets.
+	 */
+	public function testTicketIndexEndpointMatchesTheVisibleSet(): void {
+		foreach (self::VISIBLE as $userId => $expected) {
+			$response = $this->ticketController($userId)->index($this->fixture->boardId);
+
+			if ($userId === self::FREMD) {
+				// Der Endpunkt geht über BoardAccess; ein Nichtmitglied kommt
+				// gar nicht erst zur Abfrage.
+				$this->assertSame(Http::STATUS_NOT_FOUND, $response->getStatus());
+				continue;
+			}
+
+			$data = $response->getData();
+
+			$this->assertSame(Http::STATUS_OK, $response->getStatus(), $userId);
+			$this->assertTicketLabels($expected, $data['tickets'], $userId . ' am Endpunkt');
+
+			foreach ($data['counts'] as $kind => $counts) {
+				$this->assertSame(
+					$this->fixture->idsFor($expected),
+					$this->sortedKeys($counts),
+					$userId . ': Zähler „' . $kind . '" nennt andere Tickets als die sichtbaren.',
+				);
+			}
+		}
+	}
+
+	/**
+	 * Der Einzel-Endpunkt, fünf Betrachter × neun Tickets — dieselben 45 Fälle
+	 * wie am Mapper, eine Schicht höher.
+	 */
+	public function testTicketShowEndpointMatchesTheVisibleSet(): void {
+		foreach (self::VISIBLE as $userId => $expected) {
+			$controller = $this->ticketController($userId);
+
+			foreach (LeakMatrixFixture::TICKETS as $label => $_) {
+				$response = $controller->show($this->fixture->boardId, $this->fixture->ticketIds[$label]);
+
+				if ($userId === self::FREMD) {
+					$this->assertSame(Http::STATUS_NOT_FOUND, $response->getStatus(), $label);
+					continue;
+				}
+
+				if (in_array($label, $expected, true)) {
+					$this->assertSame(Http::STATUS_OK, $response->getStatus(), $userId . ' / ' . $label);
+					$this->assertSame($label, $response->getData()['ticket']->getTitle());
+					// Die Kinder folgen der Einermenge und sind genau eines je Art.
+					$this->assertCount(1, $response->getData()['comments'], $userId . ' / ' . $label);
+				} else {
+					$this->assertSame(
+						Http::STATUS_NOT_FOUND,
+						$response->getStatus(),
+						$userId . ' bekommt ' . $label . ', darf es aber nicht sehen.',
+					);
+				}
+			}
+		}
+	}
+
+	/**
 	 * Jeder registrierte Lesepfad und jede registrierte Route werden von dieser
 	 * Matrix auch wirklich gefahren.
 	 *
@@ -620,6 +719,20 @@ class LeakMatrixTest extends IntegrationTestCase {
 		}
 
 		return $this->fixture->contextFor($userId);
+	}
+
+	private function ticketController(string $userId): TicketController {
+		return new TicketController(
+			$this->createStub(IRequest::class),
+			Server::get(TicketMapper::class),
+			Server::get(CommentMapper::class),
+			Server::get(StepMapper::class),
+			Server::get(AttachmentMapper::class),
+			Server::get(TicketUserMapper::class),
+			Server::get(TicketService::class),
+			Server::get(BoardAccess::class),
+			$userId,
+		);
 	}
 
 	/**
