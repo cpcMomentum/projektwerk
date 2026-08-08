@@ -27,13 +27,21 @@ Beide melden am Ende `ERGEBNIS: …` und nennen jede Prüfung einzeln mit `OK` o
 
 ## Was sie nicht sind
 
-**Kein Ersatz für die Leak-Matrix.** Die verlangt 4 Nutzer × 9 Tickets × *alle*
-registrierten Lese-Endpunkte einschließlich Zählern und Sortierpositionen, dazu
-den Vollständigkeitstest gegen `appinfo/routes.php` — und dafür eine
-DB-gestützte Testumgebung, die es noch nicht gibt. `visibility-rule.php` deckt
-davon den Kern ab (die Symmetrie von `internal`, die Abgrenzung von `private`,
-und dass ein Nichtmitglied auch mit selbst gebautem `ViewerContext` aus dem
-INNER JOIN fällt), aber eben nur den Kern.
+**Kein Ersatz für die Leak-Matrix.** Die steht seit dem 08.08.2026 in
+`tests/Integration/` und läuft in der CI (`.github/workflows/integration.yml`).
+Sie deckt alles ab, was diese beiden Skripte prüfen, und mehr: fünf Betrachter ×
+sechzehn Lesepfade, einschließlich Zählern, plus den Vollständigkeitstest gegen
+`appinfo/routes.php`.
+
+Warum die Skripte trotzdem bleiben: Sie laufen **gegen eine echte Installation
+mit echtem Datenbanktreiber** und haben genau dort ihren Zweck, wo die CI nicht
+hinkommt — bei der Frage, ob die Abfragen auch auf PostgreSQL und MySQL bauen
+und laufen. Die CI fährt aus Kostengründen nur SQLite. Vor einem Release gegen
+eine neue NC-Version sind sie der schnellste Weg, das gegenzuprüfen.
+
+```bash
+composer test:integration   # die Matrix, verlangt PWERK_REQUIRE_DB=1 in der CI
+```
 
 ## Stand 08.08.2026
 

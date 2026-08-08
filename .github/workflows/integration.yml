@@ -1,0 +1,138 @@
+name: integration
+
+# Die Leak-Matrix (#5) gegen eine echte Nextcloud mit echter Datenbank.
+#
+# Warum ein eigener Workflow und nicht ein Job in phpunit.yml: Das dortige Gate
+# ist container-frei und laeuft gegen die nextcloud/ocp-Stubs. Die Matrix
+# braucht Zeilen — die Sichtbarkeitsregel ist ein JOIN, und ein JOIN laesst sich
+# nicht gegen Stubs pruefen. Beides im selben Workflow haette bedeutet, dass ein
+# schneller Lauf auf einen langsamen wartet.
+#
+# Warum SQLite und nur eine PHP-Version: Dass Migration und Abfragen auf allen
+# drei Datenbanken laufen, ist am 08.08.2026 von Hand nachgewiesen worden (PR
+# #34) und aendert sich nicht mit jedem PR. Was sich mit jedem PR aendern kann,
+# ist die Regel selbst — und die ist datenbankunabhaengig. Eine Matrix ueber drei
+# Datenbanken haette die Kosten verdreifacht, ohne eine zusaetzliche Fehlerklasse
+# zu erreichen.
+#
+# Kosten: ein Job, im Wesentlichen der nextcloud/server-Checkout. GitHub rundet
+# jeden Job auf eine volle Minute auf — deshalb ein Job und nicht drei.
+#
+# ACHTUNG beim Umbenennen: Der Job-Name ist der Kontext des Required-Status-
+# Checks im develop-Ruleset. Ein Kontext, der nie mehr meldet, blockiert jeden
+# PR dauerhaft, ohne dass etwas rot wird. Reihenfolge: Check loesen -> Workflow
+# landen -> neuen Namen live beobachten -> Ruleset per PUT setzen.
+
+on:
+  push:
+    branches: [main, develop]
+  # Kein paths-Filter: Als Required-Status-Check muss der Workflow immer melden,
+  # sonst blockiert ein nie startender Check den Merge.
+  pull_request:
+  workflow_dispatch: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  leak-matrix:
+    runs-on: ubuntu-latest
+    name: Leak-Matrix (SQLite)
+
+    steps:
+      # Zuerst an einen Nebenpfad, weil der Serverzweig aus info.xml abgeleitet
+      # wird — die Datei muss also vor dem Server-Checkout da sein. Verschoben
+      # wird danach.
+      - name: App auschecken
+        uses: actions/checkout@v4
+        with:
+          path: app-src
+
+      - name: NC-Zweig aus info.xml ableiten
+        id: derive
+        working-directory: app-src
+        run: |
+          line=$(grep -oE '<nextcloud[^>]*/>' appinfo/info.xml)
+          min=$(printf '%s' "$line" | grep -oE 'min-version="[0-9]+"' | grep -oE '[0-9]+')
+          if [ -z "$min" ]; then
+            echo "::error::Konnte min-version nicht aus info.xml lesen"; exit 1
+          fi
+          # Die deklarierte Untergrenze, nicht die Obergrenze: Dort landet ein
+          # Bruch zuerst. Ein min-version-Bump zieht den getesteten Zweig
+          # automatisch mit, so wie phpunit.yml die ocp-Versionen ableitet.
+          echo "branch=stable$min" >> "$GITHUB_OUTPUT"
+          echo "Abgeleiteter Serverzweig: stable$min"
+
+      - name: Nextcloud-Server auschecken
+        uses: actions/checkout@v4
+        with:
+          repository: nextcloud/server
+          ref: ${{ steps.derive.outputs.branch }}
+          submodules: true
+          # Flach: Wir brauchen den Baum, nicht die Geschichte.
+          fetch-depth: 1
+          path: server
+
+      # Die App muss unter apps/ liegen. Das ist nicht Bequemlichkeit, sondern
+      # notwendig: Nextcloud registriert einen eigenen Autoloader fuer
+      # OCA\Projektwerk\. Liegt die App ausserhalb des Serverbaums, gewinnt je
+      # nach Classmap mal der eine und mal der andere — und der Test prueft dann
+      # womoeglich andere Dateien als die ausgecheckten. `SuiteWiringTest` haelt
+      # das zur Laufzeit fest.
+      - name: App nach apps/ verschieben
+        run: mv app-src server/apps/projektwerk
+
+      - name: PHP einrichten
+        uses: shivammathur/setup-php@v2
+        with:
+          # Die deklarierte Untergrenze und zugleich das, was das offizielle
+          # nextcloud:33-Image liefert.
+          php-version: '8.4'
+          # Der Satz, den Nextcloud beim Start verlangt — nicht nur der, den die
+          # Matrix braucht. Eine fehlende Erweiterung faellt sonst erst bei
+          # `maintenance:install` auf, mit einer Meldung, die nicht danach
+          # aussieht.
+          extensions: bz2, ctype, curl, dom, fileinfo, gd, gmp, iconv, intl, json, mbstring, openssl, pcntl, posix, session, simplexml, sqlite3, pdo_sqlite, xml, xmlreader, xmlwriter, zip, zlib
+          coverage: none
+          tools: composer:v2
+
+      - name: Abhaengigkeiten der App installieren
+        working-directory: server/apps/projektwerk
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Nextcloud installieren (SQLite)
+        working-directory: server
+        run: |
+          mkdir -p data
+          php occ maintenance:install \
+            --database sqlite \
+            --admin-user admin \
+            --admin-pass admin-pass-for-ci \
+            --data-dir "$PWD/data"
+
+      # Aktiviert die App und faehrt damit Migration 1 — die zehn Tabellen und
+      # sechzehn Indizes, gegen die die Matrix laeuft.
+      - name: App aktivieren (faehrt die Migration)
+        working-directory: server
+        run: |
+          php occ app:enable projektwerk
+          # Gegenprobe: `installed_version` steht erst, wenn die Migration
+          # durchgelaufen ist. Ohne sie liefe die Matrix in einen SQL-Fehler
+          # ueber fehlende Tabellen — richtig rot, aber mit einer Meldung, die
+          # in die falsche Richtung zeigt.
+          php occ config:app:get projektwerk installed_version
+
+      - name: Leak-Matrix
+        working-directory: server/apps/projektwerk
+        env:
+          # Ohne laufende Nextcloud ueberspringt sich die Suite selbst. Hier ist
+          # Ueberspringen kein gueltiges Ergebnis: Ein uebersprungener Waechter
+          # meldet gruen und prueft nichts. Der Schalter macht daraus einen
+          # Fehler mit Begruendung.
+          PWERK_REQUIRE_DB: '1'
+          NEXTCLOUD_ROOT: ${{ github.workspace }}/server
+        run: composer test:integration

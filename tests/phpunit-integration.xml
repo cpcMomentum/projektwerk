@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+	Die DB-gestuetzte Suite. Bewusst eine **eigene** Konfiguration:
+
+	`phpunit.xml` faehrt containerfrei gegen die ocp-Stubs und ist das Gate, das
+	auf jedem PR laeuft. Wuerde die Integrationssuite dort mitlaufen, wuerde sie
+	sich mangels Nextcloud selbst ueberspringen — und ein uebersprungener
+	Waechter meldet gruen, ohne etwas zu pruefen.
+
+	Getrennte Dateien heissen: `composer test` bleibt das, was es war, und
+	`composer test:integration` verlangt eine Datenbank.
+
+	`failOnSkipped` ist der Riegel auf PHPUnit-Ebene und deckt auch Faelle ab,
+	die IntegrationTestCase nicht kennt. Der Schalter `PWERK_REQUIRE_DB` dort
+	tut dasselbe fuer den bekannten Fall — und sagt zusaetzlich, was fehlt.
+	Zwei Mechanismen, weil der eine eine gute Meldung liefert und der andere
+	keine Luecke laesst.
+-->
+<phpunit
+	bootstrap="bootstrap.php"
+	colors="true"
+	cacheDirectory=".phpunit.cache"
+	failOnRisky="true"
+	failOnWarning="true"
+	failOnSkipped="true"
+	failOnEmptyTestSuite="true">
+	<testsuites>
+		<testsuite name="integration">
+			<directory suffix="Test.php">./Integration</directory>
+		</testsuite>
+	</testsuites>
+</phpunit>
