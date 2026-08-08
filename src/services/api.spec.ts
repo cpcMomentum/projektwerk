@@ -28,7 +28,7 @@ vi.mock('@nextcloud/axios', () => ({
 vi.mock('@nextcloud/router', () => ({
 	generateUrl: (path: string) => path,
 }))
-vi.mock('@nextcloud/dialogs', () => ({
+vi.mock('@/services/toast', () => ({
 	showError: (...args: unknown[]) => showError(...args),
 }))
 vi.mock('@nextcloud/l10n', () => ({

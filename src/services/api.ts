@@ -20,9 +20,9 @@
 import type { AxiosError, AxiosResponse } from '@nextcloud/axios'
 
 import axios from '@nextcloud/axios'
-import { showError } from '@nextcloud/dialogs'
 import { t } from '@nextcloud/l10n'
 import { generateUrl } from '@nextcloud/router'
+import { showError } from '@/services/toast'
 
 const APP_ID = 'projektwerk'
 
