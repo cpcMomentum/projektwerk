@@ -104,6 +104,7 @@ export default defineComponent({
 		/** Nur die interne Seite sieht die Sichtbarkeitskennzeichnung (§9). */
 		showVisibility: { type: Boolean, default: false },
 		responsibleName: { type: String, default: '' },
+		lastEditorName: { type: String, default: '' },
 		/** Alle Spalten des Boards — für „Verschieben nach …". */
 		columns: { type: Array as PropType<Column[]>, default: () => [] },
 		commentCount: { type: Number, default: 0 },
@@ -149,7 +150,7 @@ export default defineComponent({
 		},
 
 		changedTitle(): string {
-			return t('projektwerk', 'Geändert von {name}', { name: this.ticket.lastEditorUserId ?? '' })
+			return t('projektwerk', 'Geändert von {name}', { name: this.lastEditorName })
 		},
 
 		visibilityLabel(): string {
