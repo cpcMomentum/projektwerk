@@ -12,6 +12,7 @@ namespace OCA\Projektwerk\Tests\Integration;
 use OCA\Projektwerk\Access\BoardAccess;
 use OCA\Projektwerk\Access\TicketScope;
 use OCA\Projektwerk\Access\ViewerContext;
+use OCA\Projektwerk\Access\WaitStateCalculator;
 use OCA\Projektwerk\Controller\BoardController;
 use OCA\Projektwerk\Controller\DeepLinkController;
 use OCA\Projektwerk\Controller\TicketController;
@@ -998,6 +999,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 			Server::get(AttachmentMapper::class),
 			Server::get(TicketUserMapper::class),
 			Server::get(TicketService::class),
+			Server::get(WaitStateCalculator::class),
 			Server::get(BoardAccess::class),
 			$userId,
 		);

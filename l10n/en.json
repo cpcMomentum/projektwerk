@@ -90,7 +90,23 @@
         "Mitglied konnte nicht hinzugefügt werden": "Could not add the member",
         "Rolle konnte nicht geändert werden": "Could not change the role",
         "Verwaltungsrecht konnte nicht geändert werden": "Could not change the management right",
-        "Archivieren fehlgeschlagen": "Archiving failed"
+        "Archivieren fehlgeschlagen": "Archiving failed",
+        "wartet auf Kunde": "waiting on client",
+        "wartet auf euch": "waiting on you",
+        "wartet auf Kunde · seit {date}": "waiting on client · since {date}",
+        "wartet auf euch · seit {date}": "waiting on you · since {date}",
+        "Dieser Vorgang wartet auf die Kundenseite: {names}": "This item is waiting on the client side: {names}",
+        "Nur wartend": "Waiting only",
+        "Hier wartet nichts.": "Nothing is waiting here.",
+        "Arbeitsschritte": "Work steps",
+        "Noch keine Arbeitsschritte.": "No work steps yet.",
+        "Neuer Arbeitsschritt": "New work step",
+        "Zuständig": "Responsible",
+        "Niemand": "Nobody",
+        "Arbeitsschritt konnte nicht angelegt werden": "Could not create the work step",
+        "Ändern fehlgeschlagen": "Change failed",
+        "Zuweisung fehlgeschlagen": "Assignment failed",
+        "Dieser Vorgang liegt bei: {names}": "This item is with: {names}"
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }

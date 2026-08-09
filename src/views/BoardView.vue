@@ -33,6 +33,21 @@
 				{{ t('projektwerk', 'Zum Projektchat') }}
 			</NcButton>
 
+			<!--
+				Kein eigener Bereich fuer „wartend": Der Zustand liegt quer zu
+				den Spalten, und eine eigene Ansicht risse ihn aus dem
+				Zusammenhang, in dem er entsteht.
+			-->
+			<NcButton
+				v-if="store.waitingCount > 0 || store.onlyWaiting"
+				:variant="store.onlyWaiting ? 'primary' : 'secondary'"
+				@click="store.onlyWaiting = !store.onlyWaiting">
+				<template #icon>
+					<ClockAlertIcon :size="20" />
+				</template>
+				{{ t('projektwerk', 'Nur wartend') }} ({{ store.waitingCount }})
+			</NcButton>
+
 			<p v-if="orgLine" class="pw-view__sub">
 				{{ orgLine }}
 			</p>
@@ -80,12 +95,17 @@
 						:lastEditorName="store.nameOf(ticket.lastEditorUserId)"
 						:commentCount="count('comments', ticket.id)"
 						:stepCount="count('steps', ticket.id)"
+						:stepsDone="count('stepsDone', ticket.id)"
+						:waitState="store.waiting[ticket.id] ?? null"
+						:fromClientSide="!store.isInternal"
 						@open="openTicket"
 						@move="move" />
 
-					<!-- Leerzustaende sprechen (§9). -->
+					<!-- Leerzustaende sprechen (§9) — auch der gefilterte. -->
 					<div v-if="store.ticketsIn(column.id).length === 0" class="pw-empty">
-						{{ t('projektwerk', 'Hier liegt gerade nichts.') }}
+						{{ store.onlyWaiting
+							? t('projektwerk', 'Hier wartet nichts.')
+							: t('projektwerk', 'Hier liegt gerade nichts.') }}
 					</div>
 				</div>
 			</div>
@@ -99,8 +119,12 @@
 			:orgInternal="store.board?.orgInternal ?? ''"
 			:orgExternal="store.board?.orgExternal ?? ''"
 			:showVisibility="showVisibility"
+			:fromClientSide="!store.isInternal"
+			:steps="openSteps"
+			:waiting="openTicketData ? (store.waiting[openTicketData.id] ?? null) : null"
 			@close="openTicketData = null"
-			@changed="applyChanged" />
+			@changed="applyChanged"
+			@stepsChanged="reloadOpenTicket" />
 
 		<CreateTicketDialog
 			:open="creating"
@@ -112,19 +136,20 @@
 
 <script lang="ts">
 import type { Visibility } from '@/types/board'
-import type { Ticket } from '@/types/ticket'
+import type { Step, Ticket } from '@/types/ticket'
 
 import { t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
+import ClockAlertIcon from 'vue-material-design-icons/ClockAlertOutline.vue'
 import CogIcon from 'vue-material-design-icons/Cog.vue'
 import FolderMultipleIcon from 'vue-material-design-icons/FolderMultiple.vue'
 import PlusIcon from 'vue-material-design-icons/Plus.vue'
 import CreateTicketDialog from '@/components/CreateTicketDialog.vue'
 import TicketCard from '@/components/TicketCard.vue'
 import TicketDetail from '@/components/TicketDetail.vue'
-import { createTicket } from '@/services/tickets'
+import { createTicket, fetchTicket } from '@/services/tickets'
 import { showError } from '@/services/toast'
 import { isConflict, reportWriteError } from '@/services/writeError'
 import { useBoardStore } from '@/stores/boardStore'
@@ -132,14 +157,14 @@ import { useBoardStore } from '@/stores/boardStore'
 export default defineComponent({
 	name: 'BoardView',
 
-	components: { CogIcon, CreateTicketDialog, FolderMultipleIcon, NcButton, NcEmptyContent, PlusIcon, TicketCard, TicketDetail },
+	components: { ClockAlertIcon, CogIcon, CreateTicketDialog, FolderMultipleIcon, NcButton, NcEmptyContent, PlusIcon, TicketCard, TicketDetail },
 
 	setup() {
 		return { store: useBoardStore() }
 	},
 
 	data() {
-		return { creating: false, openTicketData: null as Ticket | null }
+		return { creating: false, openTicketData: null as Ticket | null, openSteps: [] as Step[] }
 	},
 
 	computed: {
@@ -175,7 +200,7 @@ export default defineComponent({
 	methods: {
 		t,
 
-		count(kind: 'comments' | 'steps', ticketId: number): number {
+		count(kind: 'comments' | 'steps' | 'stepsDone', ticketId: number): number {
 			return this.store.counts?.[kind]?.[ticketId] ?? 0
 		},
 
@@ -207,8 +232,46 @@ export default defineComponent({
 			}
 		},
 
-		openTicket(ticket: Ticket) {
+		async openTicket(ticket: Ticket) {
 			this.openTicketData = ticket
+			// Sofort leeren, nicht erst nach dem Laden: Sonst zeigt das Overlay
+			// kurz die Arbeitsschritte des vorigen Tickets unter dem neuen Titel.
+			this.openSteps = []
+			await this.loadSteps(ticket.id)
+		},
+
+		/**
+		 * Die Schritte des geöffneten Vorgangs nachladen.
+		 *
+		 * Über `ticket#show`, weil die Schritte dort aus der gefilterten
+		 * Einermenge kommen — es gibt keinen Weg, „die Schritte zu Ticket 42" zu
+		 * laden, der nicht durch die Sichtbarkeit geht.
+		 *
+		 * @param ticketId Kennung des Vorgangs.
+		 */
+		async loadSteps(ticketId: number) {
+			try {
+				const detail = await fetchTicket(this.boardId, ticketId)
+				this.openSteps = detail.steps
+			} catch {
+				this.openSteps = []
+			}
+		},
+
+		/**
+		 * Nach einer Änderung an den Schritten: Detail und Board neu laden.
+		 *
+		 * Beides, weil eine Zuweisung den Wartezustand ändert — und der steht
+		 * auf der Karte, nicht nur im Overlay.
+		 */
+		async reloadOpenTicket() {
+			const offen = this.openTicketData
+			if (offen === null) {
+				return
+			}
+			await this.store.open(this.boardId)
+			await this.loadSteps(offen.id)
+			this.openTicketData = this.store.tickets.get(offen.id) ?? offen
 		},
 
 		/**
