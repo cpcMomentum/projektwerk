@@ -75,6 +75,19 @@
 			</section>
 
 			<!--
+				Der Bereich zeigt sich nur der besitzenden Seite und blendet
+				sich sonst selbst aus (§7). Er haengt bewusst NICHT an
+				`showVisibility`: Das ist die Kennzeichnung fuer interne
+				Betrachter — waere der Knopf daran gebunden, koennte die
+				Kundenseite die Sichtbarkeit ihrer eigenen Vorgaenge nie aendern.
+			-->
+			<VisibilityControl
+				:ticket="ticket"
+				:viewer="viewer"
+				:members="members"
+				@changed="$emit('changed', $event)" />
+
+			<!--
 				Arbeitsschritte, Anhaenge und Kommentare stehen in §9 ebenfalls
 				im Detail — sie kommen mit den Phasen 3 und 5. Bis dahin steht
 				hier nichts statt einer leeren Ueberschrift, die etwas
@@ -96,11 +109,12 @@ import NcModal from '@nextcloud/vue/components/NcModal'
 import AccountMultipleIcon from 'vue-material-design-icons/AccountMultiple.vue'
 import OfficeBuildingIcon from 'vue-material-design-icons/OfficeBuilding.vue'
 import PencilIcon from 'vue-material-design-icons/Pencil.vue'
+import VisibilityControl from '@/components/VisibilityControl.vue'
 
 export default defineComponent({
 	name: 'TicketDetail',
 
-	components: { AccountMultipleIcon, NcAvatar, NcModal, OfficeBuildingIcon, PencilIcon },
+	components: { AccountMultipleIcon, NcAvatar, NcModal, OfficeBuildingIcon, PencilIcon, VisibilityControl },
 
 	props: {
 		ticket: { type: Object as PropType<Ticket | null>, default: null },
@@ -113,7 +127,7 @@ export default defineComponent({
 		showVisibility: { type: Boolean, default: false },
 	},
 
-	emits: ['close'],
+	emits: ['close', 'changed'],
 
 	computed: {
 		paddedNumber(): string {

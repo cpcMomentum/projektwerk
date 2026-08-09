@@ -24,23 +24,7 @@
 		-->
 		<div class="pw-field">
 			<label>{{ t('projektwerk', 'Wer sieht diesen Vorgang?') }}</label>
-			<div class="pw-visrow">
-				<button
-					v-for="option in options"
-					:key="option.value"
-					type="button"
-					class="pw-visopt"
-					:aria-pressed="visibility === option.value"
-					@click="visibility = option.value">
-					<AccountMultipleIcon v-if="option.value === 'public'" :size="20" />
-					<OfficeBuildingIcon v-else-if="option.value === 'internal'" :size="20" />
-					<PencilIcon v-else :size="20" />
-					<span class="pw-visopt__body">
-						<span class="pw-visopt__name">{{ option.name }}</span>
-						<span class="pw-visopt__hint">{{ option.hint }}</span>
-					</span>
-				</button>
-			</div>
+			<VisibilityChoice v-model="visibility" />
 		</div>
 
 		<div class="pw-field">
@@ -72,14 +56,12 @@ import { defineComponent } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcDialog from '@nextcloud/vue/components/NcDialog'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
-import AccountMultipleIcon from 'vue-material-design-icons/AccountMultiple.vue'
-import OfficeBuildingIcon from 'vue-material-design-icons/OfficeBuilding.vue'
-import PencilIcon from 'vue-material-design-icons/Pencil.vue'
+import VisibilityChoice from '@/components/VisibilityChoice.vue'
 
 export default defineComponent({
 	name: 'CreateTicketDialog',
 
-	components: { NcButton, NcDialog, NcTextField, AccountMultipleIcon, OfficeBuildingIcon, PencilIcon },
+	components: { NcButton, NcDialog, NcTextField, VisibilityChoice },
 
 	props: {
 		open: { type: Boolean, default: false },
@@ -99,28 +81,6 @@ export default defineComponent({
 	},
 
 	computed: {
-		options(): { value: Visibility, name: string, hint: string }[] {
-			// Benannt nach dem Publikum, nicht nach der Technik (§7) — das traegt
-			// auch bei rein internen Projekten, wo „oeffentlich" falsch klaenge.
-			return [
-				{
-					value: 'public',
-					name: t('projektwerk', 'Alle Beteiligten'),
-					hint: t('projektwerk', 'Auch die Kundenseite sieht diesen Vorgang'),
-				},
-				{
-					value: 'internal',
-					name: t('projektwerk', 'Intern'),
-					hint: t('projektwerk', 'Nur meine Seite des Projekts'),
-				},
-				{
-					value: 'private',
-					name: t('projektwerk', 'Nur ich'),
-					hint: t('projektwerk', 'Entwurf — niemand sonst sieht ihn'),
-				},
-			]
-		},
-
 		canSave(): boolean {
 			return this.title.trim() !== '' && this.columnId !== null
 		},

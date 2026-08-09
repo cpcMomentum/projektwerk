@@ -518,6 +518,16 @@
 	color: inherit;
 }
 
+/*
+ * Gesperrt heißt sichtbar-aber-nicht-wählbar, nicht unsichtbar: Wer „Nur ich"
+ * sucht und es gar nicht fände, hielte es für einen Fehler. Der Grund steht im
+ * Hinweistext an der Stelle des sonstigen.
+ */
+.app-projektwerk .pw-visopt:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
 /* ---- Ticket-Detail ------------------------------------------------------ */
 
 /*
@@ -577,4 +587,63 @@
 	flex-direction: column;
 	padding-top: 6px;
 	border-top: 1px solid var(--color-border);
+}
+
+/* ---- Sichtbarkeit ändern ------------------------------------------------ */
+
+.app-projektwerk .pw-viscontrol {
+	gap: 10px;
+}
+
+.app-projektwerk .pw-viscontrol__now {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.app-projektwerk .pw-viscontrol__edit,
+.app-projektwerk .pw-viscontrol__warn {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.app-projektwerk .pw-viscontrol__actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+}
+
+/*
+ * Der Warnblock trägt Farbe UND Symbol UND Text (§9, „nie allein über Farbe").
+ * Der Rand steht links, weil der Blick beim Lesen dort ankommt.
+ */
+.app-projektwerk .pw-viscontrol__warn {
+	padding: 12px 14px;
+	border-inline-start: 4px solid var(--color-warning, var(--color-error));
+	border-radius: var(--border-radius-large);
+	background: var(--color-background-hover);
+}
+
+.app-projektwerk .pw-viscontrol__lead {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+	margin: 0;
+	font-weight: 600;
+	line-height: 1.45;
+}
+
+.app-projektwerk .pw-viscontrol__losing {
+	margin: 0;
+	padding-inline-start: 28px;
+	line-height: 1.6;
+	overflow-wrap: anywhere;
+}
+
+.app-projektwerk .pw-viscontrol__note {
+	margin: 0;
+	font-size: 13px;
+	color: var(--color-text-maxcontrast);
 }

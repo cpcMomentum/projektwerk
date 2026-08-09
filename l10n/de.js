@@ -41,6 +41,21 @@ OC.L10N.register(
     "Keine Beschreibung hinterlegt.": "Keine Beschreibung hinterlegt.",
     "Personen": "Personen",
     "angelegt": "angelegt",
-    "zuständig": "zuständig"
+    "zuständig": "zuständig",
+    "Sichtbarkeit": "Sichtbarkeit",
+    "Ändern": "Ändern",
+    "Rückgängig": "Rückgängig",
+    "Übernehmen": "Übernehmen",
+    "Auf „Nur ich\" herunterstufen kann nur die anlegende Person": "Auf „Nur ich\" herunterstufen kann nur die anlegende Person",
+    "Folgende Personen verlieren den Zugriff auf diesen Vorgang:": "Folgende Personen verlieren den Zugriff auf diesen Vorgang:",
+    "Folgende Personen verlieren den Zugriff auf diesen Vorgang und seine {comments} Kommentare:": "Folgende Personen verlieren den Zugriff auf diesen Vorgang und seine {comments} Kommentare:",
+    "Folgende Personen verlieren den Zugriff auf diesen Vorgang und seine {attachments} Anhänge:": "Folgende Personen verlieren den Zugriff auf diesen Vorgang und seine {attachments} Anhänge:",
+    "Folgende Personen verlieren den Zugriff auf diesen Vorgang, seine {comments} Kommentare und {attachments} Anhänge:": "Folgende Personen verlieren den Zugriff auf diesen Vorgang, seine {comments} Kommentare und {attachments} Anhänge:",
+    "Die Beteiligten werden nicht benachrichtigt.": "Die Beteiligten werden nicht benachrichtigt.",
+    "Sichtbarkeit ändern": "Sichtbarkeit ändern",
+    "Sichtbarkeit konnte nicht geprüft werden": "Sichtbarkeit konnte nicht geprüft werden",
+    "Sichtbarkeit konnte nicht geändert werden": "Sichtbarkeit konnte nicht geändert werden",
+    "Rückgängig machen fehlgeschlagen": "Rückgängig machen fehlgeschlagen",
+    "Der Vorgang wurde zwischenzeitlich geändert. Bitte neu laden.": "Der Vorgang wurde zwischenzeitlich geändert. Bitte neu laden."
 },
 "nplurals=2; plural=(n != 1);");
