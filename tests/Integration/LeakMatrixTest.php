@@ -13,6 +13,7 @@ use OCA\Projektwerk\Access\BoardAccess;
 use OCA\Projektwerk\Access\TicketScope;
 use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Controller\BoardController;
+use OCA\Projektwerk\Controller\DeepLinkController;
 use OCA\Projektwerk\Controller\TicketController;
 use OCA\Projektwerk\Db\AttachmentMapper;
 use OCA\Projektwerk\Db\BoardMapper;
@@ -139,6 +140,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'TicketMapper::findVisibleInBoard' => 'testEveryViewerSeesExactlyTheirTickets',
 		'TicketMapper::findVisible' => 'testSingleTicketAccessMatchesTheSameSet',
 		'TicketMapper::findVisibleAcrossBoards' => 'testMyTasksNeverWidensBeyondTheVisibleSet',
+		'TicketMapper::findVisibleAnywhere' => 'testDeepLinkLookupMatchesTheVisibleSet',
 		'TicketMapper::countVisibleInBoard' => 'testCountersNeverCountWhatIsHidden',
 		'TicketMapper::findLastPositionInColumn' => 'testLastPositionIsTheSameForEveryViewer',
 		// zusaetzlich gefahren von testBothCompanyNamesReachEveryViewer
@@ -167,6 +169,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'ticket#index' => 'testTicketIndexEndpointMatchesTheVisibleSet',
 		'ticket#show' => 'testTicketShowEndpointMatchesTheVisibleSet',
 		'ticket#visibilityImpact' => 'testVisibilityImpactNamesWhoLosesAccess',
+		'deepLink#ticket' => 'testDeepLinkTellsOnlyWhatTheViewerMaySee',
 	];
 
 	private LeakMatrixFixture $fixture;
@@ -686,6 +689,91 @@ class LeakMatrixTest extends IntegrationTestCase {
 					);
 				}
 			}
+		}
+	}
+
+	/**
+	 * Der Deep-Link-Lesepfad: dieselbe Menge, nur ohne Board-Einschraenkung.
+	 *
+	 * Der wichtigste Fall steht hier nicht als eigener Zweig, sondern als
+	 * Erwartung: **Auch ohne `boardId` faellt niemand durch.** `findVisible()`
+	 * bekommt das Board vom Aufrufer und stuetzt sich darauf; hier gibt es
+	 * keins, die Regel muss allein aus dem Mitgliedschaftsverbund entstehen.
+	 * Genau das ist die Stelle, an der eine Abkuerzung („erst das Board holen,
+	 * dann pruefen") unbemerkt zu weit oeffnen wuerde.
+	 */
+	public function testDeepLinkLookupMatchesTheVisibleSet(): void {
+		$tickets = Server::get(TicketMapper::class);
+
+		foreach (self::VISIBLE as $userId => $expected) {
+			foreach (LeakMatrixFixture::TICKETS as $label => $_) {
+				$ticketId = $this->fixture->ticketIds[$label];
+
+				if (in_array($label, $expected, true)) {
+					$this->assertSame(
+						$label,
+						$tickets->findVisibleAnywhere($userId, $ticketId)->getTitle(),
+						$userId . ' / ' . $label,
+					);
+					continue;
+				}
+
+				try {
+					$tickets->findVisibleAnywhere($userId, $ticketId);
+					$this->fail($userId . ' erreicht ' . $label . ' ueber den Deep-Link-Pfad.');
+				} catch (DoesNotExistException) {
+					$this->addToAssertionCount(1);
+				}
+			}
+		}
+	}
+
+	/**
+	 * Der Deep-Link-Endpunkt, fuenf Betrachter x neun Tickets.
+	 *
+	 * Geprueft wird **der Initial State**, nicht der Statuscode: Die Route
+	 * liefert immer dieselbe Huelle und immer 200 — auch fuer ein Ticket, das
+	 * es nicht gibt. Ein 404 waere hier die Auskunft „diese Nummer existiert,
+	 * du darfst sie nur nicht sehen" bzw. deren Gegenteil, und beides waere
+	 * genau die Frage, die die Sichtbarkeitsregel nicht beantworten soll.
+	 *
+	 * Deshalb ausdruecklich auch: **Nichtmitglied und unbekannte Nummer sehen
+	 * gleich aus.** Wer eine Zahl im Link hochzaehlt, lernt daraus nichts.
+	 */
+	public function testDeepLinkTellsOnlyWhatTheViewerMaySee(): void {
+		foreach (self::VISIBLE as $userId => $expected) {
+			$state = new CollectingInitialState();
+			$controller = new DeepLinkController(
+				$this->createStub(IRequest::class),
+				Server::get(TicketMapper::class),
+				$state,
+				$userId,
+			);
+
+			foreach (LeakMatrixFixture::TICKETS as $label => $_) {
+				$controller->ticket($this->fixture->ticketIds[$label]);
+				$target = $state->last();
+
+				if (in_array($label, $expected, true)) {
+					$this->assertTrue($target['available'], $userId . ' / ' . $label);
+					$this->assertSame($this->fixture->boardId, $target['boardId'], $userId . ' / ' . $label);
+				} else {
+					$this->assertFalse(
+						$target['available'],
+						$userId . ' bekommt ' . $label . ' ueber den Deep-Link, darf es aber nicht sehen.',
+					);
+					$this->assertArrayNotHasKey(
+						'boardId',
+						$target,
+						$userId . ' erfaehrt bei ' . $label . ', in welchem Projekt es liegt.',
+					);
+				}
+			}
+
+			// Eine Nummer, die es nicht gibt, sieht aus wie eine verborgene.
+			$controller->ticket(999999);
+			$this->assertFalse($state->last()['available'], $userId . ' / unbekannte Nummer');
+			$this->assertArrayNotHasKey('boardId', $state->last(), $userId . ' / unbekannte Nummer');
 		}
 	}
 

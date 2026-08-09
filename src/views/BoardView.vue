@@ -150,8 +150,9 @@ export default defineComponent({
 	watch: {
 		boardId: {
 			immediate: true,
-			handler(id: number) {
-				this.store.open(id)
+			async handler(id: number) {
+				await this.store.open(id)
+				this.openFromQuery()
 			},
 		},
 	},
@@ -193,6 +194,30 @@ export default defineComponent({
 
 		openTicket(ticket: Ticket) {
 			this.openTicketData = ticket
+		},
+
+		/**
+		 * Den Vorgang öffnen, den ein Deep-Link genannt hat.
+		 *
+		 * Läuft **nach** dem Laden, weil das Overlay das Ticket aus dem Speicher
+		 * nimmt. Fehlt es dort, passiert nichts weiter: Der Server hat die
+		 * Sichtbarkeit bereits geprüft, ein Fehlschlag hier wäre eine
+		 * zwischenzeitliche Änderung und keine Auskunft wert — das Board steht
+		 * dann eben offen, ohne Overlay.
+		 *
+		 * Die Kennung bleibt danach in der Adresse stehen. Das ist gewollt: So
+		 * trägt auch der kopierte Hash-Link innerhalb der App.
+		 */
+		openFromQuery() {
+			const wanted = Number(this.$route.query.ticket)
+			if (!Number.isInteger(wanted) || wanted <= 0) {
+				return
+			}
+
+			const ticket = this.store.tickets.get(wanted)
+			if (ticket !== undefined) {
+				this.openTicketData = ticket
+			}
 		},
 
 		/**
