@@ -96,6 +96,9 @@ final class ReadPathRegistry {
 		// beantwortet die Frage „darfst du diesen Vorgang sehen" — und damit
 		// gehoert die Route in die Matrix und nicht unter ROUTES_WITHOUT_DATA.
 		'deepLink#ticket',
+		// Liefert keine Schritte, sondern die Antwort auf „wem darf ich hier
+		// etwas geben" — und die folgt aus der Sichtbarkeitsregel.
+		'step#assignable',
 	];
 
 	/**

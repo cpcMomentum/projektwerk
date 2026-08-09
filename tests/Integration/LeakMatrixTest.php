@@ -25,6 +25,7 @@ use OCA\Projektwerk\Db\TaskFilter;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Db\TicketUserMapper;
 use OCA\Projektwerk\Service\MemberService;
+use OCA\Projektwerk\Service\StepService;
 use OCA\Projektwerk\Service\TicketService;
 use OCA\Projektwerk\Tests\ReadPathRegistry;
 use OCP\AppFramework\Db\DoesNotExistException;
@@ -170,6 +171,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'ticket#show' => 'testTicketShowEndpointMatchesTheVisibleSet',
 		'ticket#visibilityImpact' => 'testVisibilityImpactNamesWhoLosesAccess',
 		'deepLink#ticket' => 'testDeepLinkTellsOnlyWhatTheViewerMaySee',
+		'step#assignable' => 'testAssignableNeverOffersSomeoneWhoCannotSeeTheTicket',
 	];
 
 	private LeakMatrixFixture $fixture;
@@ -688,6 +690,48 @@ class LeakMatrixTest extends IntegrationTestCase {
 						$userId . ' bekommt ' . $label . ', darf es aber nicht sehen.',
 					);
 				}
+			}
+		}
+	}
+
+	/**
+	 * **Wem ein Schritt gegeben werden darf, deckt sich mit „wer das Ticket
+	 * sieht".**
+	 *
+	 * Der Test dreht die Matrix um: Nicht „was sieht dieser Betrachter", sondern
+	 * „wer taucht in der Vorschlagsliste dieses Tickets auf". Die Erwartung
+	 * entsteht deshalb aus derselben Konstante, nur transponiert — und genau
+	 * dieser Vergleich ist der Punkt: Eine Zuweisung an jemanden, der das Ticket
+	 * nicht oeffnen kann, ergaebe in „Meine Aufgaben" eine Zeile, die beim
+	 * Anklicken 404 liefert.
+	 */
+	public function testAssignableNeverOffersSomeoneWhoCannotSeeTheTicket(): void {
+		$service = Server::get(StepService::class);
+
+		foreach ([self::ANNA, self::BERT, self::CARLA, self::DIRK] as $userId) {
+			$viewer = $this->contextFor($userId);
+
+			foreach (self::VISIBLE[$userId] as $label) {
+				$vorschlaege = $service->assignableFor($viewer, $this->fixture->ticketIds[$label]);
+
+				// Aus der Matrix abgeleitet: Wer dieses Ticket laut VISIBLE
+				// sieht, gehoert in die Liste — und sonst niemand.
+				$erwartet = [];
+				foreach (self::VISIBLE as $kandidat => $sichtbar) {
+					if ($kandidat !== self::FREMD && in_array($label, $sichtbar, true)) {
+						$erwartet[] = $kandidat;
+					}
+				}
+
+				sort($erwartet);
+				$tatsaechlich = $vorschlaege;
+				sort($tatsaechlich);
+
+				$this->assertSame(
+					$erwartet,
+					$tatsaechlich,
+					$userId . ' bekommt bei ' . $label . ' eine Vorschlagsliste, die von der Sichtbarkeit abweicht.',
+				);
 			}
 		}
 	}
