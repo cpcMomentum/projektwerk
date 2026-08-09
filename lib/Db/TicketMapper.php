@@ -91,6 +91,36 @@ class TicketMapper extends QBMapper {
 	}
 
 	/**
+	 * Ein Ticket ueber alle Boards hinweg — fuer den Deep-Link.
+	 *
+	 * Der Deep-Link kennt **nur die Ticketnummer**, kein Board. Die naive
+	 * Loesung waere, zuerst das Board zu ermitteln und dann `findVisible()` zu
+	 * rufen — das waere ein zweiter Lesepfad auf `pwerk_tickets`, der die
+	 * Sichtbarkeitsregel gerade nicht durchlaeuft. Er verriete zwar nichts
+	 * nach aussen, aber er waere die Stelle, an der jemand spaeter „nur schnell"
+	 * etwas anderes damit beantwortet.
+	 *
+	 * Stattdessen dieselbe Abfrage wie ueberall, nur ohne Board-Einschraenkung:
+	 * `TicketScope` verbindet auf `pwerk_members` und bildet die Rolle je Board.
+	 * Wer kein Mitglied ist, faellt aus dem INNER JOIN — Nichtmitgliedschaft und
+	 * verborgenes Ticket ergeben damit denselben `DoesNotExistException`, und
+	 * genau das braucht der Deep-Link: eine Antwort, die nicht verraet, welcher
+	 * der beiden Faelle vorliegt.
+	 *
+	 * @throws DoesNotExistException Ticket unbekannt, nicht sichtbar oder Board fremd
+	 */
+	public function findVisibleAnywhere(string $userId, int $ticketId): Ticket {
+		$qb = $this->scopedQuery($userId, null);
+		$qb->select(self::T . '.*')
+			->andWhere($qb->expr()->eq(
+				self::T . '.id',
+				$qb->createNamedParameter($ticketId, IQueryBuilder::PARAM_INT),
+			));
+
+		return $this->findEntity($qb);
+	}
+
+	/**
 	 * „Meine Tickets" ueber alle Boards hinweg — verantwortlich **oder**
 	 * mitarbeitend (§ Meine Aufgaben).
 	 *

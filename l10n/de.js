@@ -57,6 +57,7 @@ OC.L10N.register(
     "Sichtbarkeit konnte nicht geändert werden": "Sichtbarkeit konnte nicht geändert werden",
     "Rückgängig machen fehlgeschlagen": "Rückgängig machen fehlgeschlagen",
     "Der Vorgang wurde zwischenzeitlich geändert. Bitte neu laden.": "Der Vorgang wurde zwischenzeitlich geändert. Bitte neu laden.",
-    "Der Vorgang wurde zwischenzeitlich geändert. Der Stand wurde neu geladen.": "Der Vorgang wurde zwischenzeitlich geändert. Der Stand wurde neu geladen."
+    "Der Vorgang wurde zwischenzeitlich geändert. Der Stand wurde neu geladen.": "Der Vorgang wurde zwischenzeitlich geändert. Der Stand wurde neu geladen.",
+    "Dieser Vorgang steht Ihnen nicht zur Verfügung. Fragen Sie die Projektleitung, falls Sie ihn erwartet haben.": "Dieser Vorgang steht Ihnen nicht zur Verfügung. Fragen Sie die Projektleitung, falls Sie ihn erwartet haben."
 },
 "nplurals=2; plural=(n != 1);");

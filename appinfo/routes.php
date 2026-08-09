@@ -46,10 +46,17 @@ return [
 		['name' => 'settings#addMember', 'url' => '/api/v1/boards/{boardId}/members', 'verb' => 'POST'],
 		['name' => 'settings#updateMember', 'url' => '/api/v1/boards/{boardId}/members/{userId}', 'verb' => 'PATCH'],
 
-		// Hinweis: Deep-Links aus E-Mail und Glocke duerfen NIEMALS ein '#'
-		// enthalten — ein Fragment erreicht den Server nie und geht beim
-		// Login-Umweg verloren, also genau bei den Gaesten, die den Link am
-		// dringendsten brauchen. Dafuer kommt eine fragmentfreie Server-Route
-		// mit Rechtepruefung und Weiterleitung, nicht die Hash-Route direkt.
+		// Deep-Links aus E-Mail und Glocke duerfen NIEMALS ein '#' enthalten —
+		// ein Fragment erreicht den Server nie und geht beim Login-Umweg
+		// verloren, also genau bei den Gaesten, die den Link am dringendsten
+		// brauchen. Deshalb diese Route: fragmentfrei, mit der Kennung im
+		// **Pfad** (kein '@' in Pfad oder Query, sonst verwirft Nextclouds
+		// Login-Controller das Ruecksprungziel stillschweigend).
+		//
+		// Sie liefert dieselbe Huelle wie page#index und legt das Ziel in den
+		// Initial State — kein Redirect auf die Hash-Route, der wuerde die
+		// Anmeldung ein zweites Mal durchlaufen und das Fragment am selben
+		// Punkt wieder verlieren.
+		['name' => 'deepLink#ticket', 'url' => '/t/{ticketId}', 'verb' => 'GET'],
 	],
 ];

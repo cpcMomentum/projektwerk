@@ -57,6 +57,7 @@ OC.L10N.register(
     "Sichtbarkeit konnte nicht geändert werden": "Could not change visibility",
     "Rückgängig machen fehlgeschlagen": "Undo failed",
     "Der Vorgang wurde zwischenzeitlich geändert. Bitte neu laden.": "The item has changed in the meantime. Please reload.",
-    "Der Vorgang wurde zwischenzeitlich geändert. Der Stand wurde neu geladen.": "The item has changed in the meantime. The view has been reloaded."
+    "Der Vorgang wurde zwischenzeitlich geändert. Der Stand wurde neu geladen.": "The item has changed in the meantime. The view has been reloaded.",
+    "Dieser Vorgang steht Ihnen nicht zur Verfügung. Fragen Sie die Projektleitung, falls Sie ihn erwartet haben.": "This item is not available to you. Ask the project lead if you expected to see it."
 },
 "nplurals=2; plural=(n != 1);");
