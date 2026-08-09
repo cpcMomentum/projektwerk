@@ -332,9 +332,18 @@ export default defineComponent({
 				await run()
 				await this.store.open(this.boardId)
 				this.fillDraft()
-				// Die Entwuerfe sind mit dem Neuladen ueberholt; blieben sie
-				// stehen, ueberdeckten sie den Stand vom Server.
-				this.columnDrafts = {}
+				// Nur Entwuerfe verwerfen, die den frischen Serverstand nur
+				// wiederholen — sonst ueberdeckten sie ihn. Ein Entwurf, der
+				// noch abweicht, weil sein eigener Schreibvorgang waehrend
+				// dieses hier blockiert war (busy erlaubt nur einen
+				// gleichzeitig), bleibt stehen statt stillschweigend zu
+				// verschwinden.
+				for (const [id, draft] of Object.entries(this.columnDrafts)) {
+					const column = this.store.columns.find((c) => c.id === Number(id))
+					if (column === undefined || draft === column.title) {
+						delete this.columnDrafts[Number(id)]
+					}
+				}
 			} catch (e) {
 				showError((e as { message?: string }).message ?? fallback)
 			} finally {
