@@ -4,36 +4,44 @@
 		:name="t('projektwerk', 'Neuer Vorgang')"
 		size="normal"
 		@update:open="$emit('update:open', $event)">
-		<div class="pw-field">
-			<label for="pw-new-title">{{ t('projektwerk', 'Titel') }}</label>
-			<NcTextField
-				id="pw-new-title"
-				v-model="title"
-				:label="t('projektwerk', 'Titel')" />
-		</div>
-
-		<div class="pw-field">
-			<label for="pw-new-desc">{{ t('projektwerk', 'Beschreibung') }}</label>
-			<textarea id="pw-new-desc" v-model="description" rows="4" />
-		</div>
-
 		<!--
-			Die Sichtbarkeitszeile steht neben Titel und Beschreibung, ist NIE
-			eingeklappt und nie hinter einem Zahnrad (§9). Voreinstellung „Alle
-			Beteiligten", fuer alle Rollen gleich.
+			Die App-Klasse MUSS hier drin stehen: NcDialog teleportiert seinen
+			Inhalt an den `body`, wo `.app-projektwerk` kein Vorfahr mehr ist.
+			Ohne sie steht die Sichtbarkeitszeile aus §9 unformatiert da, und die
+			Klickflaechen fallen unter `--default-clickable-area`.
 		-->
-		<div class="pw-field">
-			<label>{{ t('projektwerk', 'Wer sieht diesen Vorgang?') }}</label>
-			<VisibilityChoice v-model="visibility" />
-		</div>
+		<div class="app-projektwerk">
+			<div class="pw-field">
+				<label for="pw-new-title">{{ t('projektwerk', 'Titel') }}</label>
+				<NcTextField
+					id="pw-new-title"
+					v-model="title"
+					:label="t('projektwerk', 'Titel')" />
+			</div>
 
-		<div class="pw-field">
-			<label for="pw-new-col">{{ t('projektwerk', 'Spalte') }}</label>
-			<select id="pw-new-col" v-model="columnId">
-				<option v-for="column in columns" :key="column.id" :value="column.id">
-					{{ column.title }}
-				</option>
-			</select>
+			<div class="pw-field">
+				<label for="pw-new-desc">{{ t('projektwerk', 'Beschreibung') }}</label>
+				<textarea id="pw-new-desc" v-model="description" rows="4" />
+			</div>
+
+			<!--
+				Die Sichtbarkeitszeile steht neben Titel und Beschreibung, ist NIE
+				eingeklappt und nie hinter einem Zahnrad (§9). Voreinstellung „Alle
+				Beteiligten", fuer alle Rollen gleich.
+			-->
+			<div class="pw-field">
+				<label>{{ t('projektwerk', 'Wer sieht diesen Vorgang?') }}</label>
+				<VisibilityChoice v-model="visibility" />
+			</div>
+
+			<div class="pw-field">
+				<label for="pw-new-col">{{ t('projektwerk', 'Spalte') }}</label>
+				<select id="pw-new-col" v-model="columnId">
+					<option v-for="column in columns" :key="column.id" :value="column.id">
+						{{ column.title }}
+					</option>
+				</select>
+			</div>
 		</div>
 
 		<template #actions>
