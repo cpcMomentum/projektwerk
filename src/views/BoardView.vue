@@ -85,7 +85,8 @@
 			:orgInternal="store.board?.orgInternal ?? ''"
 			:orgExternal="store.board?.orgExternal ?? ''"
 			:showVisibility="showVisibility"
-			@close="openTicketData = null" />
+			@close="openTicketData = null"
+			@changed="applyChanged" />
 
 		<CreateTicketDialog
 			:open="creating"
@@ -183,6 +184,21 @@ export default defineComponent({
 		},
 
 		openTicket(ticket: Ticket) {
+			this.openTicketData = ticket
+		},
+
+		/**
+		 * Ein geändertes Ticket in Karte und Overlay übernehmen.
+		 *
+		 * Beide Stellen, weil beide denselben Stand zeigen: Das Overlay hält
+		 * eine eigene Referenz, die sonst auf dem alten `version`-Wert stünde —
+		 * und der nächste Schreibversuch aus dem offenen Overlay liefe damit in
+		 * einen 409, obwohl niemand sonst etwas geändert hat.
+		 *
+		 * @param ticket Der neue Stand vom Server.
+		 */
+		applyChanged(ticket: Ticket) {
+			this.store.replaceTicket(ticket)
 			this.openTicketData = ticket
 		},
 
