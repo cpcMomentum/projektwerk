@@ -33,9 +33,20 @@
 					</span>
 				</header>
 
+				<!-- Die Marke steht ueber dem Titel (§9), hier als ganze Zeile. -->
+				<WaitBadge :state="waiting" :fromClientSide="fromClientSide" />
+
 				<h2 class="pw-detail__title">
 					{{ ticket.title }}
 				</h2>
+
+				<!--
+					Im Detail als Satz mit Namen, nicht nur als Marke: Wer wartet,
+					ist hier die eigentliche Auskunft.
+				-->
+				<p v-if="waitingSentence" class="pw-wait__sentence">
+					{{ waitingSentence }}
+				</p>
 
 				<!--
 					Sprechender Leerzustand statt einer leeren Flaeche (§9) — er sagt
@@ -96,11 +107,18 @@
 					:members="members"
 					@changed="$emit('changed', $event)" />
 
+				<StepList
+					:boardId="ticket.boardId"
+					:ticketId="ticket.id"
+					:steps="steps"
+					:members="members"
+					@changed="$emit('stepsChanged')" />
+
 				<!--
-					Arbeitsschritte, Anhaenge und Kommentare stehen in §9 ebenfalls
-					im Detail — sie kommen mit den Phasen 3 und 5. Bis dahin steht
-					hier nichts statt einer leeren Ueberschrift, die etwas
-					verspricht, das es noch nicht gibt.
+					Anhaenge und Kommentare stehen in §9 ebenfalls im Detail — sie
+					kommen mit Phase 5. Bis dahin steht hier nichts statt einer
+					leeren Ueberschrift, die etwas verspricht, das es noch nicht
+					gibt.
 				-->
 			</div>
 		</div>
@@ -110,7 +128,7 @@
 <script lang="ts">
 import type { PropType } from 'vue'
 import type { Column, Member, ViewerInfo } from '@/types/board'
-import type { Ticket } from '@/types/ticket'
+import type { Step, Ticket, WaitState } from '@/types/ticket'
 
 import { t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
@@ -119,12 +137,14 @@ import NcModal from '@nextcloud/vue/components/NcModal'
 import AccountMultipleIcon from 'vue-material-design-icons/AccountMultiple.vue'
 import OfficeBuildingIcon from 'vue-material-design-icons/OfficeBuilding.vue'
 import PencilIcon from 'vue-material-design-icons/Pencil.vue'
+import StepList from '@/components/StepList.vue'
 import VisibilityControl from '@/components/VisibilityControl.vue'
+import WaitBadge from '@/components/WaitBadge.vue'
 
 export default defineComponent({
 	name: 'TicketDetail',
 
-	components: { AccountMultipleIcon, NcAvatar, NcModal, OfficeBuildingIcon, PencilIcon, VisibilityControl },
+	components: { AccountMultipleIcon, NcAvatar, NcModal, OfficeBuildingIcon, PencilIcon, StepList, VisibilityControl, WaitBadge },
 
 	props: {
 		ticket: { type: Object as PropType<Ticket | null>, default: null },
@@ -135,9 +155,13 @@ export default defineComponent({
 		orgExternal: { type: String, default: '' },
 		/** Nur die interne Seite sieht die Kennzeichnung (§9). */
 		showVisibility: { type: Boolean, default: false },
+		steps: { type: Array as PropType<Step[]>, default: () => [] },
+		waiting: { type: Object as PropType<WaitState | null>, default: null },
+		/** Aus Sicht der Kundenseite formuliert. */
+		fromClientSide: { type: Boolean, default: false },
 	},
 
-	emits: ['close', 'changed'],
+	emits: ['close', 'changed', 'stepsChanged'],
 
 	computed: {
 		paddedNumber(): string {
@@ -146,6 +170,28 @@ export default defineComponent({
 
 		columnTitle(): string {
 			return this.columns.find((c) => c.id === this.ticket?.columnId)?.title ?? ''
+		},
+
+		/**
+		 * Der Satz mit Namen, den §9 im Detail verlangt.
+		 *
+		 * Aus den Kennungen, die der Server geliefert hat — die Rechnung selbst
+		 * bleibt dort. Hier werden nur Namen eingesetzt.
+		 */
+		waitingSentence(): string {
+			const namen = (this.waiting?.userIds ?? []).map((userId) => this.nameOf(userId))
+			if (namen.length === 0) {
+				return ''
+			}
+
+			const liste = namen.join(', ')
+
+			// Aus Kundensicht ist „wartet auf" schief — sie sind die Wartenden.
+			// „Liegt bei" sagt dasselbe aus ihrer Lage heraus und nennt, wer
+			// von ihnen gemeint ist.
+			return this.fromClientSide
+				? t('projektwerk', 'Dieser Vorgang liegt bei: {names}', { names: liste })
+				: t('projektwerk', 'Dieser Vorgang wartet auf die Kundenseite: {names}', { names: liste })
 		},
 
 		visibilityLabel(): string {

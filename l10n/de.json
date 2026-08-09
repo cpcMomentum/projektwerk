@@ -90,7 +90,23 @@
         "Mitglied konnte nicht hinzugefügt werden": "Mitglied konnte nicht hinzugefügt werden",
         "Rolle konnte nicht geändert werden": "Rolle konnte nicht geändert werden",
         "Verwaltungsrecht konnte nicht geändert werden": "Verwaltungsrecht konnte nicht geändert werden",
-        "Archivieren fehlgeschlagen": "Archivieren fehlgeschlagen"
+        "Archivieren fehlgeschlagen": "Archivieren fehlgeschlagen",
+        "wartet auf Kunde": "wartet auf Kunde",
+        "wartet auf euch": "wartet auf euch",
+        "wartet auf Kunde · seit {date}": "wartet auf Kunde · seit {date}",
+        "wartet auf euch · seit {date}": "wartet auf euch · seit {date}",
+        "Dieser Vorgang wartet auf die Kundenseite: {names}": "Dieser Vorgang wartet auf die Kundenseite: {names}",
+        "Nur wartend": "Nur wartend",
+        "Hier wartet nichts.": "Hier wartet nichts.",
+        "Arbeitsschritte": "Arbeitsschritte",
+        "Noch keine Arbeitsschritte.": "Noch keine Arbeitsschritte.",
+        "Neuer Arbeitsschritt": "Neuer Arbeitsschritt",
+        "Zuständig": "Zuständig",
+        "Niemand": "Niemand",
+        "Arbeitsschritt konnte nicht angelegt werden": "Arbeitsschritt konnte nicht angelegt werden",
+        "Ändern fehlgeschlagen": "Ändern fehlgeschlagen",
+        "Zuweisung fehlgeschlagen": "Zuweisung fehlgeschlagen",
+        "Dieser Vorgang liegt bei: {names}": "Dieser Vorgang liegt bei: {names}"
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }

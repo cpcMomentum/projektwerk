@@ -41,6 +41,35 @@ export interface Ticket {
 	updatedAt: string | null
 }
 
+export interface Step {
+	id: number
+	ticketId: number
+	title: string
+	assignedUserId: string | null
+	/** Bei der Zuweisung **kopiert**, nicht zur Laufzeit ermittelt. */
+	assignedRole: MemberRole | null
+	assignedAt: string | null
+	done: boolean
+	doneAt: string | null
+	/** JJJJ-MM-TT oder null. */
+	dueDate: string | null
+	position: number
+	createdAt: string | null
+}
+
+/**
+ * „Wartet auf Kunde" — gerechnet, nie gespeichert.
+ *
+ * Kommt mit jeder Ticketabfrage aus denselben Schritten, die auch die Zähler
+ * speisen. Ein gespeichertes Feld müsste bei jedem Zuweisen, Erledigen und
+ * Rollenwechsel mitgepflegt werden.
+ */
+export interface WaitState {
+	/** Das **kleinste** `assignedAt` der wartenden Schritte, nicht das jüngste. */
+	since: string
+	userIds: string[]
+}
+
 /** Zähler je Ticket-ID, aus derselben gefilterten Menge wie die Tickets. */
 export type CountsByTicketId = Record<number, number>
 
@@ -49,15 +78,19 @@ export interface TicketList {
 	counts: {
 		comments: CountsByTicketId
 		steps: CountsByTicketId
+		stepsDone: CountsByTicketId
 		attachments: CountsByTicketId
 		collaborators: CountsByTicketId
 	}
+	/** Nur die wartenden Tickets stehen drin. */
+	waiting: Record<number, WaitState>
 }
 
 export interface TicketDetail {
 	ticket: Ticket
+	waiting: WaitState | null
 	comments: unknown[]
-	steps: unknown[]
+	steps: Step[]
 	attachments: unknown[]
 	collaborators: unknown[]
 }

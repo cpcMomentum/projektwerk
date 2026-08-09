@@ -711,3 +711,68 @@
 	font-size: 13px;
 	color: var(--color-text-maxcontrast);
 }
+
+/* ---- Wartemarke ---------------------------------------------------------- */
+
+/*
+ * Abgesetzt, aber nicht laut: Die Marke sagt „hier bist du gerade nicht dran".
+ * Farbe UND Symbol UND Text, wie jede Kennzeichnung in dieser App (§9) — wer
+ * die Farbe nicht sieht, liest denselben Satz.
+ */
+.app-projektwerk .pw-wait {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	align-self: flex-start;
+	padding: 3px 9px;
+	border-radius: var(--border-radius-large);
+	background: var(--color-warning, var(--color-primary-element-light));
+	color: var(--color-main-text);
+	font-size: 12.5px;
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+.app-projektwerk .pw-wait--compact {
+	padding: 2px 7px;
+	font-size: 11.5px;
+}
+
+.app-projektwerk .pw-wait__sentence {
+	margin: 0;
+	line-height: 1.5;
+}
+
+/* ---- Arbeitsschritte ----------------------------------------------------- */
+
+.app-projektwerk .pw-step {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 10px;
+	padding: 5px 0;
+	min-height: var(--default-clickable-area, 44px);
+}
+
+.app-projektwerk .pw-step__title {
+	flex: 1 1 160px;
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+/* Erledigt wird durchgestrichen UND ausgegraut — nie nur ueber die Farbe. */
+.app-projektwerk .pw-step__title--done {
+	color: var(--color-text-maxcontrast);
+	text-decoration: line-through;
+}
+
+.app-projektwerk .pw-step__due {
+	font-size: 12px;
+	color: var(--color-text-maxcontrast);
+	font-variant-numeric: tabular-nums;
+}
+
+.app-projektwerk .pw-step--new {
+	padding-top: 10px;
+	border-top: 1px solid var(--color-border);
+}

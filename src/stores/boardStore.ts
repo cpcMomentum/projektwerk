@@ -11,7 +11,7 @@
  */
 
 import type { Board, BoardDetail, Column, Member, ViewerInfo } from '@/types/board'
-import type { Ticket, TicketList } from '@/types/ticket'
+import type { Ticket, TicketList, WaitState } from '@/types/ticket'
 
 import { defineStore } from 'pinia'
 import { fetchBoard, fetchBoards } from '@/services/boards'
@@ -28,6 +28,10 @@ interface State {
 	/** Ticket-IDs je Spalte, in Serverreihenfolge. */
 	columnOrder: Map<number, number[]>
 	counts: TicketList['counts'] | null
+	/** Gerechnet, nie gespeichert — nur die wartenden Tickets stehen drin. */
+	waiting: Record<number, WaitState>
+	/** Filterschalter „Nur wartend"; liegt quer zu den Spalten. */
+	onlyWaiting: boolean
 	loading: boolean
 	error: string | null
 }
@@ -42,6 +46,8 @@ export const useBoardStore = defineStore('board', {
 		tickets: new Map(),
 		columnOrder: new Map(),
 		counts: null,
+		waiting: {},
+		onlyWaiting: false,
 		loading: false,
 		error: null,
 	}),
@@ -76,6 +82,17 @@ export const useBoardStore = defineStore('board', {
 		 * genau eine.
 		 */
 		orgLine: () => (board: Pick<Board, 'orgInternal' | 'orgExternal'>): string => [board.orgInternal, board.orgExternal].filter(Boolean).join(' · '),
+
+		/**
+		 * Wie viele sichtbare Vorgänge gerade warten.
+		 *
+		 * Für die Zählanzeige am Filterschalter. Aus derselben Menge wie die
+		 * Marken selbst — ein eigener Zähler wäre der zweite Ort, an dem die
+		 * Regel stimmen müsste.
+		 *
+		 * @param state Der Speicher.
+		 */
+		waitingCount: (state): number => Object.keys(state.waiting).length,
 
 		/**
 		 * Der anzuzeigende Name einer Person.
@@ -192,6 +209,9 @@ export const useBoardStore = defineStore('board', {
 		applyTickets(list: TicketList): void {
 			this.tickets = new Map(list.tickets.map((ticket) => [ticket.id, ticket]))
 			this.counts = list.counts
+			// Gerechnet, nie gespeichert — kommt mit derselben Antwort wie die
+			// Tickets, aus denselben Schritten wie die Zähler.
+			this.waiting = list.waiting ?? {}
 
 			const order = new Map<number, number[]>()
 			for (const column of this.columns) {
@@ -206,12 +226,20 @@ export const useBoardStore = defineStore('board', {
 		/**
 		 * Die Tickets einer Spalte, in Serverreihenfolge.
 		 *
+		 * Der Filter „Nur wartend" greift hier und nicht in einer eigenen
+		 * Abfrage: Der Zustand liegt **quer** zu den Spalten, und eine zweite
+		 * Abfrage wäre ein zweiter Ort, an dem die Sichtbarkeit stimmen müsste.
+		 *
 		 * @param columnId Kennung der Spalte.
 		 */
 		ticketsIn(columnId: number): Ticket[] {
-			return (this.columnOrder.get(columnId) ?? [])
+			const inColumn = (this.columnOrder.get(columnId) ?? [])
 				.map((id) => this.tickets.get(id))
 				.filter((t): t is Ticket => t !== undefined)
+
+			return this.onlyWaiting
+				? inColumn.filter((ticket) => this.waiting[ticket.id] !== undefined)
+				: inColumn
 		},
 	},
 })

@@ -12,6 +12,7 @@ namespace OCA\Projektwerk\Controller;
 use OCA\Projektwerk\Access\BoardAccess;
 use OCA\Projektwerk\Access\NotAMemberException;
 use OCA\Projektwerk\Access\ViewerContext;
+use OCA\Projektwerk\Access\WaitStateCalculator;
 use OCA\Projektwerk\AppInfo\Application;
 use OCA\Projektwerk\Db\AttachmentMapper;
 use OCA\Projektwerk\Db\CommentMapper;
@@ -50,6 +51,7 @@ class TicketController extends Controller {
 		private AttachmentMapper $attachments,
 		private TicketUserMapper $ticketUsers,
 		private TicketService $service,
+		private WaitStateCalculator $waitState,
 		private BoardAccess $access,
 		private ?string $userId,
 	) {
@@ -68,12 +70,22 @@ class TicketController extends Controller {
 		return $this->withViewer($boardId, function (ViewerContext $viewer) use ($columnId): JSONResponse {
 			$tickets = $this->tickets->findVisibleInBoard($viewer, $columnId);
 			$ids = array_map(static fn ($ticket): int => (int)$ticket->getId(), $tickets);
+			$steps = $this->steps->findForTickets($ids);
 
 			return new JSONResponse([
 				'tickets' => $tickets,
+				// „Wartet auf Kunde" wird gerechnet, nie gespeichert — und aus
+				// **denselben** Schritten, die auch die Zaehler speisen. Eine
+				// zweite Abfrage waere ein zweiter Ort, an dem die Sichtbarkeit
+				// stimmen muesste.
+				'waiting' => $this->waitState->forTickets($tickets, $steps),
 				'counts' => [
 					'comments' => $this->comments->countForTickets($ids),
 					'steps' => $this->steps->countForTickets($ids),
+					// Erledigte je Ticket aus **derselben** Menge wie die
+					// Gesamtzahl — „3 von 5" darf nicht aus zwei Abfragen
+					// stammen, sonst zeigt die Karte irgendwann 6 von 5.
+					'stepsDone' => $this->doneCounts($steps),
 					'attachments' => $this->attachments->countForTickets($ids),
 					'collaborators' => $this->ticketUsers->countForTickets($ids),
 				],
@@ -99,11 +111,13 @@ class TicketController extends Controller {
 			}
 
 			$ids = [(int)$ticket->getId()];
+			$steps = $this->steps->findForTickets($ids);
 
 			return new JSONResponse([
 				'ticket' => $ticket,
+				'waiting' => $this->waitState->forTicket($ticket, $steps),
 				'comments' => $this->comments->findForTickets($ids),
-				'steps' => $this->steps->findForTickets($ids),
+				'steps' => $steps,
 				'attachments' => $this->attachments->findForTickets($ids),
 				'collaborators' => $this->ticketUsers->findForTickets($ids),
 			]);
@@ -211,6 +225,28 @@ class TicketController extends Controller {
 	public function visibility(int $boardId, int $ticketId, int $version, string $visibility): JSONResponse {
 		return $this->write($boardId, fn (ViewerContext $viewer): mixed
 			=> $this->service->changeVisibility($viewer, $ticketId, $version, $visibility));
+	}
+
+	/**
+	 * Wie viele Schritte je Ticket erledigt sind.
+	 *
+	 * Aus derselben Menge wie die Gesamtzahl — „3 von 5" darf nicht aus zwei
+	 * Abfragen stammen, sonst zeigt die Karte irgendwann 6 von 5.
+	 *
+	 * @param \OCA\Projektwerk\Db\Step[] $steps
+	 * @return array<int, int>
+	 */
+	private function doneCounts(array $steps): array {
+		$done = [];
+		foreach ($steps as $step) {
+			$ticketId = (int)$step->getTicketId();
+			$done[$ticketId] ??= 0;
+			if ($step->isDone()) {
+				$done[$ticketId]++;
+			}
+		}
+
+		return $done;
 	}
 
 	/**

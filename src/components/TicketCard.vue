@@ -20,6 +20,13 @@
 				</span>
 			</span>
 
+			<!--
+				Die Marke steht ueber dem Titel: Sie beantwortet, ob die Karte
+				einen gerade etwas angeht — das liest man vor dem Titel, nicht
+				danach.
+			-->
+			<WaitBadge :state="waitState" :fromClientSide="fromClientSide" :compact="true" />
+
 			<span class="pw-card__title">{{ ticket.title }}</span>
 
 			<span class="pw-card__foot">
@@ -68,7 +75,7 @@
 <script lang="ts">
 import type { PropType } from 'vue'
 import type { Column } from '@/types/board'
-import type { Ticket } from '@/types/ticket'
+import type { Ticket, WaitState } from '@/types/ticket'
 
 import { t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
@@ -82,11 +89,13 @@ import CommentOutlineIcon from 'vue-material-design-icons/CommentOutline.vue'
 import FormatListChecksIcon from 'vue-material-design-icons/FormatListChecks.vue'
 import OfficeBuildingIcon from 'vue-material-design-icons/OfficeBuilding.vue'
 import PencilIcon from 'vue-material-design-icons/Pencil.vue'
+import WaitBadge from '@/components/WaitBadge.vue'
 
 export default defineComponent({
 	name: 'TicketCard',
 
 	components: {
+		WaitBadge,
 		AccountMultipleIcon,
 		ArrowRightIcon,
 		CommentOutlineIcon,
@@ -110,6 +119,10 @@ export default defineComponent({
 		commentCount: { type: Number, default: 0 },
 		stepCount: { type: Number, default: 0 },
 		stepsDone: { type: Number, default: 0 },
+		/** Der gerechnete Wartezustand, oder null. */
+		waitState: { type: Object as PropType<WaitState | null>, default: null },
+		/** Aus Sicht der Kundenseite formuliert. */
+		fromClientSide: { type: Boolean, default: false },
 	},
 
 	emits: ['open', 'move'],
