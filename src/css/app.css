@@ -776,3 +776,46 @@
 	padding-top: 10px;
 	border-top: 1px solid var(--color-border);
 }
+
+/* ---- Kontensuche --------------------------------------------------------- */
+
+.app-projektwerk .pw-settings__hits {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.app-projektwerk .pw-settings__hit {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 1px;
+	padding: 6px 12px;
+	min-height: var(--default-clickable-area, 44px);
+	border: 1px solid var(--color-border-dark);
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+	color: var(--color-main-text);
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.app-projektwerk .pw-settings__hit[aria-pressed='true'] {
+	border-color: var(--color-primary-element);
+	background: var(--color-primary-element-light);
+}
+
+/*
+ * Die Kennung eines Gastkontos ist ein 64-stelliger Hash. Sie gehoert
+ * trotzdem hin — zwei Konten mit gleichem Anzeigenamen waeren sonst nicht
+ * unterscheidbar —, aber sie darf die Zeile nicht sprengen. Gekuerzt
+ * angezeigt, vollstaendig im Titel.
+ */
+.app-projektwerk .pw-settings__hit .pw-person__org {
+	display: block;
+	max-width: 22ch;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}

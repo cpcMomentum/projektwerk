@@ -16,7 +16,7 @@
 
 import type { Board, Column, Member, MemberRole } from '@/types/board'
 
-import { apiPatch, apiPost, apiPut } from '@/services/api'
+import { apiGet, apiPatch, apiPost, apiPut } from '@/services/api'
 
 /**
  * Ein neues Projekt. Wer anlegt, wird Eigentümer und interner Verwalter.
@@ -142,4 +142,30 @@ export async function updateMember(boardId: number, userId: string, changes: {
 	displayName?: string | null
 }): Promise<Member> {
 	return apiPatch<Member, typeof changes>(`/boards/${boardId}/members/${encodeURIComponent(userId)}`, changes)
+}
+
+/** Ein Nextcloud-Konto, das noch nicht Mitglied ist. */
+export interface Candidate {
+	userId: string
+	displayName: string
+}
+
+/**
+ * Konten suchen, um sie hinzuzufügen.
+ *
+ * **Nicht Nextclouds Personensuche**, sondern ein eigener Endpunkt. Der Grund
+ * steht dort: Nextclouds Sucher liefert in Gast-Sitzungen prinzipbedingt eine
+ * leere Liste, und ein Aufruf mit dieser Eigenschaft im Frontend wäre
+ * irgendwann an eine Stelle kopiert, wo Gäste hinkommen.
+ *
+ * Der Endpunkt weist ohne Verwaltungsrecht mit 403 ab — nicht mit einer leeren
+ * Liste, die wie „niemand gefunden" aussähe.
+ *
+ * @param boardId Kennung des Projekts.
+ * @param search Suchbegriff.
+ */
+export async function searchCandidates(boardId: number, search: string): Promise<Candidate[]> {
+	const antwort = await apiGet<{ users: Candidate[] }>(`/boards/${boardId}/member-search?search=${encodeURIComponent(search)}`)
+
+	return antwort.users
 }

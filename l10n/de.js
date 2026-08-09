@@ -78,7 +78,6 @@ OC.L10N.register(
     "Rolle": "Rolle",
     "Kundenseite": "Kundenseite",
     "Verwaltung": "Verwaltung",
-    "Benutzerkennung": "Benutzerkennung",
     "Personenweise, keine Gruppen — die Rolle hängt an der Mitgliedschaft, nicht am Nextcloud-Konto.": "Personenweise, keine Gruppen — die Rolle hängt an der Mitgliedschaft, nicht am Nextcloud-Konto.",
     "Archiv": "Archiv",
     "Ein archiviertes Projekt bleibt lesbar und verschwindet aus der Projektliste.": "Ein archiviertes Projekt bleibt lesbar und verschwindet aus der Projektliste.",
@@ -107,6 +106,9 @@ OC.L10N.register(
     "Arbeitsschritt konnte nicht angelegt werden": "Arbeitsschritt konnte nicht angelegt werden",
     "Ändern fehlgeschlagen": "Ändern fehlgeschlagen",
     "Zuweisung fehlgeschlagen": "Zuweisung fehlgeschlagen",
-    "Dieser Vorgang liegt bei: {names}": "Dieser Vorgang liegt bei: {names}"
+    "Dieser Vorgang liegt bei: {names}": "Dieser Vorgang liegt bei: {names}",
+    "Person suchen": "Person suchen",
+    "Keine passenden Konten gefunden.": "Keine passenden Konten gefunden.",
+    "Suche fehlgeschlagen": "Suche fehlgeschlagen"
 },
 "nplurals=2; plural=(n != 1);");

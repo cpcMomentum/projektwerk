@@ -170,9 +170,16 @@
 				</div>
 
 				<div class="pw-settings__row">
+					<!--
+						Eigener Endpunkt statt Nextclouds Personensuche: Die
+						liefert in Gast-Sitzungen eine leere Liste, und ein
+						Aufruf mit dieser Eigenschaft waere irgendwann an einer
+						Stelle kopiert, wo Gaeste hinkommen.
+					-->
 					<NcTextField
-						v-model="newMember"
-						:label="t('projektwerk', 'Benutzerkennung')" />
+						v-model="memberSearch"
+						:label="t('projektwerk', 'Person suchen')"
+						@update:modelValue="searchPeople" />
 					<select v-model="newMemberRole" :aria-label="t('projektwerk', 'Rolle')">
 						<option value="internal">
 							{{ t('projektwerk', 'Intern') }}
@@ -181,10 +188,30 @@
 							{{ t('projektwerk', 'Kundenseite') }}
 						</option>
 					</select>
-					<NcButton :disabled="busy || newMember.trim() === ''" @click="addMemberToBoard">
+					<NcButton :disabled="busy || newMember === ''" @click="addMemberToBoard">
 						{{ t('projektwerk', 'Hinzufügen') }}
 					</NcButton>
 				</div>
+
+				<div v-if="candidates.length > 0" class="pw-settings__hits">
+					<button
+						v-for="person in candidates"
+						:key="person.userId"
+						type="button"
+						class="pw-settings__hit"
+						:aria-pressed="newMember === person.userId"
+						@click="newMember = person.userId">
+						<!--
+							Name UND Kennung: Zwei Konten mit gleichem
+							Anzeigenamen waeren sonst nicht unterscheidbar.
+						-->
+						<span class="pw-person__name">{{ person.displayName }}</span>
+						<span class="pw-person__org" :title="person.userId">{{ person.userId }}</span>
+					</button>
+				</div>
+				<span v-else-if="memberSearch.trim() !== '' && !searching" class="pw-settings__hint">
+					{{ t('projektwerk', 'Keine passenden Konten gefunden.') }}
+				</span>
 				<span class="pw-settings__hint">
 					{{ t('projektwerk', 'Personenweise, keine Gruppen — die Rolle hängt an der Mitgliedschaft, nicht am Nextcloud-Konto.') }}
 				</span>
@@ -208,6 +235,7 @@
 </template>
 
 <script lang="ts">
+import type { Candidate } from '@/services/settings'
 import type { Column, Member, MemberRole } from '@/types/board'
 
 import { t } from '@nextcloud/l10n'
@@ -224,6 +252,7 @@ import {
 	createColumn,
 	renameColumn,
 	reorderColumns,
+	searchCandidates,
 	setBoardArchived,
 	updateBoard,
 	updateMember,
@@ -255,6 +284,11 @@ export default defineComponent({
 			/** Entwurf je Spalte, solange getippt wird. */
 			columnDrafts: {} as Record<number, string>,
 			newMember: '',
+			memberSearch: '',
+			searching: false,
+			candidates: [] as Candidate[],
+			searchTimer: null as ReturnType<typeof setTimeout> | null,
+			searchToken: 0,
 			newMemberRole: 'external' as MemberRole,
 			// Ein eigener Entwurf statt direkter Bindung an den Speicher: Sonst
 			// stuenden Tippfehler sofort in der Kopfzeile des Boards, und ein
@@ -432,8 +466,55 @@ export default defineComponent({
 			)
 		},
 
+		/**
+		 * Konten suchen — gedrosselt, nicht bei jedem Tastendruck.
+		 *
+		 * Eine Suche je Zeichen hiesse ein Aufruf pro Anschlag. Das Zeitfenster
+		 * allein reicht aber nicht: Zwei tatsaechlich abgeschickte Anfragen
+		 * koennen im Netz die Reihenfolge tauschen. Ein Zaehler je Anfrage
+		 * verwirft deshalb jede Antwort, die nicht mehr zur letzten gehoert.
+		 */
+		searchPeople() {
+			if (this.searchTimer !== null) {
+				clearTimeout(this.searchTimer)
+			}
+			this.newMember = ''
+			this.searchToken += 1
+
+			const begriff = this.memberSearch.trim()
+			if (begriff === '') {
+				this.candidates = []
+				this.searching = false
+
+				return
+			}
+
+			this.searching = true
+			const token = this.searchToken
+			this.searchTimer = setTimeout(async () => {
+				try {
+					const treffer = await searchCandidates(this.boardId, begriff)
+					if (token === this.searchToken) {
+						this.candidates = treffer
+					}
+				} catch (e) {
+					if (token === this.searchToken) {
+						// Ohne Verwaltungsrecht antwortet der Server mit 403 statt
+						// mit einer leeren Liste — die Meldung sagt dann, woran es
+						// liegt, statt „niemand gefunden" vorzutäuschen.
+						this.candidates = []
+						showError((e as { message?: string }).message ?? t('projektwerk', 'Suche fehlgeschlagen'))
+					}
+				} finally {
+					if (token === this.searchToken) {
+						this.searching = false
+					}
+				}
+			}, 300)
+		},
+
 		addMemberToBoard() {
-			const userId = this.newMember.trim()
+			const userId = this.newMember
 			if (userId === '') {
 				return
 			}
@@ -441,6 +522,8 @@ export default defineComponent({
 				async () => {
 					await addMember(this.boardId, { userId, role: this.newMemberRole })
 					this.newMember = ''
+					this.memberSearch = ''
+					this.candidates = []
 				},
 				t('projektwerk', 'Mitglied konnte nicht hinzugefügt werden'),
 			)
