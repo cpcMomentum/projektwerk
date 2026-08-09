@@ -111,6 +111,28 @@
 							<ArrowDownIcon :size="20" />
 						</template>
 					</NcButton>
+					<!--
+						Nur der Eigentuemer, nicht jeder mit Verwaltungsrecht:
+						Der Vorgang fasst Daten aller Beteiligten an, auch die
+						hier unsichtbaren. Die letzte Spalte bleibt stehen — es
+						gaebe kein Ziel.
+					-->
+					<!--
+						Der Name gehoert in die Beschriftung: Ohne ihn stehen
+						sechs Knoepfe „Spalte entfernen" untereinander, und wer
+						die Seite hoert statt sieht, kann sie nicht
+						auseinanderhalten — bei einem Knopf, der eine Spalte
+						abraeumt, ist das keine Feinheit.
+					-->
+					<NcButton
+						v-if="mayRemoveColumns"
+						:disabled="busy || store.columns.length < 2"
+						:aria-label="removeLabelFor(column)"
+						@click="askRemoveColumn(column)">
+						<template #icon>
+							<DeleteIcon :size="20" />
+						</template>
+					</NcButton>
 				</div>
 
 				<div class="pw-settings__row">
@@ -231,6 +253,65 @@
 				</div>
 			</section>
 		</div>
+
+		<!--
+			Die Rueckfrage zum Entfernen einer Spalte. Ein Dialog und kein
+			zweistufiger Bereich wie bei der Sichtbarkeit: Diese Seite ist kein
+			Modal, hier legen sich also keine zwei Fokusfallen uebereinander.
+		-->
+		<NcDialog
+			:open="removing !== null"
+			:name="t('projektwerk', 'Spalte entfernen')"
+			size="normal"
+			@update:open="onRemoveDialogToggle">
+			<!--
+				Die App-Klasse MUSS hier drin stehen: NcDialog teleportiert
+				seinen Inhalt an den `body`, wo `.app-projektwerk` kein Vorfahr
+				mehr ist.
+			-->
+			<div v-if="removing !== null" class="app-projektwerk">
+				<div class="pw-field">
+					<label for="pw-del-target">{{ t('projektwerk', 'Wohin wandern die Vorgänge?') }}</label>
+					<!--
+						Ohne Vorbelegung: Wohin die Arbeit anderer wandert, ist
+						eine Entscheidung. Eine geratene Antwort verschoebe sie
+						an einen Ort, den niemand gewaehlt hat.
+					-->
+					<select id="pw-del-target" v-model="removeTarget">
+						<option :value="null" disabled>
+							{{ t('projektwerk', 'Zielspalte wählen') }}
+						</option>
+						<option v-for="column in removeTargets" :key="column.id" :value="column.id">
+							{{ column.title }}
+						</option>
+					</select>
+				</div>
+
+				<p class="pw-settings__hint">
+					{{ removeLead }}
+				</p>
+				<!--
+					Die Zahl stammt aus der eigenen Ticketliste dieses Betrachters
+					und weiss damit nie mehr als er. Der Satz danach sagt, dass
+					sie nicht alles ist — sonst laese sie sich als Vollstaendigkeit.
+				-->
+				<p class="pw-settings__hint">
+					{{ removeVisibleCount }}
+				</p>
+				<p class="pw-settings__hint">
+					{{ t('projektwerk', 'Verborgene Vorgänge wandern mit, ohne hier aufzutauchen. Es geht nichts verloren.') }}
+				</p>
+			</div>
+
+			<template #actions>
+				<NcButton @click="cancelRemove">
+					{{ t('projektwerk', 'Abbrechen') }}
+				</NcButton>
+				<NcButton variant="error" :disabled="busy || removeTarget === null" @click="confirmRemove">
+					{{ t('projektwerk', 'Verschieben und entfernen') }}
+				</NcButton>
+			</template>
+		</NcDialog>
 	</div>
 </template>
 
@@ -238,18 +319,21 @@
 import type { Candidate } from '@/services/settings'
 import type { Column, Member, MemberRole } from '@/types/board'
 
-import { t } from '@nextcloud/l10n'
+import { n, t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
 import NcAvatar from '@nextcloud/vue/components/NcAvatar'
 import NcButton from '@nextcloud/vue/components/NcButton'
+import NcDialog from '@nextcloud/vue/components/NcDialog'
 import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
 import ArrowDownIcon from 'vue-material-design-icons/ArrowDown.vue'
 import ArrowUpIcon from 'vue-material-design-icons/ArrowUp.vue'
+import DeleteIcon from 'vue-material-design-icons/DeleteOutline.vue'
 import LockIcon from 'vue-material-design-icons/Lock.vue'
 import {
 	addMember,
 	createColumn,
+	deleteColumn,
 	renameColumn,
 	reorderColumns,
 	searchCandidates,
@@ -271,7 +355,7 @@ import { useBoardStore } from '@/stores/boardStore'
 export default defineComponent({
 	name: 'BoardSettingsView',
 
-	components: { ArrowDownIcon, ArrowUpIcon, LockIcon, NcAvatar, NcButton, NcEmptyContent, NcTextField },
+	components: { ArrowDownIcon, ArrowUpIcon, DeleteIcon, LockIcon, NcAvatar, NcButton, NcDialog, NcEmptyContent, NcTextField },
 
 	setup() {
 		return { store: useBoardStore() }
@@ -290,6 +374,10 @@ export default defineComponent({
 			searchTimer: null as ReturnType<typeof setTimeout> | null,
 			searchToken: 0,
 			newMemberRole: 'external' as MemberRole,
+			/** Die Spalte, über deren Entfernen gerade zurückgefragt wird. */
+			removing: null as Column | null,
+			/** Pflichtangabe, deshalb ohne Vorbelegung. */
+			removeTarget: null as number | null,
 			// Ein eigener Entwurf statt direkter Bindung an den Speicher: Sonst
 			// stuenden Tippfehler sofort in der Kopfzeile des Boards, und ein
 			// Abbruch waere nicht mehr moeglich.
@@ -305,6 +393,67 @@ export default defineComponent({
 		/** §8: Pflegen darf nur ein internes Mitglied mit Verwaltungsrecht. */
 		mayManage(): boolean {
 			return this.store.viewer?.isManager === true
+		},
+
+		/**
+		 * Spalten entfernen darf **nur der Eigentümer** — nicht jeder mit
+		 * Verwaltungsrecht (#60).
+		 *
+		 * Der Server weist jeden anderen mit 403 ab; hier fällt nur der Knopf
+		 * weg, damit niemand eine Zielspalte wählt, die er nicht abschicken
+		 * darf.
+		 */
+		mayRemoveColumns(): boolean {
+			const owner = this.store.board?.ownerUserId
+			return owner !== undefined && owner === this.store.viewer?.userId
+		},
+
+		/** Jede Spalte außer der, die wegfällt. */
+		removeTargets(): Column[] {
+			return this.store.columns.filter((column) => column.id !== this.removing?.id)
+		},
+
+		/**
+		 * Was passiert, in einem Satz — als Verschiebung, nicht als Verlust.
+		 *
+		 * Steht im Skript und nicht in der Vorlage, weil der Text
+		 * Anführungszeichen trägt; im Attribut beendeten sie die Zeichenkette.
+		 */
+		removeLead(): string {
+			const target = this.store.columns.find((column) => column.id === this.removeTarget)
+
+			if (this.removing === null || target === undefined) {
+				return t('projektwerk', 'Alle Vorgänge wandern in die gewählte Spalte, danach fällt „{from}“ weg.', {
+					from: this.removing?.title ?? '',
+				})
+			}
+
+			return t('projektwerk', 'Alle Vorgänge wandern nach „{to}“, danach fällt „{from}“ weg.', {
+				from: this.removing.title,
+				to: target.title,
+			})
+		},
+
+		/**
+		 * Wie viele Vorgänge **dieser Betrachter** in der Spalte sieht.
+		 *
+		 * Aus der bereits geladenen Ticketliste, nicht aus einer eigenen
+		 * Abfrage: Ein Zähler-Endpunkt wäre ein zweiter Ort, an dem die
+		 * Sichtbarkeitsregel stimmen müsste, und die Zahl darf ohnehin nie mehr
+		 * wissen als der Betrachter. Der Filter „Nur wartend" bleibt hier außen
+		 * vor — deshalb `columnOrder` und nicht `ticketsIn()`.
+		 */
+		removeVisibleCount(): string {
+			const anzahl = this.removing === null
+				? 0
+				: (this.store.columnOrder.get(this.removing.id)?.length ?? 0)
+
+			return n(
+				'projektwerk',
+				'Für dich sichtbar ist davon %n Vorgang.',
+				'Für dich sichtbar sind davon %n Vorgänge.',
+				anzahl,
+			)
 		},
 	},
 
@@ -437,6 +586,65 @@ export default defineComponent({
 			return this.write(
 				() => renameColumn(this.boardId, column.id, title),
 				t('projektwerk', 'Umbenennen fehlgeschlagen'),
+			)
+		},
+
+		/**
+		 * Die Beschriftung des Löschknopfs — mit Namen, nicht ohne.
+		 *
+		 * @param column Die Spalte.
+		 */
+		removeLabelFor(column: Column): string {
+			return t('projektwerk', 'Spalte „{title}“ entfernen', { title: column.title })
+		},
+
+		/**
+		 * Die Rückfrage öffnen.
+		 *
+		 * @param column Die Spalte, die wegfallen soll.
+		 */
+		askRemoveColumn(column: Column) {
+			this.removing = column
+			this.removeTarget = null
+		},
+
+		cancelRemove() {
+			this.removing = null
+			this.removeTarget = null
+		},
+
+		/**
+		 * Nur das Schließen zurücknehmen, nicht jede Meldung.
+		 *
+		 * `NcDialog` meldet beide Richtungen über dasselbe Ereignis. Würde hier
+		 * blind geschlossen, verschwände der Dialog im selben Zug, in dem er
+		 * aufgeht.
+		 *
+		 * @param open Der neue Zustand.
+		 */
+		onRemoveDialogToggle(open: boolean) {
+			if (!open) {
+				this.cancelRemove()
+			}
+		},
+
+		/**
+		 * Entfernen heißt verschieben: erst wandern die Vorgänge, dann fällt
+		 * die Spalte weg — beides in einer Transaktion auf dem Server.
+		 */
+		confirmRemove() {
+			const column = this.removing
+			const target = this.removeTarget
+			if (column === null || target === null) {
+				return
+			}
+
+			return this.write(
+				async () => {
+					await deleteColumn(this.boardId, column.id, target)
+					this.cancelRemove()
+				},
+				t('projektwerk', 'Spalte konnte nicht entfernt werden'),
 			)
 		},
 

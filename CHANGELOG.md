@@ -20,6 +20,14 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
   Aus abgemeldetem Zustand in einer Gast-Sitzung nachgewiesen
 - **Projekteinstellungen**: Projekt, Spalten, Mitglieder und Archiv. Spaltenreihenfolge über
   Hoch/Runter statt Ziehen
+- **Spalte entfernen — immer mit Zielspalte, nie mit Ticketverlust.** Eine Spalte enthält
+  womöglich Vorgänge, die der Löschende nicht sehen darf; eine Rückfrage könnte dann nur
+  zwischen zwei Fehlern wählen — eine Zahl über alle verriete Verborgenes, eine Zahl über die
+  sichtbaren löschte ungefragt mehr, als sie ankündigt. Deshalb wird nicht gelöscht, sondern
+  verschoben: Die Zielspalte ist Pflicht und ohne Vorbelegung, alle Vorgänge wandern dorthin
+  (auch die verborgenen und die weich gelöschten), erst dann fällt die leere Spalte weg.
+  Verschieben und Wegfallen stehen in einer Transaktion. **Nur der Board-Eigentümer**, nicht
+  jeder mit Verwaltungsrecht — und ausdrücklich keine Admin-Ausnahme
 - **Kontensuche** für das Hinzufügen von Mitgliedern — eigener Endpunkt statt Nextclouds
   Personensuche, die in Gast-Sitzungen prinzipbedingt leer bliebe. Achtet
   `shareapi_allow_share_dialog_user_enumeration`

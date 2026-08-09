@@ -13,6 +13,7 @@ use OCA\Projektwerk\Access\TicketScope;
 use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Db\AttachmentMapper;
 use OCA\Projektwerk\Db\BoardMapper;
+use OCA\Projektwerk\Db\ColumnMapper;
 use OCA\Projektwerk\Db\CommentMapper;
 use OCA\Projektwerk\Db\MemberMapper;
 use OCA\Projektwerk\Db\Ticket;
@@ -43,6 +44,7 @@ class TicketService {
 		private IDBConnection $db,
 		private TicketMapper $tickets,
 		private BoardMapper $boards,
+		private ColumnMapper $columns,
 		private MemberMapper $members,
 		private CommentMapper $comments,
 		private AttachmentMapper $attachments,
@@ -116,6 +118,7 @@ class TicketService {
 		try {
 			$ticket = $this->tickets->findVisible($viewer, $ticketId);
 			$this->assertVersion($ticket, $version);
+			$this->assertColumnInBoard($viewer, $targetColumnId);
 
 			$before = $this->neighbourPosition($viewer, $beforeId, $targetColumnId);
 			$after = $this->neighbourPosition($viewer, $afterId, $targetColumnId);
@@ -146,6 +149,37 @@ class TicketService {
 
 			throw $e;
 		}
+	}
+
+	/**
+	 * Gibt es diese Spalte in diesem Board überhaupt (noch)?
+	 *
+	 * **Ohne diese Prüfung landet ein Vorgang an einer Spalte, die es nicht
+	 * gibt — und ist damit für niemanden mehr erreichbar**, auch nicht für den,
+	 * der ihn sehen darf: Die Board-Ansicht ordnet Tickets ihren Spalten zu und
+	 * verwirft stillschweigend, was zu keiner passt.
+	 *
+	 * Der Weg dorthin ist keine Bosheit, sondern der Normalfall zweier
+	 * geöffneter Browser: Wird eine Spalte entfernt (#60), kennt jeder andere
+	 * Client sie weiterhin und darf sie anbieten. Das Ticket trägt dabei die
+	 * unveränderte `version` — die optimistische Sperre schlägt also nicht an,
+	 * denn das Verschieben ganzer Spalten ist keine inhaltliche Änderung am
+	 * Vorgang und zählt sie bewusst nicht hoch. **Die Zielspalte muss deshalb
+	 * hier geprüft werden und nicht über die Version.**
+	 *
+	 * Die Prüfung steht in derselben Transaktion wie der Schreibvorgang, damit
+	 * zwischen Prüfen und Schreiben nichts dazwischenkommt.
+	 *
+	 * @throws DoesNotExistException die Spalte gehört nicht zu diesem Board
+	 */
+	private function assertColumnInBoard(ViewerContext $viewer, int $columnId): void {
+		foreach ($this->columns->findForBoard($viewer) as $column) {
+			if ((int)$column->getId() === $columnId) {
+				return;
+			}
+		}
+
+		throw new DoesNotExistException('Keine Spalte dieses Boards: ' . $columnId);
 	}
 
 	/**
@@ -322,6 +356,8 @@ class TicketService {
 		$this->db->beginTransaction();
 
 		try {
+			$this->assertColumnInBoard($viewer, $columnId);
+
 			$number = $this->boards->claimTicketNumber($viewer);
 			$last = $this->tickets->findLastPositionInColumn($viewer, $columnId);
 			$now = new \DateTime();

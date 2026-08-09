@@ -11,13 +11,21 @@ namespace OCA\Projektwerk\Tests\Integration;
 
 use OCA\Projektwerk\Access\BoardAccess;
 use OCA\Projektwerk\Access\ViewerContext;
+use OCA\Projektwerk\Controller\SettingsController;
 use OCA\Projektwerk\Db\BoardMapper;
 use OCA\Projektwerk\Db\ColumnMapper;
 use OCA\Projektwerk\Db\MemberMapper;
+use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Service\BoardService;
 use OCA\Projektwerk\Service\ColumnService;
 use OCA\Projektwerk\Service\MemberService;
 use OCA\Projektwerk\Service\NotManagerException;
+use OCA\Projektwerk\Service\NotOwnerException;
+use OCA\Projektwerk\Service\TicketService;
+use OCP\AppFramework\Db\DoesNotExistException;
+use OCP\AppFramework\Http;
+use OCP\DB\QueryBuilder\IQueryBuilder;
+use OCP\IRequest;
 use OCP\Server;
 
 /**
@@ -113,6 +121,13 @@ class SettingsWritePathTest extends IntegrationTestCase {
 			fn () => $this->columnService->create($bert, 'Neue Spalte'),
 			fn () => $this->columnService->rename($bert, $this->columnId(LeakMatrixFixture::COLUMN_A), 'Anders'),
 			fn () => $this->columnService->reorder($bert, []),
+			// Das Entfernen sitzt sogar enger — nur der Eigentuemer. Hier steht
+			// es trotzdem, weil die Verwaltungssperre die erste ist, die greift.
+			fn () => $this->columnService->delete(
+				$bert,
+				$this->columnId(LeakMatrixFixture::COLUMN_A),
+				$this->columnId(LeakMatrixFixture::COLUMN_B),
+			),
 			fn () => $this->memberService->add($bert, 'lm-neu', ViewerContext::ROLE_INTERNAL),
 			fn () => $this->memberService->update($bert, LeakMatrixFixture::CARLA, ['role' => ViewerContext::ROLE_INTERNAL]),
 		] as $attempt) {
@@ -124,7 +139,7 @@ class SettingsWritePathTest extends IntegrationTestCase {
 			}
 		}
 
-		$this->assertSame(7, $refused);
+		$this->assertSame(8, $refused);
 	}
 
 	/**
@@ -333,6 +348,350 @@ class SettingsWritePathTest extends IntegrationTestCase {
 		$renamed = $this->columnService->rename($viewer, (int)$columns[0]->getId(), 'Posteingang');
 
 		$this->assertSame('Posteingang', $renamed->getTitle());
+	}
+
+	/**
+	 * **Das Kernversprechen von #60: Es geht nichts verloren.**
+	 *
+	 * Geprüft wird nicht „die Spalte ist weg", sondern die Ticketzahl **je
+	 * Betrachter einzeln** — fünf Zahlen vorher, dieselben fünf nachher. Eine
+	 * Gesamtzahl reichte nicht: Sie bliebe auch dann gleich, wenn genau die
+	 * Vorgänge verschwänden, die niemand ausser Anna sieht, und ein anderer
+	 * Fehler sie zugleich sichtbar machte. Fünf getrennte Zahlen können das
+	 * nicht zugleich erfüllen.
+	 *
+	 * Der Fremde ist mit drin, obwohl er nichts sieht: Seine Null muss eine
+	 * Null bleiben.
+	 */
+	public function testRemovingAColumnLeavesEveryViewersTicketCountUntouched(): void {
+		$tickets = Server::get(TicketMapper::class);
+
+		$before = [];
+		foreach ($this->allViewers() as $userId => $viewer) {
+			$before[$userId] = $tickets->countVisibleInBoard($viewer);
+		}
+
+		$this->columnService->delete(
+			$this->manager(),
+			$this->columnId(LeakMatrixFixture::COLUMN_A),
+			$this->columnId(LeakMatrixFixture::COLUMN_B),
+		);
+
+		foreach ($this->allViewers() as $userId => $viewer) {
+			$this->assertSame(
+				$before[$userId],
+				$tickets->countVisibleInBoard($viewer),
+				$userId . ' sieht nach dem Entfernen der Spalte eine andere Zahl von Vorgängen.',
+			);
+		}
+
+		$remaining = Server::get(ColumnMapper::class)->findForBoard($this->manager());
+		$this->assertCount(1, $remaining, 'Die Spalte ist nicht weggefallen.');
+		$this->assertSame(LeakMatrixFixture::COLUMN_B, (string)$remaining[0]->getTitle());
+	}
+
+	/**
+	 * Auch die **verborgenen** Vorgänge sind mitgewandert.
+	 *
+	 * Der Test davor kann das nicht zeigen: Er zählt je Betrachter, und was
+	 * niemand zählt, könnte in einer Spalte zurückbleiben, die es nicht mehr
+	 * gibt. Deshalb hier einmal ungefiltert direkt in der Tabelle — im Test ist
+	 * das erlaubt, der Architekturwächter durchsucht `lib/`.
+	 */
+	public function testEveryTicketMovedAlongEvenTheHiddenOnes(): void {
+		$source = $this->columnId(LeakMatrixFixture::COLUMN_A);
+		$target = $this->columnId(LeakMatrixFixture::COLUMN_B);
+
+		$this->columnService->delete($this->manager(), $source, $target);
+
+		$this->assertSame(0, $this->rawCountInColumn($source), 'In der entfernten Spalte stehen noch Vorgänge.');
+		$this->assertSame(
+			count(LeakMatrixFixture::TICKETS),
+			$this->rawCountInColumn($target),
+			'Nicht alle Vorgänge sind in der Zielspalte angekommen.',
+		);
+	}
+
+	/**
+	 * **Weich gelöschte Vorgänge wandern mit.**
+	 *
+	 * Sie sind aus jeder Abfrage genommen, aber sie existieren. Blieben sie
+	 * zurück, zeigte ein per `occ projektwerk:ticket:restore` zurückgeholter
+	 * Vorgang auf eine Spalte, die es nicht mehr gibt — und wäre für niemanden
+	 * mehr erreichbar.
+	 */
+	public function testASoftDeletedTicketMovesAlongToo(): void {
+		$manager = $this->manager();
+		$source = $this->columnId(LeakMatrixFixture::COLUMN_A);
+		$target = $this->columnId(LeakMatrixFixture::COLUMN_B);
+
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+		$ticket = Server::get(TicketMapper::class)->findVisible($manager, $ticketId);
+		Server::get(TicketService::class)->delete($manager, $ticketId, (int)$ticket->getVersion());
+
+		$this->columnService->delete($manager, $source, $target);
+
+		$this->assertSame($target, $this->rawColumnOf($ticketId), 'Der weich gelöschte Vorgang ist zurückgeblieben.');
+	}
+
+	/**
+	 * Die Vorgänge landen **hinter** denen der Zielspalte, in ihrer bisherigen
+	 * Reihenfolge (§3.8).
+	 *
+	 * Geprüft aus Annas Sicht, weil sie als Einzige alle neun sieht: Die
+	 * Reihenfolge stimmt genau dann, wenn Spalte B unverändert vorn steht und
+	 * die Vorgänge aus A geschlossen dahinter folgen.
+	 */
+	public function testMovedTicketsAreAppendedInOrder(): void {
+		$manager = $this->manager();
+		$tickets = Server::get(TicketMapper::class);
+		$target = $this->columnId(LeakMatrixFixture::COLUMN_B);
+
+		$inA = $this->orderedLabels($tickets->findVisibleInBoard($manager, $this->columnId(LeakMatrixFixture::COLUMN_A)));
+		$inB = $this->orderedLabels($tickets->findVisibleInBoard($manager, $target));
+
+		$this->columnService->delete($manager, $this->columnId(LeakMatrixFixture::COLUMN_A), $target);
+
+		$this->assertSame(
+			array_merge($inB, $inA),
+			$this->orderedLabels($tickets->findVisibleInBoard($manager, $target)),
+			'Die Vorgänge stehen nicht hinten an oder haben ihre Reihenfolge verloren.',
+		);
+	}
+
+	/**
+	 * **Verwaltungsrecht reicht nicht — es muss der Eigentümer sein.**
+	 *
+	 * Bert wird dafür eigens zum Verwalter gemacht: Der Test soll an der
+	 * Eigentümerfrage scheitern und nicht schon an der Stufe davor, sonst
+	 * prüfte er die falsche Sperre.
+	 */
+	public function testOnlyTheOwnerMayRemoveAColumn(): void {
+		$this->memberService->update($this->manager(), LeakMatrixFixture::BERT, ['isManager' => true]);
+		$bert = $this->fixture->contextFor(LeakMatrixFixture::BERT);
+		$this->assertTrue($bert->isManager, 'Der Test prüft sonst die Verwaltungssperre statt der Eigentümersperre.');
+
+		$this->expectException(NotOwnerException::class);
+
+		$this->columnService->delete(
+			$bert,
+			$this->columnId(LeakMatrixFixture::COLUMN_A),
+			$this->columnId(LeakMatrixFixture::COLUMN_B),
+		);
+	}
+
+	public function testTheTargetMustBeAnotherColumn(): void {
+		$this->expectException(\InvalidArgumentException::class);
+
+		$this->columnService->delete(
+			$this->manager(),
+			$this->columnId(LeakMatrixFixture::COLUMN_A),
+			$this->columnId(LeakMatrixFixture::COLUMN_A),
+		);
+	}
+
+	/**
+	 * Ein Ziel aus einem fremden Board ist keins.
+	 *
+	 * Sonst wanderten Vorgänge in ein Projekt, dessen Mitglieder sie nie sehen
+	 * durften — der schwerste denkbare Ausgang dieses Vorgangs.
+	 */
+	public function testTheTargetMustBelongToTheSameBoard(): void {
+		$other = $this->boardService->create('lm-neu', 'Fremdes Projekt');
+		$otherViewer = Server::get(BoardAccess::class)->contextFor('lm-neu', (int)$other->getId());
+		$foreign = (int)Server::get(ColumnMapper::class)->findForBoard($otherViewer)[0]->getId();
+
+		$this->expectException(DoesNotExistException::class);
+
+		$this->columnService->delete($this->manager(), $this->columnId(LeakMatrixFixture::COLUMN_A), $foreign);
+	}
+
+	/**
+	 * **Die letzte Spalte bleibt stehen** — es gäbe kein Ziel.
+	 *
+	 * Die Fixture hat zwei Spalten; nach dem ersten Entfernen ist eine übrig,
+	 * und der zweite Versuch muss an dieser Regel scheitern und nicht an
+	 * „Zielspalte unbekannt". Der Unterschied ist die Meldung, die der Benutzer
+	 * liest.
+	 */
+	public function testTheLastColumnCannotBeRemoved(): void {
+		$manager = $this->manager();
+		$a = $this->columnId(LeakMatrixFixture::COLUMN_A);
+		$b = $this->columnId(LeakMatrixFixture::COLUMN_B);
+
+		$this->columnService->delete($manager, $a, $b);
+
+		$this->expectException(\InvalidArgumentException::class);
+		$this->expectExceptionMessage('letzte Spalte');
+
+		$this->columnService->delete($manager, $b, $a);
+	}
+
+	/**
+	 * **Nach dem Entfernen sind die Positionen wieder lückenlos.**
+	 *
+	 * Nicht Kosmetik, sondern die Voraussetzung fürs Anlegen: `create()` vergibt
+	 * `position = count($existing)`. Bliebe eine Lücke, träfe dieser Wert eine
+	 * bestehende Spalte, und die neue Spalte erschiene **mitten im Board**
+	 * statt hinten — bei `findForBoard()` entschiede dann die ID über die
+	 * Reihenfolge. Nach zwei Entfernungen wäre das der Normalfall.
+	 */
+	public function testRemovingAColumnKeepsThePositionsGapless(): void {
+		$manager = $this->manager();
+		$columns = Server::get(ColumnMapper::class);
+
+		// Vier Spalten: A(0), B(1), C(2), D(3).
+		$c = (int)$this->columnService->create($manager, 'Dritte')->getId();
+		$this->columnService->create($manager, 'Vierte');
+
+		$this->columnService->delete($manager, $this->columnId(LeakMatrixFixture::COLUMN_A), $c);
+
+		$positions = array_map(
+			static fn ($column): int => (int)$column->getPosition(),
+			$columns->findForBoard($manager),
+		);
+		$this->assertSame([0, 1, 2], $positions, 'Nach dem Entfernen klafft eine Lücke in den Positionen.');
+
+		// Und die Probe aufs Exempel: Die nächste Spalte gehört ans Ende.
+		$appended = $this->columnService->create($manager, 'Fünfte');
+		$this->assertSame(3, (int)$appended->getPosition());
+		$this->assertSame(
+			'Fünfte',
+			(string)$columns->findForBoard($manager)[3]->getTitle(),
+			'Die neue Spalte steht nicht am Ende des Boards.',
+		);
+	}
+
+	/**
+	 * **Die Antwortformen des Endpunkts, einmal über den Controller.**
+	 *
+	 * Alle übrigen Fälle prüfen den Dienst — der Controller übersetzt aber
+	 * Ausnahmen in Statuscodes, und diese Zuordnung ist eigener Code. Ohne
+	 * diesen Test bliebe sie unbelegt, obwohl der Unterschied zwischen 403 und
+	 * 404 hier eine Aussage über das Board ist: 404 hieße „gibt es nicht", und
+	 * genau das darf die Antwort nicht behaupten, wenn der Betrachter Mitglied
+	 * ist.
+	 *
+	 * Was dieser Test **nicht** abdeckt: dass Nextcloud einen JSON-Rumpf an
+	 * einem DELETE überhaupt an die Parameter bindet. Das ist Framework-Verhalten
+	 * (`Request::decodeContent()` decodiert für jede Methode außer GET) und
+	 * lässt sich nur gegen eine echte HTTP-Anfrage zeigen, nicht gegen einen
+	 * gestubbten `IRequest`.
+	 */
+	public function testTheEndpointAnswersWithTheRightStatusForEachRefusal(): void {
+		$boardId = $this->fixture->boardId;
+		$a = $this->columnId(LeakMatrixFixture::COLUMN_A);
+		$b = $this->columnId(LeakMatrixFixture::COLUMN_B);
+
+		// Verwaltungsrecht ja, Eigentum nein: 403 mit Begruendung, nicht 404 —
+		// Bert ist Mitglied und sieht das Board.
+		$this->memberService->update($this->manager(), LeakMatrixFixture::BERT, ['isManager' => true]);
+		$refused = $this->settingsController(LeakMatrixFixture::BERT)->deleteColumn($boardId, $a, $b);
+		$this->assertSame(Http::STATUS_FORBIDDEN, $refused->getStatus());
+
+		// Nichtmitglied: 404 — dieselbe Antwort wie fuer ein Board, das es
+		// nicht gibt. Alles andere waere eine Auskunft ueber fremde Projekte.
+		$stranger = $this->settingsController(LeakMatrixFixture::FREMD)->deleteColumn($boardId, $a, $b);
+		$this->assertSame(Http::STATUS_NOT_FOUND, $stranger->getStatus());
+
+		$owner = $this->settingsController(LeakMatrixFixture::ANNA);
+
+		$this->assertSame(
+			Http::STATUS_NOT_FOUND,
+			$owner->deleteColumn($boardId, $a, 999999)->getStatus(),
+			'Eine unbekannte Zielspalte muss 404 ergeben.',
+		);
+		$this->assertSame(
+			Http::STATUS_BAD_REQUEST,
+			$owner->deleteColumn($boardId, $a, $a)->getStatus(),
+			'Ziel gleich Quelle ist eine falsche Anfrage, kein fehlendes Etwas.',
+		);
+
+		// Und der Erfolgsfall: 204 ohne Rumpf. Eine Anzahl zurueckzugeben waere
+		// eine Auskunft ueber die ungefilterte Menge.
+		$done = $owner->deleteColumn($boardId, $a, $b);
+		$this->assertSame(Http::STATUS_NO_CONTENT, $done->getStatus());
+		$this->assertNull($done->getData());
+	}
+
+	private function settingsController(string $userId): SettingsController {
+		return new SettingsController(
+			$this->createStub(IRequest::class),
+			$this->boardService,
+			$this->columnService,
+			$this->memberService,
+			Server::get(BoardAccess::class),
+			$userId,
+		);
+	}
+
+	/**
+	 * Alle fünf Betrachter der Leak-Matrix, einschließlich des Fremden.
+	 *
+	 * Sein Kontext entsteht von Hand, an `BoardAccess` vorbei — kein
+	 * realistischer Ablauf, sondern die Probe auf die zweite Sperre.
+	 *
+	 * @return array<string, ViewerContext>
+	 */
+	private function allViewers(): array {
+		$viewers = [];
+		foreach ([
+			LeakMatrixFixture::ANNA,
+			LeakMatrixFixture::BERT,
+			LeakMatrixFixture::CARLA,
+			LeakMatrixFixture::DIRK,
+		] as $userId) {
+			$viewers[$userId] = $this->fixture->contextFor($userId);
+		}
+
+		$viewers[LeakMatrixFixture::FREMD] = ViewerContext::forMember(
+			LeakMatrixFixture::FREMD,
+			$this->fixture->boardId,
+			ViewerContext::ROLE_INTERNAL,
+			true,
+		);
+
+		return $viewers;
+	}
+
+	/**
+	 * @param \OCA\Projektwerk\Db\Ticket[] $tickets
+	 * @return string[] in Serverreihenfolge, **nicht** sortiert
+	 */
+	private function orderedLabels(array $tickets): array {
+		$byId = array_flip($this->fixture->ticketIds);
+
+		return array_map(
+			static fn ($ticket): string => $byId[(int)$ticket->getId()],
+			$tickets,
+		);
+	}
+
+	/** Ungefiltert, ohne Betrachter — nur im Test zulässig. */
+	private function rawCountInColumn(int $columnId): int {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select($qb->func()->count('id'))
+			->from('pwerk_tickets')
+			->where($qb->expr()->eq('column_id', $qb->createNamedParameter($columnId, IQueryBuilder::PARAM_INT)));
+
+		$result = $qb->executeQuery();
+		$count = (int)$result->fetchOne();
+		$result->closeCursor();
+
+		return $count;
+	}
+
+	private function rawColumnOf(int $ticketId): int {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('column_id')
+			->from('pwerk_tickets')
+			->where($qb->expr()->eq('id', $qb->createNamedParameter($ticketId, IQueryBuilder::PARAM_INT)));
+
+		$result = $qb->executeQuery();
+		$columnId = (int)$result->fetchOne();
+		$result->closeCursor();
+
+		return $columnId;
 	}
 
 	private function manager(): ViewerContext {

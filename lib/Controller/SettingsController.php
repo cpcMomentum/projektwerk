@@ -17,6 +17,7 @@ use OCA\Projektwerk\Service\BoardService;
 use OCA\Projektwerk\Service\ColumnService;
 use OCA\Projektwerk\Service\MemberService;
 use OCA\Projektwerk\Service\NotManagerException;
+use OCA\Projektwerk\Service\NotOwnerException;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
@@ -122,6 +123,28 @@ class SettingsController extends Controller {
 			=> $this->columnService->reorder($viewer, $columnIds));
 	}
 
+	/**
+	 * Eine Spalte entfernen — die Zielspalte ist **Pflicht**, nicht optional.
+	 *
+	 * Ohne Vorbelegung und ohne stillen Rückfall auf „irgendeine andere": Wohin
+	 * die Vorgänge wandern, ist eine Entscheidung, und eine geratene Antwort
+	 * verschöbe fremde Arbeit an einen Ort, den niemand gewählt hat.
+	 *
+	 * Der Parameter steht im Rumpf, nicht in der Adresse — Nextclouds Request
+	 * decodiert einen JSON-Rumpf auch bei DELETE.
+	 *
+	 * Antwortet mit 204: Eine Anzahl zurückzugeben wäre eine Auskunft über die
+	 * ungefilterte Menge.
+	 */
+	#[NoAdminRequired]
+	public function deleteColumn(int $boardId, int $columnId, int $targetColumnId): JSONResponse {
+		return $this->write($boardId, function (ViewerContext $viewer) use ($columnId, $targetColumnId): mixed {
+			$this->columnService->delete($viewer, $columnId, $targetColumnId);
+
+			return null;
+		}, Http::STATUS_NO_CONTENT);
+	}
+
 	#[NoAdminRequired]
 	public function addMember(
 		int $boardId,
@@ -180,9 +203,11 @@ class SettingsController extends Controller {
 
 		try {
 			return new JSONResponse($write($viewer), $status);
-		} catch (NotManagerException $e) {
+		} catch (NotManagerException | NotOwnerException $e) {
 			// 403, nicht 404: Der Betrachter ist Mitglied und sieht das Board.
-			// Zu verbergen gibt es nichts mehr — nur zu erklären.
+			// Zu verbergen gibt es nichts mehr — nur zu erklären. Zwei
+			// Ausnahmen mit einer Antwort, aber getrennten Sätzen: Wer eine
+			// Spalte entfernen will, hat das Verwaltungsrecht womöglich.
 			return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_FORBIDDEN);
 		} catch (DoesNotExistException) {
 			return new JSONResponse([], Http::STATUS_NOT_FOUND);
