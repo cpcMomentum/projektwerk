@@ -99,6 +99,9 @@ final class ReadPathRegistry {
 		// Liefert keine Schritte, sondern die Antwort auf „wem darf ich hier
 		// etwas geben" — und die folgt aus der Sichtbarkeitsregel.
 		'step#assignable',
+		// Liefert Nextcloud-Konten, keine Projektdaten — aber es ist ein
+		// Lesepfad mit Rechtepruefung, und die gehoert in die Matrix.
+		'memberSearch#search',
 	];
 
 	/**

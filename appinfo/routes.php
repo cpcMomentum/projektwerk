@@ -50,6 +50,12 @@ return [
 		['name' => 'settings#renameColumn', 'url' => '/api/v1/boards/{boardId}/columns/{columnId}', 'verb' => 'PATCH'],
 		['name' => 'settings#reorderColumns', 'url' => '/api/v1/boards/{boardId}/columns/order', 'verb' => 'PUT'],
 
+		// Konten suchen, um sie hinzuzufuegen. Eigener Endpunkt statt
+		// Nextclouds Personensuche — die liefert in Gast-Sitzungen eine leere
+		// Liste, und ein Sucher mit dieser Eigenschaft im Frontend waere
+		// irgendwann an eine Stelle kopiert, wo Gaeste hinkommen.
+		['name' => 'memberSearch#search', 'url' => '/api/v1/boards/{boardId}/member-search', 'verb' => 'GET'],
+
 		// Personenweise, keine Gruppen (§8): Die Rolle haengt an der
 		// Mitgliedschaft, nicht am Nextcloud-Konto.
 		['name' => 'settings#addMember', 'url' => '/api/v1/boards/{boardId}/members', 'verb' => 'POST'],

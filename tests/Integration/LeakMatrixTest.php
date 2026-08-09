@@ -15,6 +15,7 @@ use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Access\WaitStateCalculator;
 use OCA\Projektwerk\Controller\BoardController;
 use OCA\Projektwerk\Controller\DeepLinkController;
+use OCA\Projektwerk\Controller\MemberSearchController;
 use OCA\Projektwerk\Controller\TicketController;
 use OCA\Projektwerk\Db\AttachmentMapper;
 use OCA\Projektwerk\Db\BoardMapper;
@@ -31,7 +32,9 @@ use OCA\Projektwerk\Service\TicketService;
 use OCA\Projektwerk\Tests\ReadPathRegistry;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
+use OCP\IConfig;
 use OCP\IRequest;
+use OCP\IUserManager;
 use OCP\Server;
 use ReflectionClass;
 
@@ -173,6 +176,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'ticket#visibilityImpact' => 'testVisibilityImpactNamesWhoLosesAccess',
 		'deepLink#ticket' => 'testDeepLinkTellsOnlyWhatTheViewerMaySee',
 		'step#assignable' => 'testAssignableNeverOffersSomeoneWhoCannotSeeTheTicket',
+		'memberSearch#search' => 'testMemberSearchRefusesEveryoneWithoutManagementRights',
 	];
 
 	private LeakMatrixFixture $fixture;
@@ -696,6 +700,32 @@ class LeakMatrixTest extends IntegrationTestCase {
 	}
 
 	/**
+	 * Die Kontensuche steht nur internen Verwaltern offen.
+	 *
+	 * Geprüft wird der **Statuscode**, nicht die Trefferliste: Eine leere Liste
+	 * sähe aus wie „niemand gefunden", und wer den Unterschied nicht kennt,
+	 * sucht den Fehler bei sich statt bei seinen Rechten. Deshalb 403 für jeden
+	 * ohne Verwaltungsrecht — und 404 für das Nichtmitglied, dieselbe Antwort
+	 * wie für ein Board, das es nicht gibt.
+	 */
+	public function testMemberSearchRefusesEveryoneWithoutManagementRights(): void {
+		$erwartet = [
+			// Anna ist Eigentuemerin und interne Verwalterin.
+			self::ANNA => Http::STATUS_OK,
+			self::BERT => Http::STATUS_FORBIDDEN,
+			self::CARLA => Http::STATUS_FORBIDDEN,
+			self::DIRK => Http::STATUS_FORBIDDEN,
+			self::FREMD => Http::STATUS_NOT_FOUND,
+		];
+
+		foreach ($erwartet as $userId => $status) {
+			$response = $this->memberSearchController($userId)->search($this->fixture->boardId, 'lm-');
+
+			$this->assertSame($status, $response->getStatus(), $userId . ' bei der Kontensuche');
+		}
+	}
+
+	/**
 	 * **Wem ein Schritt gegeben werden darf, deckt sich mit „wer das Ticket
 	 * sieht".**
 	 *
@@ -959,6 +989,17 @@ class LeakMatrixTest extends IntegrationTestCase {
 	 * Der Controller, wie ihn Nextcloud baut — nur mit der Benutzerkennung von
 	 * Hand statt aus der Sitzung.
 	 */
+	private function memberSearchController(string $userId): MemberSearchController {
+		return new MemberSearchController(
+			$this->createStub(IRequest::class),
+			Server::get(IUserManager::class),
+			Server::get(IConfig::class),
+			Server::get(MemberMapper::class),
+			Server::get(BoardAccess::class),
+			$userId,
+		);
+	}
+
 	private function boardController(string $userId): BoardController {
 		return new BoardController(
 			$this->createStub(IRequest::class),
