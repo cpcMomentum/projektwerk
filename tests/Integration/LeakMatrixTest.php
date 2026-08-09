@@ -23,6 +23,7 @@ use OCA\Projektwerk\Db\StepMapper;
 use OCA\Projektwerk\Db\TaskFilter;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Db\TicketUserMapper;
+use OCA\Projektwerk\Service\MemberService;
 use OCA\Projektwerk\Service\TicketService;
 use OCA\Projektwerk\Tests\ReadPathRegistry;
 use OCP\AppFramework\Db\DoesNotExistException;
@@ -829,7 +830,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 		return new BoardController(
 			$this->createStub(IRequest::class),
 			Server::get(BoardMapper::class),
-			Server::get(MemberMapper::class),
+			Server::get(MemberService::class),
 			Server::get(ColumnMapper::class),
 			Server::get(BoardAccess::class),
 			$userId,
