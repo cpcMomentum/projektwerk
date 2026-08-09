@@ -163,7 +163,7 @@ export default defineComponent({
 		t,
 
 		/**
-		 * Der Name für dieses Board, sonst die Kennung.
+		 * Der vom Server aufgelöste Name, sonst die Kennung.
 		 *
 		 * Nie nur die Kennung, wo ein Name da ist: Bei einem Gastkonto stünde
 		 * dort sonst ein 64-stelliger Hash.
@@ -174,7 +174,7 @@ export default defineComponent({
 			if (userId === null) {
 				return ''
 			}
-			return this.members.find((m) => m.userId === userId)?.displayName ?? userId
+			return this.members.find((m) => m.userId === userId)?.resolvedName ?? userId
 		},
 
 		/**

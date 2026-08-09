@@ -80,9 +80,10 @@ export const useBoardStore = defineStore('board', {
 		/**
 		 * Der anzuzeigende Name einer Person.
 		 *
-		 * Der Name an der Mitgliedschaft geht vor; fehlt er, bleibt die
-		 * Benutzerkennung. Nie die Kennung, wo ein Name da ist — sonst steht bei
-		 * einem Gastkonto ein 64-stelliger Hash auf der Karte.
+		 * Der Server hat ihn bereits aufgelöst: Name an der Mitgliedschaft, sonst
+		 * der aus Nextcloud, sonst die Kennung. Nie die Kennung, wo ein Name da
+		 * ist — sonst steht bei einem Gastkonto ein 64-stelliger Hash auf der
+		 * Karte.
 		 *
 		 * @param state Der Speicher.
 		 */
@@ -91,7 +92,7 @@ export const useBoardStore = defineStore('board', {
 				return ''
 			}
 			const member = state.members.find((m) => m.userId === userId)
-			return member?.displayName ?? userId
+			return member?.resolvedName ?? userId
 		},
 	},
 

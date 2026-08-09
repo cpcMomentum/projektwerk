@@ -92,6 +92,36 @@ class MemberService {
 	}
 
 	/**
+	 * Die Mitglieder eines Projekts, jedes mit dem Namen, der anzuzeigen ist.
+	 *
+	 * `display_name` an der Mitgliedschaft ist ein **Übersteuern**, kein
+	 * Pflichtfeld: `null` heißt laut Datenmodell „den Anzeigenamen aus
+	 * Nextcloud verwenden". Genau das ist bisher nirgends passiert — das
+	 * Frontend fiel auf die Benutzerkennung zurück, und die steht bei einem
+	 * Gastkonto als 64-stelliger Hash auf der Karte.
+	 *
+	 * Die Auflösung gehört auf den Server, weil nur er sie hat: Nextclouds
+	 * Personensuche liefert in einer Gast-Sitzung prinzipbedingt eine leere
+	 * Liste, ein Nachschlagen im Browser bliebe also ausgerechnet beim Kunden
+	 * stumm.
+	 *
+	 * Der aufgelöste Name steht **neben** `displayName`, nicht an dessen
+	 * Stelle: Die Mitgliederverwaltung bearbeitet das Übersteuern, und ein
+	 * vorbelegtes Feld würde den Nextcloud-Namen beim nächsten Speichern
+	 * versehentlich einfrieren.
+	 *
+	 * @return list<array<string, mixed>>
+	 */
+	public function listForBoard(ViewerContext $viewer): array {
+		return array_map(
+			fn (Member $member): array => $member->jsonSerialize() + [
+				'resolvedName' => $this->nameFor($member),
+			],
+			$this->members->findForBoard($viewer),
+		);
+	}
+
+	/**
 	 * Rolle, Verwaltungsrecht und Name einer Mitgliedschaft ändern.
 	 *
 	 * **Zum Rollenwechsel gibt es keine Datenbewegung.** §8 friert
@@ -228,6 +258,32 @@ class MemberService {
 				'Mitglieder dürfen nur interne Mitglieder mit Verwaltungsrecht pflegen.',
 			);
 		}
+	}
+
+	/**
+	 * Der Name, der anzuzeigen ist: Übersteuern, sonst Nextcloud, sonst Kennung.
+	 *
+	 * Die Kennung bleibt als letzte Stufe stehen, weil eine leere Zeile
+	 * schlimmer ist als ein Hash: Eine Zeile ohne Namen sähe aus wie ein
+	 * Ladefehler, und in der Rückfrage beim Herunterstufen stünde dann eine
+	 * Person weniger auf der Liste, als tatsächlich den Zugriff verliert.
+	 *
+	 * Im CLI liefert `IUserManager` für Gastkonten nichts — dort ist nur das
+	 * Datenbank-Backend geladen. Das ist verkraftbar, weil es nur den
+	 * Anzeigenamen betrifft und über HTTP funktioniert; kein Test darf sich
+	 * jedoch darauf verlassen, dass ein Gast hier seinen Namen bekommt.
+	 */
+	private function nameFor(Member $member): string {
+		$stored = $member->getDisplayName();
+		if ($stored !== null) {
+			return $stored;
+		}
+
+		$fromNextcloud = $this->users->get((string)$member->getUserId())?->getDisplayName();
+
+		return ($fromNextcloud === null || $fromNextcloud === '')
+			? (string)$member->getUserId()
+			: $fromNextcloud;
 	}
 
 	private function trimOrNull(?string $value): ?string {

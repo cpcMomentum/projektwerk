@@ -204,6 +204,49 @@ class SettingsWritePathTest extends IntegrationTestCase {
 		$this->assertNull($cleared->getDisplayName());
 	}
 
+	/**
+	 * Ohne Übersteuern steht nie eine leere Zeile da.
+	 *
+	 * `display_name` ist ein Übersteuern, kein Pflichtfeld. Fehlt es, muss der
+	 * Server den Anzeigenamen aus Nextcloud einsetzen und notfalls die Kennung —
+	 * das Frontend kann es nicht: Nextclouds Personensuche liefert in einer
+	 * Gast-Sitzung prinzipbedingt eine leere Liste.
+	 *
+	 * Geprüft wird deshalb, dass `resolvedName` **immer gefüllt** ist und dem
+	 * Übersteuern folgt, wo eines steht. Der mittlere Fall — Name aus Nextcloud
+	 * — steht bewusst nicht als Erwartung drin: Im CLI ist nur das
+	 * Datenbank-Backend geladen, ein Gastkonto hätte dort keinen Namen, und ein
+	 * Test, der das behauptet, prüfte die Testumgebung statt den Code.
+	 */
+	public function testEveryMemberCarriesANameToShow(): void {
+		$manager = $this->manager();
+
+		$this->memberService->update($manager, LeakMatrixFixture::BERT, ['displayName' => 'Bert König']);
+		$this->memberService->update($manager, LeakMatrixFixture::CARLA, ['displayName' => '']);
+
+		$byUser = [];
+		foreach ($this->memberService->listForBoard($manager) as $member) {
+			$byUser[$member['userId']] = $member;
+		}
+
+		$this->assertSame('Bert König', $byUser[LeakMatrixFixture::BERT]['resolvedName']);
+
+		foreach ($byUser as $userId => $member) {
+			$this->assertNotSame('', $member['resolvedName'], $userId . ': keine Zeile darf namenlos bleiben.');
+			$this->assertArrayHasKey(
+				'displayName',
+				$member,
+				$userId . ': Das Übersteuern muss daneben stehen bleiben — die Verwaltung bearbeitet es.',
+			);
+		}
+
+		$this->assertNull(
+			$byUser[LeakMatrixFixture::CARLA]['displayName'],
+			'Ein geleertes Übersteuern darf nicht durch den aufgelösten Namen ersetzt werden — '
+			. 'sonst friert das nächste Speichern den Nextcloud-Namen versehentlich ein.',
+		);
+	}
+
 	public function testColumnsAreAppendedAndRenamed(): void {
 		$manager = $this->manager();
 

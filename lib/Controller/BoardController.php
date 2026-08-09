@@ -14,7 +14,7 @@ use OCA\Projektwerk\Access\NotAMemberException;
 use OCA\Projektwerk\AppInfo\Application;
 use OCA\Projektwerk\Db\BoardMapper;
 use OCA\Projektwerk\Db\ColumnMapper;
-use OCA\Projektwerk\Db\MemberMapper;
+use OCA\Projektwerk\Service\MemberService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
@@ -44,7 +44,10 @@ class BoardController extends Controller {
 	public function __construct(
 		IRequest $request,
 		private BoardMapper $boards,
-		private MemberMapper $members,
+		// Der Dienst statt des Mappers, weil die Mitgliederliste den
+		// anzuzeigenden Namen braucht und der aus Nextcloud kommt, wenn die
+		// Mitgliedschaft keinen eigenen fuehrt.
+		private MemberService $members,
 		private ColumnMapper $columns,
 		private BoardAccess $access,
 		// Nextcloud reicht die Benutzerkennung der Sitzung unter genau diesem
@@ -94,7 +97,7 @@ class BoardController extends Controller {
 
 			return new JSONResponse([
 				'board' => $this->boards->findForViewer($viewer),
-				'members' => $this->members->findForBoard($viewer),
+				'members' => $this->members->listForBoard($viewer),
 				'columns' => $this->columns->findForBoard($viewer),
 				// Die eigene Rolle, damit das Frontend nicht aus der
 				// Mitgliederliste zurueckrechnen muss — und damit die

@@ -47,10 +47,14 @@ vi.mock('@nextcloud/vue/components/NcButton', () => ({
 
 const VisibilityControl = (await import('@/components/VisibilityControl.vue')).default
 
+// `dana` fuehrt kein Uebersteuern und hat auch in Nextcloud keinen Namen — der
+// Server hat `resolvedName` deshalb auf die Kennung zurueckfallen lassen. Genau
+// dieser Fall gehoert in die Rueckfrage: lieber ein Hash als eine Person
+// weniger auf der Liste.
 const MEMBERS: Member[] = [
-	{ id: 1, boardId: 7, userId: 'anna', role: 'internal', isManager: true, displayName: 'Anna Ahrens', addedBy: 'anna', addedAt: null },
-	{ id: 2, boardId: 7, userId: 'carla', role: 'external', isManager: false, displayName: 'Carla Cordes', addedBy: 'anna', addedAt: null },
-	{ id: 3, boardId: 7, userId: 'dana', role: 'external', isManager: false, displayName: null, addedBy: 'anna', addedAt: null },
+	{ id: 1, boardId: 7, userId: 'anna', role: 'internal', isManager: true, displayName: 'Anna Ahrens', resolvedName: 'Anna Ahrens', addedBy: 'anna', addedAt: null },
+	{ id: 2, boardId: 7, userId: 'carla', role: 'external', isManager: false, displayName: 'Carla Cordes', resolvedName: 'Carla Cordes', addedBy: 'anna', addedAt: null },
+	{ id: 3, boardId: 7, userId: 'dana', role: 'external', isManager: false, displayName: null, resolvedName: 'dana', addedBy: 'anna', addedAt: null },
 ]
 
 /**
