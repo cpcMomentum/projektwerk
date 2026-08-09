@@ -81,6 +81,13 @@ ersten Kundeneinsatz derselbe Durchlauf mit einem **echten Gastkonto**.
 - Gespeicherte Enum-Werte **ASCII und englisch** (`public`/`internal`/`private`). Umlaute in
   Enum-Werten sind eine Fehlerquelle bei Collation und Migration; die deutschen Bezeichnungen sind
   reine Anzeigetexte aus der Übersetzungsdatei.
+- **`set()` quotiert sein zweites Argument als Spaltennamen.** `->set('position', 'position + '
+  . $qb->createNamedParameter($x))` erzeugt deshalb keine Rechnung, sondern die Suche nach einer
+  Spalte namens `"position + :dcValue2"` — auf PostgreSQL ein harter Fehler. Der scheinbare
+  Ausweg `createFunction()` schreibt `position` unquotiert, und `position` ist in PostgreSQL ein
+  Schlüsselwort. Wer eine Spalte relativ fortschreiben will, rechnet in PHP und schreibt je Zeile
+  einen Wert (so macht es `TicketMapper::rebalanceColumn()` und `moveColumnContents()`).
+  Am 2026-08-09 in #60 gemessen.
 
 ## Controller und Rechte
 
@@ -91,6 +98,17 @@ ersten Kundeneinsatz derselbe Durchlauf mit einem **echten Gastkonto**.
   verschickt sofort Mail, das ist ein Versandhebel in Kundenhand.
 - Kein Attribut-Routing: Alle fünf bestehenden Haus-Apps nutzen `appinfo/routes.php`, Mischbetrieb
   kostet mehr als er bringt.
+- **Ein JSON-Rumpf an einem DELETE kommt an.** `Request::decodeContent()` decodiert für **jede**
+  Methode außer GET und legt die Werte in dieselben Parameter, aus denen der Controller liest
+  (`getParam` → `__get('parameters')` → `getContent()`). Ein Pflichtparameter, der zum Vorgang
+  gehört und nicht zum Ort, darf deshalb in den Rumpf — `settings#deleteColumn` macht das mit der
+  Zielspalte. Voraussetzung ist `Content-Type: application/json`.
+- **`JSONResponse(null, 204)` sendet keinen Rumpf.** `App.php` erkennt 204 und 304 und unterdrückt
+  Rumpf **und** `Content-Length`. Ein 204 ist damit die richtige Antwort für einen Schreibvorgang,
+  dessen Ergebnis nichts verraten darf.
+- **Für `curl`-Proben gegen die API: `OCS-APIRequest: true` mitschicken.** Ohne den Kopf antwortet
+  Nextcloud auch bei gültiger Basic-Auth mit `412 CSRF check failed` — was wie ein Rechtefehler
+  aussieht und keiner ist.
 
 ## App-Abhängigkeiten gibt es nicht
 

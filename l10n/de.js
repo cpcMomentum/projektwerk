@@ -109,6 +109,16 @@ OC.L10N.register(
     "Dieser Vorgang liegt bei: {names}": "Dieser Vorgang liegt bei: {names}",
     "Person suchen": "Person suchen",
     "Keine passenden Konten gefunden.": "Keine passenden Konten gefunden.",
-    "Suche fehlgeschlagen": "Suche fehlgeschlagen"
+    "Suche fehlgeschlagen": "Suche fehlgeschlagen",
+    "Spalte entfernen": "Spalte entfernen",
+    "Wohin wandern die Vorgänge?": "Wohin wandern die Vorgänge?",
+    "Zielspalte wählen": "Zielspalte wählen",
+    "Alle Vorgänge wandern in die gewählte Spalte, danach fällt „{from}“ weg.": "Alle Vorgänge wandern in die gewählte Spalte, danach fällt „{from}“ weg.",
+    "Alle Vorgänge wandern nach „{to}“, danach fällt „{from}“ weg.": "Alle Vorgänge wandern nach „{to}“, danach fällt „{from}“ weg.",
+    "_Für dich sichtbar ist davon %n Vorgang._::_Für dich sichtbar sind davon %n Vorgänge._": ["Für dich sichtbar ist davon %n Vorgang.", "Für dich sichtbar sind davon %n Vorgänge."],
+    "Verborgene Vorgänge wandern mit, ohne hier aufzutauchen. Es geht nichts verloren.": "Verborgene Vorgänge wandern mit, ohne hier aufzutauchen. Es geht nichts verloren.",
+    "Verschieben und entfernen": "Verschieben und entfernen",
+    "Spalte konnte nicht entfernt werden": "Spalte konnte nicht entfernt werden",
+    "Spalte „{title}“ entfernen": "Spalte „{title}“ entfernen"
 },
 "nplurals=2; plural=(n != 1);");

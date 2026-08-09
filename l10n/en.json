@@ -108,7 +108,17 @@
         "Dieser Vorgang liegt bei: {names}": "This item is with: {names}",
         "Person suchen": "Search for a person",
         "Keine passenden Konten gefunden.": "No matching accounts found.",
-        "Suche fehlgeschlagen": "Search failed"
+        "Suche fehlgeschlagen": "Search failed",
+        "Spalte entfernen": "Remove column",
+        "Wohin wandern die Vorgänge?": "Where do the items go?",
+        "Zielspalte wählen": "Choose a target column",
+        "Alle Vorgänge wandern in die gewählte Spalte, danach fällt „{from}“ weg.": "All items move to the chosen column, then “{from}” is removed.",
+        "Alle Vorgänge wandern nach „{to}“, danach fällt „{from}“ weg.": "All items move to “{to}”, then “{from}” is removed.",
+        "_Für dich sichtbar ist davon %n Vorgang._::_Für dich sichtbar sind davon %n Vorgänge._": ["%n of them is visible to you.", "%n of them are visible to you."],
+        "Verborgene Vorgänge wandern mit, ohne hier aufzutauchen. Es geht nichts verloren.": "Hidden items move along without appearing here. Nothing is lost.",
+        "Verschieben und entfernen": "Move and remove",
+        "Spalte konnte nicht entfernt werden": "Column could not be removed",
+        "Spalte „{title}“ entfernen": "Remove column “{title}”"
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }

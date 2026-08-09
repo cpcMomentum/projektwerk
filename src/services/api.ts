@@ -202,11 +202,19 @@ export async function apiPatch<T, B = unknown>(path: string, body: B): Promise<T
 /**
  * DELETE gegen die App-API, durch den Nicht-JSON-Wächter geprüft.
  *
+ * **Mit Rumpf, wenn einer mitgegeben wird.** Das ist kein Kunstgriff:
+ * Nextclouds `Request` decodiert einen JSON-Rumpf für jede Methode außer GET
+ * und legt ihn in dieselben Parameter, aus denen der Controller liest. Ein
+ * Pflichtparameter wie die Zielspalte beim Entfernen einer Spalte gehört
+ * dorthin und nicht in die Adresse — er ist Teil des Vorgangs, nicht Teil des
+ * Ortes.
+ *
  * @param path Pfad relativ zu `/apps/projektwerk/api/v1`.
+ * @param body Nutzlast, wird als JSON gesendet. Ohne sie ein Aufruf wie bisher.
  */
-export async function apiDelete<T = void>(path: string): Promise<T> {
+export async function apiDelete<T = void, B = unknown>(path: string, body?: B): Promise<T> {
 	try {
-		return unwrap(await axios.delete<T>(apiUrl(path)))
+		return unwrap(await axios.delete<T>(apiUrl(path), body === undefined ? undefined : { data: body }))
 	} catch (e) {
 		throw isApiError(e) ? e : wrapError(e)
 	}

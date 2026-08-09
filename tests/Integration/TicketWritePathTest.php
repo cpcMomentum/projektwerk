@@ -307,6 +307,70 @@ class TicketWritePathTest extends IntegrationTestCase {
 	}
 
 	/**
+	 * **In eine Spalte, die es nicht gibt, wandert nichts** — weder beim
+	 * Verschieben noch beim Anlegen.
+	 *
+	 * Ohne diese Sperre wäre der Vorgang danach für **niemanden** mehr
+	 * erreichbar, auch nicht für den, der ihn sehen darf: Die Board-Ansicht
+	 * ordnet Tickets ihren Spalten zu und verwirft stillschweigend, was zu
+	 * keiner passt.
+	 *
+	 * Der Weg dorthin ist keine Bosheit, sondern der Normalfall zweier
+	 * geöffneter Browser: Wird eine Spalte entfernt (#60), bietet jeder andere
+	 * Client sie weiter an. Die optimistische Sperre fängt das **nicht** — das
+	 * Verschieben ganzer Spalten ist keine inhaltliche Änderung am Vorgang und
+	 * zählt die Version bewusst nicht hoch. Deshalb muss die Zielspalte selbst
+	 * geprüft werden.
+	 */
+	public function testATicketNeverLandsInAColumnThatDoesNotExist(): void {
+		$viewer = $this->viewer(LeakMatrixFixture::ANNA);
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+		$version = (int)$this->tickets->findVisible($viewer, $ticketId)->getVersion();
+		$gone = 999999;
+
+		try {
+			$this->service->move($viewer, $ticketId, $version, $gone, null, null);
+			$this->fail('Ein Vorgang liess sich in eine Spalte verschieben, die es nicht gibt.');
+		} catch (DoesNotExistException) {
+			$this->addToAssertionCount(1);
+		}
+
+		try {
+			$this->service->create($viewer, 'Ins Nichts', null, TicketScope::VISIBILITY_PUBLIC, $gone);
+			$this->fail('Ein Vorgang liess sich in einer Spalte anlegen, die es nicht gibt.');
+		} catch (DoesNotExistException) {
+			$this->addToAssertionCount(1);
+		}
+
+		$this->assertSame(
+			$this->fixture->columnIds[LeakMatrixFixture::COLUMN_A],
+			(int)$this->tickets->findVisible($viewer, $ticketId)->getColumnId(),
+			'Der fehlgeschlagene Versuch hat den Vorgang trotzdem bewegt.',
+		);
+	}
+
+	/**
+	 * Und ebenso wenig in eine Spalte eines **fremden** Projekts.
+	 *
+	 * Das wäre der schwerste Ausgang: Der Vorgang landete in einem Board,
+	 * dessen Mitglieder ihn nie sehen durften.
+	 */
+	public function testATicketNeverLandsInAnotherBoardsColumn(): void {
+		$viewer = $this->viewer(LeakMatrixFixture::ANNA);
+		$other = Server::get(\OCA\Projektwerk\Service\BoardService::class)->create('lm-neu', 'Fremdes Projekt');
+		$otherViewer = Server::get(\OCA\Projektwerk\Access\BoardAccess::class)
+			->contextFor('lm-neu', (int)$other->getId());
+		$foreign = (int)Server::get(\OCA\Projektwerk\Db\ColumnMapper::class)->findForBoard($otherViewer)[0]->getId();
+
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+		$version = (int)$this->tickets->findVisible($viewer, $ticketId)->getVersion();
+
+		$this->expectException(DoesNotExistException::class);
+
+		$this->service->move($viewer, $ticketId, $version, $foreign, null, null);
+	}
+
+	/**
 	 * Ist die Lücke aufgebraucht, nummeriert der Dienst die Spalte neu — und
 	 * das Ticket landet trotzdem dort, wo es hin soll.
 	 */
