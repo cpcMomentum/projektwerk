@@ -37,6 +37,12 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 - **„Wartet auf Kunde"** — gerechnet, nie gespeichert. Marke über dem Titel, im Detail als Satz
   mit Namen, Filterschalter „Nur wartend" mit Zählanzeige. In der Kundenansicht neutral
   formuliert (`wartet auf euch`, `liegt bei`)
+- **Ältere Erledigte als Sicht, nicht als Ablageort.** `closed_at` bleibt die einzige Wahrheit;
+  ein Archiv als dritter Zustand hätte die Verdopplung von „erledigt" verdreifacht. Je Spalte
+  bleiben die zuletzt geschlossenen zehn stehen, der Rest steht hinter „N ältere Vorgänge
+  anzeigen". **Anzahl statt Alter** — unbedienbar macht ein Board die Menge der Erledigten, nicht
+  ihr Alter, und eine Zeitgrenze verhielte sich ausgerechnet an beiden Enden falsch. Kein neues
+  Feld, keine Migration, keine Einstellung
 - **Weiches Löschen**: `deleted_at`, ausgewertet allein in `TicketScope::apply()`. Kein
   Papierkorb in der App — der wäre ein zweiter Ort, an dem Tickets leben. Wiederhergestellt
   wird per `occ projektwerk:ticket:restore`

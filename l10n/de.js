@@ -119,6 +119,8 @@ OC.L10N.register(
     "Verborgene Vorgänge wandern mit, ohne hier aufzutauchen. Es geht nichts verloren.": "Verborgene Vorgänge wandern mit, ohne hier aufzutauchen. Es geht nichts verloren.",
     "Verschieben und entfernen": "Verschieben und entfernen",
     "Spalte konnte nicht entfernt werden": "Spalte konnte nicht entfernt werden",
-    "Spalte „{title}“ entfernen": "Spalte „{title}“ entfernen"
+    "Spalte „{title}“ entfernen": "Spalte „{title}“ entfernen",
+    "_%n älteren Vorgang anzeigen_::_%n ältere Vorgänge anzeigen_": ["%n älteren Vorgang anzeigen", "%n ältere Vorgänge anzeigen"],
+    "Ältere wieder ausblenden": "Ältere wieder ausblenden"
 },
 "nplurals=2; plural=(n != 1);");

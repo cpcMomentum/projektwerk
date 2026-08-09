@@ -119,6 +119,8 @@ OC.L10N.register(
     "Verborgene Vorgänge wandern mit, ohne hier aufzutauchen. Es geht nichts verloren.": "Hidden items move along without appearing here. Nothing is lost.",
     "Verschieben und entfernen": "Move and remove",
     "Spalte konnte nicht entfernt werden": "Column could not be removed",
-    "Spalte „{title}“ entfernen": "Remove column “{title}”"
+    "Spalte „{title}“ entfernen": "Remove column “{title}”",
+    "_%n älteren Vorgang anzeigen_::_%n ältere Vorgänge anzeigen_": ["Show %n older item", "Show %n older items"],
+    "Ältere wieder ausblenden": "Hide older items again"
 },
 "nplurals=2; plural=(n != 1);");

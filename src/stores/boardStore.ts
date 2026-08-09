@@ -18,6 +18,21 @@ import { fetchBoard, fetchBoards } from '@/services/boards'
 import { fetchTickets, moveTicket as moveTicketRequest } from '@/services/tickets'
 import { showError } from '@/services/toast'
 
+/**
+ * Wie viele geschlossene Vorgänge je Spalte stehen bleiben (#59).
+ *
+ * **Eine Konstante und keine Einstellung.** Eine Einstellung wäre die Art, die
+ * Entscheidung nicht zu treffen: Wer ein Projekt anlegt, hat noch kein volles
+ * Board und könnte die Zahl noch weniger begründen als wir — er ließe sie
+ * stehen, und wir hätten Feld, Migration und Validierung dafür bezahlt.
+ *
+ * Zehn ist etwa ein Bildschirm Nachlauf unter den offenen Karten. Stellt sich
+ * die Zahl als falsch heraus, ist sie an genau dieser Stelle zu ändern; eine
+ * Einstellung lässt sich dann immer noch ergänzen. Umgekehrt — eine Einstellung
+ * wieder wegzunehmen, die jemand gesetzt hat — ist ungleich teurer.
+ */
+export const CLOSED_TAIL = 10
+
 interface State {
 	boards: Board[]
 	board: Board | null
@@ -32,6 +47,8 @@ interface State {
 	waiting: Record<number, WaitState>
 	/** Filterschalter „Nur wartend"; liegt quer zu den Spalten. */
 	onlyWaiting: boolean
+	/** Spalten, in denen „ältere anzeigen" gerade aufgeklappt ist (#59). */
+	expandedColumns: number[]
 	loading: boolean
 	error: string | null
 }
@@ -48,6 +65,7 @@ export const useBoardStore = defineStore('board', {
 		counts: null,
 		waiting: {},
 		onlyWaiting: false,
+		expandedColumns: [],
 		loading: false,
 		error: null,
 	}),
@@ -135,6 +153,15 @@ export const useBoardStore = defineStore('board', {
 		async open(boardId: number): Promise<void> {
 			this.loading = true
 			this.error = null
+			// **Nur beim Wechsel des Boards**, nicht bei jedem Neuladen. `open()`
+			// ist auch der allgemeine Nachladepfad: nach einem abgehakten
+			// Arbeitsschritt, nach einem angelegten Vorgang, nach einem 409.
+			// Bedingungslos geleert klappte die Spalte dem Nutzer unter der Hand
+			// wieder zu — mitsamt seiner Scrollposition, und ohne dass irgendwas
+			// erklärte, warum.
+			if (this.board?.id !== boardId) {
+				this.expandedColumns = []
+			}
 			try {
 				const detail: BoardDetail = await fetchBoard(boardId)
 				this.board = detail.board
@@ -229,17 +256,152 @@ export const useBoardStore = defineStore('board', {
 		 * Der Filter „Nur wartend" greift hier und nicht in einer eigenen
 		 * Abfrage: Der Zustand liegt **quer** zu den Spalten, und eine zweite
 		 * Abfrage wäre ein zweiter Ort, an dem die Sichtbarkeit stimmen müsste.
+		 * Dasselbe gilt für das Ausblenden älterer Erledigter (#59).
+		 *
+		 * **Die beiden schließen einander aus, und das ist kein Zufall:** Ein
+		 * geschlossener Vorgang wartet nie (E8). Ist „Nur wartend" an, ist
+		 * ohnehin nichts Geschlossenes übrig, das man ausblenden könnte.
 		 *
 		 * @param columnId Kennung der Spalte.
 		 */
 		ticketsIn(columnId: number): Ticket[] {
-			const inColumn = (this.columnOrder.get(columnId) ?? [])
+			const inColumn = this.visibleIn(columnId)
+
+			if (this.onlyWaiting) {
+				return inColumn.filter((ticket) => this.waiting[ticket.id] !== undefined)
+			}
+
+			return this.expandedColumns.includes(columnId)
+				? inColumn
+				: this.withoutOlderClosed(inColumn)
+		},
+
+		/**
+		 * Alles, was dieser Betrachter in der Spalte sehen darf — ungefiltert
+		 * durch die Zustände der Ansicht.
+		 *
+		 * Grundlage sowohl für `ticketsIn()` als auch für
+		 * `hiddenClosedCount()`. „Ungefiltert" heißt hier ausdrücklich
+		 * **nicht** „an der Sichtbarkeitsregel vorbei": Die Menge kommt aus
+		 * `columnOrder`, und die stammt aus der bereits gefilterten Antwort des
+		 * Servers.
+		 *
+		 * @param columnId Kennung der Spalte.
+		 */
+		visibleIn(columnId: number): Ticket[] {
+			return (this.columnOrder.get(columnId) ?? [])
 				.map((id) => this.tickets.get(id))
 				.filter((t): t is Ticket => t !== undefined)
+		},
 
-			return this.onlyWaiting
-				? inColumn.filter((ticket) => this.waiting[ticket.id] !== undefined)
-				: inColumn
+		/**
+		 * Von den geschlossenen Vorgängen bleiben die zuletzt geschlossenen
+		 * `CLOSED_TAIL` stehen — offene sind nie betroffen.
+		 *
+		 * **Anzahl statt Alter.** Unbedienbar macht ein Board die Menge der
+		 * Erledigten, nicht ihr Alter; eine Zeitgrenze verhielte sich
+		 * ausgerechnet an den beiden Enden falsch, die sie beheben soll. Auf
+		 * einem vielbeschäftigten Board wären zweihundert Vorgänge aus drei
+		 * Wochen alle jünger als die Grenze und die Spalte liefe trotzdem über;
+		 * auf einem ruhigen verschwänden die drei Erledigten vom Frühjahr,
+		 * obwohl sie niemanden stören. Die Anzahl regelt sich von selbst.
+		 *
+		 * **Gerechnet wird je Betrachter auf der gefilterten Menge** — „die
+		 * letzten zehn, *die du siehst*". Das ist bewusst die **umgekehrte**
+		 * Entscheidung zu §3.8, wo Positionen aus der ungefilterten Liste
+		 * stammen: Positionen müssen für alle gleich sein, sonst sähen zwei
+		 * Personen dieselbe Spalte verschieden sortiert. Hier geht es darum, was
+		 * **dieser** Betrachter überblickt, und ein Zähler über die ungefilterte
+		 * Menge wäre genau das Leck aus §5.8.
+		 *
+		 * **Ohne den Aufklappzustand.** Die Frage „was würde eingeklappt
+		 * wegfallen" muss sich auch dann beantworten lassen, wenn die Spalte
+		 * gerade offen steht — sonst weiß niemand, ob der Umschalter überhaupt
+		 * etwas zu tun hätte.
+		 *
+		 * @param inColumn Die sichtbaren Vorgänge der Spalte, in Serverreihenfolge.
+		 */
+		withoutOlderClosed(inColumn: Ticket[]): Ticket[] {
+			const closed = inColumn.filter((ticket) => ticket.closedAt !== null)
+			if (closed.length <= CLOSED_TAIL) {
+				return inColumn
+			}
+
+			// Nach Schliessdatum, das jüngste zuerst; bei gleichem Datum
+			// entscheidet die höhere Kennung. Ohne diesen zweiten Schlüssel
+			// wäre die Auswahl bei gleichzeitig geschlossenen Vorgängen von der
+			// Sortierstabilität abhängig — und damit vom Browser.
+			//
+			// Verglichen wird mit `<`/`>` statt `localeCompare()`: `closedAt`
+			// ist ATOM und damit formgleich, ein Zeichenvergleich liefert
+			// dieselbe Ordnung — und geht nicht über die ICU-Kollation, die je
+			// Vergleich um Größenordnungen teurer ist. `closed` stammt frisch
+			// aus `filter()` und darf an Ort und Stelle sortiert werden.
+			const keep = new Set(closed
+				.sort((a, b) => {
+					const von = a.closedAt ?? ''
+					const bis = b.closedAt ?? ''
+
+					return von === bis ? b.id - a.id : (von < bis ? 1 : -1)
+				})
+				.slice(0, CLOSED_TAIL)
+				.map((ticket) => ticket.id))
+
+			// Die Reihenfolge bleibt die der Spalte, nicht die des Schliessens:
+			// Ausgewählt wird nach Datum, angezeigt wird nach Position.
+			return inColumn.filter((ticket) => ticket.closedAt === null || keep.has(ticket.id))
+		},
+
+		/**
+		 * Wie viele Vorgänge das Einklappen zurückhielte — **unabhängig davon,
+		 * ob die Spalte gerade offen steht**.
+		 *
+		 * Das ist die Frage, an der der Umschalter hängt: Gibt es überhaupt
+		 * etwas zu klappen? Ohne sie stünde über einer leeren Spalte ein Knopf
+		 * „Ältere wieder ausblenden", der nichts tut.
+		 *
+		 * Als **Differenz** derselben Rechnung, nicht als eigene Bedingung: Ein
+		 * Zähler mit eigener Regel wäre der zweite Ort, an dem sie stimmen
+		 * müsste — und §5.8 nennt Zähler ausdrücklich.
+		 *
+		 * @param columnId Kennung der Spalte.
+		 */
+		collapsibleCount(columnId: number): number {
+			// Bei „Nur wartend" ist nichts Geschlossenes in der Menge; ein
+			// Angebot „12 ältere anzeigen" führte dann ins Leere.
+			if (this.onlyWaiting) {
+				return 0
+			}
+
+			const inColumn = this.visibleIn(columnId)
+
+			return inColumn.length - this.withoutOlderClosed(inColumn).length
+		},
+
+		/**
+		 * Wie viele Vorgänge die Spalte **gerade** zurückhält — null, solange
+		 * sie aufgeklappt ist.
+		 *
+		 * @param columnId Kennung der Spalte.
+		 */
+		hiddenClosedCount(columnId: number): number {
+			return this.expandedColumns.includes(columnId) ? 0 : this.collapsibleCount(columnId)
+		},
+
+		/**
+		 * Ältere Erledigte einer Spalte aufklappen oder wieder einklappen.
+		 *
+		 * Ein Zustand der **Ansicht**, keine zweite Abfrageform: Die Vorgänge
+		 * sind längst da, sie werden nur nicht gezeigt.
+		 *
+		 * @param columnId Kennung der Spalte.
+		 */
+		toggleOlder(columnId: number): void {
+			// Neues Array statt `push`/`splice`: Dieselbe Vorsicht wie bei den
+			// Maps oben — sonst bleibt das Neuzeichnen aus.
+			this.expandedColumns = this.expandedColumns.includes(columnId)
+				? this.expandedColumns.filter((id) => id !== columnId)
+				: [...this.expandedColumns, columnId]
 		},
 	},
 })
