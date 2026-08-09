@@ -18,6 +18,12 @@ return [
 		['name' => 'board#index', 'url' => '/api/v1/boards', 'verb' => 'GET'],
 		['name' => 'board#show', 'url' => '/api/v1/boards/{boardId}', 'verb' => 'GET'],
 
+		// „Meine Aufgaben" — die einzige GET-Route ohne Board im Pfad. Sie
+		// gehoert zu allen Projekten, und die Rolle bildet `TicketScope` je
+		// Board ueber den Verbund auf `pwerk_members`. Steht in der
+		// Leak-Matrix wie jede andere Leseroute.
+		['name' => 'task#index', 'url' => '/api/v1/tasks', 'verb' => 'GET'],
+
 		['name' => 'ticket#index', 'url' => '/api/v1/boards/{boardId}/tickets', 'verb' => 'GET'],
 		['name' => 'ticket#show', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}', 'verb' => 'GET'],
 		['name' => 'ticket#create', 'url' => '/api/v1/boards/{boardId}/tickets', 'verb' => 'POST'],

@@ -174,6 +174,73 @@ class TicketMapper extends QBMapper {
 	}
 
 	/**
+	 * Die Vorgaenge, an denen mir ein **offener Arbeitsschritt** zugewiesen ist
+	 * — ueber alle Boards hinweg (§ Meine Aufgaben, Abschnitt „Meine
+	 * Arbeitsschritte").
+	 *
+	 * **Warum das nicht {@see findVisibleAcrossBoards()} sein kann.** Jene
+	 * Methode schraenkt auf „verantwortlich **oder** mitarbeitend" ein und
+	 * beantwortet damit „Meine Tickets". Ein Arbeitsschritt kann mir aber an
+	 * einem Vorgang zugewiesen sein, an dem ich weder das eine noch das andere
+	 * bin — genau der Normalfall, wenn jemand mir eine Zuarbeit gibt. Die
+	 * beiden Abschnitte der Ansicht sind deshalb zwei verschiedene Mengen und
+	 * brauchen zwei Abfragen.
+	 *
+	 * **Es bleibt trotzdem dieselbe eine Regel.** Der Einstieg ist
+	 * {@see scopedQuery()} wie ueberall; die Schritte kommen nur als
+	 * Einschraenkung dazu, nicht als zweiter Zugang. Ein Lesepfad im
+	 * `StepMapper` waere die Alternative gewesen und ist verworfen: Er muesste
+	 * `pwerk_tickets` selbst anfassen, und das ist ausserhalb dieser Klasse und
+	 * `TicketScope` verboten — der Architekturtest laesst es fallen.
+	 *
+	 * **Unterabfrage statt Verbund.** Ein JOIN auf `pwerk_steps` lieferte ein
+	 * Ticket mehrfach, sobald mir daran zwei Schritte gehoeren; anders als bei
+	 * `pwerk_ticket_users` gibt es hier keinen eindeutigen Index, der das
+	 * verhindert. Die Parameter entstehen am **aeusseren** Builder — nur dort
+	 * gebunden zu werden ist der Grund, warum Nextclouds eigener Code es genau
+	 * so macht (`contactsinteraction/lib/Db/CardSearchDao.php`).
+	 *
+	 * Zurueck kommen **Tickets, keine Schritte**: Die Schritte laedt der
+	 * Aufrufer ueber `findForTickets()` aus dieser gefilterten Menge. Kinder
+	 * werden nie eigenstaendig abgefragt.
+	 *
+	 * @return Ticket[]
+	 */
+	public function findVisibleWithMyOpenSteps(string $userId, TaskFilter $filter): array {
+		$qb = $this->scopedQuery($userId, null);
+
+		$mine = $this->db->getQueryBuilder();
+		$mine->select('ticket_id')
+			->from('pwerk_steps')
+			->where($mine->expr()->eq('assigned_user_id', $qb->createNamedParameter($userId)))
+			->andWhere($mine->expr()->eq('done', $qb->createNamedParameter(0, IQueryBuilder::PARAM_INT)));
+
+		// Ohne `PARAM_INT_ARRAY`: `ExpressionBuilder::in()` reicht den Typ nicht
+		// weiter (`return $this->expressionBuilder->in($x, $y);` — das dritte
+		// Argument faellt weg). Nextclouds eigener Code gibt ihn trotzdem mit;
+		// ihn hier mitzuschleppen hiesse, eine Wirkung zu behaupten, die es
+		// nicht gibt. Gebunden werden die Parameter ohnehin am aeusseren
+		// Builder, nicht ueber diesen Weg.
+		$qb->select(self::T . '.*')
+			->andWhere($qb->expr()->in(
+				self::T . '.id',
+				$qb->createFunction($mine->getSQL()),
+			));
+
+		if (!$filter->includeClosed) {
+			// §5.3: Geschlossene Vorgaenge verschwinden aus „Meine Aufgaben".
+			// Der offene Schritt daran ueberlebt das Schliessen (E8) — er wird
+			// nur nicht mehr vorgehalten.
+			$qb->andWhere($qb->expr()->isNull(self::T . '.closed_at'));
+		}
+
+		$qb->orderBy(self::T . '.created_at', 'ASC')
+			->addOrderBy(self::T . '.id', 'ASC');
+
+		return $this->findEntities($qb);
+	}
+
+	/**
 	 * Wie viele Tickets dieser Betrachter im Board sieht.
 	 *
 	 * Zaehlt **dieselbe** Abfrage, die auch die Liste liefert — nicht eine

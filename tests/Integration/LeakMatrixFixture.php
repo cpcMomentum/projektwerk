@@ -116,7 +116,57 @@ final class LeakMatrixFixture {
 		self::DIRK => [ViewerContext::ROLE_EXTERNAL, false, 'Dirk Sommer'],
 	];
 
+	/**
+	 * **Das zweite Board — und der einzige Grund, warum es existiert.**
+	 *
+	 * Bert ist hier **extern**, waehrend er im ersten Board **intern** ist. Das
+	 * ist die Konstellation aus dem Akzeptanzkriterium von Phase 4: Wer Berts
+	 * Rolle *einmal* aufloest statt je Board, bekommt hier das falsche Ergebnis
+	 * — und zwar in **beide** Richtungen zugleich:
+	 *
+	 * | Ticket | Bert sieht es | weil |
+	 * |---|---|---|
+	 * | `b:internal/erna` | **nein** | `internal` + Erzeugerrolle intern; Bert ist hier die Kundenseite |
+	 * | `b:internal/bert` | **ja** | `internal` + Erzeugerrolle extern, und das ist hier seine |
+	 *
+	 * Genau diese beiden Zeilen kann keine Implementierung erfuellen, die die
+	 * Rolle global bestimmt: Wer ihn ueberall intern nimmt, sieht Zeile 1
+	 * faelschlich und Zeile 2 nicht; wer ihn ueberall extern nimmt, umgekehrt
+	 * — und im ersten Board fiele dann `internal/anna` weg.
+	 *
+	 * Erna ist die interne Seite dieses Boards. Sie taucht im ersten Board
+	 * nicht auf: Ein Mitglied, das in beiden Boards dieselbe Rolle traegt,
+	 * beantwortet die Frage nicht, um die es hier geht.
+	 */
+	public const ERNA = 'lm-erna';
+
+	public const B_COLUMN = 'Offen';
+
+	/**
+	 * Die Tickets des zweiten Boards: Bezeichnung => [Sichtbarkeit, Erzeuger, Erzeugerrolle].
+	 *
+	 * Alle offen, alle in einer Spalte — dieses Board prueft **nur** die Rolle
+	 * je Board, nicht noch einmal Spalten, Zaehler und Schliessen. Das erste
+	 * Board deckt das ab, und eine Fixture, die alles zweimal prueft, verdoppelt
+	 * die Wartung ohne eine Frage mehr zu beantworten.
+	 */
+	public const B_TICKETS = [
+		'b:public/erna' => [TicketScope::VISIBILITY_PUBLIC, self::ERNA, ViewerContext::ROLE_INTERNAL],
+		'b:internal/erna' => [TicketScope::VISIBILITY_INTERNAL, self::ERNA, ViewerContext::ROLE_INTERNAL],
+		'b:internal/bert' => [TicketScope::VISIBILITY_INTERNAL, self::BERT, ViewerContext::ROLE_EXTERNAL],
+		'b:private/erna' => [TicketScope::VISIBILITY_PRIVATE, self::ERNA, ViewerContext::ROLE_INTERNAL],
+	];
+
+	/** Mitglied => [Rolle, Verwaltungsrecht] im zweiten Board. */
+	private const B_MEMBERS = [
+		self::ERNA => [ViewerContext::ROLE_INTERNAL, true],
+		self::BERT => [ViewerContext::ROLE_EXTERNAL, false],
+	];
+
 	public int $boardId;
+
+	/** Das zweite Board (siehe {@see ERNA}). */
+	public int $otherBoardId;
 
 	/** @var array<string, int> Bezeichnung => Ticket-ID */
 	public array $ticketIds = [];
@@ -246,15 +296,122 @@ final class LeakMatrixFixture {
 		// erzeugen kann, prueft den Produktivcode gegen eine Fiktion.
 		$board->setTicketCounter($number);
 		$boards->update($board);
+
+		$this->buildOtherBoard($now);
+	}
+
+	/**
+	 * Das zweite Board — sparsam, mit genau einer Frage im Blick.
+	 *
+	 * Es traegt keine Kinder (Kommentare, Anhaenge, Mitarbeit): Die pruefen die
+	 * Kinder-Lesepfade am ersten Board, und hier wuerden sie nur die Zahlen
+	 * verschieben, ohne eine Erwartung zu schaerfen.
+	 *
+	 * **Ein Arbeitsschritt steht doch drin**, und der ist der Punkt: Er gehoert
+	 * Bert an `b:public/erna` — einem Vorgang, fuer den er **weder
+	 * verantwortlich noch mitarbeitend** ist. Damit ist belegt, dass „Meine
+	 * Arbeitsschritte" eine andere Menge ist als „Meine Tickets", und genau das
+	 * ist die Begruendung fuer den eigenen Lesepfad
+	 * {@see TicketMapper::findVisibleWithMyOpenSteps()}.
+	 */
+	private function buildOtherBoard(\DateTime $now): void {
+		$boards = Server::get(BoardMapper::class);
+		$members = Server::get(MemberMapper::class);
+		$columns = Server::get(ColumnMapper::class);
+		$tickets = Server::get(TicketMapper::class);
+		$steps = Server::get(StepMapper::class);
+
+		$board = new Board();
+		$board->setTitle('Leak-Matrix Zweitboard');
+		$board->setOwnerUserId(self::ERNA);
+		$board->setArchived(0);
+		$board->setOrgInternal('Erna Elektronik');
+		$board->setOrgExternal(self::ORG_INTERNAL);
+		$board->setCreatedAt($now);
+		$board->setUpdatedAt($now);
+		$this->otherBoardId = (int)$boards->insert($board)->getId();
+
+		foreach (self::B_MEMBERS as $userId => [$role, $isManager]) {
+			$member = new Member();
+			$member->setBoardId($this->otherBoardId);
+			$member->setUserId($userId);
+			$member->setRole($role);
+			$member->setIsManager($isManager ? 1 : 0);
+			$member->setDisplayName(null);
+			$member->setAddedBy(self::ERNA);
+			$member->setAddedAt($now);
+			$members->insert($member);
+		}
+
+		$column = new Column();
+		$column->setBoardId($this->otherBoardId);
+		$column->setTitle(self::B_COLUMN);
+		$column->setPosition(0);
+		$columnId = (int)$columns->insert($column)->getId();
+
+		$number = 0;
+		foreach (self::B_TICKETS as $label => [$visibility, $creator, $creatorRole]) {
+			$number++;
+
+			$ticket = new Ticket();
+			$ticket->setBoardId($this->otherBoardId);
+			$ticket->setColumnId($columnId);
+			$ticket->setNumber($number);
+			$ticket->setTitle($label);
+			$ticket->setVisibility($visibility);
+			$ticket->setCreatorUserId($creator);
+			$ticket->setCreatorRole($creatorRole);
+			// Verantwortlich ist die **erzeugende** Person. Bert ist damit fuer
+			// `b:public/erna` weder verantwortlich noch mitarbeitend — der
+			// Schritt unten haengt genau daran.
+			$ticket->setResponsibleUserId($creator);
+			$ticket->setPosition($number * 65536);
+			$ticket->setVersion(1);
+			$ticket->setCreatedAt($now);
+			$ticket->setUpdatedAt($now);
+			$this->ticketIds[$label] = (int)$tickets->insert($ticket)->getId();
+		}
+
+		$step = new Step();
+		$step->setTicketId($this->ticketIds['b:public/erna']);
+		$step->setTitle('Zuarbeit von der Kundenseite');
+		$step->setAssignedUserId(self::BERT);
+		$step->setAssignedRole(ViewerContext::ROLE_EXTERNAL);
+		$step->setAssignedAt($now);
+		$step->setDone(0);
+		$step->setPosition(0);
+		$step->setCreatedAt($now);
+		$steps->insert($step);
+
+		// **Ein erledigter Schritt, und er ist der einzige an diesem Vorgang.**
+		// Ohne ihn liefe die Bedingung „offen" — einmal als `done = 0` im SQL,
+		// einmal als `!isDone()` in PHP — gegen nichts: Beide liessen sich
+		// streichen, ohne dass ein Test faellt. `b:internal/bert` darf deshalb
+		// in „Meine Arbeitsschritte" **nicht** auftauchen, obwohl Bert das
+		// Ticket sieht und der Schritt ihm gehoert.
+		$done = new Step();
+		$done->setTicketId($this->ticketIds['b:internal/bert']);
+		$done->setTitle('Schon erledigt');
+		$done->setAssignedUserId(self::BERT);
+		$done->setAssignedRole(ViewerContext::ROLE_EXTERNAL);
+		$done->setAssignedAt($now);
+		$done->setDone(1);
+		$done->setDoneAt($now);
+		$done->setPosition(1);
+		$done->setCreatedAt($now);
+		$steps->insert($done);
+
+		$board->setTicketCounter($number);
+		$boards->update($board);
 	}
 
 	/**
 	 * Der Kontext eines Mitglieds — auf demselben Weg wie im Betrieb, also ueber
 	 * `BoardAccess`.
 	 */
-	public function contextFor(string $userId): ViewerContext {
+	public function contextFor(string $userId, ?int $boardId = null): ViewerContext {
 		return Server::get(\OCA\Projektwerk\Access\BoardAccess::class)
-			->contextFor($userId, $this->boardId);
+			->contextFor($userId, $boardId ?? $this->boardId);
 	}
 
 	/**

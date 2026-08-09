@@ -42,6 +42,11 @@ final class ReadPathRegistry {
 		'TicketMapper::findVisibleInBoard',
 		'TicketMapper::findVisible',
 		'TicketMapper::findVisibleAcrossBoards',
+		// „Meine Arbeitsschritte" — dieselbe Regel, andere Menge als
+		// `findVisibleAcrossBoards`: Ein Schritt kann mir an einem Vorgang
+		// gehoeren, an dem ich weder verantwortlich noch mitarbeitend bin.
+		// Die Erwartung dazu ist `testMyStepsNeverWidensBeyondTheVisibleSet`.
+		'TicketMapper::findVisibleWithMyOpenSteps',
 		// Der Deep-Link kennt nur die Ticketnummer, kein Board — deshalb ohne
 		// Board-Einschraenkung, aber ueber dieselbe Regel.
 		'TicketMapper::findVisibleAnywhere',
@@ -89,6 +94,11 @@ final class ReadPathRegistry {
 	public const ROUTE_PATHS = [
 		'board#index',
 		'board#show',
+		// Die einzige Leseroute ohne Board im Pfad. Gerade deshalb steht sie
+		// hier: Wo kein `BoardAccess` davor haengt, traegt die Regel im JOIN
+		// allein — und ein Nichtmitglied bekommt kein 404, sondern zwei leere
+		// Listen. Der Unterschied gehoert belegt.
+		'task#index',
 		'ticket#index',
 		'ticket#show',
 		'ticket#visibilityImpact',
