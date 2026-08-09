@@ -30,6 +30,15 @@ return [
 		['name' => 'ticket#visibilityImpact', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/visibility-impact', 'verb' => 'GET'],
 		['name' => 'ticket#visibility', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/visibility', 'verb' => 'PUT'],
 
+		// Arbeitsschritte. Gelesen werden sie ueber ticket#index und
+		// ticket#show, aus derselben gefilterten Ticketmenge — deshalb stehen
+		// hier nur Schreibwege. Ausnahme mit Grund: `assignable` beantwortet
+		// „wem darf ich hier etwas geben", und diese Frage folgt aus der
+		// Sichtbarkeitsregel; sie steht deshalb in der Leak-Matrix.
+		['name' => 'step#assignable', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/assignable', 'verb' => 'GET'],
+		['name' => 'step#create', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/steps', 'verb' => 'POST'],
+		['name' => 'step#update', 'url' => '/api/v1/boards/{boardId}/steps/{stepId}', 'verb' => 'PATCH'],
+
 		// Board-Einstellungen. Ausschliesslich Schreibwege — gelesen wird ueber
 		// board#show, das Board, Mitglieder und Spalten in einem Zug liefert und
 		// in der Leak-Matrix registriert ist.
