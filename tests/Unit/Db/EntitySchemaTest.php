@@ -114,6 +114,42 @@ class EntitySchemaTest extends TestCase {
 		}
 	}
 
+	/**
+	 * Jedes registrierte Feld hat auch eine deklarierte Eigenschaft.
+	 *
+	 * `getFieldTypes()` wird von `addType()` gefuellt, nicht von den
+	 * Eigenschaften — ein `addType()` ohne passende Eigenschaft kommt an
+	 * {@see testEntityFieldsMatchMigrationColumns()} vorbei. Nextclouds `Entity`
+	 * legt dann beim Setzen eine **dynamische** Eigenschaft an: In PHP 8.2
+	 * eine Verwarnung, ab PHP 9 ein Fehler. Der Test faengt das heute, wo es
+	 * eine Zeile kostet.
+	 *
+	 * Gefunden bei einer Gegenprobe zu `last_editor_user_id`: Die Eigenschaft
+	 * zu entfernen und `addType()` stehen zu lassen liess die Suite gruen.
+	 */
+	public function testEveryRegisteredFieldHasADeclaredProperty(): void {
+		$missing = [];
+
+		foreach (self::entitiesByTable() as $table => $class) {
+			$entity = new $class();
+			$reflection = new \ReflectionClass($class);
+
+			foreach (array_keys($entity->getFieldTypes()) as $property) {
+				if (!$reflection->hasProperty($property)) {
+					$missing[] = $class . '::$' . $property;
+				}
+			}
+		}
+
+		$this->assertSame($missing, [], implode("\n", [
+			'Registriertes Feld ohne deklarierte Eigenschaft:',
+			'  ' . implode(', ', $missing),
+			'',
+			'Entity legt dann eine dynamische Eigenschaft an — Verwarnung in PHP 8.2,',
+			'Fehler ab PHP 9.',
+		]));
+	}
+
 	public function testEntityTypesMatchColumnTypes(): void {
 		$schema = $this->parseMigration();
 

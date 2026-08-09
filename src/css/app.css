@@ -1,0 +1,821 @@
+/**
+ * SPDX-FileCopyrightText: 2026 cpcMomentum
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ *
+ * Die Gestaltungssprache von ProjektWerk. Übernommen aus WorkTime, Vinarium
+ * und RechnungsWerk, damit die Flotte zusammengehört: View-Wurzel mit 50 px
+ * linkem Rand, versale Abschnittsköpfe, Filter-Chips mit gedämpftem Zähler,
+ * flache Statuszeichen statt lauter Pills.
+ *
+ * Alles unter `.app-projektwerk` gekapselt, damit nichts in den Rest von
+ * Nextcloud ausläuft. Keine festen Farben — jeder Wert kommt aus einer
+ * NC-Variablen, sonst sähe die App im Theme des Kunden falsch aus.
+ */
+
+/* ---- View-Wurzel: Hausmaß aus WorkTime ---------------------------------- */
+
+.app-projektwerk .pw-view {
+	padding: 20px;
+	padding-left: 50px;
+	max-width: 1600px;
+}
+
+/* Auf dem Handy wären 50 px links verschenkte Fläche — dort zählt jede Spalte. */
+@media (max-width: 700px) {
+	.app-projektwerk .pw-view {
+		padding: 16px 12px 20px;
+	}
+}
+
+.app-projektwerk .pw-view__head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px 12px;
+	margin-bottom: 14px;
+}
+
+.app-projektwerk .pw-view__head h2 {
+	margin: 0;
+	font-size: 22px;
+	font-weight: 700;
+	letter-spacing: -0.01em;
+}
+
+.app-projektwerk .pw-view__sub {
+	width: 100%;
+	margin: -6px 0 0;
+	font-size: 13px;
+	color: var(--color-text-maxcontrast);
+}
+
+/* ---- Abschnittskopf: 13 px, versal (rw-section > h3) -------------------- */
+
+.app-projektwerk .pw-col__head {
+	display: flex;
+	align-items: baseline;
+	gap: 8px;
+	padding: 0 2px 10px;
+	font-size: 13px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-col__head .pw-n {
+	font-variant-numeric: tabular-nums;
+	font-weight: 600;
+	min-width: 20px;
+	padding: 1px 7px;
+	border-radius: 10px;
+	text-align: center;
+	background: var(--color-main-background);
+	color: var(--color-text-maxcontrast);
+}
+
+/* ---- Chip mit Zähler (rw-chip) ------------------------------------------ */
+
+.app-projektwerk .pw-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	min-height: var(--default-clickable-area, 44px);
+	padding: 5px 12px;
+	font-size: 13px;
+	font-weight: 600;
+	font-family: inherit;
+	border-radius: 16px;
+	border: 1px solid var(--color-border-dark);
+	background: var(--color-main-background);
+	color: var(--color-main-text);
+	cursor: pointer;
+}
+
+.app-projektwerk .pw-chip:hover {
+	background: var(--color-background-hover);
+}
+
+.app-projektwerk .pw-chip__n {
+	font-variant-numeric: tabular-nums;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-chip[aria-pressed='true'] {
+	background: var(--color-primary-element-light);
+	border-color: var(--color-primary-element);
+}
+
+.app-projektwerk .pw-chip[aria-pressed='true'] .pw-chip__n {
+	color: inherit;
+}
+
+/* ---- Spalten ------------------------------------------------------------ */
+
+/*
+ * Auf schmalen Schirmen bleiben die Spalten Spalten und werden seitlich
+ * durchgeblättert (§9) — kein Umbau zu einer flachen Liste, die
+ * Spaltenposition ist die Kerninformation. Die nächste Spalte lugt am Rand
+ * hervor, damit sichtbar ist, dass es weitergeht.
+ */
+.app-projektwerk .pw-board {
+	display: grid;
+	grid-auto-flow: column;
+	grid-auto-columns: min(82vw, 300px);
+	gap: 12px;
+	overflow-x: auto;
+	scroll-snap-type: x mandatory;
+	padding-bottom: 6px;
+	align-items: start;
+}
+
+@media (min-width: 860px) {
+	.app-projektwerk .pw-board {
+		grid-auto-flow: row;
+		grid-auto-columns: auto;
+		grid-template-columns: repeat(var(--pw-columns, 3), minmax(0, 1fr));
+		overflow-x: auto;
+	}
+}
+
+/*
+ * Die Spalte bekommt einen leicht getoenten Grund, damit die Karten darin
+ * liegen statt daneben. Vorher standen Karte und Spalte auf demselben Weiss
+ * und nur Haarlinien trennten sie — das war der Hauptgrund, warum die Ansicht
+ * flach wirkte.
+ */
+.app-projektwerk .pw-col {
+	min-width: 0;
+	scroll-snap-align: start;
+	padding: 10px 10px 12px;
+	border-radius: var(--border-radius-large);
+	background: var(--color-background-hover);
+}
+
+.app-projektwerk .pw-stack {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+/* ---- Ticketkarte -------------------------------------------------------- */
+
+/*
+ * Die Karte ist jetzt ein Behaelter mit zwei Bedienelementen: der Flaeche zum
+ * Oeffnen und dem Menue „Verschieben nach …". Ein Knopf im Knopf waere
+ * ungueltiges HTML und fuer Tastatur und Screenreader kaputt.
+ */
+.app-projektwerk .pw-card {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	padding: 0;
+	background: var(--color-main-background);
+	border: 1px solid transparent;
+	border-radius: var(--border-radius-large);
+	box-shadow: 0 1px 2px rgba(0, 0, 0, .06), 0 1px 1px rgba(0, 0, 0, .04);
+	cursor: pointer;
+	text-align: left;
+	font: inherit;
+	color: inherit;
+	width: 100%;
+	transition: box-shadow .12s ease, transform .12s ease;
+}
+
+/* Die Flaeche zum Oeffnen traegt die Polsterung, nicht die Karte. */
+.app-projektwerk .pw-card__open {
+	display: flex;
+	flex-direction: column;
+	gap: 9px;
+	width: 100%;
+	padding: 14px 44px 13px 15px;
+	border: 0;
+	border-radius: inherit;
+	background: transparent;
+	font: inherit;
+	color: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+/* Das Menue liegt in der freien Ecke, die die Polsterung oben rechts laesst. */
+.app-projektwerk .pw-card__menu {
+	position: absolute;
+	top: 6px;
+	right: 6px;
+}
+
+/* Etwas Auftrieb statt eines Farbwechsels — der Rest bleibt ruhig. */
+.app-projektwerk .pw-card:hover {
+	box-shadow: 0 2px 4px rgba(0, 0, 0, .1), 0 4px 12px rgba(0, 0, 0, .06);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.app-projektwerk .pw-card:hover {
+		transform: translateY(-1px);
+	}
+}
+
+/*
+ * Drei Lautstärken, wie §9 sie abstuft: „Alle Beteiligten" bekommt den
+ * farbigen Balken, „Nur ich" den gestrichelten Rand (man soll einen Entwurf
+ * nicht vergessen), „Intern" nur die stille Zeile.
+ */
+.app-projektwerk .pw-card--public {
+	border-top: 3px solid var(--color-primary-element);
+}
+
+/* Der Entwurf traegt weiter einen gestrichelten Rand — er soll auffallen. */
+.app-projektwerk .pw-card--private {
+	border: 1px dashed var(--color-text-maxcontrast);
+	box-shadow: none;
+}
+
+.app-projektwerk .pw-card--closed .pw-card__title {
+	color: var(--color-text-maxcontrast);
+	text-decoration: line-through;
+}
+
+.app-projektwerk .pw-card__top {
+	display: flex;
+	align-items: center;
+	gap: 7px;
+}
+
+.app-projektwerk .pw-num {
+	font-family: var(--font-face-monospace, monospace);
+	font-size: 11.5px;
+	font-variant-numeric: tabular-nums;
+	color: var(--color-text-maxcontrast);
+}
+
+/* Das optische Zeichen für „geändert" — kein Text auf der Karte. */
+.app-projektwerk .pw-changed {
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	background: var(--color-primary-element);
+	flex: none;
+}
+
+/*
+ * Sichtbarkeit: Farbe UND Symbol UND Wort (§9 verlangt alle drei), aber flach
+ * statt als gefülltes Pill — die Hausregel aus RechnungsWerk lautet „flache
+ * Statuszeichen, keine lauten Pills".
+ */
+.app-projektwerk .pw-vis {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	font-size: 11.5px;
+	white-space: nowrap;
+}
+
+.app-projektwerk .pw-vis--public {
+	color: var(--color-primary-element);
+	font-weight: 600;
+}
+
+.app-projektwerk .pw-vis--internal {
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-vis--private {
+	color: var(--color-text-maxcontrast);
+	font-weight: 600;
+}
+
+.app-projektwerk .pw-card__title {
+	margin: 0;
+	font-size: 15px;
+	font-weight: 500;
+	line-height: 1.4;
+	overflow-wrap: anywhere;
+}
+
+.app-projektwerk .pw-card__foot {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	color: var(--color-text-maxcontrast);
+	font-size: 11.5px;
+}
+
+.app-projektwerk .pw-card__foot .pw-right {
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+	margin-left: auto;
+}
+
+.app-projektwerk .pw-steps {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Kein selbst gezeichneter Initialenkreis mehr: NcAvatar zeigt das echte Bild
+ * der Person und faellt selbst auf Initialen zurueck. Das sieht nicht nur
+ * weniger gebastelt aus, es ist auch das, was in jeder anderen Nextcloud-App
+ * steht — der Wiedererkennungswert kommt von der Plattform, nicht von uns.
+ */
+
+/* ---- Personenzeile ------------------------------------------------------ */
+
+.app-projektwerk .pw-person {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 8px 2px;
+	min-height: var(--default-clickable-area, 44px);
+}
+
+.app-projektwerk .pw-person + .pw-person {
+	border-top: 1px solid var(--color-border);
+}
+
+.app-projektwerk .pw-person__body {
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+}
+
+.app-projektwerk .pw-person__name {
+	font-size: 14px;
+	font-weight: 500;
+	line-height: 1.3;
+}
+
+/*
+ * Die Firma steht unter JEDEM Namen, auch unter den internen. An einem
+ * öffentlichen Ticket erscheinen beide Seiten gemeinsam und ohne Trennung —
+ * trüge nur die Kundenseite eine Firma, wäre die interne stumm „der Normalfall".
+ */
+.app-projektwerk .pw-person__org {
+	font-size: 12px;
+	line-height: 1.35;
+	color: var(--color-text-maxcontrast);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* ---- Leerzustand und Skelett -------------------------------------------- */
+
+/* Leerzustände sprechen (§9) — „Hier liegt gerade nichts." statt eines Strichs. */
+/*
+ * Ohne Rahmen: Im getoenten Spaltengrund wirkte der gestrichelte Kasten wie
+ * ein Fehler statt wie eine ruhige Leerstelle.
+ */
+.app-projektwerk .pw-empty {
+	padding: 18px 14px;
+	text-align: center;
+	color: var(--color-text-maxcontrast);
+	font-size: 13px;
+}
+
+/* Skelett-Karten statt Ladebalken (§9): Die Seite behält ihre Form. */
+.app-projektwerk .pw-skel {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 14px 15px;
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+}
+
+.app-projektwerk .pw-skel i {
+	display: block;
+	height: 9px;
+	border-radius: 3px;
+	background: var(--color-background-dark);
+}
+
+.app-projektwerk .pw-skel i:nth-child(1) { width: 40%; }
+.app-projektwerk .pw-skel i:nth-child(2) { width: 90%; }
+.app-projektwerk .pw-skel i:nth-child(3) { width: 60%; }
+
+@media (prefers-reduced-motion: no-preference) {
+	.app-projektwerk .pw-skel i {
+		animation: pw-pulse 1.6s ease-in-out infinite;
+	}
+
+	.app-projektwerk .pw-skel i:nth-child(2) { animation-delay: 0.12s; }
+	.app-projektwerk .pw-skel i:nth-child(3) { animation-delay: 0.24s; }
+
+	@keyframes pw-pulse {
+		0%, 100% { opacity: 1; }
+		50% { opacity: 0.45; }
+	}
+}
+
+/* ---- Board-Liste -------------------------------------------------------- */
+
+.app-projektwerk .pw-boards {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+	gap: 12px;
+}
+
+.app-projektwerk .pw-boardcard {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: 18px 20px;
+	min-height: var(--default-clickable-area, 44px);
+	background: var(--color-main-background);
+	border: 1px solid transparent;
+	border-radius: var(--border-radius-large);
+	box-shadow: 0 1px 2px rgba(0, 0, 0, .06), 0 1px 1px rgba(0, 0, 0, .04);
+	cursor: pointer;
+	text-align: left;
+	font: inherit;
+	color: inherit;
+	transition: box-shadow .12s ease;
+}
+
+.app-projektwerk .pw-boardcard:hover {
+	box-shadow: 0 2px 4px rgba(0, 0, 0, .1), 0 4px 12px rgba(0, 0, 0, .06);
+}
+
+.app-projektwerk .pw-boardcard__title {
+	font-size: 16px;
+	font-weight: 600;
+}
+
+.app-projektwerk .pw-boardcard__org {
+	font-size: 13px;
+	color: var(--color-text-maxcontrast);
+}
+
+/* ---- Formular ----------------------------------------------------------- */
+
+.app-projektwerk .pw-field {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	margin-bottom: 14px;
+}
+
+.app-projektwerk .pw-field > label {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--color-text-maxcontrast);
+}
+
+/*
+ * Die Sichtbarkeitszeile ist NIE eingeklappt und nie hinter einem Zahnrad
+ * (§9). Sie steht neben Titel und Beschreibung, für alle Rollen gleich
+ * voreingestellt.
+ */
+.app-projektwerk .pw-visrow {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.app-projektwerk .pw-visopt {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex: 1 1 190px;
+	padding: 10px 12px;
+	min-height: var(--default-clickable-area, 44px);
+	border: 1px solid var(--color-border-dark);
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+	color: var(--color-main-text);
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.app-projektwerk .pw-visopt[aria-pressed='true'] {
+	border-color: var(--color-primary-element);
+	background: var(--color-primary-element-light);
+}
+
+.app-projektwerk .pw-visopt__body {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.app-projektwerk .pw-visopt__name {
+	font-size: 14px;
+	font-weight: 600;
+}
+
+.app-projektwerk .pw-visopt__hint {
+	font-size: 12px;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-visopt[aria-pressed='true'] .pw-visopt__hint {
+	color: inherit;
+}
+
+/*
+ * Gesperrt heißt sichtbar-aber-nicht-wählbar, nicht unsichtbar: Wer „Nur ich"
+ * sucht und es gar nicht fände, hielte es für einen Fehler. Der Grund steht im
+ * Hinweistext an der Stelle des sonstigen.
+ */
+.app-projektwerk .pw-visopt:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+/* ---- Ticket-Detail ------------------------------------------------------ */
+
+/*
+ * Auf breiten Schirmen ein Overlay, auf schmalen vollflächig (§9) — derselbe
+ * Pfad, damit Direktlinks immer tragen. NcModal macht genau das.
+ */
+.app-projektwerk .pw-detail {
+	padding: 20px 24px 28px;
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+}
+
+.app-projektwerk .pw-detail__head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px;
+}
+
+.app-projektwerk .pw-detail__column {
+	font-size: 12px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-detail__closed {
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-detail__title {
+	margin: 0;
+	font-size: 22px;
+	font-weight: 700;
+	line-height: 1.25;
+	overflow-wrap: anywhere;
+}
+
+.app-projektwerk .pw-detail__body {
+	margin: 0;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	line-height: 1.55;
+}
+
+.app-projektwerk .pw-detail__empty {
+	margin: 0;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-detail__section {
+	display: flex;
+	flex-direction: column;
+	padding-top: 6px;
+	border-top: 1px solid var(--color-border);
+}
+
+/* ---- Sichtbarkeit ändern ------------------------------------------------ */
+
+.app-projektwerk .pw-viscontrol {
+	gap: 10px;
+}
+
+.app-projektwerk .pw-viscontrol__now {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.app-projektwerk .pw-viscontrol__edit,
+.app-projektwerk .pw-viscontrol__warn {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.app-projektwerk .pw-viscontrol__actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+}
+
+/*
+ * Der Warnblock trägt Farbe UND Symbol UND Text (§9, „nie allein über Farbe").
+ * Der Rand steht links, weil der Blick beim Lesen dort ankommt.
+ */
+.app-projektwerk .pw-viscontrol__warn {
+	padding: 12px 14px;
+	border-inline-start: 4px solid var(--color-warning, var(--color-error));
+	border-radius: var(--border-radius-large);
+	background: var(--color-background-hover);
+}
+
+.app-projektwerk .pw-viscontrol__lead {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+	margin: 0;
+	font-weight: 600;
+	line-height: 1.45;
+}
+
+.app-projektwerk .pw-viscontrol__losing {
+	margin: 0;
+	padding-inline-start: 28px;
+	line-height: 1.6;
+	overflow-wrap: anywhere;
+}
+
+.app-projektwerk .pw-viscontrol__note {
+	margin: 0;
+	font-size: 13px;
+	color: var(--color-text-maxcontrast);
+}
+
+/* ---- Projekteinstellungen ------------------------------------------------ */
+
+.app-projektwerk .pw-settings {
+	display: flex;
+	flex-direction: column;
+	gap: 28px;
+	/*
+	 * Anders als das Board: Formularzeilen brauchen eine Lesebreite. Ein
+	 * Textfeld ueber 3000 px waere auf einem 4K-Schirm unbedienbar, waehrend
+	 * die Spalten des Boards von jeder Breite profitieren.
+	 */
+	max-width: 820px;
+}
+
+.app-projektwerk .pw-settings__block {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	padding-top: 10px;
+	border-top: 1px solid var(--color-border);
+}
+
+.app-projektwerk .pw-settings__pair {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 14px;
+}
+
+.app-projektwerk .pw-settings__pair > .pw-field {
+	flex: 1 1 240px;
+	margin-bottom: 0;
+}
+
+.app-projektwerk .pw-settings__row,
+.app-projektwerk .pw-settings__member {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 10px;
+}
+
+.app-projektwerk .pw-settings__member {
+	padding: 6px 0;
+	border-bottom: 1px solid var(--color-border);
+}
+
+.app-projektwerk .pw-settings__member .pw-person__body {
+	flex: 1 1 180px;
+	min-width: 0;
+}
+
+.app-projektwerk .pw-settings__check {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	min-height: var(--default-clickable-area, 44px);
+	white-space: nowrap;
+}
+
+.app-projektwerk .pw-settings__hint {
+	font-size: 13px;
+	color: var(--color-text-maxcontrast);
+}
+
+/* ---- Wartemarke ---------------------------------------------------------- */
+
+/*
+ * Abgesetzt, aber nicht laut: Die Marke sagt „hier bist du gerade nicht dran".
+ * Farbe UND Symbol UND Text, wie jede Kennzeichnung in dieser App (§9) — wer
+ * die Farbe nicht sieht, liest denselben Satz.
+ */
+.app-projektwerk .pw-wait {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	align-self: flex-start;
+	padding: 3px 9px;
+	border-radius: var(--border-radius-large);
+	background: var(--color-warning, var(--color-primary-element-light));
+	color: var(--color-main-text);
+	font-size: 12.5px;
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+.app-projektwerk .pw-wait--compact {
+	padding: 2px 7px;
+	font-size: 11.5px;
+}
+
+.app-projektwerk .pw-wait__sentence {
+	margin: 0;
+	line-height: 1.5;
+}
+
+/* ---- Arbeitsschritte ----------------------------------------------------- */
+
+.app-projektwerk .pw-step {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 10px;
+	padding: 5px 0;
+	min-height: var(--default-clickable-area, 44px);
+}
+
+.app-projektwerk .pw-step__title {
+	flex: 1 1 160px;
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+/* Erledigt wird durchgestrichen UND ausgegraut — nie nur ueber die Farbe. */
+.app-projektwerk .pw-step__title--done {
+	color: var(--color-text-maxcontrast);
+	text-decoration: line-through;
+}
+
+.app-projektwerk .pw-step__due {
+	font-size: 12px;
+	color: var(--color-text-maxcontrast);
+	font-variant-numeric: tabular-nums;
+}
+
+.app-projektwerk .pw-step--new {
+	padding-top: 10px;
+	border-top: 1px solid var(--color-border);
+}
+
+/* ---- Kontensuche --------------------------------------------------------- */
+
+.app-projektwerk .pw-settings__hits {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.app-projektwerk .pw-settings__hit {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 1px;
+	padding: 6px 12px;
+	min-height: var(--default-clickable-area, 44px);
+	border: 1px solid var(--color-border-dark);
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+	color: var(--color-main-text);
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.app-projektwerk .pw-settings__hit[aria-pressed='true'] {
+	border-color: var(--color-primary-element);
+	background: var(--color-primary-element-light);
+}
+
+/*
+ * Die Kennung eines Gastkontos ist ein 64-stelliger Hash. Sie gehoert
+ * trotzdem hin — zwei Konten mit gleichem Anzeigenamen waeren sonst nicht
+ * unterscheidbar —, aber sie darf die Zeile nicht sprengen. Gekuerzt
+ * angezeigt, vollstaendig im Titel.
+ */
+.app-projektwerk .pw-settings__hit .pw-person__org {
+	display: block;
+	max-width: 22ch;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}

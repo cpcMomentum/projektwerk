@@ -78,6 +78,18 @@ class Version000001Date20260808000000 extends SimpleMigrationStep {
 		$table->addColumn('title', Types::STRING, ['notnull' => true, 'length' => 255]);
 		$table->addColumn('description', Types::TEXT, ['notnull' => false]);
 		$table->addColumn('owner_user_id', Types::STRING, ['notnull' => true, 'length' => 64]);
+		// Die Namen der beiden Seiten. Am Board und nicht am Mitglied, weil ein
+		// Board genau zwei Parteien kennt — mehr ist ausdruecklich nicht
+		// abgedeckt. Ein Feld je Mitglied koennte auseinanderlaufen (zwei
+		// Schreibweisen derselben Firma), zwei Felder am Board koennen es nicht.
+		//
+		// Sie stehen unter JEDEM Namen, auch unter den internen: In der
+		// Personenauswahl eines oeffentlichen Tickets erscheinen beide Seiten
+		// gemeinsam und ohne Trennung (§9). Traege nur die Kundenseite eine
+		// Firma, waere die interne stumm "der Normalfall" — die Trennung waere
+		// durch die Hintertuer zurueck.
+		$table->addColumn('org_internal', Types::STRING, ['notnull' => false, 'length' => 128]);
+		$table->addColumn('org_external', Types::STRING, ['notnull' => false, 'length' => 128]);
 		// Hinterlegt wird die Datei-ID; der Pfad dient nur der Anzeige und darf
 		// veralten. In S2 (07.08.2026) bestaetigt: Die Datei-ID ueberlebt einen
 		// Umzug innerhalb des Team-Ordners, der Pfad nicht.
@@ -115,6 +127,17 @@ class Version000001Date20260808000000 extends SimpleMigrationStep {
 		// Bezeichnungen sind reine Anzeigetexte aus der Uebersetzungsdatei.
 		$table->addColumn('role', Types::STRING, ['notnull' => true, 'length' => 16]);
 		$table->addColumn('is_manager', Types::SMALLINT, ['notnull' => true, 'default' => 0]);
+		// Vor- und Nachname fuer dieses Board. NULL heisst: Anzeigename aus
+		// Nextcloud verwenden.
+		//
+		// Nextclouds Anzeigename ist oft ein Kuerzel — intern gleichgueltig,
+		// gegenueber dem Kunden nicht. Verschaerfend der Befund aus S1: Ohne
+		// gepflegten Namen steht die E-Mail-Adresse eines Gastes als Klartext
+		// auf jeder Ticketkarte, auch fuer die uebrigen Mitarbeiter der
+		// Kundenseite. Ein Feld an der Mitgliedschaft macht das behebbar, ohne
+		// fremde Konten anzufassen — und passt zur Hausregel, dass die Rolle an
+		// der Mitgliedschaft haengt und nicht am Konto.
+		$table->addColumn('display_name', Types::STRING, ['notnull' => false, 'length' => 128]);
 		$table->addColumn('added_by', Types::STRING, ['notnull' => true, 'length' => 64]);
 		$table->addColumn('added_at', Types::DATETIME, ['notnull' => true]);
 		$table->setPrimaryKey(['id']);
@@ -166,7 +189,24 @@ class Version000001Date20260808000000 extends SimpleMigrationStep {
 		// Einfuegungen praezisionsabhaengig.
 		$table->addColumn('position', Types::BIGINT, ['notnull' => true, 'default' => 0, 'length' => 20]);
 		$table->addColumn('closed_at', Types::DATETIME, ['notnull' => false]);
+		// Weiches Loeschen. Der Wert wird **nirgends ausgeliefert** — er
+		// existiert nur, damit `TicketScope` geloeschte Vorgaenge aus jeder
+		// Abfrage nimmt. Ein sichtbarer Papierkorb waere ein zweiter Ort, an
+		// dem Tickets leben, und damit ein zweiter Ort, an dem die
+		// Sichtbarkeitsregel stimmen muesste. Wiederhergestellt wird per occ.
+		$table->addColumn('deleted_at', Types::DATETIME, ['notnull' => false]);
 		$table->addColumn('version', Types::BIGINT, ['notnull' => true, 'default' => 1, 'length' => 20]);
+		// Wer den aktuellen Stand von `version` verursacht hat. NULL heisst:
+		// seit dem Anlegen unveraendert — der Ersteller steht in
+		// creator_user_id und wird hier nicht wiederholt.
+		//
+		// Steht ab Migration 1 hier, obwohl die Anzeige dazu erst spaeter
+		// kommt. Der Grund ist derselbe wie bei visibility und creator_role
+		// (siehe Kopf dieser Datei): Solange es kein Release gibt, kostet die
+		// Spalte eine Zeile; danach kostet sie fuer immer eine
+		// Zusatzmigration. varchar(64), weil Gast-Kennungen Hashes mit exakt
+		// 64 Zeichen sind.
+		$table->addColumn('last_editor_user_id', Types::STRING, ['notnull' => false, 'length' => 64]);
 		$table->addColumn('github_issue_number', Types::BIGINT, ['notnull' => false, 'length' => 20]);
 		$table->addColumn('github_issue_url', Types::STRING, ['notnull' => false, 'length' => 4000]);
 		$table->addColumn('created_at', Types::DATETIME, ['notnull' => true]);

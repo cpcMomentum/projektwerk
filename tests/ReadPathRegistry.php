@@ -42,7 +42,13 @@ final class ReadPathRegistry {
 		'TicketMapper::findVisibleInBoard',
 		'TicketMapper::findVisible',
 		'TicketMapper::findVisibleAcrossBoards',
+		// Der Deep-Link kennt nur die Ticketnummer, kein Board — deshalb ohne
+		// Board-Einschraenkung, aber ueber dieselbe Regel.
+		'TicketMapper::findVisibleAnywhere',
 		'TicketMapper::countVisibleInBoard',
+		// Liest ungefiltert (§3.8) und ist deshalb der einzige Pfad, dessen
+		// Erwartung lautet: fuer jeden Betrachter derselbe Wert.
+		'TicketMapper::findLastPositionInColumn',
 
 		// Board, Mitglieder, Spalten. Nicht ticketgefiltert, aber
 		// betrachterabhaengig — und damit ebenso eine Frage, die die Matrix
@@ -69,13 +75,33 @@ final class ReadPathRegistry {
 	/**
 	 * Lese-Routen aus `appinfo/routes.php`, die die Matrix faehrt.
 	 *
-	 * Heute leer — es gibt noch keinen Lese-Endpunkt. Ab Phase 2 traegt sich
-	 * hier jede GET-Route ein; der Vollstaendigkeitstest laesst eine Route, die
-	 * weder hier noch in {@see ROUTES_WITHOUT_DATA} steht, fallen.
+	 * Jede GET-Route steht hier oder in {@see ROUTES_WITHOUT_DATA}; der
+	 * Vollstaendigkeitstest laesst jede andere fallen. Was hier steht, wird von
+	 * der Leak-Matrix mit **jedem** Betrachter gefahren.
+	 *
+	 * Der Unterschied zu {@see MAPPER_PATHS} ist nicht bloss die Ebene: Am
+	 * Endpunkt greift zusaetzlich `BoardAccess`. Ein Nichtmitglied bekommt hier
+	 * 404 — und nicht bloss eine leere Menge wie beim Mapper mit selbst
+	 * gebautem Kontext.
 	 *
 	 * @var string[] Routennamen in der Schreibweise aus routes.php
 	 */
 	public const ROUTE_PATHS = [
+		'board#index',
+		'board#show',
+		'ticket#index',
+		'ticket#show',
+		'ticket#visibilityImpact',
+		// Liefert zwar nur die Vue-Huelle, aber der Initial State darin
+		// beantwortet die Frage „darfst du diesen Vorgang sehen" — und damit
+		// gehoert die Route in die Matrix und nicht unter ROUTES_WITHOUT_DATA.
+		'deepLink#ticket',
+		// Liefert keine Schritte, sondern die Antwort auf „wem darf ich hier
+		// etwas geben" — und die folgt aus der Sichtbarkeitsregel.
+		'step#assignable',
+		// Liefert Nextcloud-Konten, keine Projektdaten — aber es ist ein
+		// Lesepfad mit Rechtepruefung, und die gehoert in die Matrix.
+		'memberSearch#search',
 	];
 
 	/**

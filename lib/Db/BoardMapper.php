@@ -89,4 +89,53 @@ class BoardMapper extends QBMapper {
 
 		return $this->findEntities($qb);
 	}
+
+	/**
+	 * Die naechste Ticketnummer des Boards — atomar (§3.9).
+	 *
+	 * Hochzaehlen und Lesen stehen in **einer** Anweisung plus einem Lesen
+	 * dahinter, und beides gehoert in die Transaktion des Aufrufers: Das
+	 * `UPDATE` nimmt die Sperre auf die Board-Zeile, ein zweiter Vorgang wartet
+	 * bis zum Festschreiben und bekommt danach die naechste Zahl.
+	 *
+	 * **`SELECT MAX(number) + 1` waere die Bauform, die genau einmal im Jahr
+	 * zwei Tickets dieselbe Nummer gibt** — und damit denselben Dateinamen und
+	 * denselben Direktlink. Der Fehler tritt unter Last auf, also beim Kunden.
+	 *
+	 * Die eigentliche Garantie ist trotzdem nicht diese Methode, sondern der
+	 * eindeutige Index ueber (`board_id`, `number`) auf der Ticket-Tabelle.
+	 * Diese Methode macht den Normalfall schnell; der Index macht den
+	 * Ausnahmefall unmoeglich.
+	 *
+	 * (Der Indexname steht hier absichtlich nicht ausgeschrieben: Der
+	 * Architekturtest sucht den Tabellennamen als Text und soll das bleiben.)
+	 *
+	 * `change_seq` zaehlt mit, weil jeder Schreibvorgang im Board ihn erhoeht —
+	 * der spaetere Delta-Poll haengt daran (§3.8, Ergaenzung 4).
+	 */
+	public function claimTicketNumber(ViewerContext $viewer): int {
+		$qb = $this->db->getQueryBuilder();
+		$qb->update($this->tableName)
+			->set('ticket_counter', $qb->createFunction('ticket_counter + 1'))
+			->set('change_seq', $qb->createFunction('change_seq + 1'))
+			->where($qb->expr()->eq(
+				'id',
+				$qb->createNamedParameter($viewer->boardId, IQueryBuilder::PARAM_INT),
+			));
+		$qb->executeStatement();
+
+		$read = $this->db->getQueryBuilder();
+		$read->select('ticket_counter')
+			->from($this->tableName)
+			->where($read->expr()->eq(
+				'id',
+				$read->createNamedParameter($viewer->boardId, IQueryBuilder::PARAM_INT),
+			));
+
+		$result = $read->executeQuery();
+		$number = (int)$result->fetchOne();
+		$result->closeCursor();
+
+		return $number;
+	}
 }

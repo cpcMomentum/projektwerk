@@ -91,6 +91,36 @@ class TicketMapper extends QBMapper {
 	}
 
 	/**
+	 * Ein Ticket ueber alle Boards hinweg — fuer den Deep-Link.
+	 *
+	 * Der Deep-Link kennt **nur die Ticketnummer**, kein Board. Die naive
+	 * Loesung waere, zuerst das Board zu ermitteln und dann `findVisible()` zu
+	 * rufen — das waere ein zweiter Lesepfad auf `pwerk_tickets`, der die
+	 * Sichtbarkeitsregel gerade nicht durchlaeuft. Er verriete zwar nichts
+	 * nach aussen, aber er waere die Stelle, an der jemand spaeter „nur schnell"
+	 * etwas anderes damit beantwortet.
+	 *
+	 * Stattdessen dieselbe Abfrage wie ueberall, nur ohne Board-Einschraenkung:
+	 * `TicketScope` verbindet auf `pwerk_members` und bildet die Rolle je Board.
+	 * Wer kein Mitglied ist, faellt aus dem INNER JOIN — Nichtmitgliedschaft und
+	 * verborgenes Ticket ergeben damit denselben `DoesNotExistException`, und
+	 * genau das braucht der Deep-Link: eine Antwort, die nicht verraet, welcher
+	 * der beiden Faelle vorliegt.
+	 *
+	 * @throws DoesNotExistException Ticket unbekannt, nicht sichtbar oder Board fremd
+	 */
+	public function findVisibleAnywhere(string $userId, int $ticketId): Ticket {
+		$qb = $this->scopedQuery($userId, null);
+		$qb->select(self::T . '.*')
+			->andWhere($qb->expr()->eq(
+				self::T . '.id',
+				$qb->createNamedParameter($ticketId, IQueryBuilder::PARAM_INT),
+			));
+
+		return $this->findEntity($qb);
+	}
+
+	/**
 	 * „Meine Tickets" ueber alle Boards hinweg — verantwortlich **oder**
 	 * mitarbeitend (§ Meine Aufgaben).
 	 *
@@ -156,6 +186,92 @@ class TicketMapper extends QBMapper {
 		$result->closeCursor();
 
 		return $count;
+	}
+
+	/**
+	 * Die groesste Position einer Spalte — **ungefiltert**.
+	 *
+	 * Bewusst an `TicketScope` vorbei, und das ist die einzige Lesemethode
+	 * dieser Klasse, fuer die das gilt. Der Grund steht in §3.8: Positionen
+	 * werden gegen die **ungefilterte** Liste aufgeloest. Naehme man die
+	 * gefilterte, landete ein neues Ticket je nach Betrachter an einer anderen
+	 * Stelle — zwei Personen saehen dieselbe Spalte in verschiedener
+	 * Reihenfolge, und keine von beiden koennte das erklaeren.
+	 *
+	 * **Sie verraet trotzdem nichts.** Zurueck kommt eine einzelne Zahl, die
+	 * nie serialisiert wird (`Ticket::jsonSerialize()` laesst `position`
+	 * bewusst weg) und nur dazu dient, das eigene Ticket hinten anzuhaengen.
+	 * Die Leak-Matrix haelt fest, dass der Wert fuer **alle** Betrachter gleich
+	 * ist — waere er es nicht, waere genau das der Beweis, dass er etwas ueber
+	 * die gefilterte Menge aussagt.
+	 *
+	 * Der `ViewerContext` steht trotzdem vorn: Er bezeugt die Mitgliedschaft,
+	 * und die Abfrage bleibt auf dessen Board beschraenkt.
+	 *
+	 * @return int|null null, wenn die Spalte leer ist
+	 */
+	public function findLastPositionInColumn(ViewerContext $viewer, int $columnId): ?int {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select($qb->func()->max('position'))
+			->from($this->tableName)
+			->where($qb->expr()->eq(
+				'board_id',
+				$qb->createNamedParameter($viewer->boardId, IQueryBuilder::PARAM_INT),
+			))
+			->andWhere($qb->expr()->eq(
+				'column_id',
+				$qb->createNamedParameter($columnId, IQueryBuilder::PARAM_INT),
+			));
+
+		$result = $qb->executeQuery();
+		$max = $result->fetchOne();
+		$result->closeCursor();
+
+		return $max === null || $max === false ? null : (int)$max;
+	}
+
+	/**
+	 * Nummeriert eine Spalte neu, sobald die Luecken aufgebraucht sind (§3.8).
+	 *
+	 * Liest und schreibt **vollstaendig innerhalb dieser Methode**. Es gibt
+	 * bewusst keine oeffentliche Methode, die die ungefilterte Reihenfolge einer
+	 * Spalte herausgibt: Diese Liste enthaelt die IDs verborgener Tickets, und
+	 * sobald sie eine Methode verlaesst, ist sie irgendwann in einer Antwort.
+	 * Die Rechnung selbst steht in {@see PositionService::rebalance()} und ist
+	 * dort ohne Datenbank geprueft.
+	 *
+	 * @param callable(int[]): array<int, int> $calculate Ticket-IDs in
+	 *        Sollreihenfolge => neue Positionen
+	 */
+	public function rebalanceColumn(ViewerContext $viewer, int $columnId, callable $calculate): void {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('id')
+			->from($this->tableName)
+			->where($qb->expr()->eq(
+				'board_id',
+				$qb->createNamedParameter($viewer->boardId, IQueryBuilder::PARAM_INT),
+			))
+			->andWhere($qb->expr()->eq(
+				'column_id',
+				$qb->createNamedParameter($columnId, IQueryBuilder::PARAM_INT),
+			))
+			->orderBy('position', 'ASC')
+			->addOrderBy('id', 'ASC');
+
+		$result = $qb->executeQuery();
+		$ids = array_map('intval', $result->fetchFirstColumn());
+		$result->closeCursor();
+
+		foreach ($calculate($ids) as $ticketId => $position) {
+			$update = $this->db->getQueryBuilder();
+			$update->update($this->tableName)
+				->set('position', $update->createNamedParameter($position, IQueryBuilder::PARAM_INT))
+				->where($update->expr()->eq(
+					'id',
+					$update->createNamedParameter($ticketId, IQueryBuilder::PARAM_INT),
+				));
+			$update->executeStatement();
+		}
 	}
 
 	/**

@@ -1,0 +1,346 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * SPDX-FileCopyrightText: 2026 cpcMomentum
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
+namespace OCA\Projektwerk\Tests\Integration;
+
+use OCA\Projektwerk\Access\BoardAccess;
+use OCA\Projektwerk\Access\ViewerContext;
+use OCA\Projektwerk\Db\BoardMapper;
+use OCA\Projektwerk\Db\ColumnMapper;
+use OCA\Projektwerk\Db\MemberMapper;
+use OCA\Projektwerk\Service\BoardService;
+use OCA\Projektwerk\Service\ColumnService;
+use OCA\Projektwerk\Service\MemberService;
+use OCA\Projektwerk\Service\NotManagerException;
+use OCP\Server;
+
+/**
+ * Die Verwaltung: Projekt, Spalten, Mitglieder.
+ *
+ * Der rote Faden ist eine einzige Regel aus §8 — pflegen darf nur ein
+ * **internes Mitglied mit Verwaltungsrecht** — und drei Stellen, an denen sie
+ * gilt. Jede wird einzeln geprüft: Eine Sperre, die nur an zwei von drei
+ * Stellen greift, ist keine.
+ */
+class SettingsWritePathTest extends IntegrationTestCase {
+
+	private LeakMatrixFixture $fixture;
+	private BoardService $boardService;
+	private ColumnService $columnService;
+	private MemberService $memberService;
+
+	protected function setUp(): void {
+		parent::setUp();
+
+		$this->fixture = new LeakMatrixFixture();
+		$this->boardService = Server::get(BoardService::class);
+		$this->columnService = Server::get(ColumnService::class);
+		$this->memberService = Server::get(MemberService::class);
+	}
+
+	/**
+	 * **Anlegen erzeugt Board und Mitgliedschaft zusammen.**
+	 *
+	 * Bliebe ein Board ohne Mitglied zurück, käme mangels Admin-Ausnahme
+	 * niemand mehr heran — es wäre für immer unerreichbar und ließe sich nicht
+	 * einmal löschen.
+	 */
+	public function testCreatingABoardMakesTheCreatorAnInternalManager(): void {
+		$board = $this->boardService->create('lm-neu', 'Neues Projekt', null, 'cpcMomentum', 'Kunde GmbH');
+
+		$viewer = Server::get(BoardAccess::class)->contextFor('lm-neu', (int)$board->getId());
+
+		$this->assertSame('lm-neu', $board->getOwnerUserId());
+		$this->assertSame(ViewerContext::ROLE_INTERNAL, $viewer->role);
+		$this->assertTrue($viewer->isManager, 'Wer anlegt, muss verwalten dürfen.');
+		$this->assertSame('cpcMomentum', $board->getOrgInternal());
+		$this->assertSame('Kunde GmbH', $board->getOrgExternal());
+	}
+
+	public function testABoardNeedsATitle(): void {
+		$this->expectException(\InvalidArgumentException::class);
+
+		$this->boardService->create('lm-neu', '   ');
+	}
+
+	/**
+	 * Leere Felder werden zu `null`, nicht zu leeren Zeichenketten.
+	 *
+	 * Sonst müsste jede Anzeige zwei Formen von „nichts" unterscheiden — und
+	 * der Knopf „Zum Projektchat" entfällt laut §9 genau dann, wenn keine
+	 * Adresse hinterlegt ist.
+	 */
+	public function testEmptyFieldsBecomeNull(): void {
+		$board = $this->boardService->update($this->manager(), ['chatUrl' => '   ', 'orgExternal' => '']);
+
+		$this->assertNull($board->getChatUrl());
+		$this->assertNull($board->getOrgExternal());
+	}
+
+	public function testUpdatingTheBoardKeepsUntouchedFields(): void {
+		$before = Server::get(BoardMapper::class)->findForViewer($this->manager());
+
+		$board = $this->boardService->update($this->manager(), ['title' => 'Umbenannt']);
+
+		$this->assertSame('Umbenannt', $board->getTitle());
+		$this->assertSame($before->getOrgInternal(), $board->getOrgInternal(), 'Nicht genanntes Feld verändert.');
+	}
+
+	public function testArchivingAndBack(): void {
+		$this->assertSame(1, (int)$this->boardService->setArchived($this->manager(), true)->getArchived());
+		$this->assertSame(0, (int)$this->boardService->setArchived($this->manager(), false)->getArchived());
+	}
+
+	/**
+	 * Bert ist intern, aber ohne Verwaltungsrecht — an allen drei Stellen
+	 * abgewiesen.
+	 */
+	public function testWithoutTheManagementRightEverythingIsRefused(): void {
+		$bert = $this->fixture->contextFor(LeakMatrixFixture::BERT);
+		$this->assertFalse($bert->isManager);
+
+		$refused = 0;
+
+		foreach ([
+			fn () => $this->boardService->update($bert, ['title' => 'Fremd']),
+			fn () => $this->boardService->setArchived($bert, true),
+			fn () => $this->columnService->create($bert, 'Neue Spalte'),
+			fn () => $this->columnService->rename($bert, $this->columnId(LeakMatrixFixture::COLUMN_A), 'Anders'),
+			fn () => $this->columnService->reorder($bert, []),
+			fn () => $this->memberService->add($bert, 'lm-neu', ViewerContext::ROLE_INTERNAL),
+			fn () => $this->memberService->update($bert, LeakMatrixFixture::CARLA, ['role' => ViewerContext::ROLE_INTERNAL]),
+		] as $attempt) {
+			try {
+				$attempt();
+				$this->fail('Ein Schreibvorgang ohne Verwaltungsrecht ging durch.');
+			} catch (NotManagerException) {
+				$refused++;
+			}
+		}
+
+		$this->assertSame(7, $refused);
+	}
+
+	/**
+	 * **Ein externes Mitglied kann kein Verwalter sein — auch nicht auf dem
+	 * Umweg über einen Rollenwechsel.**
+	 *
+	 * §8: Das Recht ist nur an interne Mitglieder vergebbar. Der Kontext
+	 * entschärft ein falsch gesetztes Flag bereits beim Bauen; hier wird es gar
+	 * nicht erst geschrieben. Einmal richtig schreiben ist besser als überall
+	 * entschärfen.
+	 */
+	public function testTheManagementRightNeverSticksToAnExternalMember(): void {
+		$manager = $this->manager();
+
+		$carla = $this->memberService->update($manager, LeakMatrixFixture::CARLA, ['isManager' => true]);
+		$this->assertSame(0, (int)$carla->getIsManager(), 'Extern mit Verwaltungsrecht in der Datenbank.');
+
+		// Und der umgekehrte Weg: erst intern und Verwalter, dann extern.
+		$this->memberService->update($manager, LeakMatrixFixture::CARLA, [
+			'role' => ViewerContext::ROLE_INTERNAL,
+			'isManager' => true,
+		]);
+		$demoted = $this->memberService->update($manager, LeakMatrixFixture::CARLA, [
+			'role' => ViewerContext::ROLE_EXTERNAL,
+		]);
+
+		$this->assertSame(ViewerContext::ROLE_EXTERNAL, $demoted->getRole());
+		$this->assertSame(0, (int)$demoted->getIsManager(), 'Das Recht hat den Rollenwechsel überlebt.');
+	}
+
+	/**
+	 * Der Eigentümer behält das Verwaltungsrecht — auf beiden Wegen (§8).
+	 */
+	public function testTheOwnerKeepsTheManagementRight(): void {
+		$manager = $this->manager();
+
+		try {
+			$this->memberService->update($manager, LeakMatrixFixture::ANNA, ['isManager' => false]);
+			$this->fail('Dem Eigentümer wurde das Verwaltungsrecht entzogen.');
+		} catch (\InvalidArgumentException) {
+			$this->addToAssertionCount(1);
+		}
+
+		try {
+			$this->memberService->update($manager, LeakMatrixFixture::ANNA, ['role' => ViewerContext::ROLE_EXTERNAL]);
+			$this->fail('Der Eigentümer wurde extern — und verlöre damit dasselbe Recht.');
+		} catch (\InvalidArgumentException) {
+			$this->addToAssertionCount(1);
+		}
+	}
+
+	public function testAddingSomebodyTwiceIsRefused(): void {
+		$this->expectException(\InvalidArgumentException::class);
+
+		$this->memberService->add($this->manager(), LeakMatrixFixture::BERT, ViewerContext::ROLE_INTERNAL);
+	}
+
+	public function testUnknownRoleIsRefused(): void {
+		$this->expectException(\InvalidArgumentException::class);
+
+		$this->memberService->update($this->manager(), LeakMatrixFixture::BERT, ['role' => 'kunde']);
+	}
+
+	/**
+	 * Der Name an der Mitgliedschaft lässt sich setzen und wieder leeren.
+	 *
+	 * Leer heißt „Anzeigename aus Nextcloud", nicht „leerer Name" — sonst stünde
+	 * auf der Karte gar nichts.
+	 */
+	public function testTheMembershipNameCanBeSetAndCleared(): void {
+		$manager = $this->manager();
+
+		$named = $this->memberService->update($manager, LeakMatrixFixture::BERT, ['displayName' => ' Bert König ']);
+		$this->assertSame('Bert König', $named->getDisplayName());
+
+		$cleared = $this->memberService->update($manager, LeakMatrixFixture::BERT, ['displayName' => '']);
+		$this->assertNull($cleared->getDisplayName());
+	}
+
+	/**
+	 * Ohne Übersteuern steht nie eine leere Zeile da.
+	 *
+	 * `display_name` ist ein Übersteuern, kein Pflichtfeld. Fehlt es, muss der
+	 * Server den Anzeigenamen aus Nextcloud einsetzen und notfalls die Kennung —
+	 * das Frontend kann es nicht: Nextclouds Personensuche liefert in einer
+	 * Gast-Sitzung prinzipbedingt eine leere Liste.
+	 *
+	 * Geprüft wird deshalb, dass `resolvedName` **immer gefüllt** ist und dem
+	 * Übersteuern folgt, wo eines steht. Der mittlere Fall — Name aus Nextcloud
+	 * — steht bewusst nicht als Erwartung drin: Im CLI ist nur das
+	 * Datenbank-Backend geladen, ein Gastkonto hätte dort keinen Namen, und ein
+	 * Test, der das behauptet, prüfte die Testumgebung statt den Code.
+	 */
+	public function testEveryMemberCarriesANameToShow(): void {
+		$manager = $this->manager();
+
+		$this->memberService->update($manager, LeakMatrixFixture::BERT, ['displayName' => 'Bert König']);
+		$this->memberService->update($manager, LeakMatrixFixture::CARLA, ['displayName' => '']);
+
+		$byUser = [];
+		foreach ($this->memberService->listForBoard($manager) as $member) {
+			$byUser[$member['userId']] = $member;
+		}
+
+		$this->assertSame('Bert König', $byUser[LeakMatrixFixture::BERT]['resolvedName']);
+
+		foreach ($byUser as $userId => $member) {
+			$this->assertNotSame('', $member['resolvedName'], $userId . ': keine Zeile darf namenlos bleiben.');
+			$this->assertArrayHasKey(
+				'displayName',
+				$member,
+				$userId . ': Das Übersteuern muss daneben stehen bleiben — die Verwaltung bearbeitet es.',
+			);
+		}
+
+		$this->assertNull(
+			$byUser[LeakMatrixFixture::CARLA]['displayName'],
+			'Ein geleertes Übersteuern darf nicht durch den aufgelösten Namen ersetzt werden — '
+			. 'sonst friert das nächste Speichern den Nextcloud-Namen versehentlich ein.',
+		);
+	}
+
+	public function testColumnsAreAppendedAndRenamed(): void {
+		$manager = $this->manager();
+
+		$created = $this->columnService->create($manager, ' Wartet auf Kunde ');
+		$this->assertSame('Wartet auf Kunde', $created->getTitle());
+		$this->assertSame(2, (int)$created->getPosition(), 'Die neue Spalte gehört ans Ende.');
+
+		$renamed = $this->columnService->rename($manager, (int)$created->getId(), 'Abgestimmt');
+		$this->assertSame('Abgestimmt', $renamed->getTitle());
+	}
+
+	/**
+	 * **Eine unvollständige Reihenfolge wird abgewiesen, nicht still ergänzt.**
+	 *
+	 * Sonst entschiede über die nicht genannten Spalten der Zufall, und niemand
+	 * könnte erklären, warum eine Spalte gewandert ist, die niemand angefasst
+	 * hat.
+	 */
+	public function testReorderingDemandsEveryColumn(): void {
+		$manager = $this->manager();
+		$a = $this->columnId(LeakMatrixFixture::COLUMN_A);
+		$b = $this->columnId(LeakMatrixFixture::COLUMN_B);
+
+		$ordered = $this->columnService->reorder($manager, [$b, $a]);
+		$this->assertSame([$b, $a], array_map(static fn ($c): int => (int)$c->getId(), $ordered));
+		$this->assertSame(
+			[$b, $a],
+			array_map(
+				static fn ($c): int => (int)$c->getId(),
+				Server::get(ColumnMapper::class)->findForBoard($manager),
+			),
+			'Die gespeicherte Reihenfolge weicht ab.',
+		);
+
+		$this->expectException(\InvalidArgumentException::class);
+		$this->columnService->reorder($manager, [$a]);
+	}
+
+	/**
+	 * **Ein neues Board bringt sechs Spalten mit — und die erste ist der
+	 * Eingang, nicht die Zusage.**
+	 *
+	 * Auf einem geteilten Board meldet der Kunde etwas. Ohne erste Spalte fiele
+	 * „wir haben es" mit „wir machen es" zusammen, weil jedes neue Ticket sofort
+	 * unter „Eingeplant" stünde.
+	 *
+	 * Keine Spalte heißt „Wartet auf Kunde": Der Wartezustand liegt laut §9 quer
+	 * zu den Spalten und ist ein Filterschalter, kein Ort. Der Test hält das
+	 * fest, weil es beim nächsten Nachdenken über die Vorgabe die naheliegendste
+	 * falsche Ergänzung wäre.
+	 */
+	public function testANewBoardStartsWithTheDefaultColumns(): void {
+		$board = $this->boardService->create('lm-neu', 'Mit Vorgabe');
+		$viewer = Server::get(BoardAccess::class)->contextFor('lm-neu', (int)$board->getId());
+
+		$columns = Server::get(ColumnMapper::class)->findForBoard($viewer);
+		$titles = array_map(static fn ($c): string => (string)$c->getTitle(), $columns);
+
+		// Verglichen wird gegen die uebersetzte Vorgabe, nicht gegen deutsche
+		// Woerter: Die Spalten entstehen in der Sprache der anlegenden Person,
+		// und die Testumgebung laeuft auf Englisch. Welche Woerter in der
+		// Vorgabe stehen, prueft DefaultColumnsTest containerfrei.
+		$l10n = Server::get(\OCP\L10N\IFactory::class)->get('projektwerk');
+		$expected = array_map(
+			static fn (string $title): string => $l10n->t($title),
+			BoardService::DEFAULT_COLUMNS,
+		);
+
+		$this->assertSame($expected, $titles);
+		$this->assertSame($l10n->t('Eingegangen'), $titles[0], 'Die erste Spalte ist der Eingang.');
+		$this->assertNotContains($l10n->t('Wartet auf Kunde'), $titles);
+		$this->assertCount(1, Server::get(MemberMapper::class)->findForBoard($viewer));
+	}
+
+	/**
+	 * Die Vorgabe ist eine Vorgabe, kein Gesetz: Sie lässt sich sofort
+	 * umbenennen und umsortieren.
+	 */
+	public function testTheDefaultColumnsAreOrdinaryData(): void {
+		$board = $this->boardService->create('lm-neu', 'Mit Vorgabe');
+		$viewer = Server::get(BoardAccess::class)->contextFor('lm-neu', (int)$board->getId());
+
+		$columns = Server::get(ColumnMapper::class)->findForBoard($viewer);
+		$renamed = $this->columnService->rename($viewer, (int)$columns[0]->getId(), 'Posteingang');
+
+		$this->assertSame('Posteingang', $renamed->getTitle());
+	}
+
+	private function manager(): ViewerContext {
+		// Anna ist Eigentuemerin und interne Verwalterin.
+		return $this->fixture->contextFor(LeakMatrixFixture::ANNA);
+	}
+
+	private function columnId(string $title): int {
+		return $this->fixture->columnIds[$title];
+	}
+}
