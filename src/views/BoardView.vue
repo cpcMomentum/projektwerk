@@ -10,6 +10,20 @@
 				{{ t('projektwerk', 'Neuer Vorgang') }}
 			</NcButton>
 
+			<!--
+				Der Weg in die Einstellungen steht nur internen Mitgliedern mit
+				Verwaltungsrecht offen (§8) — wer ihn nicht hat, sieht keinen
+				Knopf statt einer Absage.
+			-->
+			<NcButton
+				v-if="store.viewer?.isManager"
+				:aria-label="t('projektwerk', 'Projekteinstellungen')"
+				@click="$router.push({ name: 'board-settings', params: { boardId: String(boardId) } })">
+				<template #icon>
+					<CogIcon :size="20" />
+				</template>
+			</NcButton>
+
 			<!-- Ohne hinterlegte Adresse entfaellt der Knopf ersatzlos (§9). -->
 			<NcButton
 				v-if="store.board?.chatUrl"
@@ -104,6 +118,7 @@ import { t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
+import CogIcon from 'vue-material-design-icons/Cog.vue'
 import FolderMultipleIcon from 'vue-material-design-icons/FolderMultiple.vue'
 import PlusIcon from 'vue-material-design-icons/Plus.vue'
 import CreateTicketDialog from '@/components/CreateTicketDialog.vue'
@@ -117,7 +132,7 @@ import { useBoardStore } from '@/stores/boardStore'
 export default defineComponent({
 	name: 'BoardView',
 
-	components: { CreateTicketDialog, FolderMultipleIcon, NcButton, NcEmptyContent, PlusIcon, TicketCard, TicketDetail },
+	components: { CogIcon, CreateTicketDialog, FolderMultipleIcon, NcButton, NcEmptyContent, PlusIcon, TicketCard, TicketDetail },
 
 	setup() {
 		return { store: useBoardStore() }

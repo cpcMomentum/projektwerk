@@ -647,3 +647,67 @@
 	font-size: 13px;
 	color: var(--color-text-maxcontrast);
 }
+
+/* ---- Projekteinstellungen ------------------------------------------------ */
+
+.app-projektwerk .pw-settings {
+	display: flex;
+	flex-direction: column;
+	gap: 28px;
+	/*
+	 * Anders als das Board: Formularzeilen brauchen eine Lesebreite. Ein
+	 * Textfeld ueber 3000 px waere auf einem 4K-Schirm unbedienbar, waehrend
+	 * die Spalten des Boards von jeder Breite profitieren.
+	 */
+	max-width: 820px;
+}
+
+.app-projektwerk .pw-settings__block {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	padding-top: 10px;
+	border-top: 1px solid var(--color-border);
+}
+
+.app-projektwerk .pw-settings__pair {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 14px;
+}
+
+.app-projektwerk .pw-settings__pair > .pw-field {
+	flex: 1 1 240px;
+	margin-bottom: 0;
+}
+
+.app-projektwerk .pw-settings__row,
+.app-projektwerk .pw-settings__member {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 10px;
+}
+
+.app-projektwerk .pw-settings__member {
+	padding: 6px 0;
+	border-bottom: 1px solid var(--color-border);
+}
+
+.app-projektwerk .pw-settings__member .pw-person__body {
+	flex: 1 1 180px;
+	min-width: 0;
+}
+
+.app-projektwerk .pw-settings__check {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	min-height: var(--default-clickable-area, 44px);
+	white-space: nowrap;
+}
+
+.app-projektwerk .pw-settings__hint {
+	font-size: 13px;
+	color: var(--color-text-maxcontrast);
+}
