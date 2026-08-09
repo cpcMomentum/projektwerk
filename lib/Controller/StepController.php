@@ -78,7 +78,11 @@ class StepController extends Controller {
 				$changes[$key] = $value;
 			}
 		}
-		if ($this->request->getParam('assignedUserId', '__ungenannt__') !== '__ungenannt__') {
+		// `getParam()` prueft mit `isset()` und kann ein explizit gesendetes
+		// `null` deshalb nicht von „nicht genannt" unterscheiden (`isset()`
+		// ist bei `null`-Werten `false`). `array_key_exists()` auf den rohen
+		// Parametern unterscheidet beide Faelle korrekt.
+		if (array_key_exists('assignedUserId', $this->request->getParams())) {
 			$changes['assignedUserId'] = $assignedUserId;
 		}
 
