@@ -56,6 +56,7 @@ OC.L10N.register(
     "Sichtbarkeit konnte nicht geprüft werden": "Sichtbarkeit konnte nicht geprüft werden",
     "Sichtbarkeit konnte nicht geändert werden": "Sichtbarkeit konnte nicht geändert werden",
     "Rückgängig machen fehlgeschlagen": "Rückgängig machen fehlgeschlagen",
-    "Der Vorgang wurde zwischenzeitlich geändert. Bitte neu laden.": "Der Vorgang wurde zwischenzeitlich geändert. Bitte neu laden."
+    "Der Vorgang wurde zwischenzeitlich geändert. Bitte neu laden.": "Der Vorgang wurde zwischenzeitlich geändert. Bitte neu laden.",
+    "Der Vorgang wurde zwischenzeitlich geändert. Der Stand wurde neu geladen.": "Der Vorgang wurde zwischenzeitlich geändert. Der Stand wurde neu geladen."
 },
 "nplurals=2; plural=(n != 1);");

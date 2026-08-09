@@ -111,6 +111,7 @@ import TicketCard from '@/components/TicketCard.vue'
 import TicketDetail from '@/components/TicketDetail.vue'
 import { createTicket } from '@/services/tickets'
 import { showError } from '@/services/toast'
+import { isConflict, reportWriteError } from '@/services/writeError'
 import { useBoardStore } from '@/stores/boardStore'
 
 export default defineComponent({
@@ -179,7 +180,14 @@ export default defineComponent({
 			try {
 				await this.store.moveTicket(payload.ticket.id, payload.columnId, last, null)
 			} catch (e) {
-				showError((e as { message?: string }).message ?? t('projektwerk', 'Verschieben fehlgeschlagen'))
+				// Beim Konflikt wird nachgeladen statt zum Neuladen aufgefordert:
+				// Hier liegt das ganze Board im Speicher, und ein veralteter
+				// `version`-Wert liesse jeden weiteren Versuch scheitern — auch
+				// den an einer ganz anderen Karte.
+				if (isConflict(e)) {
+					await this.store.open(this.boardId)
+				}
+				reportWriteError(e, t('projektwerk', 'Verschieben fehlgeschlagen'), isConflict(e))
 			}
 		},
 
