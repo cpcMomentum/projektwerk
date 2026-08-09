@@ -56,6 +56,12 @@ $run('TicketMapper::findVisible', static fn () => $tickets->findVisible($viewer,
 $run('TicketMapper::countVisibleInBoard', static fn () => $tickets->countVisibleInBoard($viewer));
 $run('TicketMapper::findVisibleAcrossBoards', static fn () => $tickets->findVisibleAcrossBoards('smoke-user', TaskFilter::openOnly()));
 $run('TicketMapper::findVisibleAcrossBoards(+zu)', static fn () => $tickets->findVisibleAcrossBoards('smoke-user', TaskFilter::withClosed()));
+// Der einzige Pfad mit einer **Unterabfrage**. Genau deshalb gehoert er
+// hierher: Die CI faehrt nur SQLite, und ob `IN (SELECT …)` mit den am
+// aeusseren Builder erzeugten Parametern auch auf MySQL und PostgreSQL baut,
+// beantwortet nur ein echter Treiber.
+$run('TicketMapper::findVisibleWithMyOpenSteps', static fn () => $tickets->findVisibleWithMyOpenSteps('smoke-user', TaskFilter::openOnly()));
+$run('TicketMapper::findVisibleWithMyOpenSteps(+zu)', static fn () => $tickets->findVisibleWithMyOpenSteps('smoke-user', TaskFilter::withClosed()));
 
 $run('BoardMapper::findForViewer', static fn () => Server::get(BoardMapper::class)->findForViewer($viewer));
 $run('BoardMapper::findAllForUser', static fn () => Server::get(BoardMapper::class)->findAllForUser('smoke-user'));
