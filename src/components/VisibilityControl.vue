@@ -96,7 +96,7 @@ import PencilIcon from 'vue-material-design-icons/Pencil.vue'
 import UndoIcon from 'vue-material-design-icons/UndoVariant.vue'
 import VisibilityChoice from '@/components/VisibilityChoice.vue'
 import { changeVisibility, fetchVisibilityImpact } from '@/services/tickets'
-import { showError } from '@/services/toast'
+import { reportWriteError } from '@/services/writeError'
 
 interface Impact {
 	losing: string[]
@@ -260,7 +260,7 @@ export default defineComponent({
 		 * @param userId Kennung der Person.
 		 */
 		nameOf(userId: string): string {
-			return this.members.find((m) => m.userId === userId)?.displayName ?? userId
+			return this.members.find((m) => m.userId === userId)?.resolvedName ?? userId
 		},
 
 		startChoosing(): void {
@@ -384,19 +384,13 @@ export default defineComponent({
 		 * @param fallback Meldung, wenn der Server keine eigene mitgibt.
 		 */
 		fail(e: unknown, fallback: string): void {
-			const error = e as { status?: number, message?: string }
-
 			// 409 heißt: jemand anders war schneller. Der Stand im Overlay ist
 			// veraltet, und ein zweiter Versuch mit derselben `version` scheiterte
-			// genauso — deshalb der Hinweis aufs Neuladen statt einer Wiederholung.
-			if (error.status === 409) {
-				showError(t('projektwerk', 'Der Vorgang wurde zwischenzeitlich geändert. Bitte neu laden.'))
+			// genauso — deshalb zurück in den Ruhezustand statt einer Wiederholung.
+			// Nachladen kann dieser Bereich nicht, er hält nur ein Ticket.
+			if (reportWriteError(e, fallback)) {
 				this.reset()
-
-				return
 			}
-
-			showError(error.message ?? fallback)
 		},
 	},
 })

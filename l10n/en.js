@@ -56,6 +56,7 @@ OC.L10N.register(
     "Sichtbarkeit konnte nicht geprüft werden": "Could not check visibility",
     "Sichtbarkeit konnte nicht geändert werden": "Could not change visibility",
     "Rückgängig machen fehlgeschlagen": "Undo failed",
-    "Der Vorgang wurde zwischenzeitlich geändert. Bitte neu laden.": "The item has changed in the meantime. Please reload."
+    "Der Vorgang wurde zwischenzeitlich geändert. Bitte neu laden.": "The item has changed in the meantime. Please reload.",
+    "Der Vorgang wurde zwischenzeitlich geändert. Der Stand wurde neu geladen.": "The item has changed in the meantime. The view has been reloaded."
 },
 "nplurals=2; plural=(n != 1);");

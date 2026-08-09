@@ -49,13 +49,24 @@ export interface Member {
 	/** Nur an interne Mitglieder vergebbar; der Eigentümer behält es immer. */
 	isManager: boolean
 	/**
-	 * Vor- und Nachname für dieses Board.
+	 * Vor- und Nachname für dieses Board — ein **Übersteuern**.
 	 *
 	 * `null` heißt: den Anzeigenamen aus Nextcloud verwenden. Nötig, weil der
 	 * dort oft ein Kürzel ist — und weil ein Gastkonto ohne gepflegten Namen
 	 * sonst mit seiner E-Mail-Adresse auf jeder Karte steht.
+	 *
+	 * Zum **Anzeigen** ist `resolvedName` gemeint, nicht dieses Feld. Hier steht
+	 * nur, was die Mitgliederverwaltung eingetragen hat.
 	 */
 	displayName: string | null
+	/**
+	 * Der Name, der anzuzeigen ist: Übersteuern, sonst Nextcloud, sonst Kennung.
+	 *
+	 * Kommt fertig vom Server, weil nur er ihn hat: Nextclouds Personensuche
+	 * liefert in einer Gast-Sitzung prinzipbedingt eine leere Liste, ein
+	 * Nachschlagen im Browser bliebe also ausgerechnet beim Kunden stumm.
+	 */
+	resolvedName: string
 	addedBy: string
 	addedAt: string | null
 }
