@@ -60,6 +60,8 @@ use OCP\DB\Types;
  * @method void setPosition(int $position)
  * @method ?DateTime getClosedAt()
  * @method void setClosedAt(?DateTime $closedAt)
+ * @method ?DateTime getDeletedAt()
+ * @method void setDeletedAt(?DateTime $deletedAt)
  * @method int getVersion()
  * @method void setVersion(int $version)
  * @method ?string getLastEditorUserId()
@@ -86,6 +88,13 @@ class Ticket extends Entity implements JsonSerializable {
 	protected ?string $responsibleUserId = null;
 	protected ?int $position = null;
 	protected ?DateTime $closedAt = null;
+	/**
+	 * Weich geloescht.
+	 *
+	 * **Wird nie ausgeliefert** — siehe `jsonSerialize()`. Der Wert existiert
+	 * nur, damit `TicketScope` geloeschte Vorgaenge aus jeder Abfrage nimmt.
+	 */
+	protected ?DateTime $deletedAt = null;
 	protected ?int $version = null;
 	protected ?string $lastEditorUserId = null;
 	protected ?int $githubIssueNumber = null;
@@ -105,6 +114,7 @@ class Ticket extends Entity implements JsonSerializable {
 		$this->addType('responsibleUserId', Types::STRING);
 		$this->addType('position', Types::INTEGER);
 		$this->addType('closedAt', Types::DATETIME);
+		$this->addType('deletedAt', Types::DATETIME);
 		$this->addType('version', Types::INTEGER);
 		$this->addType('lastEditorUserId', Types::STRING);
 		$this->addType('githubIssueNumber', Types::INTEGER);

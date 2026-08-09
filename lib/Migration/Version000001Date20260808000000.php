@@ -189,6 +189,12 @@ class Version000001Date20260808000000 extends SimpleMigrationStep {
 		// Einfuegungen praezisionsabhaengig.
 		$table->addColumn('position', Types::BIGINT, ['notnull' => true, 'default' => 0, 'length' => 20]);
 		$table->addColumn('closed_at', Types::DATETIME, ['notnull' => false]);
+		// Weiches Loeschen. Der Wert wird **nirgends ausgeliefert** — er
+		// existiert nur, damit `TicketScope` geloeschte Vorgaenge aus jeder
+		// Abfrage nimmt. Ein sichtbarer Papierkorb waere ein zweiter Ort, an
+		// dem Tickets leben, und damit ein zweiter Ort, an dem die
+		// Sichtbarkeitsregel stimmen muesste. Wiederhergestellt wird per occ.
+		$table->addColumn('deleted_at', Types::DATETIME, ['notnull' => false]);
 		$table->addColumn('version', Types::BIGINT, ['notnull' => true, 'default' => 1, 'length' => 20]);
 		// Wer den aktuellen Stand von `version` verursacht hat. NULL heisst:
 		// seit dem Anlegen unveraendert — der Ersteller steht in

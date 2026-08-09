@@ -272,6 +272,45 @@ class TicketService {
 		return $this->tickets->update($ticket);
 	}
 
+	/**
+	 * Einen Vorgang loeschen — weich.
+	 *
+	 * **Es gibt keinen Papierkorb in der App**, und das ist der Entwurf, nicht
+	 * eine Auslassung. Eine Ansicht geloeschter Vorgaenge waere ein zweiter Ort,
+	 * an dem Tickets leben, und damit ein zweiter Ort, an dem die
+	 * Sichtbarkeitsregel stimmen muesste — bei einem Produkt, das genau darauf
+	 * beruht, dass es einen gibt. Sie waere ausserdem der bequemste Weg an das,
+	 * was die App zu verbergen verspricht.
+	 *
+	 * `deleted_at` wird deshalb allein von {@see TicketScope::apply()}
+	 * ausgewertet: Jeder Lesepfad geht ohnehin dort durch. Wiederhergestellt
+	 * wird per `occ projektwerk:ticket:restore` — ein Serverzugang ist die
+	 * ehrlichere Grenze als ein Knopf in der Oberflaeche.
+	 *
+	 * **Wer loeschen darf, folgt §7**: die Seite, der das Ticket gehoert. Dieselbe
+	 * Regel wie beim Sichtbarkeitswechsel, aus demselben Grund — sonst koennte
+	 * die eine Seite Vorgaenge der anderen verschwinden lassen.
+	 *
+	 * @throws DoesNotExistException   Ticket nicht sichtbar
+	 * @throws ConflictException       zwischenzeitlich geaendert
+	 * @throws NotOwningSideException  die andere Seite besitzt dieses Ticket
+	 */
+	public function delete(ViewerContext $viewer, int $ticketId, int $version): Ticket {
+		$ticket = $this->tickets->findVisible($viewer, $ticketId);
+		$this->assertVersion($ticket, $version);
+
+		if ($ticket->getCreatorRole() !== $viewer->role) {
+			throw new NotOwningSideException(
+				'Löschen darf nur die Seite, der der Vorgang gehört.',
+			);
+		}
+
+		$ticket->setDeletedAt(new \DateTime());
+		$this->touch($ticket, $viewer);
+
+		return $this->tickets->update($ticket);
+	}
+
 	private function insertWithNumber(
 		ViewerContext $viewer,
 		string $title,

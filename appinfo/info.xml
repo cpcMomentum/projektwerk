@@ -58,4 +58,13 @@ Der eigentliche Zweck ist nicht das Board, sondern die **sichtbare Zustaendigkei
             <order>10</order>
         </navigation>
     </navigations>
+	<!--
+		Der Papierkorb dieser App liegt auf der Kommandozeile: Eine Ansicht
+		geloeschter Vorgaenge in der Oberflaeche waere ein zweiter Ort, an dem
+		Tickets leben — und damit ein zweiter Ort, an dem die
+		Sichtbarkeitsregel stimmen muesste.
+	-->
+	<commands>
+		<command>OCA\Projektwerk\Command\TicketRestore</command>
+	</commands>
 </info>

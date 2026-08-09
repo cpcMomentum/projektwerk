@@ -700,6 +700,74 @@ class LeakMatrixTest extends IntegrationTestCase {
 	}
 
 	/**
+	 * **Ein geloeschter Vorgang verschwindet aus JEDEM Lesepfad.**
+	 *
+	 * Das ist die ganze Zusicherung des weichen Loeschens: `deleted_at` wird
+	 * allein von `TicketScope::apply()` ausgewertet, und jeder Lesepfad geht
+	 * dort durch. Der Test faehrt deshalb nicht einen Pfad, sondern **alle
+	 * registrierten** — Board-, Einzel-, Deep-Link- und projektuebergreifende
+	 * Abfrage plus die Zaehler.
+	 *
+	 * Er prueft ausserdem die beiden Wege, die `wouldSee()` benutzen
+	 * (Herunterstufen-Dialog und Schrittzuweisung). Dort steht **keine** eigene
+	 * Loeschpruefung, und das ist Absicht: Beide bekommen ihr Ticket aus einer
+	 * bereits gefilterten Abfrage. Dieser Test belegt, dass die Annahme traegt —
+	 * ohne ihn waere sie bloss eine Behauptung im Kommentar.
+	 */
+	public function testADeletedTicketLeavesEveryReadPath(): void {
+		$tickets = Server::get(TicketMapper::class);
+		$steps = Server::get(StepService::class);
+		$service = Server::get(TicketService::class);
+		$viewer = $this->contextFor(self::ANNA);
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+
+		// Vorher da, in allen Pfaden.
+		$this->assertNotNull($tickets->findVisible($viewer, $ticketId));
+
+		$service->delete($viewer, $ticketId, (int)$tickets->findVisible($viewer, $ticketId)->getVersion());
+
+		foreach ([self::ANNA, self::BERT, self::CARLA, self::DIRK] as $userId) {
+			$kontext = $this->contextFor($userId);
+
+			$imBoard = array_map(
+				static fn ($ticket): string => (string)$ticket->getTitle(),
+				$tickets->findVisibleInBoard($kontext),
+			);
+			$this->assertNotContains('public/anna', $imBoard, $userId . ': Boardansicht');
+
+			$this->assertNotContains(
+				'public/anna',
+				array_map(
+					static fn ($ticket): string => (string)$ticket->getTitle(),
+					$tickets->findVisibleAcrossBoards($userId, TaskFilter::withClosed()),
+				),
+				$userId . ': projektuebergreifend',
+			);
+
+			foreach ([
+				fn (): mixed => $tickets->findVisible($kontext, $ticketId),
+				fn (): mixed => $tickets->findVisibleAnywhere($userId, $ticketId),
+				fn (): mixed => $service->visibilityImpact($kontext, $ticketId, TicketScope::VISIBILITY_INTERNAL),
+				fn (): mixed => $steps->assignableFor($kontext, $ticketId),
+			] as $index => $pfad) {
+				try {
+					$pfad();
+					$this->fail($userId . ' erreicht den geloeschten Vorgang ueber Pfad ' . $index . '.');
+				} catch (DoesNotExistException) {
+					$this->addToAssertionCount(1);
+				}
+			}
+
+			// Der Zaehler darf ihn ebenso wenig mitzaehlen (§5.8).
+			$this->assertSame(
+				count($imBoard),
+				$tickets->countVisibleInBoard($kontext),
+				$userId . ': Zaehler und Liste weichen ab.',
+			);
+		}
+	}
+
+	/**
 	 * Die Kontensuche steht nur internen Verwaltern offen.
 	 *
 	 * Geprüft wird der **Statuscode**, nicht die Trefferliste: Eine leere Liste

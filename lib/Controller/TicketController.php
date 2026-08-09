@@ -228,6 +228,19 @@ class TicketController extends Controller {
 	}
 
 	/**
+	 * Einen Vorgang loeschen — weich, und ohne Papierkorb in der App.
+	 *
+	 * Wiederhergestellt wird per `occ projektwerk:ticket:restore`. Der
+	 * Rueckgabewert ist der geloeschte Stand; das Frontend nimmt die Karte
+	 * daraufhin aus der Ansicht.
+	 */
+	#[NoAdminRequired]
+	public function destroy(int $boardId, int $ticketId, int $version): JSONResponse {
+		return $this->write($boardId, fn (ViewerContext $viewer): mixed
+			=> $this->service->delete($viewer, $ticketId, $version));
+	}
+
+	/**
 	 * Wie viele Schritte je Ticket erledigt sind.
 	 *
 	 * Aus derselben Menge wie die Gesamtzahl — „3 von 5" darf nicht aus zwei
