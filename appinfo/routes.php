@@ -26,6 +26,9 @@ return [
 		// PATCH: Beide haben eigene Regeln (Nachbar-IDs bzw. die besitzende
 		// Seite), und ein Sammel-Update waere die Stelle, an der die Regel beim
 		// naechsten Feld vergessen wird.
+		// Weiches Loeschen: setzt `deleted_at`, das TicketScope aus jeder
+		// Abfrage nimmt. Kein Papierkorb in der App — Wiederherstellen per occ.
+		['name' => 'ticket#destroy', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}', 'verb' => 'DELETE'],
 		['name' => 'ticket#move', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/move', 'verb' => 'POST'],
 		['name' => 'ticket#visibilityImpact', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/visibility-impact', 'verb' => 'GET'],
 		['name' => 'ticket#visibility', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/visibility', 'verb' => 'PUT'],

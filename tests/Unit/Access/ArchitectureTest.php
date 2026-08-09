@@ -36,6 +36,12 @@ class ArchitectureTest extends TestCase {
 		$allowed = [
 			'Db/TicketMapper.php',
 			'Access/TicketScope.php',
+			// **Namentliche Ausnahme mit Grund.** Der Wiederherstellungsbefehl
+			// muss genau das finden, was die Sichtbarkeitsregel verbirgt —
+			// sonst waere er kein Papierkorb. Er laeuft ausschliesslich auf der
+			// Kommandozeile, hat keinen Betrachterkontext und beschraenkt sich
+			// auf zwei Anweisungen: auflisten und `deleted_at` leeren.
+			'Command/TicketRestore.php',
 		];
 
 		$offenders = [];

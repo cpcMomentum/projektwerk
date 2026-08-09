@@ -75,6 +75,20 @@ class TicketScope {
 	 * @param string $memberUserId   wer schauen wuerde
 	 * @param string $memberRole     dessen Rolle auf diesem Board
 	 */
+	/**
+	 * **Hier steht bewusst keine Pruefung auf `deleted_at`.**
+	 *
+	 * Das Praedikat beantwortet „wuerde diese Person das Ticket sehen, wenn die
+	 * Sichtbarkeit X waere" — eine Frage nach einem Zustand, den es noch nicht
+	 * gibt. Seine beiden Aufrufer (Herunterstufen-Dialog und Schrittzuweisung)
+	 * bekommen das Ticket **immer** aus einer Abfrage, die schon durch
+	 * {@see apply()} gelaufen ist; ein geloeschtes erreicht sie also nie.
+	 *
+	 * Eine zweite Pruefung hier waere genau das, was das weiche Loeschen
+	 * vermeiden soll: ein zweiter Ort, an dem die Loeschung stimmen muesste.
+	 * Der Integrationstest belegt, dass ein geloeschtes Ticket beide Wege nicht
+	 * erreicht.
+	 */
 	public function wouldSee(
 		string $visibility,
 		string $creatorUserId,
@@ -116,6 +130,13 @@ class TicketScope {
 				$qb->expr()->eq($m . '.user_id', $uidParam),
 			),
 		);
+
+		// **Geloeschtes faellt hier heraus, und nur hier.** Das ist der ganze
+		// Entwurf des weichen Loeschens: kein Papierkorb als zweiter Ort, an
+		// dem Tickets leben, sondern eine Zeile in der einen Bedingung, durch
+		// die ohnehin jeder Lesepfad geht. Wer einen neuen Lesepfad baut,
+		// bekommt sie geschenkt — und kann sie nicht vergessen.
+		$qb->andWhere($qb->expr()->isNull($ticketAlias . '.deleted_at'));
 
 		$qb->andWhere($qb->expr()->orX(
 			$qb->expr()->eq(
