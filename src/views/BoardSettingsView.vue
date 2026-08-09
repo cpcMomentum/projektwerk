@@ -76,10 +76,20 @@
 				</h3>
 
 				<div v-for="(column, index) in store.columns" :key="column.id" class="pw-settings__row">
+					<!--
+						Ein Entwurf je Spalte, gespeichert erst bei Enter oder
+						beim Verlassen des Feldes. Direkt am Tastendruck zu
+						speichern hiesse ein PATCH je Zeichen — und weil
+						`write()` waehrend eines laufenden Aufrufs weitere
+						verwirft, gingen Anschlaege verloren und das Feld spraenge
+						auf den zuletzt gespeicherten Stand zurueck.
+					-->
 					<NcTextField
-						:modelValue="column.title"
+						:modelValue="draftFor(column)"
 						:label="t('projektwerk', 'Name der Spalte')"
-						@update:modelValue="renameColumnTo(column.id, $event)" />
+						@update:modelValue="columnDrafts[column.id] = $event"
+						@keydown.enter="commitColumn(column)"
+						@blur="commitColumn(column)" />
 					<!--
 						Hoch und runter statt Ziehen: Jede Zieh-Geste braucht eine
 						Alternative ohne Ziehen, und hier ist sie der einzige Weg
@@ -198,7 +208,7 @@
 </template>
 
 <script lang="ts">
-import type { Member, MemberRole } from '@/types/board'
+import type { Column, Member, MemberRole } from '@/types/board'
 
 import { t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
@@ -242,6 +252,8 @@ export default defineComponent({
 		return {
 			busy: false,
 			newColumn: '',
+			/** Entwurf je Spalte, solange getippt wird. */
+			columnDrafts: {} as Record<number, string>,
 			newMember: '',
 			newMemberRole: 'external' as MemberRole,
 			// Ein eigener Entwurf statt direkter Bindung an den Speicher: Sonst
@@ -320,6 +332,9 @@ export default defineComponent({
 				await run()
 				await this.store.open(this.boardId)
 				this.fillDraft()
+				// Die Entwuerfe sind mit dem Neuladen ueberholt; blieben sie
+				// stehen, ueberdeckten sie den Stand vom Server.
+				this.columnDrafts = {}
 			} catch (e) {
 				showError((e as { message?: string }).message ?? fallback)
 			} finally {
@@ -355,15 +370,38 @@ export default defineComponent({
 		},
 
 		/**
-		 * @param columnId Kennung der Spalte.
-		 * @param title Der neue Name.
+		 * Der Text im Feld: der Entwurf, sonst der gespeicherte Name.
+		 *
+		 * @param column Die Spalte.
 		 */
-		renameColumnTo(columnId: number, title: string) {
-			if (title.trim() === '') {
+		draftFor(column: Column): string {
+			return this.columnDrafts[column.id] ?? column.title
+		},
+
+		/**
+		 * Den Entwurf speichern — bei Enter oder beim Verlassen des Feldes.
+		 *
+		 * Ein leerer Name wird verworfen statt geschickt: Der Server wiese ihn
+		 * ab, und die Meldung waere die Antwort auf ein Versehen. Das Feld
+		 * kehrt dann zum gespeicherten Namen zurueck.
+		 *
+		 * @param column Die Spalte.
+		 */
+		commitColumn(column: Column) {
+			const draft = this.columnDrafts[column.id]
+			if (draft === undefined) {
 				return
 			}
+
+			const title = draft.trim()
+			if (title === '' || title === column.title) {
+				delete this.columnDrafts[column.id]
+
+				return
+			}
+
 			return this.write(
-				() => renameColumn(this.boardId, columnId, title.trim()),
+				() => renameColumn(this.boardId, column.id, title),
 				t('projektwerk', 'Umbenennen fehlgeschlagen'),
 			)
 		},
