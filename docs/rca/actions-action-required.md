@@ -3,7 +3,8 @@
 > **Status:** Analyse **nicht abgeschlossen** — eine Hypothese offen, sie braucht einen Blick,
 > den mein Zugang nicht hat
 > **Datum:** 2026-08-09
-> **Severity:** Low (Häufigkeit ~0,6 %, selbstheilend durch erneutes Pushen)
+> **Severity:** Low (selbstheilend durch erneutes Pushen) — **Häufigkeit am 2026-08-09
+> nach oben korrigiert, siehe Nachtrag**
 
 ---
 
@@ -31,6 +32,7 @@ Bot-Pushes.
 | 2026-08-08 (Session 03) | Erste Analyse. Schluss damals: **betrifft nur ProjektWerk**. Ursache vermutet: Bot gilt als „first-time contributor" |
 | 2026-08-09 08:16 | `projektwerk`, Branch `fix/6-kleinkram`, Head `02470b4a` — 5 Läufe `action_required` |
 | 2026-08-09 | Diese RCA. Der Befund von Session 03 ist **widerlegt** (siehe 3.1) |
+| 2026-08-09 13:0x | `projektwerk`, Branch `feat/7-arbeitsschritte` — **dritter Vorfall**, siehe Nachtrag |
 
 ---
 
@@ -223,3 +225,35 @@ Verschlechterung, wenn nie ein Lauf hängen bliebe.
 ---
 
 *Erstellt am 2026-08-09. Fortsetzung, sobald 3.4 geprüft ist.*
+
+
+---
+
+## Nachtrag, 2026-08-09 nachmittags
+
+**Dritter Vorfall am selben Tag**, Branch `feat/7-arbeitsschritte`. Damit ist die Einschätzung
+„zwei Vorfälle, selten" aus Abschnitt 3.2 überholt: Es sind drei innerhalb eines Tages, alle drei
+in Repos mit aktiver Entwicklung.
+
+**Die Ursache bleibt dieselbe und bleibt ungeklärt** — die Zuschreibung des Pushs kippt von
+`AxDeontour` auf `github-actions[bot]`. Nichts an den Einstellungen hat sich zwischenzeitlich
+geändert.
+
+**Die Empfehlung ändert sich trotzdem nicht, sondern verstärkt sich:** Beide Auto-Fixes des
+Review-Bots an diesem Tag waren **inhaltlich richtig und wertvoll**:
+
+| Vorfall | Befund |
+|---|---|
+| PR #52 | Doc-Kommentar nannte ein Feld, das die Schnittstelle nicht führt |
+| PR #57 | `getParam()` prüft mit `isset()` — eine Zuweisung liess sich nie wieder löschen |
+
+Der zweite war ein **echter Produktfehler**, den weder meine Tests noch mein Durchspielen
+gefunden hatten. Den Auto-Fix abzuschalten hätte ihn nicht verhindert, sondern verborgen.
+
+**Was tatsächlich hilft**, und was seit diesem Tag Praxis ist: Beim Merge auf den Head achten.
+Meldet `gh pr checks` „no checks reported", ist das der hier beschriebene Zustand — dann den
+Bot-Commit einfalten und unter eigenem Namen nachpushen. Kostet eine Minute und bringt den
+Befund zusätzlich unter einen eigenen Test.
+
+**Offen bleibt allein die Zuschreibung.** Bei weiter steigender Häufigkeit gehört das als Ticket
+zu `anthropics/claude-code-action` — die Token-Wahl liegt dort.
