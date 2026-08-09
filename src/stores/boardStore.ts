@@ -332,18 +332,20 @@ export const useBoardStore = defineStore('board', {
 			// wäre die Auswahl bei gleichzeitig geschlossenen Vorgängen von der
 			// Sortierstabilität abhängig — und damit vom Browser.
 			//
-			// Verglichen wird mit `<`/`>` statt `localeCompare()`: `closedAt`
-			// ist ATOM und damit formgleich, ein Zeichenvergleich liefert
-			// dieselbe Ordnung — und geht nicht über die ICU-Kollation, die je
-			// Vergleich um Größenordnungen teurer ist. `closed` stammt frisch
-			// aus `filter()` und darf an Ort und Stelle sortiert werden.
-			const keep = new Set(closed
-				.sort((a, b) => {
-					const von = a.closedAt ?? ''
-					const bis = b.closedAt ?? ''
+			// **Der Zeitpunkt wird einmal je Vorgang ausgerechnet, nicht bei
+			// jedem Vergleich.** Ein Zeichenvergleich auf `closedAt` wäre
+			// schneller, aber nur dann chronologisch, wenn alle Werte denselben
+			// Zeitzonenversatz tragen: ATOM schreibt ihn mit, und
+			// `…T02:30:00+02:00` steht als Zeichenkette vor `…T02:30:00+01:00`,
+			// obwohl es später liegt. Nextcloud läuft zwar auf UTC
+			// (`base.php`: `date_default_timezone_set('UTC')`), aber eine
+			// Sortierung, die an dieser Einstellung hängt, ist eine Kopplung,
+			// die niemand sieht. Ein `Date.parse()` je Vorgang ist billiger als
+			// ein Vergleich je Paar und braucht die Annahme nicht.
+			const geschlossenAm = new Map(closed.map((ticket) => [ticket.id, Date.parse(ticket.closedAt ?? '')]))
 
-					return von === bis ? b.id - a.id : (von < bis ? 1 : -1)
-				})
+			const keep = new Set(closed
+				.sort((a, b) => (geschlossenAm.get(b.id) ?? 0) - (geschlossenAm.get(a.id) ?? 0) || b.id - a.id)
 				.slice(0, CLOSED_TAIL)
 				.map((ticket) => ticket.id))
 

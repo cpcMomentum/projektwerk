@@ -83,6 +83,27 @@ describe('Ältere Erledigte', () => {
 		setActivePinia(createPinia())
 	})
 
+	it('sortiert nach Zeitpunkt, nicht nach Zeichenkette', () => {
+		// Beide Vorgaenge meinen denselben Moment, geschrieben mit
+		// unterschiedlichem Zeitzonenversatz — als Zeichenkette steht `+02:00`
+		// vor `+01:00`, chronologisch ist es umgekehrt. Nextcloud liefert heute
+		// durchgaengig UTC; dieser Test haelt fest, dass die Sortierung nicht
+		// daran haengt.
+		// Die neun Fuellvorgaenge liegen spaeter als beide, damit genau einer
+		// der beiden wegfaellt — und zwar der chronologisch aeltere.
+		const store = fill([
+			ticket(1, '2026-10-25T02:30:00+02:00'), // = 00:30 UTC, aelter
+			ticket(2, '2026-10-25T02:30:00+01:00'), // = 01:30 UTC, juenger
+			...Array.from({ length: 9 }, (_, i) => ticket(i + 3, `2026-12-0${i + 1}T00:00:00+00:00`)),
+		])
+
+		// Elf Geschlossene, einer faellt weg — und zwar der aelteste, also #1.
+		const shown = store.ticketsIn(COLUMN).map((t) => t.id)
+
+		expect(shown).not.toContain(1)
+		expect(shown).toContain(2)
+	})
+
 	it('lässt eine Spalte unangetastet, solange nicht mehr als zehn geschlossen sind', () => {
 		const store = fill(Array.from({ length: CLOSED_TAIL }, (_, i) => ticket(i + 1, closedRank(i + 1))))
 
