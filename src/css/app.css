@@ -229,8 +229,19 @@
 	cursor: pointer;
 }
 
-/* Das Menue liegt in der freien Ecke, die die Polsterung oben rechts laesst. */
-.app-projektwerk .pw-card__menu {
+/*
+ * Das Menue liegt in der freien Ecke, die die Polsterung oben rechts laesst.
+ *
+ * **Der Kindselektor ist noetig, nicht kosmetisch.** Nextclouds `NcActions`
+ * bringt `.action-item { position: relative }` aus einer bereichsbezogenen
+ * Regel mit — dieselbe Spezifitaet wie `.app-projektwerk .pw-card__menu`, und
+ * bei Gleichstand gewinnt die spaeter geladene. Folge: `top`/`right` kamen an,
+ * `position: absolute` nicht. Das Menue blieb im Textfluss, landete unten
+ * links und erzeugte unter der Karte einen weissen Streifen, den die
+ * Hervorhebung beim Ueberfahren nicht mitnahm — genau der Befund vom
+ * 2026-08-10.
+ */
+.app-projektwerk .pw-card > .pw-card__menu {
 	position: absolute;
 	top: 6px;
 	right: 6px;
@@ -768,7 +779,13 @@
 	color: var(--color-main-text);
 	font-size: 12.5px;
 	font-weight: 600;
-	white-space: nowrap;
+	/*
+	 * **Kein `nowrap` mehr.** „wartet auf Kunde · seit 09.08." ist laenger als
+	 * eine schmale Spalte, und mit `nowrap` ragte die Marke sichtbar ueber den
+	 * Kartenrand hinaus. Sie darf jetzt umbrechen und bleibt in der Karte.
+	 */
+	max-width: 100%;
+	overflow-wrap: break-word;
 }
 
 .app-projektwerk .pw-wait--compact {
