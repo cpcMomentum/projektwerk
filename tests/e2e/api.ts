@@ -3,6 +3,30 @@ import type { APIRequestContext } from '@playwright/test'
 import { APP_PFAD } from './rollen.ts'
 
 /**
+ * Zusatz zu Statuscodes, deren Rumpf leer ist und deren Zahl in die Irre fuehrt.
+ *
+ * **429 ist der Fall, der Zeit kostet.** `TicketController::create` traegt
+ * bewusst `#[UserRateLimit(limit: 60, period: 3600)]`. Nextcloud beantwortet
+ * das Ueberschreiten mit einem leeren 429 — und ein leerer 429 im Aufbau eines
+ * Tests sieht aus wie ein kaputter Server. In der CI faellt das nie auf: Dort
+ * ist die Instanz frisch und der Zaehler bei null. Lokal summieren sich die
+ * Laeufe, und beim siebten innerhalb einer Stunde steht der Aufbau.
+ */
+function erklaerung(status: number): string {
+	if (status !== 429) {
+		return ''
+	}
+
+	return '\n\nDas ist die Drosselung aus TicketController::create '
+		+ '(#[UserRateLimit(limit: 60, period: 3600)]), nicht ein Fehler im Test. '
+		+ 'Jeder volle Lauf legt rund neun Vorgaenge an; nach etwa sieben Laeufen '
+		+ 'je Stunde ist das Kontingent von pw-e2e-intern erschoepft.\n'
+		+ 'Lokal zuruecksetzen: tests/e2e/drossel-zuruecksetzen.sh\n'
+		+ '(Ein Neustart des Nextcloud-Containers hilft NICHT — die Zaehler '
+		+ 'liegen in Redis, und der laeuft daneben weiter.)'
+}
+
+/**
  * Testdaten ueber die HTTP-API aufbauen, nicht ueber die Oberflaeche.
  *
  * **Warum nicht klickend.** Ein Test, der sein Board erst zusammenklickt,
@@ -75,7 +99,7 @@ export class Api {
 			// Der Rumpf steht mit in der Meldung: Nextcloud beschreibt in ihm,
 			// woran es lag. Ohne ihn bleibt nur eine Zahl, und die schickt bei
 			// 403 zuverlaessig in die falsche Richtung (Rechte statt Token).
-			throw new Error(`${methode.toUpperCase()} ${pfad} -> HTTP ${antwort.status()}: ${await antwort.text()}`)
+			throw new Error(`${methode.toUpperCase()} ${pfad} -> HTTP ${antwort.status()}: ${await antwort.text()}${erklaerung(antwort.status())}`)
 		}
 
 		return antwort.json()
