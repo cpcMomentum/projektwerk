@@ -141,6 +141,8 @@ OC.L10N.register(
     "Arbeitsschritt konnte nicht erledigt werden": "Arbeitsschritt konnte nicht erledigt werden",
     "Keine Verbindung zum Server. Bitte später erneut versuchen.": "Keine Verbindung zum Server. Bitte später erneut versuchen.",
     "Gefunden werden nur bestehende Nextcloud-Konten. Wer noch keines hat — etwa auf Kundenseite — braucht zuerst eines: Die Administration legt es an, als Gastzugang oder als Vollkonto.": "Gefunden werden nur bestehende Nextcloud-Konten. Wer noch keines hat — etwa auf Kundenseite — braucht zuerst eines: Die Administration legt es an, als Gastzugang oder als Vollkonto.",
-    "Zielspalte": "Zielspalte"
+    "Zielspalte": "Zielspalte",
+    "wartet auf {names} · seit {date}": "wartet auf {names} · seit {date}",
+    "Privat": "Privat"
 },
 "nplurals=2; plural=(n != 1);");

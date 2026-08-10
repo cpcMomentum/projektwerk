@@ -11,34 +11,67 @@
 				<!--
 					Die Kennzeichnung gibt es nur für die interne Seite und nur,
 					wenn es überhaupt eine Gegenseite gibt (§9).
+
+					**Und nur für Abweichungen vom Normalfall.** „Alle
+					Beteiligten" stand doppelt da: als farbiger Balken oben UND
+					als Wort. Der Balken sagt es bereits. Jetzt gilt: Keine
+					Kennzeichnung heisst „sehen alle" — markiert wird, was davon
+					abweicht.
+
+					Dass ausgerechnet der Normalfall ohne Wort auskommt und die
+					anderen nicht, ist kein Zufall: Die sicherheitskritische
+					Frage lautet „ist das intern?", denn davon haengt ab, ob der
+					Kunde mitliest. Wer Farben nicht unterscheidet, findet
+					weiterhin Woerter dort, wo es zaehlt.
 				-->
-				<span v-if="showVisibility" class="pw-vis" :class="'pw-vis--' + ticket.visibility">
-					<AccountMultipleIcon v-if="ticket.visibility === 'public'" :size="13" />
-					<OfficeBuildingIcon v-else-if="ticket.visibility === 'internal'" :size="13" />
+				<span
+					v-if="showVisibility && ticket.visibility !== 'public'"
+					class="pw-vis"
+					:class="'pw-vis--' + ticket.visibility">
+					<OfficeBuildingIcon v-if="ticket.visibility === 'internal'" :size="13" />
 					<PencilIcon v-else :size="13" />
 					{{ visibilityLabel }}
 				</span>
-			</span>
 
-			<!--
-				Die Marke steht ueber dem Titel: Sie beantwortet, ob die Karte
-				einen gerade etwas angeht — das liest man vor dem Titel, nicht
-				danach.
-			-->
-			<WaitBadge :state="waitState" :fromClientSide="fromClientSide" :compact="true" />
+				<!--
+					**Wer den Vorgang traegt — leise, oben rechts.** Eine
+					Zuordnung, keine Handlungsaufforderung: Sie gilt dauerhaft
+					und aendert nichts daran, ob die Karte einen gerade angeht.
+					Deshalb klein und in der Kopfzeile, wo auch Nummer und
+					Sichtbarkeit stehen.
+				-->
+				<NcAvatar
+					v-if="ticket.responsibleUserId"
+					class="pw-card__owner"
+					:user="ticket.responsibleUserId"
+					:displayName="responsibleName"
+					:size="18"
+					:disableMenu="true" />
+			</span>
 
 			<span class="pw-card__title">{{ ticket.title }}</span>
 
+			<!--
+				**Die Zustandszeile.** Links, wo es gerade haengt; rechts die
+				Zaehler. Oben steht, was dauerhaft gilt — hier, was gerade der
+				Fall ist. Wartet nichts, bleibt links leer, und auch das ist
+				eine Aussage.
+			-->
 			<span class="pw-card__foot">
-				<NcAvatar
-					v-if="ticket.responsibleUserId"
-					:user="ticket.responsibleUserId"
-					:displayName="responsibleName"
-					:size="22"
-					:disableMenu="true" />
+				<WaitBadge
+					:state="waitState"
+					:fromClientSide="fromClientSide"
+					:names="memberNames"
+					:compact="true" />
 				<span class="pw-right">
 					<CommentOutlineIcon v-if="commentCount > 0" :size="13" :title="commentTitle" />
-					<span v-if="stepCount > 0" class="pw-steps" :title="stepTitle">
+					<!--
+						**Erst ab zwei Schritten.** Bei einem einzigen sagt
+						„0/1" dasselbe wie die Wartemarke daneben — zwei
+						Anzeigen fuer denselben Sachverhalt. Ab zwei sagt der
+						Zaehler etwas Eigenes: wie weit es insgesamt ist.
+					-->
+					<span v-if="stepCount > 1" class="pw-steps" :title="stepTitle">
 						<FormatListChecksIcon :size="13" />
 						{{ stepsDone }}/{{ stepCount }}
 					</span>
@@ -91,7 +124,6 @@ import NcActionButton from '@nextcloud/vue/components/NcActionButton'
 import NcActionCaption from '@nextcloud/vue/components/NcActionCaption'
 import NcActions from '@nextcloud/vue/components/NcActions'
 import NcAvatar from '@nextcloud/vue/components/NcAvatar'
-import AccountMultipleIcon from 'vue-material-design-icons/AccountMultiple.vue'
 import ArrowRightIcon from 'vue-material-design-icons/ArrowRight.vue'
 import CommentOutlineIcon from 'vue-material-design-icons/CommentOutline.vue'
 import FormatListChecksIcon from 'vue-material-design-icons/FormatListChecks.vue'
@@ -104,7 +136,6 @@ export default defineComponent({
 
 	components: {
 		WaitBadge,
-		AccountMultipleIcon,
 		ArrowRightIcon,
 		CommentOutlineIcon,
 		FormatListChecksIcon,
@@ -122,6 +153,13 @@ export default defineComponent({
 		showVisibility: { type: Boolean, default: false },
 		responsibleName: { type: String, default: '' },
 		lastEditorName: { type: String, default: '' },
+		/**
+		 * Anzeigename je Benutzerkennung — fuer die Kugeln der Wartemarke.
+		 *
+		 * Der Server loest die Namen auf (`resolvedName`); im Browser
+		 * nachzuschlagen bliebe ausgerechnet beim Gast stumm.
+		 */
+		memberNames: { type: Object as PropType<Record<string, string>>, default: () => ({}) },
 		/** Alle Spalten des Boards — für „Verschieben nach …". */
 		columns: { type: Array as PropType<Column[]>, default: () => [] },
 		commentCount: { type: Number, default: 0 },
@@ -174,15 +212,18 @@ export default defineComponent({
 			return t('projektwerk', 'Geändert von {name}', { name: this.lastEditorName })
 		},
 
+		/**
+		 * Nur für „Intern" und „Privat" — der Normalfall bleibt unmarkiert.
+		 *
+		 * „Privat" statt „Nur ich": zwei Eigenschaftswoerter nebeneinander
+		 * lesen sich als ein Paar, ein Satzfragment daneben nicht. Im
+		 * Auswahlmenue heisst die Stufe weiterhin ausfuehrlicher — dort wird
+		 * gewaehlt, hier nur benannt.
+		 */
 		visibilityLabel(): string {
-			// Benannt nach dem Publikum, nicht nach der Technik (§7).
-			if (this.ticket.visibility === 'public') {
-				return t('projektwerk', 'Alle Beteiligten')
-			}
-			if (this.ticket.visibility === 'internal') {
-				return t('projektwerk', 'Intern')
-			}
-			return t('projektwerk', 'Nur ich')
+			return this.ticket.visibility === 'internal'
+				? t('projektwerk', 'Intern')
+				: t('projektwerk', 'Privat')
 		},
 
 		commentTitle(): string {

@@ -112,6 +112,7 @@
 						:stepCount="count('steps', ticket.id)"
 						:stepsDone="count('stepsDone', ticket.id)"
 						:waitState="store.waiting[ticket.id] ?? null"
+						:memberNames="store.memberNames"
 						:fromClientSide="!store.isInternal"
 						@open="openTicket"
 						@move="move" />

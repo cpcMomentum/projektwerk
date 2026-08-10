@@ -788,6 +788,38 @@
 	overflow-wrap: break-word;
 }
 
+/*
+ * **Auf der Karte eine Umrandung, keine Fuellung.**
+ *
+ * Die gefuellte Pille lag als blasses Gelb unter den Avatar-Initialen, die
+ * selbst pastellfarben sind — zwei blasse Flaechen uebereinander ergaben
+ * Matsch, und man erkannte die Personen nicht mehr. Weisser Grund gibt den
+ * Kugeln ihren Kontrast zurueck.
+ *
+ * **Und es haelt eine Stufe frei:** Umrandung heisst „wartet", Fuellung wird
+ * spaeter „ueberfaellig" (#72). Zwei Zustaende in einer Formsprache, statt
+ * fuer den zweiten eine dritte Farbe zu suchen.
+ *
+ * Nextclouds Gelb in zwei Rollen: `--color-element-warning` traegt die Linie,
+ * `--color-warning-text` die Schrift. **`--color-element-warning` ist der
+ * richtige Ton, nicht `--color-warning-hover`:** Letzteres ist ein Flaechen-Gelb
+ * (#ffe4a1) und als 2-px-Linie auf Weiss kaum zu sehen; ersteres ist mit #BF7900
+ * genau das Gelb, das Nextcloud selbst fuer warnende *Elemente* nimmt. Im
+ * Dunkelmodus dreht es auf #FFCC00 — der Kontrast bleibt in beiden Richtungen.
+ */
+.app-projektwerk .pw-card__foot .pw-wait {
+	background: var(--color-main-background);
+	border: 2px solid var(--color-element-warning, var(--color-warning-hover));
+	color: var(--color-warning-text, var(--color-main-text));
+}
+
+.app-projektwerk .pw-wait__since {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	font-variant-numeric: tabular-nums;
+}
+
 .app-projektwerk .pw-wait--compact {
 	padding: 2px 7px;
 	font-size: 11.5px;
@@ -992,4 +1024,50 @@
 	width: 100%;
 	min-height: 80px;
 	resize: vertical;
+}
+
+/* ---- Karte: Kopfzeile traegt die Zuordnung, Fusszeile den Zustand -------- */
+
+/*
+ * **Der Traeger steht rechts in der Kopfzeile — leise.** `margin-inline-start:
+ * auto` schiebt ihn ans Ende, neben Nummer und Sichtbarkeit. Er ist eine
+ * Zuordnung und keine Handlungsaufforderung; deshalb 18 px und kein Name.
+ */
+.app-projektwerk .pw-card__owner {
+	margin-inline-start: auto;
+	flex: none;
+}
+
+/*
+ * Die Kugeln der Wartemarke. Sie tragen die Person in 18 Pixeln, wo ein Name
+ * eine halbe Zeile braucht — auf einer Karte, die einen Blick vertraegt, ist
+ * das der entscheidende Unterschied.
+ */
+.app-projektwerk .pw-wait__who {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+}
+
+.app-projektwerk .pw-wait__more {
+	font-variant-numeric: tabular-nums;
+}
+
+/*
+ * **Sie nimmt die Zeile bis zu den Zaehlern ein.** Als kurze, freistehende Pille
+ * schwamm sie in der Fusszeile und liess links wie rechts Luft; ueber die volle
+ * Breite wird aus dem Fleck eine Zeile, und die Zaehler stehen an einer Kante
+ * statt irgendwo. `flex: 1` statt einer festen Breite, damit sie mit der Spalte
+ * mitgeht — die ist auf dem Handy 88 vw breit und auf dem Schreibtisch 260 px.
+ *
+ * Schrumpfen darf sie trotzdem (`min-width: 0`), sonst verdraengt ein langer
+ * Inhalt die Zaehler. Umbrechen tut sie hier nicht: Eine zweizeilige Fusszeile
+ * waere genau die Zeile, die dieser Umbau einspart.
+ */
+.app-projektwerk .pw-card__foot .pw-wait {
+	flex: 1 1 auto;
+	justify-content: flex-start;
+	min-width: 0;
+	overflow: hidden;
+	white-space: nowrap;
 }
