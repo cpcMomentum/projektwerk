@@ -3,9 +3,10 @@
 # Setzt die Drosselzaehler der lokalen Dev-Instanz zurueck.
 #
 # `TicketController::create` traegt bewusst `#[UserRateLimit(limit: 60,
-# period: 3600)]`. Ein voller E2E-Lauf legt rund neun Vorgaenge an — nach etwa
-# sieben Laeufen je Stunde steht der Aufbau mit einem **leeren** HTTP 429, das
-# wie ein kaputter Server aussieht.
+# period: 3600)]`, `CommentController::create` dieselbe Sperre mit 120. Ein
+# voller E2E-Lauf legt rund ein Dutzend Vorgaenge und einige Kommentare an —
+# nach etwa fuenf Laeufen je Stunde steht der Aufbau mit einem **leeren**
+# HTTP 429, das wie ein kaputter Server aussieht.
 #
 # In der CI passiert das nie: Dort ist die Instanz je Lauf frisch. Das hier ist
 # reine lokale Bequemlichkeit und fasst ausschliesslich Zaehler an.

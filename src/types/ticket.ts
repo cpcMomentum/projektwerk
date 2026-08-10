@@ -41,6 +41,25 @@ export interface Ticket {
 	updatedAt: string | null
 }
 
+/**
+ * Ein Kommentar am Vorgang.
+ *
+ * **Ohne eigene Sichtbarkeit** — er erbt sie vollständig vom Ticket. Deshalb
+ * gibt es hier kein Feld dafür und im Browser keine Bedingung darauf.
+ *
+ * `updatedAt` ist beim Anlegen gleich `createdAt`; ein späterer Wert heißt
+ * genau „wurde nachträglich geändert".
+ */
+export interface Comment {
+	id: number
+	ticketId: number
+	authorUserId: string
+	/** Markdown. Wird mit `NcRichText` gerendert, ohne `interactive`. */
+	body: string
+	createdAt: string | null
+	updatedAt: string | null
+}
+
 export interface Step {
 	id: number
 	ticketId: number
@@ -89,7 +108,7 @@ export interface TicketList {
 export interface TicketDetail {
 	ticket: Ticket
 	waiting: WaitState | null
-	comments: unknown[]
+	comments: Comment[]
 	steps: Step[]
 	attachments: unknown[]
 	collaborators: unknown[]

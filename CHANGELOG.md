@@ -31,6 +31,16 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 - **Kontensuche** für das Hinzufügen von Mitgliedern — eigener Endpunkt statt Nextclouds
   Personensuche, die in Gast-Sitzungen prinzipbedingt leer bliebe. Achtet
   `shareapi_allow_share_dialog_user_enumeration`
+- **Kommentare** in Markdown, mit der Sichtbarkeit des Vorgangs. Sie haben keine eigene —
+  gelesen werden sie weiter über `ticket#show` aus der gefilterten Ticketmenge, neu sind nur
+  Schreibwege. **Ändern und Löschen kann nur die verfassende Person**, ohne Ausnahme für
+  Verwaltungsrecht oder Board-Eigentum; der Preis dafür ist benannt: Ein Versehen bleibt
+  stehen, wenn die Person das Board verlassen hat. Gelöscht wird hart, es gibt keinen
+  Papierkorb. Ein hineinkopierter Dateilink wird **nicht** in eine Vorschau aufgelöst
+  (`interactive` bleibt aus) — was hinter ihm steckt, entscheiden Nextclouds Freigaben und
+  nicht die Sichtbarkeit des Vorgangs. Das ist einem Kunden gegenüber zu benennen, bevor
+  Phase 5 vorgeführt wird. Markdown mit `remark-gfm`: Tabellen, Aufgabenlisten und
+  Durchstreichen rendern, statt als Striche im Text zu landen
 - **Arbeitsschritte** mit Titel, Zuweisung, Fälligkeit und erledigt. Wer einen Schritt bekommen
   darf, folgt aus der Sichtbarkeitsregel und kommt vom Server; bei einem öffentlichen Vorgang
   stehen beide Seiten gemeinsam und ohne Warnung in der Liste

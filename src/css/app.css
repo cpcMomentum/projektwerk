@@ -869,6 +869,110 @@
 	border-top: 1px solid var(--color-border);
 }
 
+/* ---- Kommentare ---------------------------------------------------------- */
+
+.app-projektwerk .pw-comment {
+	display: flex;
+	gap: 10px;
+	padding: 8px 0;
+}
+
+.app-projektwerk .pw-comment__body {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.app-projektwerk .pw-comment__head {
+	display: flex;
+	align-items: baseline;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.app-projektwerk .pw-comment__name {
+	font-weight: 600;
+}
+
+.app-projektwerk .pw-comment__time,
+.app-projektwerk .pw-comment__edited {
+	font-size: 12px;
+	color: var(--color-text-maxcontrast);
+}
+
+/*
+ * Markdown bringt eigene Bloecke mit. Ohne `anywhere` sprengt eine lange URL
+ * das Overlay auf dem Telefon in die Breite — genau der Befund aus dem
+ * Geraetetest (#78), nur an einer neuen Stelle.
+ */
+.app-projektwerk .pw-comment__text {
+	margin-top: 2px;
+	line-height: 1.5;
+	overflow-wrap: anywhere;
+}
+
+.app-projektwerk .pw-comment__text > :first-child {
+	margin-top: 0;
+}
+
+.app-projektwerk .pw-comment__text > :last-child {
+	margin-bottom: 0;
+}
+
+/* Code scrollt in sich, statt die Spalte zu weiten. */
+.app-projektwerk .pw-comment__text pre {
+	max-width: 100%;
+	overflow-x: auto;
+}
+
+/*
+ * Tabellen ebenso — aber `overflow` **greift auf `display: table` nicht**. Der
+ * berechnete Wert faellt auf `visible` zurueck, und die Tabelle ragt dann aus
+ * dem Kommentar heraus, ohne sich schieben zu lassen. Auf 390 px Breite waren
+ * das gemessene 14 px schon bei vier schmalen Spalten. Erst `display: block`
+ * macht aus ihr einen Kasten, der scrollen kann; die Zeilen bleiben ueber
+ * anonyme Tabellenboxen erhalten.
+ */
+.app-projektwerk .pw-comment__text table {
+	display: block;
+	/*
+	 * `width: max-content` gehoert dazu, sonst zieht der Block als Blockkasten
+	 * die volle Breite — und der Rahmen der Tabelle stuende dann rechts weit
+	 * neben der letzten Zelle. Mit `max-content` schrumpft er auf den Inhalt,
+	 * `max-width` deckelt ihn am Kommentar, und was darueber hinausgeht,
+	 * scrollt.
+	 */
+	width: max-content;
+	max-width: 100%;
+	overflow-x: auto;
+}
+
+.app-projektwerk .pw-comment__edit {
+	margin-top: 6px;
+}
+
+.app-projektwerk .pw-comment__actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-top: 6px;
+}
+
+.app-projektwerk .pw-comment__confirm {
+	margin-top: 6px;
+	padding: 10px;
+	border-radius: var(--border-radius-large, 12px);
+	background-color: var(--color-background-hover);
+}
+
+.app-projektwerk .pw-comment__confirm p {
+	margin: 0;
+}
+
+.app-projektwerk .pw-comment-new {
+	padding-top: 10px;
+	border-top: 1px solid var(--color-border);
+}
+
 /* ---- Kontensuche --------------------------------------------------------- */
 
 .app-projektwerk .pw-settings__hits {

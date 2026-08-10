@@ -17,10 +17,12 @@ function erklaerung(status: number): string {
 		return ''
 	}
 
-	return '\n\nDas ist die Drosselung aus TicketController::create '
-		+ '(#[UserRateLimit(limit: 60, period: 3600)]), nicht ein Fehler im Test. '
-		+ 'Jeder volle Lauf legt rund neun Vorgaenge an; nach etwa sieben Laeufen '
-		+ 'je Stunde ist das Kontingent von pw-e2e-intern erschoepft.\n'
+	return '\n\nDas ist eine Drosselung aus der App, nicht ein Fehler im Test — '
+		+ 'TicketController::create (60/h) oder CommentController::create (120/h), '
+		+ 'je nachdem, welcher Aufbauschritt getroffen wurde. '
+		+ 'Jeder volle Lauf legt rund ein Dutzend Vorgaenge und einige Kommentare an; '
+		+ 'nach etwa fuenf Laeufen je Stunde ist das Kontingent von pw-e2e-intern '
+		+ 'erschoepft.\n'
 		+ 'Lokal zuruecksetzen: tests/e2e/drossel-zuruecksetzen.sh\n'
 		+ '(Ein Neustart des Nextcloud-Containers hilft NICHT — die Zaehler '
 		+ 'liegen in Redis, und der laeuft daneben weiter.)'
@@ -137,6 +139,10 @@ export class Api {
 		responsibleUserId?: string
 	}): Promise<any> {
 		return this.schreiben('post', `/api/v1/boards/${boardId}/tickets`, daten)
+	}
+
+	kommentarAnlegen(boardId: number, ticketId: number, body: string): Promise<any> {
+		return this.schreiben('post', `/api/v1/boards/${boardId}/tickets/${ticketId}/comments`, { body })
 	}
 
 	/**
