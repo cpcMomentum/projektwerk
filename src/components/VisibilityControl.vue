@@ -4,14 +4,30 @@
 			{{ t('projektwerk', 'Sichtbarkeit') }}
 		</h3>
 
-		<!-- Ruhezustand: was gilt, und ein Weg, es zu ändern. -->
-		<div v-if="stage === 'idle'" class="pw-viscontrol__now">
-			<span class="pw-vis" :class="'pw-vis--' + ticket.visibility">
-				<AccountMultipleIcon v-if="ticket.visibility === 'public'" :size="14" />
-				<OfficeBuildingIcon v-else-if="ticket.visibility === 'internal'" :size="14" />
-				<PencilIcon v-else :size="14" />
-				{{ currentLabel }}
-			</span>
+		<!--
+			Die Auswahl steht **offen und immer da**, ein Klick ist die
+			Entscheidung. Kein vorgeschaltetes „Ändern" und kein „Übernehmen"
+			mehr — der Server weiss ueber `visibility-impact` laengst, ob ueberhaupt
+			zurueckzufragen ist, und im haeufigen Fall drueckte man vorher einen
+			Knopf, dessen einziger Zweck es war herauszufinden, dass man ihn nicht
+			gebraucht haette.
+
+			**`:modelValue` haengt am Ticket, nicht an `chosen`.** Die Markierung
+			zeigt damit, was gilt — nie, was geklickt wurde. Zwischen Klick und
+			Antwort liegt ein Netzaufruf; spraenge die Markierung sofort, saehe
+			eine Aenderung erledigt aus, die noch eine Rueckfrage vor sich hat.
+
+			**Sie bleibt auch waehrend der Rueckfrage stehen**, nur gesperrt. Sonst
+			stuende dort „Neue Sichtbarkeit: Intern" ohne das Gegenstueck — was
+			sich aendert, liest man erst aus beidem zusammen.
+		-->
+		<div class="pw-viscontrol__edit">
+			<VisibilityChoice
+				:modelValue="ticket.visibility"
+				:unavailable="unavailable"
+				:blockedHint="blockedHint"
+				:busy="busy || stage === 'confirming'"
+				@update:modelValue="choose" />
 
 			<!--
 				Der Widerruf steht hier und nicht in einer Meldung: §10 verlangt
@@ -19,41 +35,37 @@
 				hat nur success/warning/error/info/message. Eine Meldung mit
 				verstecktem Klickziel wäre ein Widerruf, den niemand findet.
 			-->
-			<NcButton v-if="undoTo !== null" variant="tertiary" @click="undo">
-				<template #icon>
-					<UndoIcon :size="20" />
-				</template>
-				{{ t('projektwerk', 'Rückgängig') }}
-			</NcButton>
-
-			<NcButton variant="tertiary" @click="startChoosing">
-				{{ t('projektwerk', 'Ändern') }}
-			</NcButton>
-		</div>
-
-		<!-- Erste Stufe: auswählen. -->
-		<div v-else-if="stage === 'choosing'" class="pw-viscontrol__edit">
-			<VisibilityChoice
-				v-model="chosen"
-				:unavailable="unavailable"
-				:blockedHint="blockedHint" />
-
-			<div class="pw-viscontrol__actions">
-				<NcButton @click="reset">
-					{{ t('projektwerk', 'Abbrechen') }}
-				</NcButton>
-				<NcButton variant="primary" :disabled="busy || chosen === ticket.visibility" @click="check">
-					{{ t('projektwerk', 'Übernehmen') }}
+			<div v-if="stage === 'idle' && undoTo !== null" class="pw-viscontrol__actions">
+				<NcButton variant="tertiary" @click="undo">
+					<template #icon>
+						<UndoIcon :size="20" />
+					</template>
+					{{ t('projektwerk', 'Rückgängig') }}
 				</NcButton>
 			</div>
 		</div>
 
 		<!--
-			Zweite Stufe: die Rückfrage. §9 verlangt konkrete Zahlen und Namen
-			statt einer allgemeinen Warnung — eine Warnung ohne Namen liest man
-			zweimal und danach nie wieder.
+			Die Rückfrage. §9 verlangt konkrete Zahlen und Namen statt einer
+			allgemeinen Warnung — eine Warnung ohne Namen liest man zweimal und
+			danach nie wieder.
 		-->
-		<div v-else-if="stage === 'confirming'" class="pw-viscontrol__warn">
+		<div v-if="stage === 'confirming'" class="pw-viscontrol__warn">
+			<!--
+				Das Ziel zuerst, und zwar seit dem Wegfall von „Übernehmen"
+				zwingend: Vorher hatte man die Stufe gewaehlt UND bestaetigt,
+				wusste also, wohin. Jetzt ist ein Klick die ganze Handlung — bei
+				einem Fehlgriff ist diese Zeile das, was ihn auffangen muss.
+
+				Zwei getrennte Zeichenketten statt einer mit Platzhalter: Ein
+				uebersetztes Wort in einen uebersetzten Satz einzusetzen geht in
+				Sprachen mit Fallformen schief.
+			-->
+			<p class="pw-viscontrol__target">
+				{{ t('projektwerk', 'Neue Sichtbarkeit:') }}
+				<strong>{{ labelFor(chosen) }}</strong>
+			</p>
+
 			<p class="pw-viscontrol__lead">
 				<AlertIcon :size="20" />
 				{{ losingLead }}
@@ -89,10 +101,7 @@ import type { Ticket } from '@/types/ticket'
 import { t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
-import AccountMultipleIcon from 'vue-material-design-icons/AccountMultiple.vue'
 import AlertIcon from 'vue-material-design-icons/AlertOutline.vue'
-import OfficeBuildingIcon from 'vue-material-design-icons/OfficeBuilding.vue'
-import PencilIcon from 'vue-material-design-icons/Pencil.vue'
 import UndoIcon from 'vue-material-design-icons/UndoVariant.vue'
 import VisibilityChoice from '@/components/VisibilityChoice.vue'
 import { changeVisibility, fetchVisibilityImpact } from '@/services/tickets'
@@ -110,9 +119,15 @@ const UNDO_WINDOW_MS = 15000
 /**
  * Die Sichtbarkeit eines bestehenden Vorgangs ändern.
  *
- * Zwei Stufen, kein zweiter Dialog: Das Ticket-Detail ist bereits ein
- * `NcModal`, und ein `NcDialog` darin legte zwei Fokusfallen übereinander. Die
- * Rückfrage ersetzt deshalb die Auswahl an Ort und Stelle.
+ * **Ein Klick auf eine Stufe ist die Entscheidung** (#75). Die Auswahl steht
+ * offen, es gibt kein vorgeschaltetes „Ändern" und kein „Übernehmen": Wo
+ * niemand Zugriff verliert, wirkt der Klick sofort und bleibt 15 s widerrufbar;
+ * wo jemand verliert, folgt die Rückfrage mit Namen. Der Handgriff, der nichts
+ * entschied, faellt damit weg.
+ *
+ * Kein zweiter Dialog: Das Ticket-Detail ist bereits ein `NcModal`, und ein
+ * `NcDialog` darin legte zwei Fokusfallen übereinander. Die Rückfrage ersetzt
+ * deshalb die Auswahl an Ort und Stelle.
  *
  * **Ob überhaupt zurückgefragt wird, entscheidet der Server.** Das Frontend
  * fragt vor jedem Wechsel `visibility-impact` und richtet sich nach `losing`:
@@ -124,15 +139,10 @@ const UNDO_WINDOW_MS = 15000
 export default defineComponent({
 	name: 'VisibilityControl',
 
-	components: {
-		AccountMultipleIcon,
-		AlertIcon,
-		NcButton,
-		OfficeBuildingIcon,
-		PencilIcon,
-		UndoIcon,
-		VisibilityChoice,
-	},
+	// Die drei Sichtbarkeitssymbole stehen jetzt ausschliesslich in
+	// `VisibilityChoice` — hier zeigte sie der Chip des Ruhezustands, und den
+	// ersetzt die markierte Karte.
+	components: { AlertIcon, NcButton, UndoIcon, VisibilityChoice },
 
 	props: {
 		ticket: { type: Object as PropType<Ticket>, required: true },
@@ -145,7 +155,8 @@ export default defineComponent({
 
 	data() {
 		return {
-			stage: 'idle' as 'idle' | 'choosing' | 'confirming',
+			stage: 'idle' as 'idle' | 'confirming',
+			/** Die angeklickte Stufe, solange die Rückfrage offen ist. */
 			chosen: 'public' as Visibility,
 			impact: { losing: [], comments: 0, attachments: 0 } as Impact,
 			busy: false,
@@ -178,10 +189,6 @@ export default defineComponent({
 			return this.viewer !== null && this.ticket.creatorUserId === this.viewer.userId
 				? []
 				: ['private']
-		},
-
-		currentLabel(): string {
-			return this.labelFor(this.ticket.visibility)
 		},
 
 		/**
@@ -263,11 +270,6 @@ export default defineComponent({
 			return this.members.find((m) => m.userId === userId)?.resolvedName ?? userId
 		},
 
-		startChoosing(): void {
-			this.chosen = this.ticket.visibility
-			this.stage = 'choosing'
-		},
-
 		reset(): void {
 			this.stage = 'idle'
 			this.impact = { losing: [], comments: 0, attachments: 0 }
@@ -282,13 +284,23 @@ export default defineComponent({
 		},
 
 		/**
-		 * Nachfragen, was der Wechsel kostet — und danach erst entscheiden, ob
-		 * überhaupt zurückgefragt wird.
+		 * Eine Stufe wurde angeklickt — das ist die Entscheidung.
+		 *
+		 * Erst nachfragen, was der Wechsel kostet, und **danach** entscheiden, ob
+		 * überhaupt zurückgefragt wird. Die Reihenfolge ist der ganze Punkt: Ob
+		 * jemand Zugriff verliert, weiß der Server; das Frontend kennt die
+		 * Rangfolge der drei Stufen absichtlich nicht.
+		 *
+		 * Ein Klick auf die geltende Stufe tut nichts — er ist keine Änderung,
+		 * und ein Netzaufruf dafür wäre Lärm.
+		 *
+		 * @param target Die angeklickte Stufe.
 		 */
-		async check(): Promise<void> {
-			if (this.busy || this.chosen === this.ticket.visibility) {
+		async choose(target: Visibility): Promise<void> {
+			if (this.busy || target === this.ticket.visibility) {
 				return
 			}
+			this.chosen = target
 
 			this.busy = true
 			try {

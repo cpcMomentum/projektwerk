@@ -51,38 +51,35 @@ test('ein freigegebener Vorgang kommt bei der Kundenseite an', async ({ browser 
 		await seite.goto(`${APP_PFAD}#/boards/${projekt.boardId}`)
 		await seite.getByText(projekt.intern.title).click()
 
-		await seite.getByRole('button', { name: 'Ändern', exact: true }).click()
-		// Die Auswahl, nicht irgendein gleichlautender Text: Hinter dem Overlay
-		// liegt das Board, und dessen Karten tragen dieselben Stufennamen als
-		// Marke. `.pw-visrow` grenzt auf die Auswahlzeile ein.
+		// **Ein Klick ist die ganze Handlung** (#75) — kein „Ändern" davor, kein
+		// „Übernehmen" danach. Die Auswahl steht offen im Abschnitt.
+		//
+		// `.pw-visrow` grenzt trotzdem ein: Hinter dem Overlay liegt das Board,
+		// und dessen Karten tragen dieselben Stufennamen als Marke.
 		await seite.locator('.pw-visrow').getByText('Alle Beteiligten', { exact: true }).click()
-		await seite.getByRole('button', { name: 'Übernehmen' }).click()
 
 		// Die Rueckfrage erscheint nur, wenn jemand Zugriff *verliert*. Beim
 		// Hochstufen verliert niemand etwas, also darf sie ausbleiben — der
 		// Test darf daran nicht haengen, aber auch nicht daran vorbeilaufen.
 		//
-		// **Erst warten, dann fragen.** „Übernehmen" loest einen Netzaufruf aus
+		// **Erst warten, dann fragen.** Der Klick loest einen Netzaufruf aus
 		// (`visibility-impact`); ein `isVisible()` unmittelbar danach fragt
 		// womoeglich, bevor die Antwort da ist, und bekaeme in beiden Faellen
 		// „nein". Der Test liefe an einer noetigen Bestaetigung vorbei und
 		// scheiterte spaeter mit einem Bild, das nicht auf die Ursache zeigt.
 		// `or()` wartet, bis die Oberflaeche *eine* der beiden Stufen erreicht
-		// hat — die Rueckfrage oder wieder den Ruhezustand.
-		//
-		// **`exact` ist hier keine Kosmetik.** `getByRole` sucht den barrierefreien
-		// Namen als *Teilstring*: „Ändern" trifft „Sichtbarkeit ändern" mit. Ohne
-		// `exact` waeren beide Locators dieselbe Menge, und die Unterscheidung
-		// zwischen Rueckfrage und Ruhezustand loeste sich still auf.
+		// hat — die Rueckfrage oder den vollzogenen Wechsel.
 		const rueckfrage = seite.getByRole('button', { name: 'Sichtbarkeit ändern' })
-		const ruhezustand = seite.getByRole('button', { name: 'Ändern', exact: true })
-		await expect(rueckfrage.or(ruhezustand).first()).toBeVisible()
+		const vollzogen = seite.locator('.pw-visopt[aria-pressed="true"]', { hasText: 'Alle Beteiligten' })
+		await expect(rueckfrage.or(vollzogen).first()).toBeVisible()
 
 		if (await rueckfrage.isVisible()) {
 			await rueckfrage.click()
 		}
 
-		await expect(seite.getByText('Alle Beteiligten').first()).toBeVisible()
+		// Die Markierung wandert erst, wenn der Wechsel wirklich gilt — daran
+		// haengt, dass eine offene Rueckfrage nicht wie erledigt aussieht.
+		await expect(vollzogen).toBeVisible()
 	} finally {
 		await innen.close()
 	}
@@ -108,13 +105,11 @@ test('das Herunterstufen nennt die Betroffenen und entzieht den Zugriff', async 
 		await seite.goto(`${APP_PFAD}#/boards/${projekt.boardId}`)
 		await seite.getByText(projekt.oeffentlich.title).click()
 
-		await seite.getByRole('button', { name: 'Ändern', exact: true }).click()
 		// Ohne die Eingrenzung haengt diese Zeile an der Reihenfolge: Karten mit
 		// interner Sichtbarkeit tragen die Marke „Intern", und solange eine auf
 		// dem Board liegt, treffen zwei Elemente. Gruen ist sie heute nur, weil
 		// der Test darueber den einzigen internen Vorgang vorher hochstuft.
 		await seite.locator('.pw-visrow').getByText('Intern', { exact: true }).click()
-		await seite.getByRole('button', { name: 'Übernehmen' }).click()
 
 		// Hier muss die Rueckfrage kommen — und sie muss die Kundenseite beim
 		// Namen nennen. Eine Warnung ohne Namen liest man zweimal und danach nie
@@ -123,14 +118,22 @@ test('das Herunterstufen nennt die Betroffenen und entzieht den Zugriff', async 
 		await expect(rueckfrage).toBeVisible()
 		await expect(seite.locator('.pw-viscontrol__losing')).toContainText(KUNDE.name)
 
-		// Zurueck im Ruhezustand — und `exact` entscheidet hier ueber die Aussage:
-		// Bliebe die Rueckfrage stehen, weil das Speichern scheitert, traefe
-		// „Ändern" als Teilstring den Knopf „Sichtbarkeit ändern" und die Zeile
-		// wuerde gruen, obwohl nichts gespeichert wurde. Der Lauf scheiterte dann
-		// erst unten an der Kundenprobe, mit einem Bild, das nicht auf die
-		// Ursache zeigt.
+		// Sie nennt auch, wohin es ginge. Seit ein Klick die ganze Handlung ist,
+		// faengt allein diese Zeile einen Fehlgriff auf.
+		await expect(seite.locator('.pw-viscontrol__target')).toContainText('Intern')
+
+		// Waehrend die Rueckfrage steht, markiert die Auswahl weiter die
+		// **geltende** Stufe. Spraenge sie schon auf „Intern", saehe eine
+		// Aenderung erledigt aus, die noch niemand bestaetigt hat.
+		await expect(seite.locator('.pw-visopt[aria-pressed="true"]')).toContainText('Alle Beteiligten')
+
 		await rueckfrage.click()
-		await expect(seite.getByRole('button', { name: 'Ändern', exact: true })).toBeVisible()
+
+		// Erst jetzt wandert sie. Das ist zugleich die Probe darauf, dass
+		// tatsaechlich gespeichert wurde — bliebe die Rueckfrage wegen eines
+		// Fehlers stehen, bliebe auch die Markierung, wo sie war, und die Zeile
+		// faellt hier statt erst unten an der Kundenprobe.
+		await expect(seite.locator('.pw-visopt[aria-pressed="true"]')).toContainText('Intern')
 	} finally {
 		await innen.close()
 	}

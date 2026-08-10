@@ -44,7 +44,7 @@ OC.L10N.register(
     "Sichtbarkeit": "Sichtbarkeit",
     "Ändern": "Ändern",
     "Rückgängig": "Rückgängig",
-    "Übernehmen": "Übernehmen",
+    "Neue Sichtbarkeit:": "Neue Sichtbarkeit:",
     "Auf „Nur ich\" herunterstufen kann nur die anlegende Person": "Auf „Nur ich\" herunterstufen kann nur die anlegende Person",
     "Folgende Personen verlieren den Zugriff auf diesen Vorgang:": "Folgende Personen verlieren den Zugriff auf diesen Vorgang:",
     "Folgende Personen verlieren den Zugriff auf diesen Vorgang und seine {comments} Kommentare:": "Folgende Personen verlieren den Zugriff auf diesen Vorgang und seine {comments} Kommentare:",

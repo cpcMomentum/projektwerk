@@ -517,61 +517,80 @@
  * (§9). Sie steht neben Titel und Beschreibung, für alle Rollen gleich
  * voreingestellt.
  */
+.app-projektwerk .pw-vischoice {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+/*
+ * **Übernommen aus WorkTime** (`layout-seg` / `seg-btn`, dort in Zeiterfassung
+ * und Auswertung). Vorher standen hier drei große Karten mit je zwei Zeilen
+ * Text; der Abschnitt war damit 168 px hoch, auf dem Telefon 300. Für eine
+ * Entscheidung, die meistens einmal am Anfang fällt, war das die lauteste
+ * Stelle im ganzen Overlay.
+ *
+ * Der Umschalter ist nicht neu erfunden, sondern der aus WorkTime: Die Flotte
+ * soll an gleichen Stellen gleich aussehen, und ein zweites Muster für dieselbe
+ * Aufgabe wäre eines zu viel.
+ */
 .app-projektwerk .pw-visrow {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 8px;
+	gap: 3px;
+	padding: 3px;
+	align-self: flex-start;
+	max-width: 100%;
+	border-radius: var(--border-radius-element, 8px);
+	background: var(--color-background-dark);
 }
 
 .app-projektwerk .pw-visopt {
-	display: flex;
+	display: inline-flex;
 	align-items: center;
-	gap: 8px;
-	flex: 1 1 190px;
-	padding: 10px 12px;
-	min-height: var(--default-clickable-area, 44px);
-	border: 1px solid var(--color-border-dark);
-	border-radius: var(--border-radius-large);
-	background: var(--color-main-background);
-	color: var(--color-main-text);
-	font: inherit;
-	text-align: left;
+	gap: 6px;
+	padding: 6px 14px;
+	/*
+	 * WorkTime kommt hier auf rund 30 px. Die Zeile steht dort in einer
+	 * Werkzeugleiste am Schreibtisch — diese hier wird auf dem Telefon getippt,
+	 * und darunter ist die Plattformgrenze die richtige Untergrenze.
+	 */
+	min-height: var(--default-clickable-area, 34px);
+	border: none;
+	border-radius: var(--border-radius-element, 8px);
+	background: none;
+	color: var(--color-text-maxcontrast);
+	font-size: 13px;
+	font-weight: 600;
+	font-family: inherit;
 	cursor: pointer;
 }
 
 .app-projektwerk .pw-visopt[aria-pressed='true'] {
-	border-color: var(--color-primary-element);
-	background: var(--color-primary-element-light);
-}
-
-.app-projektwerk .pw-visopt__body {
-	display: flex;
-	flex-direction: column;
-	min-width: 0;
-}
-
-.app-projektwerk .pw-visopt__name {
-	font-size: 14px;
-	font-weight: 600;
-}
-
-.app-projektwerk .pw-visopt__hint {
-	font-size: 12px;
-	color: var(--color-text-maxcontrast);
-}
-
-.app-projektwerk .pw-visopt[aria-pressed='true'] .pw-visopt__hint {
-	color: inherit;
+	background: var(--color-main-background);
+	color: var(--color-primary-element);
+	box-shadow: 0 1px 2px rgba(0, 0, 0, .12);
 }
 
 /*
  * Gesperrt heißt sichtbar-aber-nicht-wählbar, nicht unsichtbar: Wer „Nur ich"
- * sucht und es gar nicht fände, hielte es für einen Fehler. Der Grund steht im
- * Hinweistext an der Stelle des sonstigen.
+ * sucht und es gar nicht fände, hielte es für einen Fehler. Der Grund steht
+ * als eigene Zeile darunter — als `title` wäre er auf dem Telefon unerreichbar.
  */
 .app-projektwerk .pw-visopt:disabled {
 	opacity: 0.5;
 	cursor: not-allowed;
+}
+
+.app-projektwerk .pw-vishint {
+	margin: 0;
+	font-size: 12px;
+	line-height: 1.45;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-vishint--blocked {
+	font-style: italic;
 }
 
 /* ---- Ticket-Detail ------------------------------------------------------ */
@@ -641,13 +660,6 @@
 	gap: 10px;
 }
 
-.app-projektwerk .pw-viscontrol__now {
-	display: flex;
-	align-items: center;
-	flex-wrap: wrap;
-	gap: 8px;
-}
-
 .app-projektwerk .pw-viscontrol__edit,
 .app-projektwerk .pw-viscontrol__warn {
 	display: flex;
@@ -670,6 +682,15 @@
 	border-inline-start: 4px solid var(--color-warning, var(--color-error));
 	border-radius: var(--border-radius-large);
 	background: var(--color-background-hover);
+}
+
+/*
+ * Das Ziel des Wechsels, seit ein Klick die ganze Handlung ist. Keine eigene
+ * Optik — der Wert steht fett im Fliesstext, mehr braucht die Zeile nicht.
+ */
+.app-projektwerk .pw-viscontrol__target {
+	margin: 0;
+	line-height: 1.45;
 }
 
 .app-projektwerk .pw-viscontrol__lead {
