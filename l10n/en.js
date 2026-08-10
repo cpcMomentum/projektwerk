@@ -33,7 +33,6 @@ OC.L10N.register(
     "Verschieben fehlgeschlagen": "Could not move",
     "Aktionen für {title}": "Actions for {title}",
     "Geändert von {name}": "Changed by {name}",
-    "{count} Kommentare": "{count} comments",
     "{done} von {count} Arbeitsschritten erledigt": "{done} of {count} work steps done",
     "ProjektWerk ist für Gastkonten nicht freigeschaltet. Die Administration muss die App auf die Freigabeliste der Guests-App setzen.": "ProjektWerk is not enabled for guest accounts. An administrator has to add the app to the allow list of the Guests app.",
     "Geschlossen": "Closed",
@@ -47,9 +46,15 @@ OC.L10N.register(
     "Neue Sichtbarkeit:": "New visibility:",
     "Auf „Nur ich\" herunterstufen kann nur die anlegende Person": "Only the person who created it can restrict it to “Only me”",
     "Folgende Personen verlieren den Zugriff auf diesen Vorgang:": "The following people will lose access to this item:",
-    "Folgende Personen verlieren den Zugriff auf diesen Vorgang und seine {comments} Kommentare:": "The following people will lose access to this item and its {comments} comments:",
-    "Folgende Personen verlieren den Zugriff auf diesen Vorgang und seine {attachments} Anhänge:": "The following people will lose access to this item and its {attachments} attachments:",
-    "Folgende Personen verlieren den Zugriff auf diesen Vorgang, seine {comments} Kommentare und {attachments} Anhänge:": "The following people will lose access to this item, its {comments} comments and {attachments} attachments:",
+    "Folgende Personen verlieren den Zugriff auf diesen Vorgang und {betroffen}:": "The following people lose access to this item and {betroffen}:",
+    "_%n Kommentar_::_%n Kommentare_": [
+        "%n comment",
+        "%n comments"
+    ],
+    "_%n Anhang_::_%n Anhänge_": [
+        "%n attachment",
+        "%n attachments"
+    ],
     "Die Beteiligten werden nicht benachrichtigt.": "The people involved will not be notified.",
     "Sichtbarkeit ändern": "Change visibility",
     "Sichtbarkeit konnte nicht geprüft werden": "Could not check visibility",
