@@ -128,7 +128,6 @@
         "„{title}“ erledigen": "„{title}“ erledigen",
         "überfällig seit {date}": "überfällig seit {date}",
         "fällig {date}": "fällig {date}",
-        "Erledigen fehlgeschlagen": "Erledigen fehlgeschlagen",
         "Aufgaben konnten nicht geladen werden": "Aufgaben konnten nicht geladen werden",
         "Arbeitsschritt konnte nicht erledigt werden": "Arbeitsschritt konnte nicht erledigt werden",
         "Keine Verbindung zum Server. Bitte später erneut versuchen.": "Keine Verbindung zum Server. Bitte später erneut versuchen."

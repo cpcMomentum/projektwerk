@@ -129,7 +129,6 @@ OC.L10N.register(
     "„{title}“ erledigen": "Complete “{title}”",
     "überfällig seit {date}": "overdue since {date}",
     "fällig {date}": "due {date}",
-    "Erledigen fehlgeschlagen": "Could not complete",
     "Aufgaben konnten nicht geladen werden": "Tasks could not be loaded",
     "Arbeitsschritt konnte nicht erledigt werden": "Work step could not be completed",
     "Keine Verbindung zum Server. Bitte später erneut versuchen.": "No connection to the server. Please try again later."
