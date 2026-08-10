@@ -23,8 +23,10 @@ import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useTaskStore } from '@/stores/taskStore'
 
+const updateStep = vi.fn()
+
 vi.mock('@/services/tasks', () => ({ fetchTasks: () => Promise.resolve({ stepTickets: [], steps: [], tickets: [], boards: {} }) }))
-vi.mock('@/services/steps', () => ({ updateStep: () => Promise.resolve() }))
+vi.mock('@/services/steps', () => ({ updateStep: (...args: unknown[]) => updateStep(...args) }))
 vi.mock('@/services/toast', () => ({ showError: () => {} }))
 
 /** Fester „heute"-Wert, damit „überfällig" nicht vom Testtag abhängt. */
@@ -52,6 +54,7 @@ describe('Meine Aufgaben — Sortierung', () => {
 		setActivePinia(createPinia())
 		vi.useFakeTimers()
 		vi.setSystemTime(HEUTE)
+		updateStep.mockReset().mockResolvedValue(undefined)
 	})
 
 	afterEach(() => {
@@ -159,6 +162,11 @@ describe('Meine Aufgaben — Sortierung', () => {
 	})
 
 	it('gibt die Zeile nach einem Fehlschlag wieder frei', async () => {
+		// **Der Aufruf muss wirklich scheitern.** Ohne diese Zeile nimmt der
+		// Test den Erfolgspfad und ist trotzdem gruen — `busySteps` ist danach
+		// ebenfalls leer. Er haette dann geprueft, was er nicht behauptet.
+		updateStep.mockRejectedValueOnce(new Error('Netzfehler'))
+
 		const store = useTaskStore()
 		store.apply({
 			stepTickets: [ticket(1, '2026-01-01T00:00:00+00:00')],
