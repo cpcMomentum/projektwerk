@@ -67,9 +67,16 @@ import PencilIcon from 'vue-material-design-icons/Pencil.vue'
  * hier keine Zierde: Sie ist das Einzige, woran jemand ablesen kann, wer den
  * Vorgang danach sieht.
  *
- * Die Reihenfolge public → internal → private ist **Anzeige, keine Rangfolge**.
- * Ob ein Wechsel jemandem den Zugriff nimmt, beantwortet der Server über
- * `visibility-impact`; hier wird nicht verglichen.
+ * Die Reihenfolge ist **zu → offen** (`private` → `internal` → `public`): Von
+ * links nach rechts wird der Kreis größer, und genau so liest man eine Zeile.
+ * Sie ist aber **Anzeige, keine Rangfolge im Code** — ob ein Wechsel jemandem
+ * den Zugriff nimmt, beantwortet allein der Server über `visibility-impact`.
+ *
+ * Der Unterschied ist der ganze Punkt und darf nicht verwischen: Wer aus der
+ * sichtbaren Reihenfolge ein `if (neuerIndex < alterIndex)` ableitet, hat die
+ * Sichtbarkeitsregel in zweiter Fassung — und die zweite prüft niemand. Zwei
+ * Tests in `VisibilityControl.spec.ts` laufen absichtlich **gegen** den
+ * Anschein der Richtung und fallen genau dann.
  */
 export default defineComponent({
 	name: 'VisibilityChoice',
@@ -125,9 +132,9 @@ export default defineComponent({
 			// auch bei rein internen Projekten, wo „oeffentlich" falsch klaenge.
 			return [
 				{
-					value: 'public',
-					name: t('projektwerk', 'Alle Beteiligten'),
-					hint: t('projektwerk', 'Auch die Kundenseite sieht diesen Vorgang'),
+					value: 'private',
+					name: t('projektwerk', 'Nur ich'),
+					hint: t('projektwerk', 'Entwurf — niemand sonst sieht ihn'),
 				},
 				{
 					value: 'internal',
@@ -135,9 +142,9 @@ export default defineComponent({
 					hint: t('projektwerk', 'Nur meine Seite des Projekts'),
 				},
 				{
-					value: 'private',
-					name: t('projektwerk', 'Nur ich'),
-					hint: t('projektwerk', 'Entwurf — niemand sonst sieht ihn'),
+					value: 'public',
+					name: t('projektwerk', 'Alle Beteiligten'),
+					hint: t('projektwerk', 'Auch die Kundenseite sieht diesen Vorgang'),
 				},
 			]
 		},

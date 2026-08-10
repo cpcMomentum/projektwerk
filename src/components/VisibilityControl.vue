@@ -52,36 +52,39 @@
 		-->
 		<div v-if="stage === 'confirming'" class="pw-viscontrol__warn">
 			<!--
-				Das Ziel zuerst, und zwar seit dem Wegfall von „Übernehmen"
-				zwingend: Vorher hatte man die Stufe gewaehlt UND bestaetigt,
-				wusste also, wohin. Jetzt ist ein Klick die ganze Handlung — bei
-				einem Fehlgriff ist diese Zeile das, was ihn auffangen muss.
+				Drei Zeilen statt fuenf Bloecken. Was §9 verlangt, bleibt
+				vollstaendig drin — konkrete Zahlen und Namen statt einer
+				allgemeinen Warnung —, nur gedraengter:
 
-				Zwei getrennte Zeichenketten statt einer mit Platzhalter: Ein
+				- Das Ziel steht in der Warnzeile selbst statt darueber. Seit
+				  „Übernehmen" weg ist, muss es dastehen: Ein Klick ist die ganze
+				  Handlung, und bei einem Fehlgriff faengt allein diese Zeile ihn
+				  auf.
+				- Die Namen stehen **in der Zeile**, nicht als Liste untereinander.
+				  Bei vier Betroffenen waren das vier Zeilen fuer vier Woerter.
+				- Der Hinweis auf die ausbleibende Benachrichtigung steht neben
+				  den Knoepfen; er ist eine Fussnote, keine Aussage fuer sich.
+
+				Getrennte Zeichenketten statt einer mit Platzhalter: Ein
 				uebersetztes Wort in einen uebersetzten Satz einzusetzen geht in
 				Sprachen mit Fallformen schief.
 			-->
-			<p class="pw-viscontrol__target">
-				{{ t('projektwerk', 'Neue Sichtbarkeit:') }}
-				<strong>{{ labelFor(chosen) }}</strong>
-			</p>
-
 			<p class="pw-viscontrol__lead">
 				<AlertIcon :size="20" />
-				{{ losingLead }}
+				<span class="pw-viscontrol__target">
+					{{ t('projektwerk', 'Neue Sichtbarkeit:') }}
+					<strong>{{ labelFor(chosen) }}</strong>
+				</span>
 			</p>
 
-			<ul class="pw-viscontrol__losing">
-				<li v-for="userId in impact.losing" :key="userId">
-					{{ nameOf(userId) }}
-				</li>
-			</ul>
-
-			<p class="pw-viscontrol__note">
-				{{ t('projektwerk', 'Die Beteiligten werden nicht benachrichtigt.') }}
+			<p class="pw-viscontrol__losing">
+				{{ losingLead }} {{ losingNames }}
 			</p>
 
 			<div class="pw-viscontrol__actions">
+				<span class="pw-viscontrol__note">
+					{{ t('projektwerk', 'Die Beteiligten werden nicht benachrichtigt.') }}
+				</span>
 				<NcButton @click="reset">
 					{{ t('projektwerk', 'Abbrechen') }}
 				</NcButton>
@@ -209,6 +212,17 @@ export default defineComponent({
 		 * Übersetzungswerkzeuge lesen die Aufrufe statisch aus und fänden einen
 		 * zusammengesetzten String nicht.
 		 */
+		/**
+		 * Die Betroffenen als Aufzählung in einer Zeile.
+		 *
+		 * Vorher stand jeder Name in einer eigenen Listenzeile — bei vier
+		 * Betroffenen vier Zeilen für vier Wörter. Die Namen selbst bleiben
+		 * vollständig; §9 verlangt sie, und der Server hat sie ausgerechnet.
+		 */
+		losingNames(): string {
+			return this.impact.losing.map((userId) => this.nameOf(userId)).join(', ')
+		},
+
 		losingLead(): string {
 			const comments = this.impact.comments
 			const attachments = this.impact.attachments

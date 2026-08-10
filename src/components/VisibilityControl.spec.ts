@@ -145,6 +145,26 @@ describe('VisibilityControl', () => {
 		expect(wrapper.find('.pw-viscontrol').exists()).toBe(false)
 	})
 
+	/**
+	 * Die Reihenfolge geht von zu nach offen: „Nur ich", „Intern", „Alle
+	 * Beteiligten". Von links nach rechts wird der Kreis größer, und genau so
+	 * liest man eine Zeile.
+	 *
+	 * Sie ist **Anzeige, keine Rangfolge im Code** — deshalb steht sie hier und
+	 * nicht als Vergleich in der Logik. Ein Test dafür, weil eine Reihenfolge
+	 * beim nächsten Umbau lautlos kippt und niemandem auffällt, der sie nicht
+	 * täglich sieht.
+	 */
+	it('reiht die Stufen von zu nach offen', () => {
+		const wrapper = mountControl(ticketOf(), viewerOf())
+
+		expect(wrapper.findAll('.pw-visopt').map((o) => o.text())).toEqual([
+			'Nur ich',
+			'Intern',
+			'Alle Beteiligten',
+		])
+	})
+
 	it('sperrt „Nur ich" an einem fremden Ticket der eigenen Seite', async () => {
 		// Anna sieht Berts internes Ticket, darf es aber nicht zu dessen Entwurf machen.
 		const wrapper = mountControl(
