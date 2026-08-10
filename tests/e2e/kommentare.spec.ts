@@ -170,4 +170,79 @@ test.describe('Dienstleisterseite', () => {
 		await page.keyboard.press('Escape')
 		await expect(karte.getByRole('img', { name: '2 Kommentare' })).toBeVisible()
 	})
+
+	/**
+	 * Gefunden beim Geraetedurchgang am 2026-08-10, hier festgehalten.
+	 *
+	 * Wer ueber die Tastatur schreibt, druckt auf „Kommentieren" — und genau
+	 * dann leert sich das Feld, der Knopf wird dadurch deaktiviert und nimmt den
+	 * Fokus mit auf den `body`. Danach faengt man das Tabben von vorn an.
+	 * Dieselbe Falle wie beim Ausklappen der aelteren Erledigten in `BoardView`.
+	 */
+	test('der Fokus faellt nach dem Schreiben nicht auf den Rumpf zurueck', async ({ page }) => {
+		await page.goto(`${APP_PFAD}#/boards/${projekt.boardId}`)
+		await expect(page.getByText(projekt.oeffentlich.title)).toBeVisible({ timeout: 30_000 })
+		await page.getByText(projekt.oeffentlich.title).click()
+
+		await page.locator('.pw-comment-new').getByRole('textbox').focus()
+		await page.keyboard.type('Per Tastatur geschrieben.')
+		await page.keyboard.press('Tab')
+		await page.keyboard.press('Enter')
+
+		await expect(page.getByText('Per Tastatur geschrieben.')).toBeVisible()
+		await expect
+			.poll(async () => page.evaluate(() => !!document.activeElement?.closest?.('.pw-comment-new')))
+			.toBe(true)
+	})
+
+	/**
+	 * Ebenfalls aus dem Geraetedurchgang: Eine eingefuegte Tabelle ragte auf
+	 * 390 px um 14 px aus dem Kommentar und liess sich nicht schieben.
+	 *
+	 * Die Ursache ist eine Eigenheit von CSS, die man nicht sieht, sondern
+	 * misst: `overflow` **greift auf `display: table` nicht** — der berechnete
+	 * Wert faellt auf `visible` zurueck. Erst `display: block` macht aus der
+	 * Tabelle einen Kasten, der scrollen kann. Genau diese Klasse Fehler faengt
+	 * kein Blick auf den Code.
+	 */
+	test('eine breite Tabelle bleibt im Kommentar und laesst sich schieben', async ({ page }) => {
+		await page.setViewportSize({ width: 390, height: 844 })
+		await page.goto(`${APP_PFAD}#/boards/${projekt.boardId}`)
+		await expect(page.getByText(projekt.oeffentlich.title)).toBeVisible({ timeout: 30_000 })
+		await page.getByText(projekt.oeffentlich.title).click()
+
+		const tabellentext = '| Position | Bezeichnung | Menge | Einzelpreis | Gesamt |\n'
+			+ '|---|---|---:|---:|---:|\n'
+			+ '| 1 | Standortanalyse inklusive Begehung | 1 | 2.400,00 | 2.400,00 |'
+
+		await page.locator('.pw-comment-new').getByRole('textbox').fill(tabellentext)
+		await page.getByRole('button', { name: 'Kommentieren' }).click()
+
+		const tabelle = page.locator('.pw-comment__text table')
+		await expect(tabelle).toBeVisible()
+
+		const befund = await tabelle.evaluate((el) => {
+			const kommentar = el.closest('.pw-comment__text')
+			if (kommentar === null) {
+				throw new Error('Die Tabelle haengt nicht in einem Kommentar')
+			}
+
+			const a = el.getBoundingClientRect()
+			const b = kommentar.getBoundingClientRect()
+			el.scrollLeft = 999
+
+			return {
+				ragtRaus: Math.round(a.right - b.right),
+				zuBreit: el.scrollWidth > el.clientWidth,
+				laesstSichSchieben: el.scrollLeft > 0,
+			}
+		})
+
+		expect(befund.ragtRaus, 'Die Tabelle ragt aus dem Kommentar').toBeLessThanOrEqual(1)
+		// Nur wenn sie ueberhaupt zu breit ist, muss sie sich schieben lassen —
+		// sonst pruefte die Zeile bei schmalen Tabellen eine Selbstverstaendlichkeit.
+		if (befund.zuBreit) {
+			expect(befund.laesstSichSchieben, 'Zu breit, aber nicht schiebbar').toBe(true)
+		}
+	})
 })

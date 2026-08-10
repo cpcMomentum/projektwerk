@@ -4,7 +4,11 @@
 			{{ t('projektwerk', 'Kommentare') }}
 		</h3>
 
-		<article v-for="comment in comments" :key="comment.id" class="pw-comment">
+		<article
+			v-for="comment in comments"
+			:key="comment.id"
+			class="pw-comment"
+			:data-comment-id="comment.id">
 			<NcAvatar
 				:user="comment.authorUserId"
 				:displayName="nameOf(comment.authorUserId)"
@@ -35,12 +39,21 @@
 					Vorschaukachel. Die App verwaltet ihre eigenen Anhaenge —
 					einen hingeschriebenen Link verwaltet sie nicht, und sie soll
 					auch nicht so tun.
+
+					`useExtendedMarkdown` schaltet `remark-gfm` dazu. Ohne das
+					landet eine eingefuegte Tabelle als Reihe von Strichen im
+					Text — Markdown, das nicht rendert, ist schlechter als kein
+					Markdown, weil niemand sieht, woran es lag. Die
+					Syntaxhervorhebung kommt mit derselben Fahne und wird
+					dynamisch nachgeladen, kostet also nichts, solange niemand
+					einen Codeblock schreibt.
 				-->
 				<NcRichText
 					v-if="editing !== comment.id"
 					class="pw-comment__text"
 					:text="comment.body"
 					:useMarkdown="true"
+					:useExtendedMarkdown="true"
 					:interactive="false" />
 
 				<!--
@@ -183,6 +196,14 @@ export default defineComponent({
 			/** Kennung des Kommentars, für den die Rückfrage steht. */
 			removing: null as number | null,
 			draft: '',
+			/**
+			 * Wohin der Fokus nach einem Schreibvorgang gehört.
+			 *
+			 * CSS-Auswahl statt `ref`, weil das Ziel den Neuaufbau überleben
+			 * muss: Der Elternteil lädt nach jedem Schreiben neu, und die
+			 * Elemente, auf die ein `ref` zeigte, sind danach andere.
+			 */
+			fokusZiel: null as string | null,
 		}
 	},
 
@@ -193,6 +214,35 @@ export default defineComponent({
 			this.newBody = ''
 			this.cancel()
 			this.removing = null
+			this.fokusZiel = null
+		},
+
+		/**
+		 * Den Fokus nach dem Neuaufbau der Liste wieder setzen.
+		 *
+		 * **Warum das nötig ist.** Wer über die Tastatur schreibt, drückt auf
+		 * „Kommentieren" — und genau dann leert sich das Feld, der Knopf wird
+		 * dadurch deaktiviert und nimmt den Fokus mit auf den `body`. Danach
+		 * fängt man das Tabben von vorn an. Dieselbe Falle wie beim Ausklappen
+		 * der älteren Erledigten in `BoardView`; Tastatur und Screenreader sind
+		 * Abnahmekriterium, nicht Nachrüstung.
+		 *
+		 * Der Elternteil lädt nach jedem Schreiben neu und ersetzt die Liste.
+		 * Deshalb hängt die Wiederherstellung an dieser Ersetzung und nicht am
+		 * Schreibaufruf — vorher stünde das Ziel noch gar nicht im Dokument.
+		 */
+		comments() {
+			const ziel = this.fokusZiel
+			if (ziel === null) {
+				return
+			}
+			this.fokusZiel = null
+			this.$nextTick(() => {
+				const el = this.$el?.querySelector?.(ziel)
+				if (el instanceof HTMLElement) {
+					el.focus()
+				}
+			})
 		},
 	},
 
@@ -265,6 +315,9 @@ export default defineComponent({
 				async () => {
 					await createComment(this.boardId, this.ticketId, body)
 					this.newBody = ''
+					// Zurück ins Eingabefeld, nicht auf den `body`: Wer eben
+					// geschrieben hat, schreibt oft gleich weiter.
+					this.fokusZiel = '.pw-comment-new textarea'
 				},
 				t('projektwerk', 'Kommentar konnte nicht gespeichert werden'),
 			)
@@ -283,6 +336,9 @@ export default defineComponent({
 				async () => {
 					await updateComment(this.boardId, comment.id, body)
 					this.cancel()
+					// Zurück auf „Ändern" desselben Kommentars — dort stand der
+					// Fokus, bevor das Eingabefeld ihn übernahm.
+					this.fokusZiel = `[data-comment-id="${comment.id}"] .pw-comment__actions button`
 				},
 				t('projektwerk', 'Ändern fehlgeschlagen'),
 			)
@@ -296,6 +352,9 @@ export default defineComponent({
 				async () => {
 					await deleteComment(this.boardId, comment.id)
 					this.removing = null
+					// Der Kommentar, auf dem der Fokus stand, ist weg. Das
+					// Eingabefeld ist die nächstliegende Stelle, die bleibt.
+					this.fokusZiel = '.pw-comment-new textarea'
 				},
 				t('projektwerk', 'Löschen fehlgeschlagen'),
 			)

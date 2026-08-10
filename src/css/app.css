@@ -918,9 +918,30 @@
 	margin-bottom: 0;
 }
 
-/* Code und Tabellen scrollen in sich, statt die Spalte zu weiten. */
-.app-projektwerk .pw-comment__text pre,
+/* Code scrollt in sich, statt die Spalte zu weiten. */
+.app-projektwerk .pw-comment__text pre {
+	max-width: 100%;
+	overflow-x: auto;
+}
+
+/*
+ * Tabellen ebenso — aber `overflow` **greift auf `display: table` nicht**. Der
+ * berechnete Wert faellt auf `visible` zurueck, und die Tabelle ragt dann aus
+ * dem Kommentar heraus, ohne sich schieben zu lassen. Auf 390 px Breite waren
+ * das gemessene 14 px schon bei vier schmalen Spalten. Erst `display: block`
+ * macht aus ihr einen Kasten, der scrollen kann; die Zeilen bleiben ueber
+ * anonyme Tabellenboxen erhalten.
+ */
 .app-projektwerk .pw-comment__text table {
+	display: block;
+	/*
+	 * `width: max-content` gehoert dazu, sonst zieht der Block als Blockkasten
+	 * die volle Breite — und der Rahmen der Tabelle stuende dann rechts weit
+	 * neben der letzten Zelle. Mit `max-content` schrumpft er auf den Inhalt,
+	 * `max-width` deckelt ihn am Kommentar, und was darueber hinausgeht,
+	 * scrollt.
+	 */
+	width: max-content;
 	max-width: 100%;
 	overflow-x: auto;
 }
