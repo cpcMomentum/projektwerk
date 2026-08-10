@@ -57,7 +57,15 @@
 			class="pw-card__menu"
 			:forceMenu="true"
 			:ariaLabel="menuLabel">
-			<NcActionCaption :name="t('projektwerk', 'Verschieben nach …')" />
+			<!--
+				**Ein Hauptwort, kein Handlungssatz.** „Verschieben nach …" las
+				sich wie ein Knopf — und weil Ueberschriften in
+				Nextcloud-Menues grau sind, wie ein **gesperrter**. Axel hat
+				beim Geraetetest darauf getippt und daraus geschlossen, das
+				Verschieben ginge nicht. „Zielspalte" laesst sich nicht fuer
+				eine Handlung halten; die Handlung sind die Zeilen darunter.
+			-->
+			<NcActionCaption :name="t('projektwerk', 'Zielspalte')" />
 			<NcActionButton
 				v-for="column in otherColumns"
 				:key="column.id"

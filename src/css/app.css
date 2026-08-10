@@ -155,7 +155,16 @@
 	.app-projektwerk .pw-board {
 		grid-auto-flow: row;
 		grid-auto-columns: auto;
-		grid-template-columns: repeat(var(--pw-columns, 3), minmax(0, 1fr));
+		/*
+		 * **Mindestbreite statt `minmax(0, 1fr)`.** Mit `0` als Untergrenze
+		 * teilten sich sechs Spalten einen 1280er Schirm zu je rund 145 px —
+		 * darin brechen Titel mitten im Wort um („Hosting-Angebo t kalkulie
+		 * ren"). Axels Entscheidung vom 2026-08-09 lautet: volle Breite,
+		 * Spalten fest, waagerecht scrollen. Genau das leistet 260 px als
+		 * Untergrenze: Bei wenigen Spalten fuellen sie die Breite, bei vielen
+		 * wird gescrollt.
+		 */
+		grid-template-columns: repeat(var(--pw-columns, 3), minmax(260px, 1fr));
 		overflow-x: auto;
 	}
 }
@@ -312,7 +321,14 @@
 	font-size: 15px;
 	font-weight: 500;
 	line-height: 1.4;
-	overflow-wrap: anywhere;
+	/*
+	 * `break-word` statt `anywhere`: Beide verhindern, dass ein sehr langes
+	 * Wort die Spalte sprengt — aber `anywhere` erlaubt dem Browser, den
+	 * Umbruch auch dann mitten ins Wort zu legen, wenn ein normaler Umbruch
+	 * moeglich waere. Zusammen mit zu schmalen Spalten kam dabei
+	 * „Hosting-Angebo t kalkulie ren" heraus.
+	 */
+	overflow-wrap: break-word;
 }
 
 .app-projektwerk .pw-card__foot {

@@ -30,7 +30,6 @@
         "Anlegen": "Anlegen",
         "Anlegen fehlgeschlagen": "Anlegen fehlgeschlagen",
         "Verschieben fehlgeschlagen": "Verschieben fehlgeschlagen",
-        "Verschieben nach …": "Verschieben nach …",
         "Aktionen für {title}": "Aktionen für {title}",
         "Geändert von {name}": "Geändert von {name}",
         "{count} Kommentare": "{count} Kommentare",
@@ -114,24 +113,34 @@
         "Zielspalte wählen": "Zielspalte wählen",
         "Alle Vorgänge wandern in die gewählte Spalte, danach fällt „{from}“ weg.": "Alle Vorgänge wandern in die gewählte Spalte, danach fällt „{from}“ weg.",
         "Alle Vorgänge wandern nach „{to}“, danach fällt „{from}“ weg.": "Alle Vorgänge wandern nach „{to}“, danach fällt „{from}“ weg.",
-        "_Für dich sichtbar ist davon %n Vorgang._::_Für dich sichtbar sind davon %n Vorgänge._": ["Für dich sichtbar ist davon %n Vorgang.", "Für dich sichtbar sind davon %n Vorgänge."],
+        "_Für dich sichtbar ist davon %n Vorgang._::_Für dich sichtbar sind davon %n Vorgänge._": [
+            "Für dich sichtbar ist davon %n Vorgang.",
+            "Für dich sichtbar sind davon %n Vorgänge."
+        ],
         "Verborgene Vorgänge wandern mit, ohne hier aufzutauchen. Es geht nichts verloren.": "Verborgene Vorgänge wandern mit, ohne hier aufzutauchen. Es geht nichts verloren.",
         "Verschieben und entfernen": "Verschieben und entfernen",
         "Spalte konnte nicht entfernt werden": "Spalte konnte nicht entfernt werden",
         "Spalte „{title}“ entfernen": "Spalte „{title}“ entfernen",
-        "_%n älteren Vorgang anzeigen_::_%n ältere Vorgänge anzeigen_": ["%n älteren Vorgang anzeigen", "%n ältere Vorgänge anzeigen"],
+        "_%n älteren Vorgang anzeigen_::_%n ältere Vorgänge anzeigen_": [
+            "%n älteren Vorgang anzeigen",
+            "%n ältere Vorgänge anzeigen"
+        ],
         "Ältere wieder ausblenden": "Ältere wieder ausblenden",
         "Meine Arbeitsschritte": "Meine Arbeitsschritte",
         "Meine Vorgänge": "Meine Vorgänge",
         "Sobald Ihnen ein Arbeitsschritt zugewiesen wird oder Sie für einen Vorgang zuständig sind, steht er hier.": "Sobald Ihnen ein Arbeitsschritt zugewiesen wird oder Sie für einen Vorgang zuständig sind, steht er hier.",
-        "_%n Arbeitsschritt ist überfällig_::_%n Arbeitsschritte sind überfällig_": ["%n Arbeitsschritt ist überfällig", "%n Arbeitsschritte sind überfällig"],
+        "_%n Arbeitsschritt ist überfällig_::_%n Arbeitsschritte sind überfällig_": [
+            "%n Arbeitsschritt ist überfällig",
+            "%n Arbeitsschritte sind überfällig"
+        ],
         "„{title}“ erledigen": "„{title}“ erledigen",
         "überfällig seit {date}": "überfällig seit {date}",
         "fällig {date}": "fällig {date}",
         "Aufgaben konnten nicht geladen werden": "Aufgaben konnten nicht geladen werden",
         "Arbeitsschritt konnte nicht erledigt werden": "Arbeitsschritt konnte nicht erledigt werden",
         "Keine Verbindung zum Server. Bitte später erneut versuchen.": "Keine Verbindung zum Server. Bitte später erneut versuchen.",
-        "Gefunden werden nur bestehende Nextcloud-Konten. Wer noch keines hat — etwa auf Kundenseite — braucht zuerst eines: Die Administration legt es an, als Gastzugang oder als Vollkonto.": "Gefunden werden nur bestehende Nextcloud-Konten. Wer noch keines hat — etwa auf Kundenseite — braucht zuerst eines: Die Administration legt es an, als Gastzugang oder als Vollkonto."
+        "Gefunden werden nur bestehende Nextcloud-Konten. Wer noch keines hat — etwa auf Kundenseite — braucht zuerst eines: Die Administration legt es an, als Gastzugang oder als Vollkonto.": "Gefunden werden nur bestehende Nextcloud-Konten. Wer noch keines hat — etwa auf Kundenseite — braucht zuerst eines: Die Administration legt es an, als Gastzugang oder als Vollkonto.",
+        "Zielspalte": "Zielspalte"
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }
