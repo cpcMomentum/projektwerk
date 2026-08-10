@@ -120,7 +120,17 @@
         "Spalte konnte nicht entfernt werden": "Column could not be removed",
         "Spalte „{title}“ entfernen": "Remove column “{title}”",
         "_%n älteren Vorgang anzeigen_::_%n ältere Vorgänge anzeigen_": ["Show %n older item", "Show %n older items"],
-        "Ältere wieder ausblenden": "Hide older items again"
+        "Ältere wieder ausblenden": "Hide older items again",
+        "Meine Arbeitsschritte": "My work steps",
+        "Meine Vorgänge": "My items",
+        "Sobald Ihnen ein Arbeitsschritt zugewiesen wird oder Sie für einen Vorgang zuständig sind, steht er hier.": "As soon as a work step is assigned to you or you are responsible for an item, it will appear here.",
+        "_%n Arbeitsschritt ist überfällig_::_%n Arbeitsschritte sind überfällig_": ["%n work step is overdue", "%n work steps are overdue"],
+        "„{title}“ erledigen": "Complete “{title}”",
+        "überfällig seit {date}": "overdue since {date}",
+        "fällig {date}": "due {date}",
+        "Aufgaben konnten nicht geladen werden": "Tasks could not be loaded",
+        "Arbeitsschritt konnte nicht erledigt werden": "Work step could not be completed",
+        "Keine Verbindung zum Server. Bitte später erneut versuchen.": "No connection to the server. Please try again later."
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }
