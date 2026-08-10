@@ -107,11 +107,11 @@
 						:showVisibility="showVisibility"
 						:responsibleName="store.nameOf(ticket.responsibleUserId)"
 						:columns="store.columns"
-						:lastEditorName="store.nameOf(ticket.lastEditorUserId)"
 						:commentCount="count('comments', ticket.id)"
 						:stepCount="count('steps', ticket.id)"
 						:stepsDone="count('stepsDone', ticket.id)"
 						:waitState="store.waiting[ticket.id] ?? null"
+						:memberNames="store.memberNames"
 						:fromClientSide="!store.isInternal"
 						@open="openTicket"
 						@move="move" />

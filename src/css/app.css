@@ -136,7 +136,14 @@
 .app-projektwerk .pw-board {
 	display: grid;
 	grid-auto-flow: column;
-	grid-auto-columns: min(82vw, 300px);
+	/*
+	 * Auf dem Handy fast die volle Breite: Bei 82vw und 300 px Deckel blieben
+	 * auf einem 390-px-Geraet 1,4 Spalten stehen — der Rest der naechsten Spalte
+	 * ragt als Streifen herein, und eine Karte, die dorthin wandert, sieht aus
+	 * wie verschwunden. Der schmale Rest rechts ist Absicht und bleibt: Er
+	 * zeigt, dass es weitergeht.
+	 */
+	grid-auto-columns: min(88vw, 340px);
 	gap: 12px;
 	overflow-x: auto;
 	scroll-snap-type: x mandatory;
@@ -148,7 +155,16 @@
 	.app-projektwerk .pw-board {
 		grid-auto-flow: row;
 		grid-auto-columns: auto;
-		grid-template-columns: repeat(var(--pw-columns, 3), minmax(0, 1fr));
+		/*
+		 * **Mindestbreite statt `minmax(0, 1fr)`.** Mit `0` als Untergrenze
+		 * teilten sich sechs Spalten einen 1280er Schirm zu je rund 145 px —
+		 * darin brechen Titel mitten im Wort um („Hosting-Angebo t kalkulie
+		 * ren"). Axels Entscheidung vom 2026-08-09 lautet: volle Breite,
+		 * Spalten fest, waagerecht scrollen. Genau das leistet 260 px als
+		 * Untergrenze: Bei wenigen Spalten fuellen sie die Breite, bei vielen
+		 * wird gescrollt.
+		 */
+		grid-template-columns: repeat(var(--pw-columns, 3), minmax(260px, 1fr));
 		overflow-x: auto;
 	}
 }
@@ -203,7 +219,14 @@
 	flex-direction: column;
 	gap: 9px;
 	width: 100%;
-	padding: 14px 44px 13px 15px;
+	/*
+	 * **Rechts kein Sonderabstand mehr.** Hier standen 44 px, damit der Titel
+	 * nicht unter das absolut gesetzte „…"-Menue rutscht. Das Menue ueberlappt
+	 * aber nur die *Kopfzeile* — die Reservierung galt trotzdem fuer jede Zeile
+	 * und hat Titel wie Fusszeile 29 px zu frueh enden lassen. Sie sitzt jetzt
+	 * dort, wo das Menue tatsaechlich liegt (`.pw-card__top`).
+	 */
+	padding: 14px 15px 13px;
 	border: 0;
 	border-radius: inherit;
 	background: transparent;
@@ -213,8 +236,19 @@
 	cursor: pointer;
 }
 
-/* Das Menue liegt in der freien Ecke, die die Polsterung oben rechts laesst. */
-.app-projektwerk .pw-card__menu {
+/*
+ * Das Menue liegt in der freien Ecke, die die Polsterung oben rechts laesst.
+ *
+ * **Der Kindselektor ist noetig, nicht kosmetisch.** Nextclouds `NcActions`
+ * bringt `.action-item { position: relative }` aus einer bereichsbezogenen
+ * Regel mit — dieselbe Spezifitaet wie `.app-projektwerk .pw-card__menu`, und
+ * bei Gleichstand gewinnt die spaeter geladene. Folge: `top`/`right` kamen an,
+ * `position: absolute` nicht. Das Menue blieb im Textfluss, landete unten
+ * links und erzeugte unter der Karte einen weissen Streifen, den die
+ * Hervorhebung beim Ueberfahren nicht mitnahm — genau der Befund vom
+ * 2026-08-10.
+ */
+.app-projektwerk .pw-card > .pw-card__menu {
 	position: absolute;
 	top: 6px;
 	right: 6px;
@@ -251,10 +285,16 @@
 	text-decoration: line-through;
 }
 
+/*
+ * Nur diese Zeile weicht dem „…"-Menue aus — es sitzt absolut bei `top: 6px;
+ * right: 6px` und ueberlappt genau hier. Titel und Fusszeile laufen darunter
+ * durch bis an den Kartenrand.
+ */
 .app-projektwerk .pw-card__top {
 	display: flex;
 	align-items: center;
 	gap: 7px;
+	padding-inline-end: 29px;
 }
 
 .app-projektwerk .pw-num {
@@ -262,15 +302,6 @@
 	font-size: 11.5px;
 	font-variant-numeric: tabular-nums;
 	color: var(--color-text-maxcontrast);
-}
-
-/* Das optische Zeichen für „geändert" — kein Text auf der Karte. */
-.app-projektwerk .pw-changed {
-	width: 7px;
-	height: 7px;
-	border-radius: 50%;
-	background: var(--color-primary-element);
-	flex: none;
 }
 
 /*
@@ -305,22 +336,22 @@
 	font-size: 15px;
 	font-weight: 500;
 	line-height: 1.4;
-	overflow-wrap: anywhere;
+	/*
+	 * `break-word` statt `anywhere`: Beide verhindern, dass ein sehr langes
+	 * Wort die Spalte sprengt — aber `anywhere` erlaubt dem Browser, den
+	 * Umbruch auch dann mitten ins Wort zu legen, wenn ein normaler Umbruch
+	 * moeglich waere. Zusammen mit zu schmalen Spalten kam dabei
+	 * „Hosting-Angebo t kalkulie ren" heraus.
+	 */
+	overflow-wrap: break-word;
 }
 
 .app-projektwerk .pw-card__foot {
 	display: flex;
 	align-items: center;
-	gap: 10px;
+	gap: 6px;
 	color: var(--color-text-maxcontrast);
 	font-size: 11.5px;
-}
-
-.app-projektwerk .pw-card__foot .pw-right {
-	display: inline-flex;
-	align-items: center;
-	gap: 10px;
-	margin-left: auto;
 }
 
 .app-projektwerk .pw-steps {
@@ -745,7 +776,53 @@
 	color: var(--color-main-text);
 	font-size: 12.5px;
 	font-weight: 600;
-	white-space: nowrap;
+	/*
+	 * **Kein `nowrap` mehr.** „wartet auf Kunde · seit 09.08." ist laenger als
+	 * eine schmale Spalte, und mit `nowrap` ragte die Marke sichtbar ueber den
+	 * Kartenrand hinaus. Sie darf jetzt umbrechen und bleibt in der Karte.
+	 */
+	max-width: 100%;
+	overflow-wrap: break-word;
+}
+
+/*
+ * **Auf der Karte weder Fuellung noch Rahmen — nur eine farbige Uhr.**
+ *
+ * Der Weg dahin ging ueber beides. Die gefuellte Pille lag als blasses Gelb
+ * unter den Avatar-Initialen, die selbst pastellfarben sind: zwei blasse
+ * Flaechen uebereinander, und man erkannte die Personen nicht mehr. Die
+ * Umrandung danach loeste das, zog aber einen Kasten um etwas, das kein
+ * Behaelter ist — sie konkurrierte mit dem Kartenrand selbst.
+ *
+ * Jetzt traegt ein einziger Glyph das Signal. Das reicht, weil das *Finden*
+ * wartender Vorgaenge nicht die Karte leistet, sondern der Filter „Nur
+ * wartend" in der Kopfzeile. Die Karte muss nur Auskunft geben, wenn man
+ * hinsieht — dafuer braucht sie nicht zu rufen.
+ */
+.app-projektwerk .pw-card__foot .pw-wait {
+	background: none;
+	border: 0;
+	padding: 0;
+	color: var(--color-main-text);
+}
+
+/*
+ * `--color-element-warning` (#BF7900), nicht `--color-warning-hover`: Letzteres
+ * ist ein Flaechen-Gelb (#ffe4a1) und auf Weiss kaum zu sehen; ersteres ist der
+ * Ton, den Nextcloud fuer warnende *Elemente* nimmt. Im Dunkelmodus dreht es
+ * auf #FFCC00, der Kontrast bleibt in beiden Richtungen.
+ *
+ * Ueberfaellig (#72) faerbt spaeter genau diese Regel rot um.
+ */
+.app-projektwerk .pw-wait__clock {
+	color: var(--color-element-warning, var(--color-warning-text));
+}
+
+.app-projektwerk .pw-wait__since {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	font-variant-numeric: tabular-nums;
 }
 
 .app-projektwerk .pw-wait--compact {
@@ -938,4 +1015,79 @@
 .app-projektwerk .pw-tasks__overdue {
 	color: var(--color-error-text, var(--color-error));
 	font-weight: 600;
+}
+
+/*
+ * Mehrzeilige Felder so breit wie die einzeiligen daneben.
+ *
+ * `textarea` bringt eine eigene Vorgabebreite (`cols`) mit und ignoriert die
+ * Breite des Umfelds — in den Projekteinstellungen stand die Beschreibung
+ * deshalb als schmaler Kasten neben lauter vollbreiten Feldern.
+ */
+.app-projektwerk .pw-field textarea {
+	box-sizing: border-box;
+	width: 100%;
+	min-height: 80px;
+	resize: vertical;
+}
+
+/* ---- Karte: Kopfzeile traegt die Zuordnung, Fusszeile den Zustand -------- */
+
+/*
+ * **Der Traeger steht rechts in der Kopfzeile — leise.** `margin-inline-start:
+ * auto` schiebt ihn ans Ende, neben Nummer und Sichtbarkeit. Er ist eine
+ * Zuordnung und keine Handlungsaufforderung; deshalb 18 px und kein Name.
+ */
+.app-projektwerk .pw-card__owner {
+	margin-inline-start: auto;
+	flex: none;
+}
+
+/*
+ * Die Kugeln der Wartemarke. Sie tragen die Person in 18 Pixeln, wo ein Name
+ * eine halbe Zeile braucht — auf einer Karte, die einen Blick vertraegt, ist
+ * das der entscheidende Unterschied.
+ */
+.app-projektwerk .pw-wait__who {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+}
+
+.app-projektwerk .pw-wait__more {
+	font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Sie darf schrumpfen, wenn es eng wird, aber nicht umbrechen: Eine zweizeilige
+ * Fusszeile waere genau die Zeile, die dieser Umbau einspart.
+ */
+.app-projektwerk .pw-card__foot .pw-wait {
+	min-width: 0;
+	overflow: hidden;
+	white-space: nowrap;
+}
+
+/*
+ * Die Zaehler schliessen an die Wartezeile an, statt am anderen Ende zu stehen.
+ * Der Mittelpunkt kommt nur, wenn tatsaechlich etwas davor steht — bei einer
+ * Karte ohne Wartezustand sind die Zaehler das erste Kind und beginnen die
+ * Zeile ohne Trenner.
+ */
+.app-projektwerk .pw-counts {
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+	min-width: 0;
+}
+
+/*
+ * Der Abstand steht symmetrisch um den Punkt: 6 px liefert die `gap` der
+ * Fusszeile davor, 6 px dieser Rand danach. Ohne das haengt der Trenner
+ * sichtbar am rechten Teil statt zwischen beiden.
+ */
+.app-projektwerk .pw-card__foot > .pw-counts:not(:first-child)::before {
+	content: "·";
+	margin-inline-end: 6px;
+	color: var(--color-text-maxcontrast);
 }

@@ -113,6 +113,18 @@ export const useBoardStore = defineStore('board', {
 		waitingCount: (state): number => Object.keys(state.waiting).length,
 
 		/**
+		 * Alle Anzeigenamen des Boards auf einmal — Kennung => Name.
+		 *
+		 * Für Bauteile, die **mehrere** Personen zeigen (die Kugeln der
+		 * Wartemarke). Ihnen `nameOf` durchzureichen hiesse, eine Funktion als
+		 * Eigenschaft zu uebergeben; eine Zuordnung ist das ehrlichere Mittel
+		 * und aus derselben Quelle.
+		 *
+		 * @param state Der Speicher.
+		 */
+		memberNames: (state): Record<string, string> => Object.fromEntries(state.members.map((m) => [m.userId, m.resolvedName])),
+
+		/**
 		 * Der anzuzeigende Name einer Person.
 		 *
 		 * Der Server hat ihn bereits aufgelöst: Name an der Mitgliedschaft, sonst

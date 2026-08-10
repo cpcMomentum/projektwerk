@@ -1,6 +1,6 @@
 OC.L10N.register(
     "projektwerk",
-    {
+{
     "Eingegangen": "Received",
     "Bestätigt": "Confirmed",
     "Eingeplant": "Scheduled",
@@ -31,7 +31,6 @@ OC.L10N.register(
     "Anlegen": "Create",
     "Anlegen fehlgeschlagen": "Could not create",
     "Verschieben fehlgeschlagen": "Could not move",
-    "Verschieben nach …": "Move to …",
     "Aktionen für {title}": "Actions for {title}",
     "Geändert von {name}": "Changed by {name}",
     "{count} Kommentare": "{count} comments",
@@ -115,22 +114,36 @@ OC.L10N.register(
     "Zielspalte wählen": "Choose a target column",
     "Alle Vorgänge wandern in die gewählte Spalte, danach fällt „{from}“ weg.": "All items move to the chosen column, then “{from}” is removed.",
     "Alle Vorgänge wandern nach „{to}“, danach fällt „{from}“ weg.": "All items move to “{to}”, then “{from}” is removed.",
-    "_Für dich sichtbar ist davon %n Vorgang._::_Für dich sichtbar sind davon %n Vorgänge._": ["%n of them is visible to you.", "%n of them are visible to you."],
+    "_Für dich sichtbar ist davon %n Vorgang._::_Für dich sichtbar sind davon %n Vorgänge._": [
+        "%n of them is visible to you.",
+        "%n of them are visible to you."
+    ],
     "Verborgene Vorgänge wandern mit, ohne hier aufzutauchen. Es geht nichts verloren.": "Hidden items move along without appearing here. Nothing is lost.",
     "Verschieben und entfernen": "Move and remove",
     "Spalte konnte nicht entfernt werden": "Column could not be removed",
     "Spalte „{title}“ entfernen": "Remove column “{title}”",
-    "_%n älteren Vorgang anzeigen_::_%n ältere Vorgänge anzeigen_": ["Show %n older item", "Show %n older items"],
+    "_%n älteren Vorgang anzeigen_::_%n ältere Vorgänge anzeigen_": [
+        "Show %n older item",
+        "Show %n older items"
+    ],
     "Ältere wieder ausblenden": "Hide older items again",
     "Meine Arbeitsschritte": "My work steps",
     "Meine Vorgänge": "My items",
     "Sobald Ihnen ein Arbeitsschritt zugewiesen wird oder Sie für einen Vorgang zuständig sind, steht er hier.": "As soon as a work step is assigned to you or you are responsible for an item, it will appear here.",
-    "_%n Arbeitsschritt ist überfällig_::_%n Arbeitsschritte sind überfällig_": ["%n work step is overdue", "%n work steps are overdue"],
+    "_%n Arbeitsschritt ist überfällig_::_%n Arbeitsschritte sind überfällig_": [
+        "%n work step is overdue",
+        "%n work steps are overdue"
+    ],
     "„{title}“ erledigen": "Complete “{title}”",
     "überfällig seit {date}": "overdue since {date}",
     "fällig {date}": "due {date}",
     "Aufgaben konnten nicht geladen werden": "Tasks could not be loaded",
     "Arbeitsschritt konnte nicht erledigt werden": "Work step could not be completed",
-    "Keine Verbindung zum Server. Bitte später erneut versuchen.": "No connection to the server. Please try again later."
+    "Keine Verbindung zum Server. Bitte später erneut versuchen.": "No connection to the server. Please try again later.",
+    "Gefunden werden nur bestehende Nextcloud-Konten. Wer noch keines hat — etwa auf Kundenseite — braucht zuerst eines: Die Administration legt es an, als Gastzugang oder als Vollkonto.": "Only existing Nextcloud accounts are found. Anyone without one — on the client side, for instance — needs one first: the administration creates it, as a guest or a full account.",
+    "Zielspalte": "Target column",
+    "wartet auf {names} · seit {date}": "waiting for {names} · since {date}",
+    "Privat": "Private",
+    "seit {date}": "since {date}"
 },
 "nplurals=2; plural=(n != 1);");

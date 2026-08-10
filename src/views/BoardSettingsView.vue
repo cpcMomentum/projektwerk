@@ -237,6 +237,17 @@
 				<span class="pw-settings__hint">
 					{{ t('projektwerk', 'Personenweise, keine Gruppen — die Rolle hängt an der Mitgliedschaft, nicht am Nextcloud-Konto.') }}
 				</span>
+				<!--
+					Die Suche findet nur bestehende Konten. Ohne diesen Satz
+					sucht jemand eine Kundin, die es in Nextcloud noch gar nicht
+					gibt, bekommt „Keine passenden Konten gefunden." und raet,
+					woran es liegt. Die App legt bewusst keine Konten an — sie
+					haengt an keiner anderen App —, aber sie kann sagen, wo sie
+					herkommen (#74).
+				-->
+				<span class="pw-settings__hint">
+					{{ t('projektwerk', 'Gefunden werden nur bestehende Nextcloud-Konten. Wer noch keines hat — etwa auf Kundenseite — braucht zuerst eines: Die Administration legt es an, als Gastzugang oder als Vollkonto.') }}
+				</span>
 			</section>
 
 			<section class="pw-settings__block">
