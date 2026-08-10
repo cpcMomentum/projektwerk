@@ -14,6 +14,12 @@ import { INTERN, KUNDE } from './rollen.ts'
 
 export interface Projekt {
 	boardId: number
+	/**
+	 * Der Boardtitel — der einzige Anker, den die Kundenseite unabhaengig vom
+	 * Stand der Vorgaenge sieht. Wer stattdessen einen Vorgang als Anker nimmt,
+	 * koppelt seinen Test still an den Test darueber.
+	 */
+	titel: string
 	/** Spalten-IDs in Reihenfolge, aus den Standardspalten des neuen Boards. */
 	spalten: { id: number, title: string }[]
 	/** Der Vorgang, den beide Seiten sehen. */
@@ -44,11 +50,8 @@ export async function projektAufbauen(browser: Browser, geheimwort: string): Pro
 		// zu Recht — sie ist ja Mitglied. Stuende die Marke dort, faende die
 		// Gegenprobe sie im DOM und meldete ein Leck, das keines ist. Der erste
 		// Lauf dieses Tests ist genau darueber gestolpert.
-		const board = await api.boardAnlegen(
-			`E2E-Projekt ${Date.now().toString(36)}`,
-			'E2E Dienstleister',
-			'E2E Kunde',
-		)
+		const titel = `E2E-Projekt ${Date.now().toString(36)}`
+		const board = await api.boardAnlegen(titel, 'E2E Dienstleister', 'E2E Kunde')
 		const boardId = Number(board.id)
 
 		await api.mitgliedHinzufuegen(boardId, KUNDE.uid, 'external')
@@ -74,6 +77,7 @@ export async function projektAufbauen(browser: Browser, geheimwort: string): Pro
 
 		return {
 			boardId,
+			titel,
 			spalten,
 			oeffentlich: { id: Number(oeffentlich.id), number: Number(oeffentlich.number), title: String(oeffentlich.title) },
 			intern: { id: Number(intern.id), number: Number(intern.number), title: String(intern.title) },
