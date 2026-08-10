@@ -100,22 +100,31 @@ function mountControl(ticket: Ticket, viewer: ViewerInfo | null) {
 	})
 }
 
+const LABELS: Record<Visibility, string> = {
+	public: 'Alle Beteiligten',
+	internal: 'Intern',
+	private: 'Nur ich',
+}
+
 /**
- * Auf „Ändern", dann die gewünschte Stufe, dann „Übernehmen".
+ * @param wrapper Die montierte Komponente.
+ * @param target Die angestrebte Stufe.
+ */
+function optionFor(wrapper: ReturnType<typeof mountControl>, target: Visibility) {
+	return wrapper.findAll('.pw-visopt').find((b) => b.text().includes(LABELS[target]))
+}
+
+/**
+ * **Ein** Klick auf die Stufe — mehr ist es seit #75 nicht.
+ *
+ * Vorher waren es drei: „Ändern", die Stufe, „Übernehmen". Dass diese Hilfe
+ * geschrumpft ist, ist die eigentliche Aussage der Änderung.
  *
  * @param wrapper Die montierte Komponente.
  * @param target Die angestrebte Stufe.
  */
 async function choose(wrapper: ReturnType<typeof mountControl>, target: Visibility) {
-	const labels: Record<Visibility, string> = {
-		public: 'Alle Beteiligten',
-		internal: 'Intern',
-		private: 'Nur ich',
-	}
-
-	await wrapper.findAll('button').find((b) => b.text() === 'Ändern')?.trigger('click')
-	await wrapper.findAll('.pw-visopt').find((b) => b.text().includes(labels[target]))?.trigger('click')
-	await wrapper.findAll('button').find((b) => b.text() === 'Übernehmen')?.trigger('click')
+	await optionFor(wrapper, target)?.trigger('click')
 	await new Promise((resolve) => setTimeout(resolve, 0))
 	await wrapper.vm.$nextTick()
 }
@@ -136,6 +145,26 @@ describe('VisibilityControl', () => {
 		expect(wrapper.find('.pw-viscontrol').exists()).toBe(false)
 	})
 
+	/**
+	 * Die Reihenfolge geht von zu nach offen: „Nur ich", „Intern", „Alle
+	 * Beteiligten". Von links nach rechts wird der Kreis größer, und genau so
+	 * liest man eine Zeile.
+	 *
+	 * Sie ist **Anzeige, keine Rangfolge im Code** — deshalb steht sie hier und
+	 * nicht als Vergleich in der Logik. Ein Test dafür, weil eine Reihenfolge
+	 * beim nächsten Umbau lautlos kippt und niemandem auffällt, der sie nicht
+	 * täglich sieht.
+	 */
+	it('reiht die Stufen von zu nach offen', () => {
+		const wrapper = mountControl(ticketOf(), viewerOf())
+
+		expect(wrapper.findAll('.pw-visopt').map((o) => o.text())).toEqual([
+			'Nur ich',
+			'Intern',
+			'Alle Beteiligten',
+		])
+	})
+
 	it('sperrt „Nur ich" an einem fremden Ticket der eigenen Seite', async () => {
 		// Anna sieht Berts internes Ticket, darf es aber nicht zu dessen Entwurf machen.
 		const wrapper = mountControl(
@@ -143,10 +172,62 @@ describe('VisibilityControl', () => {
 			viewerOf({ userId: 'anna' }),
 		)
 
-		await wrapper.findAll('button').find((b) => b.text() === 'Ändern')?.trigger('click')
+		expect(optionFor(wrapper, 'private')?.attributes('disabled')).toBeDefined()
+	})
 
-		const privateOption = wrapper.findAll('.pw-visopt').find((b) => b.text().includes('Nur ich'))
-		expect(privateOption?.attributes('disabled')).toBeDefined()
+	/**
+	 * **Die Markierung zeigt, was gilt — nicht, was geklickt wurde.**
+	 *
+	 * Zwischen Klick und Antwort liegt `visibility-impact`. Spränge die
+	 * Markierung sofort auf die angeklickte Stufe, sähe eine Änderung erledigt
+	 * aus, die noch eine Rückfrage vor sich hat — und wer die Rückfrage abbricht,
+	 * bliebe mit einer Markierung zurück, die lügt.
+	 *
+	 * Die Eigenschaft hängt an einer einzigen Zeile in der Vorlage
+	 * (`:modelValue="ticket.visibility"` statt `v-model="chosen"`) und geht beim
+	 * nächsten Umbau still verloren, wenn sie hier nicht steht.
+	 */
+	it('markiert während der Rückfrage weiter die geltende Stufe', async () => {
+		fetchVisibilityImpact.mockResolvedValue({ losing: ['carla'], comments: 0, attachments: 0 })
+
+		const wrapper = mountControl(ticketOf({ visibility: 'public' }), viewerOf())
+		await choose(wrapper, 'internal')
+
+		// Die Rückfrage steht — geschrieben wurde noch nichts.
+		expect(wrapper.find('.pw-viscontrol__warn').exists()).toBe(true)
+		expect(changeVisibility).not.toHaveBeenCalled()
+
+		// …und sie nennt, wohin es ginge. Seit „Übernehmen" weg ist, ist ein
+		// Fehlgriff nur noch hier abzufangen.
+		expect(wrapper.find('.pw-viscontrol__target').text()).toContain('Intern')
+
+		// Solange sie offen ist, nimmt die Auswahl keinen zweiten Klick an. Ohne
+		// die Sperre liesse sich eine dritte Stufe anklicken, und deren Rückfrage
+		// überschriebe die erste — bestätigt würde dann etwas anderes als das,
+		// was auf dem Schirm stand.
+		expect(wrapper.findAll('.pw-visopt').every((o) => o.attributes('disabled') !== undefined)).toBe(true)
+
+		// Abbrechen führt zurück, ohne dass die Markierung je gewandert wäre.
+		await wrapper.findAll('button').find((b) => b.text() === 'Abbrechen')?.trigger('click')
+		await wrapper.vm.$nextTick()
+
+		expect(optionFor(wrapper, 'public')?.attributes('aria-pressed')).toBe('true')
+		expect(optionFor(wrapper, 'internal')?.attributes('aria-pressed')).toBe('false')
+	})
+
+	/**
+	 * Ein Klick auf die geltende Stufe ist keine Änderung.
+	 *
+	 * Ohne diese Sperre löste jeder Klick auf die bereits markierte Karte einen
+	 * `visibility-impact`-Aufruf aus — und im folgenlosen Fall gleich noch ein
+	 * Schreiben auf denselben Wert hinterher.
+	 */
+	it('tut nichts, wenn die geltende Stufe angeklickt wird', async () => {
+		const wrapper = mountControl(ticketOf({ visibility: 'public' }), viewerOf())
+		await choose(wrapper, 'public')
+
+		expect(fetchVisibilityImpact).not.toHaveBeenCalled()
+		expect(changeVisibility).not.toHaveBeenCalled()
 	})
 
 	it('fragt nicht zurück, wenn der Server niemanden nennt', async () => {

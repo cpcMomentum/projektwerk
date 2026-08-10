@@ -44,7 +44,7 @@ OC.L10N.register(
     "Sichtbarkeit": "Visibility",
     "Ändern": "Change",
     "Rückgängig": "Undo",
-    "Übernehmen": "Apply",
+    "Neue Sichtbarkeit:": "New visibility:",
     "Auf „Nur ich\" herunterstufen kann nur die anlegende Person": "Only the person who created it can restrict it to “Only me”",
     "Folgende Personen verlieren den Zugriff auf diesen Vorgang:": "The following people will lose access to this item:",
     "Folgende Personen verlieren den Zugriff auf diesen Vorgang und seine {comments} Kommentare:": "The following people will lose access to this item and its {comments} comments:",
