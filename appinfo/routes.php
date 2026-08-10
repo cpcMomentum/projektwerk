@@ -48,6 +48,18 @@ return [
 		['name' => 'step#create', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/steps', 'verb' => 'POST'],
 		['name' => 'step#update', 'url' => '/api/v1/boards/{boardId}/steps/{stepId}', 'verb' => 'PATCH'],
 
+		// Kommentare. Wie die Arbeitsschritte nur Schreibwege — gelesen werden
+		// sie ueber ticket#show aus der gefilterten Ticketmenge. Sie haben keine
+		// eigene Sichtbarkeit, sondern erben die des Tickets vollstaendig.
+		// Aendern und Loeschen kann nur die verfassende Person, ohne Ausnahme
+		// fuer Eigentuemer oder Verwalter.
+		['name' => 'comment#create', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/comments', 'verb' => 'POST'],
+		['name' => 'comment#update', 'url' => '/api/v1/boards/{boardId}/comments/{commentId}', 'verb' => 'PATCH'],
+		// Hart, kein weiches Loeschen: `pwerk_comments` hat kein `deleted_at`,
+		// und ein Verlauf mit unsichtbaren Luecken waere schlechter als einer
+		// ohne.
+		['name' => 'comment#destroy', 'url' => '/api/v1/boards/{boardId}/comments/{commentId}', 'verb' => 'DELETE'],
+
 		// Board-Einstellungen. Ausschliesslich Schreibwege — gelesen wird ueber
 		// board#show, das Board, Mitglieder und Spalten in einem Zug liefert und
 		// in der Leak-Matrix registriert ist.

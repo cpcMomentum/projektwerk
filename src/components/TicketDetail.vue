@@ -114,9 +114,17 @@
 					:members="members"
 					@changed="$emit('stepsChanged')" />
 
+				<CommentList
+					:boardId="ticket.boardId"
+					:ticketId="ticket.id"
+					:comments="comments"
+					:members="members"
+					:viewer="viewer"
+					@changed="$emit('commentsChanged')" />
+
 				<!--
-					Anhaenge und Kommentare stehen in §9 ebenfalls im Detail — sie
-					kommen mit Phase 5. Bis dahin steht hier nichts statt einer
+					Anhaenge stehen in §9 ebenfalls im Detail — sie kommen mit
+					Phase 5, Teil B. Bis dahin steht hier nichts statt einer
 					leeren Ueberschrift, die etwas verspricht, das es noch nicht
 					gibt.
 				-->
@@ -128,7 +136,7 @@
 <script lang="ts">
 import type { PropType } from 'vue'
 import type { Column, Member, ViewerInfo } from '@/types/board'
-import type { Step, Ticket, WaitState } from '@/types/ticket'
+import type { Comment, Step, Ticket, WaitState } from '@/types/ticket'
 
 import { t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
@@ -137,6 +145,7 @@ import NcModal from '@nextcloud/vue/components/NcModal'
 import AccountMultipleIcon from 'vue-material-design-icons/AccountMultiple.vue'
 import OfficeBuildingIcon from 'vue-material-design-icons/OfficeBuilding.vue'
 import PencilIcon from 'vue-material-design-icons/Pencil.vue'
+import CommentList from '@/components/CommentList.vue'
 import StepList from '@/components/StepList.vue'
 import VisibilityControl from '@/components/VisibilityControl.vue'
 import WaitBadge from '@/components/WaitBadge.vue'
@@ -144,7 +153,7 @@ import WaitBadge from '@/components/WaitBadge.vue'
 export default defineComponent({
 	name: 'TicketDetail',
 
-	components: { AccountMultipleIcon, NcAvatar, NcModal, OfficeBuildingIcon, PencilIcon, StepList, VisibilityControl, WaitBadge },
+	components: { AccountMultipleIcon, CommentList, NcAvatar, NcModal, OfficeBuildingIcon, PencilIcon, StepList, VisibilityControl, WaitBadge },
 
 	props: {
 		ticket: { type: Object as PropType<Ticket | null>, default: null },
@@ -156,12 +165,13 @@ export default defineComponent({
 		/** Nur die interne Seite sieht die Kennzeichnung (§9). */
 		showVisibility: { type: Boolean, default: false },
 		steps: { type: Array as PropType<Step[]>, default: () => [] },
+		comments: { type: Array as PropType<Comment[]>, default: () => [] },
 		waiting: { type: Object as PropType<WaitState | null>, default: null },
 		/** Aus Sicht der Kundenseite formuliert. */
 		fromClientSide: { type: Boolean, default: false },
 	},
 
-	emits: ['close', 'changed', 'stepsChanged'],
+	emits: ['close', 'changed', 'stepsChanged', 'commentsChanged'],
 
 	computed: {
 		paddedNumber(): string {

@@ -165,10 +165,12 @@
 			:showVisibility="showVisibility"
 			:fromClientSide="!store.isInternal"
 			:steps="openSteps"
+			:comments="openComments"
 			:waiting="openTicketData ? (store.waiting[openTicketData.id] ?? null) : null"
 			@close="openTicketData = null"
 			@changed="applyChanged"
-			@stepsChanged="reloadOpenTicket" />
+			@stepsChanged="reloadOpenTicket"
+			@commentsChanged="reloadOpenTicket" />
 
 		<CreateTicketDialog
 			:open="creating"
@@ -180,7 +182,7 @@
 
 <script lang="ts">
 import type { Column, Visibility } from '@/types/board'
-import type { Step, Ticket } from '@/types/ticket'
+import type { Comment, Step, Ticket } from '@/types/ticket'
 
 import { n, t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
@@ -222,7 +224,12 @@ export default defineComponent({
 	},
 
 	data() {
-		return { creating: false, openTicketData: null as Ticket | null, openSteps: [] as Step[] }
+		return {
+			creating: false,
+			openTicketData: null as Ticket | null,
+			openSteps: [] as Step[],
+			openComments: [] as Comment[],
+		}
 	},
 
 	computed: {
@@ -333,34 +340,38 @@ export default defineComponent({
 		async openTicket(ticket: Ticket) {
 			this.openTicketData = ticket
 			// Sofort leeren, nicht erst nach dem Laden: Sonst zeigt das Overlay
-			// kurz die Arbeitsschritte des vorigen Tickets unter dem neuen Titel.
+			// kurz die Arbeitsschritte und Kommentare des vorigen Tickets unter
+			// dem neuen Titel.
 			this.openSteps = []
-			await this.loadSteps(ticket.id)
+			this.openComments = []
+			await this.loadDetail(ticket.id)
 		},
 
 		/**
-		 * Die Schritte des geöffneten Vorgangs nachladen.
+		 * Die Kinder des geöffneten Vorgangs nachladen.
 		 *
-		 * Über `ticket#show`, weil die Schritte dort aus der gefilterten
-		 * Einermenge kommen — es gibt keinen Weg, „die Schritte zu Ticket 42" zu
-		 * laden, der nicht durch die Sichtbarkeit geht.
+		 * Über `ticket#show`, weil Schritte und Kommentare dort aus der
+		 * gefilterten Einermenge kommen — es gibt keinen Weg, „die Kommentare zu
+		 * Ticket 42" zu laden, der nicht durch die Sichtbarkeit geht.
 		 *
 		 * @param ticketId Kennung des Vorgangs.
 		 */
-		async loadSteps(ticketId: number) {
+		async loadDetail(ticketId: number) {
 			try {
 				const detail = await fetchTicket(this.boardId, ticketId)
 				this.openSteps = detail.steps
+				this.openComments = detail.comments
 			} catch {
 				this.openSteps = []
+				this.openComments = []
 			}
 		},
 
 		/**
-		 * Nach einer Änderung an den Schritten: Detail und Board neu laden.
+		 * Nach einer Änderung im Overlay: Detail und Board neu laden.
 		 *
-		 * Beides, weil eine Zuweisung den Wartezustand ändert — und der steht
-		 * auf der Karte, nicht nur im Overlay.
+		 * Beides, weil eine Zuweisung den Wartezustand ändert und ein Kommentar
+		 * den Zähler — und die stehen auf der Karte, nicht nur im Overlay.
 		 */
 		async reloadOpenTicket() {
 			const offen = this.openTicketData
@@ -368,7 +379,7 @@ export default defineComponent({
 				return
 			}
 			await this.store.open(this.boardId)
-			await this.loadSteps(offen.id)
+			await this.loadDetail(offen.id)
 			this.openTicketData = this.store.tickets.get(offen.id) ?? offen
 		},
 
