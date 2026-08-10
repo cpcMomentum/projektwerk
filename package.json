@@ -19,6 +19,7 @@
     "lint:fix": "eslint . --fix",
     "prepare": "git config core.hooksPath .githooks || true",
     "test": "vitest run",
+    "test:e2e": "playwright test",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
   },
@@ -37,6 +38,7 @@
   },
   "devDependencies": {
     "@nextcloud/eslint-config": "^9.0.1",
+    "@playwright/test": "^1.62.1",
     "@types/sortablejs": "^1.15.9",
     "@vitejs/plugin-vue": "^6.0.0",
     "@vue/devtools-api": "^8.2.1",

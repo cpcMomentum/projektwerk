@@ -1,0 +1,179 @@
+name: e2e
+
+# Klicktests gegen eine echte, bedienbare Nextcloud (#80).
+#
+# Warum ein eigener Workflow und nicht ein Job in integration.yml: aus
+# demselben Grund, aus dem integration.yml nicht in phpunit.yml sitzt — ein
+# schneller Lauf soll nicht auf einen langsamen warten. Das hier ist der
+# langsamste Lauf, den wir haben: Serverbaum, Installation, Browser.
+#
+# Warum das neben der Leak-Matrix existiert: Die Matrix prueft die
+# Sichtbarkeitsregel dort, wo sie steht — im JOIN. Diese Tests pruefen sie
+# dort, wo der Kunde sie erlebt — im ausgelieferten DOM. Ein JOIN kann richtig
+# sein, waehrend die Oberflaeche verraet, was er verbirgt: ueber einen Zaehler,
+# einen Initial State, eine Fehlermeldung. Beides zusammen ist die Zusage.
+#
+# ACHTUNG beim Umbenennen: Der Job-Name wird der Kontext eines Required-Status-
+# Checks, sobald er ins develop-Ruleset aufgenommen ist. Ein Kontext, der nie
+# mehr meldet, blockiert jeden PR dauerhaft, ohne dass etwas rot wird.
+# Reihenfolge: Check loesen -> Workflow landen -> neuen Namen live beobachten
+# -> Ruleset per PUT setzen.
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+  workflow_dispatch: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    name: E2E (Chromium)
+
+    steps:
+      # Zuerst an einen Nebenpfad, weil der Serverzweig aus info.xml abgeleitet
+      # wird — die Datei muss also vor dem Server-Checkout da sein.
+      - name: App auschecken
+        uses: actions/checkout@v4
+        with:
+          path: app-src
+
+      - name: NC-Zweig aus info.xml ableiten
+        id: derive
+        working-directory: app-src
+        run: |
+          line=$(grep -oE '<nextcloud[^>]*/>' appinfo/info.xml)
+          min=$(printf '%s' "$line" | grep -oE 'min-version="[0-9]+"' | grep -oE '[0-9]+')
+          if [ -z "$min" ]; then
+            echo "::error::Konnte min-version nicht aus info.xml lesen"; exit 1
+          fi
+          # Die deklarierte Untergrenze, nicht die Obergrenze: Dort landet ein
+          # Bruch zuerst — genau wie in integration.yml und phpunit.yml.
+          echo "branch=stable$min" >> "$GITHUB_OUTPUT"
+          echo "Abgeleiteter Serverzweig: stable$min"
+
+      - name: Nextcloud-Server auschecken
+        uses: actions/checkout@v4
+        with:
+          repository: nextcloud/server
+          ref: ${{ steps.derive.outputs.branch }}
+          submodules: true
+          fetch-depth: 1
+          path: server
+
+      - name: App nach apps/ verschieben
+        run: mv app-src server/apps/projektwerk
+
+      - name: PHP einrichten
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: bz2, ctype, curl, dom, fileinfo, gd, gmp, iconv, intl, json, mbstring, openssl, pcntl, posix, session, simplexml, sqlite3, pdo_sqlite, xml, xmlreader, xmlwriter, zip, zlib
+          coverage: none
+          tools: composer:v2
+
+      - name: Abhaengigkeiten der App installieren
+        working-directory: server/apps/projektwerk
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Nextcloud installieren (SQLite)
+        working-directory: server
+        run: |
+          mkdir -p data
+          php occ maintenance:install \
+            --database sqlite \
+            --admin-user admin \
+            --admin-pass admin-pass-for-ci \
+            --data-dir "$PWD/data"
+
+      - name: App aktivieren (faehrt die Migration)
+        working-directory: server
+        run: |
+          php occ app:enable projektwerk
+          php occ config:app:get projektwerk installed_version
+
+      # Die Passwortrichtlinie fragt bei jedem neuen Konto haveibeenpwned.com.
+      # Auf einem Runner ist das ein Netzaufruf, der nichts prueft, was uns hier
+      # interessiert — und der bei Ausfall des Dienstes einen roten Lauf ohne
+      # Fehler erzeugt. Fuer Wegwerf-Konten auf einer Wegwerf-Instanz aus.
+      - name: Passwortrichtlinie abschalten
+        working-directory: server
+        run: php occ app:disable password_policy || true
+
+      - name: Testkonten anlegen
+        working-directory: server
+        run: PWERK_OCC="php occ" apps/projektwerk/tests/e2e/provision.sh
+
+      # Genau der Weg, den Nextcloud fuer seine eigenen Integrationstests nimmt
+      # (nextcloud/server, build/integration/run.sh:58). Ohne
+      # PHP_CLI_SERVER_WORKERS ist der eingebaute Server einfaedig, und der
+      # Browser blockiert sich bei parallelen Anfragen selbst.
+      #
+      # Kein Rewrite: Die App laeuft deshalb unter /index.php/apps/projektwerk/.
+      # Die Tests adressieren sie ueberall so — auch lokal, wo es auch ohne
+      # ginge. Ein Test, der lokal einen anderen Weg nimmt als hier, schweigt
+      # genau dort, wo er reden muesste.
+      - name: Nextcloud ausliefern
+        working-directory: server
+        run: |
+          PHP_CLI_SERVER_WORKERS=4 php -S localhost:8080 -t . &> "$RUNNER_TEMP/phpserver.log" &
+          echo "PHPPID=$!" >> "$GITHUB_ENV"
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/index.php/login || true)
+            if [ "$code" = "200" ]; then echo "Erreichbar nach ${i}s"; exit 0; fi
+            sleep 1
+          done
+          echo "::error::Nextcloud wurde unter http://localhost:8080 nicht erreichbar"
+          cat "$RUNNER_TEMP/phpserver.log"
+          exit 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Frontend-Abhaengigkeiten installieren
+        working-directory: server/apps/projektwerk
+        # Bewusst KEIN `npm run build`: Getestet wird das eingecheckte Bundle in
+        # js/ und css/ — das ist es, was ausgeliefert wird. Wuerden wir hier neu
+        # bauen, bliebe ein vergessener Build unentdeckt, und die App auf dem
+        # Server verhielte sich anders als der gruene Lauf behauptet.
+        run: |
+          rm -f package-lock.json
+          npm install --no-audit --no-fund
+
+      - name: Browser installieren
+        working-directory: server/apps/projektwerk
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E-Tests
+        working-directory: server/apps/projektwerk
+        env:
+          PWERK_E2E_URL: http://localhost:8080
+        run: npx playwright test
+
+      - name: Bericht sichern
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-bericht
+          path: |
+            server/apps/projektwerk/playwright-report/
+            server/apps/projektwerk/test-results/
+          retention-days: 7
+
+      # Ohne das Serverprotokoll ist ein fehlgeschlagener Lauf oft nicht zu
+      # deuten: Der Browser sieht nur eine 500, die Begruendung steht hier.
+      - name: Serverprotokoll ausgeben
+        if: failure()
+        run: |
+          echo "=== php -S ==="
+          cat "$RUNNER_TEMP/phpserver.log" || true
+          echo "=== nextcloud.log ==="
+          tail -n 200 server/data/nextcloud.log || true
