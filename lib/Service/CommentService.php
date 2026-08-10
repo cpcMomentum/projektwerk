@@ -121,7 +121,11 @@ class CommentService {
 	 */
 	private function requireAuthor(ViewerContext $viewer, Comment $comment): void {
 		if ((string)$comment->getAuthorUserId() !== $viewer->userId) {
-			throw new NotAuthorException('Nur die verfassende Person kann diesen Kommentar ändern.');
+			// „ändern oder löschen": Dieselbe Sperre traegt beide Wege, und eine
+			// Meldung, die nur den einen nennt, waere beim anderen schlicht
+			// falsch. Sie steht im 403-Rumpf und kann damit im Fehlerfall in
+			// einer Meldung landen.
+			throw new NotAuthorException('Nur die verfassende Person kann diesen Kommentar ändern oder löschen.');
 		}
 	}
 
