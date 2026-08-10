@@ -136,7 +136,14 @@
 .app-projektwerk .pw-board {
 	display: grid;
 	grid-auto-flow: column;
-	grid-auto-columns: min(82vw, 300px);
+	/*
+	 * Auf dem Handy fast die volle Breite: Bei 82vw und 300 px Deckel blieben
+	 * auf einem 390-px-Geraet 1,4 Spalten stehen — der Rest der naechsten Spalte
+	 * ragt als Streifen herein, und eine Karte, die dorthin wandert, sieht aus
+	 * wie verschwunden. Der schmale Rest rechts ist Absicht und bleibt: Er
+	 * zeigt, dass es weitergeht.
+	 */
+	grid-auto-columns: min(88vw, 340px);
 	gap: 12px;
 	overflow-x: auto;
 	scroll-snap-type: x mandatory;
@@ -938,4 +945,18 @@
 .app-projektwerk .pw-tasks__overdue {
 	color: var(--color-error-text, var(--color-error));
 	font-weight: 600;
+}
+
+/*
+ * Mehrzeilige Felder so breit wie die einzeiligen daneben.
+ *
+ * `textarea` bringt eine eigene Vorgabebreite (`cols`) mit und ignoriert die
+ * Breite des Umfelds — in den Projekteinstellungen stand die Beschreibung
+ * deshalb als schmaler Kasten neben lauter vollbreiten Feldern.
+ */
+.app-projektwerk .pw-field textarea {
+	box-sizing: border-box;
+	width: 100%;
+	min-height: 80px;
+	resize: vertical;
 }

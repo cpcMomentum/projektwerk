@@ -131,6 +131,7 @@ OC.L10N.register(
     "fällig {date}": "due {date}",
     "Aufgaben konnten nicht geladen werden": "Tasks could not be loaded",
     "Arbeitsschritt konnte nicht erledigt werden": "Work step could not be completed",
-    "Keine Verbindung zum Server. Bitte später erneut versuchen.": "No connection to the server. Please try again later."
+    "Keine Verbindung zum Server. Bitte später erneut versuchen.": "No connection to the server. Please try again later.",
+    "Gefunden werden nur bestehende Nextcloud-Konten. Wer noch keines hat — etwa auf Kundenseite — braucht zuerst eines: Die Administration legt es an, als Gastzugang oder als Vollkonto.": "Only existing Nextcloud accounts are found. Anyone without one — on the client side, for instance — needs one first: the administration creates it, as a guest or a full account."
 },
 "nplurals=2; plural=(n != 1);");
