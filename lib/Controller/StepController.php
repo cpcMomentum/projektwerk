@@ -69,21 +69,32 @@ class StepController extends Controller {
 		?string $dueDate = null,
 		?bool $done = null,
 	): JSONResponse {
-		// Nur das uebernehmen, was tatsaechlich geschickt wurde. Bei
-		// `assignedUserId` ist das wesentlich: `null` heisst hier „Zuweisung
-		// loeschen" und darf nicht mit „nicht genannt" zusammenfallen.
+		// Nur das uebernehmen, was tatsaechlich geschickt wurde.
 		$changes = [];
-		foreach (['title' => $title, 'dueDate' => $dueDate, 'done' => $done] as $key => $value) {
+		foreach (['title' => $title, 'done' => $done] as $key => $value) {
 			if ($value !== null) {
 				$changes[$key] = $value;
 			}
 		}
-		// `getParam()` prueft mit `isset()` und kann ein explizit gesendetes
-		// `null` deshalb nicht von „nicht genannt" unterscheiden (`isset()`
-		// ist bei `null`-Werten `false`). `array_key_exists()` auf den rohen
-		// Parametern unterscheidet beide Faelle korrekt.
-		if (array_key_exists('assignedUserId', $this->request->getParams())) {
-			$changes['assignedUserId'] = $assignedUserId;
+
+		// **Zwei Felder, bei denen `null` etwas bedeutet**: „Zuweisung loeschen"
+		// und „Frist loeschen". Ein Vergleich auf `!== null` verwirft genau
+		// diesen Fall und laesst beides setzen, aber nie wieder entfernen.
+		//
+		// `getParam()` hilft nicht: Es prueft mit `isset()` und kann ein
+		// ausdruecklich gesendetes `null` nicht von „nicht genannt"
+		// unterscheiden (`isset()` ist bei `null` immer `false`).
+		// `array_key_exists()` auf den rohen Parametern trennt beide Faelle.
+		//
+		// Die Zuweisung stand hier schon seit dem Review vom 2026-08-09; die
+		// Faelligkeit ist am 2026-08-10 dazugekommen, als sie mit #86 zum ersten
+		// Mal ueberhaupt aus der Oberflaeche heraus zu setzen war. Bis dahin fiel
+		// nicht auf, dass sie sich nicht loeschen liess — es kam nie jemand
+		// hin.
+		foreach (['assignedUserId' => $assignedUserId, 'dueDate' => $dueDate] as $key => $value) {
+			if (array_key_exists($key, $this->request->getParams())) {
+				$changes[$key] = $value;
+			}
 		}
 
 		return $this->run($boardId, fn (ViewerContext $viewer): mixed

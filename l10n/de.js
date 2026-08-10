@@ -101,6 +101,8 @@ OC.L10N.register(
     "Noch keine Arbeitsschritte.": "Noch keine Arbeitsschritte.",
     "Neuer Arbeitsschritt": "Neuer Arbeitsschritt",
     "Zuständig": "Zuständig",
+    "Fälligkeit": "Fälligkeit",
+    "Fälligkeit konnte nicht gesetzt werden": "Fälligkeit konnte nicht gesetzt werden",
     "Niemand": "Niemand",
     "Arbeitsschritt konnte nicht angelegt werden": "Arbeitsschritt konnte nicht angelegt werden",
     "Ändern fehlgeschlagen": "Ändern fehlgeschlagen",

@@ -100,6 +100,8 @@
         "Noch keine Arbeitsschritte.": "No work steps yet.",
         "Neuer Arbeitsschritt": "New work step",
         "Zuständig": "Responsible",
+        "Fälligkeit": "Due date",
+        "Fälligkeit konnte nicht gesetzt werden": "Could not set the due date",
         "Niemand": "Nobody",
         "Arbeitsschritt konnte nicht angelegt werden": "Could not create the work step",
         "Ändern fehlgeschlagen": "Change failed",
