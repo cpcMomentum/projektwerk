@@ -3,10 +3,17 @@
 		<button type="button" class="pw-card__open" @click="$emit('open', ticket)">
 			<span class="pw-card__top">
 				<!--
-					Das optische Zeichen für „geändert": kein Text auf der Karte.
-					Wer draufzeigt oder das Ticket öffnet, erfährt wer und wann.
+					**Hier stand ein blauer Punkt für „geändert".** Er erschien,
+					sobald `lastEditorUserId` gesetzt war — und ging nie wieder
+					aus. Nach ein paar Wochen trug ihn jedes Ticket, und ein
+					Zeichen, das alle tragen, unterscheidet nichts mehr. Dafür
+					belegte er die erste Stelle der Karte.
+
+					Was er sagen *sollte*, ist „seit deinem letzten Blick
+					geändert" — das braucht einen Lesestand pro Benutzer und
+					kommt mit dem eigenen Issue. Bis dahin lieber kein Signal
+					als ein falsches.
 				-->
-				<span v-if="wasEdited" class="pw-changed" :title="changedTitle" />
 				<span class="pw-num">#{{ paddedNumber }}</span>
 				<!--
 					Die Kennzeichnung gibt es nur für die interne Seite und nur,
@@ -52,10 +59,18 @@
 			<span class="pw-card__title">{{ ticket.title }}</span>
 
 			<!--
-				**Die Zustandszeile.** Links, wo es gerade haengt; rechts die
-				Zaehler. Oben steht, was dauerhaft gilt — hier, was gerade der
-				Fall ist. Wartet nichts, bleibt links leer, und auch das ist
-				eine Aussage.
+				**Die Zustandszeile — ein Satz, kein Formular.** Oben steht,
+				was dauerhaft gilt; hier, was gerade der Fall ist: auf wen es
+				wartet, seit wann, bei welchem Schritt.
+
+				Die Zaehler standen bis zum 2026-08-10 per `margin-left: auto`
+				am anderen Ende der Zeile und lasen sich als zweite, unabhaengige
+				Anzeige. Sie sind aber keine: „0/2" sagt, *wo* es haengt, und
+				gehoert damit zur selben Aussage wie das Warten. Jetzt stehen
+				sie direkt dahinter, durch einen Mittelpunkt getrennt.
+
+				Alles linksbuendig in einem Fluss — deshalb springt nichts, wenn
+				ein Teil fehlt. Die Zeile wird nur kuerzer.
 			-->
 			<span class="pw-card__foot">
 				<WaitBadge
@@ -63,7 +78,7 @@
 					:fromClientSide="fromClientSide"
 					:names="memberNames"
 					:compact="true" />
-				<span class="pw-right">
+				<span v-if="commentCount > 0 || stepCount > 1" class="pw-counts">
 					<CommentOutlineIcon v-if="commentCount > 0" :size="13" :title="commentTitle" />
 					<!--
 						**Erst ab zwei Schritten.** Bei einem einzigen sagt
@@ -152,7 +167,6 @@ export default defineComponent({
 		/** Nur die interne Seite sieht die Sichtbarkeitskennzeichnung (§9). */
 		showVisibility: { type: Boolean, default: false },
 		responsibleName: { type: String, default: '' },
-		lastEditorName: { type: String, default: '' },
 		/**
 		 * Anzeigename je Benutzerkennung — fuer die Kugeln der Wartemarke.
 		 *
@@ -201,15 +215,6 @@ export default defineComponent({
 
 		paddedNumber(): string {
 			return String(this.ticket.number).padStart(4, '0')
-		},
-
-		/** `lastEditorUserId` ist null, solange niemand etwas geändert hat. */
-		wasEdited(): boolean {
-			return this.ticket.lastEditorUserId !== null
-		},
-
-		changedTitle(): string {
-			return t('projektwerk', 'Geändert von {name}', { name: this.lastEditorName })
 		},
 
 		/**

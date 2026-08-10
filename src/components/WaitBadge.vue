@@ -23,20 +23,23 @@
 		</span>
 
 		<!--
-			**Die Uhr steht beim Datum, nicht vorn.** Vorn stand sie, solange
-			sie der Blickfang sein musste; das leistet jetzt die kraeftige
-			Umrandung der Pille. Damit darf sie dorthin, wo sie inhaltlich
-			hingehoert: „seit wann" ist eine Zeitangabe, die Personen sind
-			keine.
+			**Die Uhr ist das einzige farbige Zeichen der Zeile.** Sie steht
+			beim Datum, weil „seit wann" eine Zeitangabe ist und die Personen
+			davor keine sind.
 
-			**Und das Wort „seit" bleibt stehen.** Ein nacktes „06.08." ist
-			zweideutig, sobald Vorgaenge ein Faelligkeitsdatum bekommen (#72) —
-			dann steht dieselbe Form fuer zwei entgegengesetzte Aussagen, und
-			ausgerechnet die Verwechslung waere teuer. Drei Buchstaben
-			entscheiden das ein fuer alle Mal.
+			Farbig ist nur sie, nicht der Text: Ein Zeichen traegt das Signal,
+			der Rest bleibt schwarz und damit gut lesbar. Und weil die Farbe an
+			einem einzelnen Glyph haengt, ist die naechste Stufe geschenkt —
+			ueberfaellig faerbt dieselbe Uhr rot (#72), ohne dass die Zeile
+			ihre Form aendert.
+
+			**Das Wort „seit" bleibt stehen.** Ein nacktes „06.08." wird
+			zweideutig, sobald Vorgaenge ein Faelligkeitsdatum bekommen: Dann
+			steht dieselbe Form fuer „wartet seit" und „faellig am", also fuer
+			zwei entgegengesetzte Aussagen.
 		-->
 		<span v-if="compact" class="pw-wait__since">
-			<ClockAlertIcon :size="13" />
+			<ClockAlertIcon class="pw-wait__clock" :size="13" />
 			{{ t('projektwerk', 'seit {date}', { date: formattedSince }) }}
 		</span>
 
