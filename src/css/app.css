@@ -25,6 +25,21 @@
 	.app-projektwerk .pw-view {
 		padding: 16px 12px 20px;
 	}
+
+	/*
+	 * **Nur die Kopfzeile macht dem Umschalter Platz.** Nextclouds
+	 * Navigations-Umschalter liegt auf dem Handy oben links UEBER dem Inhalt;
+	 * mit 12 px Innenabstand steht er auf der Ueberschrift, und aus „Projekte"
+	 * wird sichtbar „ojekte". Betraf alle vier Ansichten, aufgefallen an einem
+	 * Screenshot bei 375 px — im gerenderten Baum steht der Text vollstaendig
+	 * da, keine DOM-Pruefung haette es gemerkt.
+	 *
+	 * Der Abstand sitzt an der Kopfzeile und nicht an `.pw-view`, damit die
+	 * Liste darunter die volle Breite behaelt — dort zaehlt jede Spalte.
+	 */
+	.app-projektwerk .pw-view__head {
+		padding-inline-start: 44px;
+	}
 }
 
 .app-projektwerk .pw-view__head {
@@ -818,4 +833,109 @@
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+/*
+ * „Meine Aufgaben" — projektuebergreifend (#8).
+ *
+ * Eine Liste, kein Board: Die Zeilen kommen aus verschiedenen Projekten, und
+ * Spalten waeren hier eine Ordnung, die es nicht gibt.
+ */
+.app-projektwerk .pw-tasks__block {
+	margin-bottom: 24px;
+}
+
+.app-projektwerk .pw-task {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 8px;
+	border-bottom: 1px solid var(--color-border);
+}
+
+.app-projektwerk .pw-task:last-child {
+	border-bottom: none;
+}
+
+/*
+ * Die Klickflaeche traegt zwei Zeilen und muss die volle Breite nehmen —
+ * sonst liegt sie neben dem Text statt darunter.
+ */
+.app-projektwerk .pw-task__body {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 2px;
+	flex: 1 1 auto;
+	min-width: 0;
+	padding: 4px 0;
+	border: none;
+	background: none;
+	text-align: start;
+	cursor: pointer;
+}
+
+.app-projektwerk .pw-task__body:hover .pw-task__title {
+	text-decoration: underline;
+}
+
+.app-projektwerk .pw-task__title {
+	font-weight: 600;
+}
+
+.app-projektwerk .pw-task__meta {
+	color: var(--color-text-maxcontrast);
+	font-size: 0.85em;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	max-width: 100%;
+}
+
+.app-projektwerk .pw-task__board {
+	white-space: nowrap;
+}
+
+/*
+ * Das Kaestchen ist die haeufigste Handlung der Seite (§9) und braucht die
+ * volle Klickflaeche, auch auf dem Handy.
+ *
+ * **Die Flaeche kommt aus `margin`, nicht aus `width`/`height`.** Beides direkt
+ * auf ein `input[type=checkbox]` zu setzen skaliert das native Steuerelement
+ * selbst — das Kaestchen waere dann drei- bis viermal so gross wie jedes andere
+ * der App. Der Rahmen darum vergroessert die Trefferflaeche, ohne das Kaestchen
+ * anzufassen.
+ */
+.app-projektwerk .pw-task__check {
+	flex: 0 0 auto;
+	margin: calc((var(--default-clickable-area, 44px) - 16px) / 2);
+	cursor: pointer;
+}
+
+.app-projektwerk .pw-task__due {
+	flex: 0 0 auto;
+	color: var(--color-text-maxcontrast);
+	font-size: 0.85em;
+	white-space: nowrap;
+}
+
+/*
+ * Ueberfaellig wird zusaetzlich zur Sortierung markiert: Oben zu stehen sagt
+ * nur „zuerst", nicht „zu spaet". Farbe UND Schriftschnitt, damit es nicht
+ * allein an der Farbe haengt.
+ *
+ * **`--color-error-text`, nicht `--color-error`.** Letzteres ist in Nextcloud
+ * eine FLAECHENfarbe (`#FFE7E7`, blasses Rosa) und als Textfarbe auf weissem
+ * Grund praktisch unsichtbar; `--color-error-text` (`#8A0000`) ist die dafuer
+ * vorgesehene. Der Fehler bricht nichts und faellt in keiner DOM-Pruefung auf
+ * — er war nur auf einem Screenshot zu sehen.
+ */
+.app-projektwerk .pw-task--overdue .pw-task__due {
+	color: var(--color-error-text, var(--color-error));
+	font-weight: 600;
+}
+
+.app-projektwerk .pw-tasks__overdue {
+	color: var(--color-error-text, var(--color-error));
+	font-weight: 600;
 }

@@ -156,4 +156,34 @@ describe('normale Antworten', () => {
 		await expect(apiGet('/boards')).rejects.toMatchObject({ status: 0, notJson: false })
 		expect(showError).not.toHaveBeenCalled()
 	})
+
+	/**
+	 * **Und er sagt es auf Deutsch.** Axios legt bei einem Verbindungsabbruch
+	 * `message: 'Network Error'` bei; ohne eigene Formulierung stand dieser
+	 * englische Fachbegriff wörtlich vor dem Nutzer — beim häufigsten aller
+	 * Fehler und in einer durchgehend deutschen Oberfläche.
+	 */
+	it('formuliert den Netzfehler selbst, statt Axios zu zitieren', async () => {
+		get.mockRejectedValueOnce({ message: 'Network Error' })
+
+		await expect(apiGet('/boards')).rejects.toMatchObject({
+			message: 'Keine Verbindung zum Server. Bitte später erneut versuchen.',
+		})
+	})
+
+	/**
+	 * Die Meldung des Servers behält Vorrang — sie ist die einzige, die den
+	 * konkreten Fall kennt („Die Zielspalte muss eine andere sein.").
+	 */
+	it('lässt die Meldung des Servers unangetastet', async () => {
+		get.mockRejectedValueOnce({
+			message: 'Request failed with status code 400',
+			response: { status: 400, headers: { 'content-type': 'application/json' }, data: { error: 'Die Zielspalte muss eine andere sein.' } },
+		})
+
+		await expect(apiGet('/boards')).rejects.toMatchObject({
+			status: 400,
+			message: 'Die Zielspalte muss eine andere sein.',
+		})
+	})
 })

@@ -37,6 +37,13 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 - **„Wartet auf Kunde"** — gerechnet, nie gespeichert. Marke über dem Titel, im Detail als Satz
   mit Namen, Filterschalter „Nur wartend" mit Zählanzeige. In der Kundenansicht neutral
   formuliert (`wartet auf euch`, `liegt bei`)
+- **„Meine Aufgaben"** — projektübergreifend, laut §9 die Startseite des Kunden. Zwei Abschnitte:
+  *Meine Arbeitsschritte* (mir zugewiesen, offen) und *Meine Vorgänge* (verantwortlich oder
+  mitarbeitend), jede Zeile mit Vorgang und Projekt als Herkunft. Ein Kästchen erledigt einen
+  Schritt, ohne die Ansicht zu verlassen. Sortiert nach Fälligkeit, Überfälliges dadurch oben;
+  ohne Fälligkeit ans Ende. Beide Abschnitte kommen aus **einer** Antwort, und die Rolle bildet
+  `TicketScope` je Board — dieselbe Person kann in einem Projekt intern und im anderen extern
+  sein
 - **Ältere Erledigte als Sicht, nicht als Ablageort.** `closed_at` bleibt die einzige Wahrheit;
   ein Archiv als dritter Zustand hätte die Verdopplung von „erledigt" verdreifacht. Je Spalte
   bleiben die zuletzt geschlossenen zehn stehen, der Rest steht hinter „N ältere Vorgänge
@@ -65,6 +72,13 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Fixed
 
+- **Ein Verbindungsabbruch meldete sich auf Englisch.** Axios legt bei fehlender Antwort
+  `Network Error` bei, und das stand wörtlich vor dem Nutzer — beim häufigsten aller Fehler und in
+  einer durchgehend deutschen Oberfläche. Betraf jeden Aufruf der App, aufgefallen an der
+  Aufgabenansicht. Die Meldung des Servers behält Vorrang, wo es eine gibt
+- **Auf dem Handy verdeckte der Navigations-Umschalter jede Überschrift** — aus „Projekte" wurde
+  sichtbar „ojekte". Betraf alle vier Ansichten; jetzt macht ihm die Kopfzeile Platz, ohne dass die
+  Liste darunter Breite verliert
 - Teleportierter Dialoginhalt trug die App-Klasse nicht in sich. `NcModal` und `NcDialog`
   hängen ihren Inhalt an den `body`, wo `.app-projektwerk` kein Vorfahr mehr ist — im Overlay
   griff dadurch keine einzige CSS-Regel. Ein Wächter prüft das jetzt über den Quelltext

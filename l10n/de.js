@@ -121,6 +121,17 @@ OC.L10N.register(
     "Spalte konnte nicht entfernt werden": "Spalte konnte nicht entfernt werden",
     "Spalte „{title}“ entfernen": "Spalte „{title}“ entfernen",
     "_%n älteren Vorgang anzeigen_::_%n ältere Vorgänge anzeigen_": ["%n älteren Vorgang anzeigen", "%n ältere Vorgänge anzeigen"],
-    "Ältere wieder ausblenden": "Ältere wieder ausblenden"
+    "Ältere wieder ausblenden": "Ältere wieder ausblenden",
+    "Meine Arbeitsschritte": "Meine Arbeitsschritte",
+    "Meine Vorgänge": "Meine Vorgänge",
+    "Sobald Ihnen ein Arbeitsschritt zugewiesen wird oder Sie für einen Vorgang zuständig sind, steht er hier.": "Sobald Ihnen ein Arbeitsschritt zugewiesen wird oder Sie für einen Vorgang zuständig sind, steht er hier.",
+    "_%n Arbeitsschritt ist überfällig_::_%n Arbeitsschritte sind überfällig_": ["%n Arbeitsschritt ist überfällig", "%n Arbeitsschritte sind überfällig"],
+    "„{title}“ erledigen": "„{title}“ erledigen",
+    "überfällig seit {date}": "überfällig seit {date}",
+    "fällig {date}": "fällig {date}",
+    "Erledigen fehlgeschlagen": "Erledigen fehlgeschlagen",
+    "Aufgaben konnten nicht geladen werden": "Aufgaben konnten nicht geladen werden",
+    "Arbeitsschritt konnte nicht erledigt werden": "Arbeitsschritt konnte nicht erledigt werden",
+    "Keine Verbindung zum Server. Bitte später erneut versuchen.": "Keine Verbindung zum Server. Bitte später erneut versuchen."
 },
 "nplurals=2; plural=(n != 1);");

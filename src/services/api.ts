@@ -115,9 +115,25 @@ function wrapError(error: unknown): ApiError {
 		}
 	}
 
+	if (response === undefined) {
+		// **Gar keine Antwort** — Verbindungsabbruch, Zeitüberschreitung,
+		// schlafendes Handy. Axios legt hier `message: 'Network Error'` bei,
+		// und das stand bis 2026-08-10 wörtlich als Meldung vor einem deutschen
+		// Nutzer: englischer Fachbegriff für den häufigsten aller Fehler.
+		//
+		// Gemessen an der Aufgabenansicht, gilt aber für jeden Aufruf der App.
+		return {
+			status,
+			message: t(APP_ID, 'Keine Verbindung zum Server. Bitte später erneut versuchen.'),
+			notJson: false,
+		}
+	}
+
 	return {
 		status,
-		message: response?.data?.error ?? axiosError.message ?? 'Unbekannter Fehler',
+		// Die Meldung des Servers hat Vorrang: Sie ist die einzige, die den
+		// Fall kennt. Erst wenn sie fehlt, greift die des Aufrufers.
+		message: response.data?.error ?? axiosError.message ?? 'Unbekannter Fehler',
 		notJson: false,
 	}
 }
