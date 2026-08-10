@@ -28,10 +28,16 @@
 			Umrandung der Pille. Damit darf sie dorthin, wo sie inhaltlich
 			hingehoert: „seit wann" ist eine Zeitangabe, die Personen sind
 			keine.
+
+			**Und das Wort „seit" bleibt stehen.** Ein nacktes „06.08." ist
+			zweideutig, sobald Vorgaenge ein Faelligkeitsdatum bekommen (#72) —
+			dann steht dieselbe Form fuer zwei entgegengesetzte Aussagen, und
+			ausgerechnet die Verwechslung waere teuer. Drei Buchstaben
+			entscheiden das ein fuer alle Mal.
 		-->
 		<span v-if="compact" class="pw-wait__since">
 			<ClockAlertIcon :size="13" />
-			{{ formattedSince }}
+			{{ t('projektwerk', 'seit {date}', { date: formattedSince }) }}
 		</span>
 
 		<template v-else>

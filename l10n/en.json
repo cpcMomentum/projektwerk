@@ -142,7 +142,8 @@
         "Gefunden werden nur bestehende Nextcloud-Konten. Wer noch keines hat — etwa auf Kundenseite — braucht zuerst eines: Die Administration legt es an, als Gastzugang oder als Vollkonto.": "Only existing Nextcloud accounts are found. Anyone without one — on the client side, for instance — needs one first: the administration creates it, as a guest or a full account.",
         "Zielspalte": "Target column",
         "wartet auf {names} · seit {date}": "waiting for {names} · since {date}",
-        "Privat": "Private"
+        "Privat": "Private",
+        "seit {date}": "since {date}"
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }

@@ -143,6 +143,7 @@ OC.L10N.register(
     "Gefunden werden nur bestehende Nextcloud-Konten. Wer noch keines hat — etwa auf Kundenseite — braucht zuerst eines: Die Administration legt es an, als Gastzugang oder als Vollkonto.": "Gefunden werden nur bestehende Nextcloud-Konten. Wer noch keines hat — etwa auf Kundenseite — braucht zuerst eines: Die Administration legt es an, als Gastzugang oder als Vollkonto.",
     "Zielspalte": "Zielspalte",
     "wartet auf {names} · seit {date}": "wartet auf {names} · seit {date}",
-    "Privat": "Privat"
+    "Privat": "Privat",
+    "seit {date}": "seit {date}"
 },
 "nplurals=2; plural=(n != 1);");

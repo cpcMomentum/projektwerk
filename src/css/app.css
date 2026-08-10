@@ -219,7 +219,14 @@
 	flex-direction: column;
 	gap: 9px;
 	width: 100%;
-	padding: 14px 44px 13px 15px;
+	/*
+	 * **Rechts kein Sonderabstand mehr.** Hier standen 44 px, damit der Titel
+	 * nicht unter das absolut gesetzte „…"-Menue rutscht. Das Menue ueberlappt
+	 * aber nur die *Kopfzeile* — die Reservierung galt trotzdem fuer jede Zeile
+	 * und hat Titel wie Fusszeile 29 px zu frueh enden lassen. Sie sitzt jetzt
+	 * dort, wo das Menue tatsaechlich liegt (`.pw-card__top`).
+	 */
+	padding: 14px 15px 13px;
 	border: 0;
 	border-radius: inherit;
 	background: transparent;
@@ -278,10 +285,16 @@
 	text-decoration: line-through;
 }
 
+/*
+ * Nur diese Zeile weicht dem „…"-Menue aus — es sitzt absolut bei `top: 6px;
+ * right: 6px` und ueberlappt genau hier. Titel und Fusszeile laufen darunter
+ * durch bis an den Kartenrand.
+ */
 .app-projektwerk .pw-card__top {
 	display: flex;
 	align-items: center;
 	gap: 7px;
+	padding-inline-end: 29px;
 }
 
 .app-projektwerk .pw-num {
