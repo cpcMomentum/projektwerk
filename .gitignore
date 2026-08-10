@@ -45,3 +45,10 @@ docs/Plan-Phase*-Details.md
 
 # App Store Tarballs
 *.tar.gz
+
+# Playwright (#80): Berichte, Spuren und die abgelegten Anmelde-Sitzungen.
+# Die Sitzungen enthalten gueltige Cookies der Testkonten — sie gehoeren
+# nicht ins Repository, auch nicht die von Wegwerf-Konten.
+/playwright-report/
+/test-results/
+/tests/e2e/.sitzungen/
