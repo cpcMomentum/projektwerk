@@ -345,35 +345,35 @@ class LeakMatrixTest extends IntegrationTestCase {
 		// Global aus …
 		$global = new NotifyPref();
 		$global->setUserId(LeakMatrixFixture::ANNA);
-		$global->setChannel(NotifyPref::CHANNEL_MAIL);
+		$global->setChannel(NotifyPref::EVENT_TICKET_CREATED);
 		$global->setBoardId(NotifyPrefMapper::GLOBAL_SCOPE);
 		$global->setEnabled(0);
 		$prefs->insert($global);
 
 		$this->assertFalse(
-			$prefs->isEnabled(LeakMatrixFixture::ANNA, NotifyPref::CHANNEL_MAIL, $board),
+			$prefs->isEnabled(LeakMatrixFixture::ANNA, NotifyPref::EVENT_TICKET_CREATED, $board),
 			'Ohne Projektzeile gilt die globale — auch fuer Projekte, die es beim Einstellen noch nicht gab.',
 		);
 
 		// … dieses eine Projekt aber an.
 		$projekt = new NotifyPref();
 		$projekt->setUserId(LeakMatrixFixture::ANNA);
-		$projekt->setChannel(NotifyPref::CHANNEL_MAIL);
+		$projekt->setChannel(NotifyPref::EVENT_TICKET_CREATED);
 		$projekt->setBoardId($board);
 		$projekt->setEnabled(1);
 		$prefs->insert($projekt);
 
 		$this->assertTrue(
-			$prefs->isEnabled(LeakMatrixFixture::ANNA, NotifyPref::CHANNEL_MAIL, $board),
+			$prefs->isEnabled(LeakMatrixFixture::ANNA, NotifyPref::EVENT_TICKET_CREATED, $board),
 			'Die Projektzeile ist die Ausnahme und schlaegt die globale.',
 		);
 		$this->assertFalse(
-			$prefs->isEnabled(LeakMatrixFixture::ANNA, NotifyPref::CHANNEL_MAIL, $board + 9999),
+			$prefs->isEnabled(LeakMatrixFixture::ANNA, NotifyPref::EVENT_TICKET_CREATED, $board + 9999),
 			'Ein anderes Projekt bleibt bei der globalen Einstellung.',
 		);
 		$this->assertTrue(
-			$prefs->isEnabled(LeakMatrixFixture::ANNA, NotifyPref::CHANNEL_BELL, $board),
-			'Der andere Kanal ist davon unberuehrt — Mails abschalten heisst nicht Glocke abschalten.',
+			$prefs->isEnabled(LeakMatrixFixture::ANNA, NotifyPref::EVENT_TICKET_ASSIGNED, $board),
+			'Ein anderer Anlass ist davon unberuehrt — der Rundruf abzuschalten heisst nicht, Zuweisungen abzuschalten.',
 		);
 	}
 
@@ -390,7 +390,9 @@ class LeakMatrixTest extends IntegrationTestCase {
 	public function testEveryViewerSeesOnlyTheirOwnChannelSwitches(): void {
 		$service = Server::get(NotifyPrefService::class);
 
-		$service->set(LeakMatrixFixture::ANNA, NotifyPref::CHANNEL_MAIL, $this->fixture->boardId, false);
+		// Je Projekt sind nur die **Anlaesse** einstellbar; die Kanaele gelten
+		// global (Entscheidung 2026-08-11).
+		$service->set(LeakMatrixFixture::ANNA, NotifyPref::EVENT_TICKET_CREATED, $this->fixture->boardId, false);
 		$service->set(LeakMatrixFixture::CARLA, NotifyPref::CHANNEL_BELL, NotifyPrefMapper::GLOBAL_SCOPE, false);
 
 		$annas = $service->forUser(LeakMatrixFixture::ANNA);
@@ -398,7 +400,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 
 		$this->assertSame([], $annas['global'], 'Anna hat global nichts gesetzt.');
 		$this->assertSame(
-			[NotifyPref::CHANNEL_MAIL => false],
+			[NotifyPref::EVENT_TICKET_CREATED => false],
 			$annas['boards'][$this->fixture->boardId] ?? [],
 		);
 

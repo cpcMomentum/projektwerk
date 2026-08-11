@@ -10,8 +10,21 @@
 
 import { apiDelete, apiGet, apiPut } from '@/services/api'
 
-/** Ein Kanal, wie ihn der Server kennt. */
+/**
+ * Ein Schalter, wie ihn der Server kennt.
+ *
+ * Zwei Arten, und sie gelten verschieden weit (Entscheidung 2026-08-11):
+ *
+ * - **Kanäle** (`mail`, `bell`) — *wie* benachrichtigt wird. Nur global.
+ * - **Anlässe** (`ticket_assigned`, …) — *wovon*. Global und je Projekt.
+ */
 export type Channel = 'bell' | 'mail'
+
+/** Die drei Anlässe aus §21 der Produktbeschreibung. */
+export type NotifyEvent = 'ticket_assigned' | 'step_assigned' | 'ticket_created'
+
+/** Was in einer Zeile der Tabelle steht — Anlass oder Kanal. */
+export type PrefKey = Channel | NotifyEvent
 
 /**
  * Der **gespeicherte** Stand, nicht der aufgelöste.
@@ -22,8 +35,8 @@ export type Channel = 'bell' | 'mail'
  * darauf täte nichts Sichtbares.
  */
 export interface NotifyPrefs {
-	global: Partial<Record<Channel, boolean>>
-	boards: Record<number, Partial<Record<Channel, boolean>>>
+	global: Partial<Record<PrefKey, boolean>>
+	boards: Record<number, Partial<Record<NotifyEvent, boolean>>>
 }
 
 /** Der gespeicherte Stand der eigenen Kanalschalter. */
@@ -38,8 +51,8 @@ export async function fetchNotifyPrefs(): Promise<NotifyPrefs> {
  * @param enabled Neuer Stand.
  * @param boardId Projekt, oder 0 für global.
  */
-export async function setNotifyPref(channel: Channel, enabled: boolean, boardId = 0): Promise<NotifyPrefs> {
-	return apiPut<NotifyPrefs, { channel: Channel, enabled: boolean, boardId: number }>(
+export async function setNotifyPref(channel: PrefKey, enabled: boolean, boardId = 0): Promise<NotifyPrefs> {
+	return apiPut<NotifyPrefs, { channel: PrefKey, enabled: boolean, boardId: number }>(
 		'/notify-prefs',
 		{ channel, enabled, boardId },
 	)

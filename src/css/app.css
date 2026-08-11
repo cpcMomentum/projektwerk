@@ -1304,3 +1304,279 @@
 	margin-inline-end: 6px;
 	color: var(--color-text-maxcontrast);
 }
+
+/* ---- Benachrichtigungen im Seitenmenue ----------------------------------- */
+
+/*
+ * Der Einstellungsbereich unten links. Er sitzt im Seitenmenue und damit in
+ * einer schmalen Spalte — hier zaehlt jede Zeile, und die Kanaele stehen
+ * deshalb untereinander statt nebeneinander.
+ */
+.app-projektwerk .pw-notify {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	padding: 4px 2px 8px;
+	font-size: 13px;
+}
+
+.app-projektwerk .pw-notify__lead,
+.app-projektwerk .pw-notify__hint {
+	margin: 0;
+	color: var(--color-text-maxcontrast);
+	line-height: 1.4;
+}
+
+.app-projektwerk .pw-notify__block {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.app-projektwerk .pw-notify__head {
+	margin: 0;
+	font-size: 12px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-notify__row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	/* Die Plattform-Mindesthoehe auch hier: Das Seitenmenue wird auf dem Handy
+	   mit dem Daumen bedient. */
+	min-height: var(--default-clickable-area, 44px);
+	cursor: pointer;
+}
+
+/*
+ * Ein Projekt mit seinen beiden Kanaelen. Der Titel steht ueber den Schaltern,
+ * nicht daneben: Projektnamen sind lang, und nebeneinander braeche entweder der
+ * Name oder der Schalter um.
+ */
+.app-projektwerk .pw-notify__board {
+	display: flex;
+	flex-direction: column;
+	padding: 6px 0;
+	border-top: 1px solid var(--color-border);
+}
+
+.app-projektwerk .pw-notify__title {
+	font-weight: 600;
+	overflow-wrap: anywhere;
+}
+
+/* Sagt, ob der Stand geerbt oder gesetzt ist — gedaempft, es ist eine Fussnote. */
+.app-projektwerk .pw-notify__origin {
+	margin-inline-start: auto;
+	font-size: 11px;
+	color: var(--color-text-maxcontrast);
+}
+
+/* ---- Tabelle in „Meine Einstellungen" ------------------------------------ */
+
+/*
+ * Der Rahmen scrollt, nicht die Tabelle: `overflow` greift auf `display: table`
+ * nicht — der berechnete Wert faellt auf `visible` (am 2026-08-10 an einer
+ * Kommentartabelle gemessen).
+ */
+.app-projektwerk .pw-table-scroll {
+	overflow-x: auto;
+	margin: 8px 0 12px;
+}
+
+.app-projektwerk .pw-table {
+	border-collapse: collapse;
+	width: 100%;
+}
+
+.app-projektwerk .pw-table th,
+.app-projektwerk .pw-table td {
+	padding: 8px 12px;
+	text-align: left;
+	border-bottom: 1px solid var(--color-border);
+	/* Die Zeilen sind anklickbar — Plattform-Mindesthoehe, auch am Tisch. */
+	height: var(--default-clickable-area, 44px);
+}
+
+.app-projektwerk .pw-table thead th {
+	font-size: 12px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: var(--color-text-maxcontrast);
+	border-bottom: 1px solid var(--color-border-dark);
+}
+
+/* Der Projektname ist der einzige Text, dessen Laenge niemand in der Hand hat. */
+.app-projektwerk .pw-table__name {
+	font-weight: 600;
+	overflow-wrap: anywhere;
+	min-width: 180px;
+}
+
+.app-projektwerk .pw-table__mid {
+	text-align: center;
+	width: 90px;
+}
+
+/*
+ * Die Markierung „fuer dieses Projekt festgelegt" — ein Punkt am Kaestchen.
+ *
+ * Am Kaestchen und nicht an der Zeile: Die beiden Kanaele sind unabhaengig,
+ * eine Angabe am Zeilenende waere fuer einen von ihnen falsch.
+ *
+ * Der Punkt ist **nicht** der einzige Traeger: Die Beschriftung fuers Vorlesen
+ * sagt dasselbe in Worten, und unter der Tabelle steht, was er bedeutet (§9 —
+ * Farbe UND Symbol UND Text).
+ */
+.app-projektwerk .pw-pin {
+	position: relative;
+	display: inline-flex;
+}
+
+.app-projektwerk .pw-pin--set::after {
+	content: '';
+	position: absolute;
+	top: -2px;
+	inset-inline-end: -7px;
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: var(--color-primary-element);
+}
+
+.app-projektwerk .pw-notify__global {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px 20px;
+}
+
+/* ---- Einstellungsseite mit zweiter Menueebene ----------------------------- */
+
+/*
+ * Zuschnitt wie im WorkTime-Verwaltungsbereich: Ueberschrift oben, darunter
+ * links die Abschnitte, rechts der Inhalt.
+ */
+.app-projektwerk .pw-settingspage__title {
+	margin: 0 0 14px;
+	font-size: 22px;
+	font-weight: 700;
+	letter-spacing: -0.01em;
+}
+
+.app-projektwerk .pw-settingspage__body {
+	display: flex;
+	align-items: flex-start;
+	gap: 24px;
+}
+
+/* Auf dem Handy waere eine zweite Spalte die halbe Breite — dort untereinander. */
+@media (max-width: 700px) {
+	.app-projektwerk .pw-settingspage__body {
+		flex-direction: column;
+		gap: 12px;
+	}
+}
+
+.app-projektwerk .pw-subnav {
+	flex: 0 0 240px;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	padding-inline-end: 16px;
+	border-inline-end: 1px solid var(--color-border);
+}
+
+@media (max-width: 700px) {
+	.app-projektwerk .pw-subnav {
+		flex: 1 1 auto;
+		width: 100%;
+		border-inline-end: 0;
+		border-bottom: 1px solid var(--color-border);
+		padding-inline-end: 0;
+		padding-bottom: 8px;
+	}
+}
+
+.app-projektwerk .pw-subnav__group {
+	margin: 8px 0 4px;
+	font-size: 12px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-subnav__item {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	width: 100%;
+	min-height: var(--default-clickable-area, 44px);
+	padding: 0 12px;
+	border: 0;
+	border-radius: var(--border-radius-large);
+	background: transparent;
+	font: inherit;
+	color: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.app-projektwerk .pw-subnav__item:hover {
+	background: var(--color-background-hover);
+}
+
+.app-projektwerk .pw-subnav__item--active {
+	background: var(--color-primary-element-light);
+	font-weight: 600;
+}
+
+.app-projektwerk .pw-settingspage__content {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.app-projektwerk .pw-settingspage__head {
+	margin: 0 0 4px;
+	font-size: 18px;
+	font-weight: 700;
+}
+
+.app-projektwerk .pw-settingspage__block {
+	margin-top: 20px;
+}
+
+.app-projektwerk .pw-settingspage__sub {
+	margin: 0 0 2px;
+	font-size: 15px;
+	font-weight: 600;
+}
+
+/*
+ * **Die Tabelle zieht sich nicht ueber die volle Breite.** Vorher stand der
+ * Projektname ganz links und die Kaestchen ganz rechts, mit einer Handbreite
+ * Nichts dazwischen — man musste die Zeile mit dem Finger verfolgen.
+ */
+.app-projektwerk .pw-table--notify {
+	width: auto;
+	min-width: min(100%, 560px);
+}
+
+.app-projektwerk .pw-table--notify .pw-table__mid {
+	width: 120px;
+}
+
+/* Die allgemeine Zeile traegt die Vorgabe — sie steht optisch fuer sich. */
+.app-projektwerk .pw-table__row--global {
+	background: var(--color-background-hover);
+}
+
+.app-projektwerk .pw-table__row--global .pw-table__name {
+	font-weight: 700;
+}

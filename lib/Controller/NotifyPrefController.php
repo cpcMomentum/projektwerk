@@ -48,7 +48,7 @@ class NotifyPrefController extends Controller {
 			return new JSONResponse([], Http::STATUS_UNAUTHORIZED);
 		}
 
-		return new JSONResponse($this->service->forUser($this->userId));
+		return new JSONResponse($this->alsObjekte($this->service->forUser($this->userId)));
 	}
 
 	/**
@@ -68,7 +68,7 @@ class NotifyPrefController extends Controller {
 			return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
 		}
 
-		return new JSONResponse($this->service->forUser($this->userId));
+		return new JSONResponse($this->alsObjekte($this->service->forUser($this->userId)));
 	}
 
 	/**
@@ -83,6 +83,29 @@ class NotifyPrefController extends Controller {
 
 		$this->service->clearBoardOverrides($this->userId);
 
-		return new JSONResponse($this->service->forUser($this->userId));
+		return new JSONResponse($this->alsObjekte($this->service->forUser($this->userId)));
+	}
+
+	/**
+	 * Beide Abbildungen als **Objekte** ausliefern, auch wenn sie leer sind.
+	 *
+	 * `json_encode()` macht aus einem leeren PHP-Array `[]` und aus einem
+	 * gefuellten mit Schluesseln `{...}`. Die Antwort haette damit je nach
+	 * Inhalt eine andere Form — ein Aufrufer, der `boards` als Abbildung
+	 * behandelt, bekaeme beim ersten Aufruf ein Array. Heute geht das gut, weil
+	 * `Object.keys([])` ebenfalls leer ist; es geht gut aus Zufall, und der
+	 * haelt nicht.
+	 *
+	 * @param array{global: array<string, bool>, boards: array<int, array<string, bool>>} $stand
+	 * @return array{global: object, boards: object}
+	 */
+	private function alsObjekte(array $stand): array {
+		return [
+			'global' => (object)$stand['global'],
+			'boards' => (object)array_map(
+				static fn (array $kanaele): object => (object)$kanaele,
+				$stand['boards'],
+			),
+		];
 	}
 }

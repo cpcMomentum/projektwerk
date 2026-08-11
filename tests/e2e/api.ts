@@ -161,7 +161,7 @@ export class Api {
 	 * @param enabled Neuer Stand.
 	 * @param boardId Projekt, oder 0 fuer global.
 	 */
-	kanalSetzen(channel: 'bell' | 'mail', enabled: boolean, boardId: number): Promise<any> {
+	kanalSetzen(channel: string, enabled: boolean, boardId: number): Promise<any> {
 		return this.schreiben('put', '/api/v1/notify-prefs', { channel, enabled, boardId })
 	}
 

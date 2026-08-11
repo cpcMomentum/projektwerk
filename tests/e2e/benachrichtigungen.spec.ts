@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test'
 import type { Projekt } from './projekt.ts'
 
 import { expect, test } from '@playwright/test'
@@ -6,16 +7,17 @@ import { marke, projektAufbauen, projektAufraeumen } from './projekt.ts'
 import { APP_PFAD, INTERN } from './rollen.ts'
 
 /**
- * Die eigenen Kanalschalter, im Browser.
+ * Die Kanalschalter — **an einem Ort**, unten links im Seitenmenue.
  *
- * **Warum das hier geprueft wird und nicht nur im Dienst.** Der angezeigte Stand
- * entsteht aus drei Stufen — Projektzeile, globale Zeile, Vorgabe — und die
- * Oberflaeche rechnet sie ein zweites Mal nach, damit ein Klick sofort wirkt.
- * Zwei Rechnungen, die auseinanderlaufen koennen, gehoeren gegeneinander
- * geprueft.
+ * Der Zuschnitt davor verteilte die Entscheidung auf zwei Seiten: den
+ * allgemeinen Schalter in Nextclouds Einstellungen, den je Projekt in den
+ * Projekteinstellungen. Zwischen zwei Seiten kann niemand vergleichen — und
+ * genau das Vergleichen ist hier die Aufgabe.
  *
- * Der Hinweis daneben ist dabei kein Beiwerk: Ohne ihn sieht ein geerbtes „an"
- * aus wie ein gesetztes.
+ * **Diese Tests stellen ihren Ausgangszustand selbst her.** Sie laufen gegen
+ * eine dauerhafte Instanz; die Zeilen ueberleben den Lauf. Ein frueherer
+ * Durchgang hatte den allgemeinen Schalter umgelegt, und ein Test, der den
+ * jungfraeulichen Zustand voraussetzte, war rot ohne Fehler im Code.
  */
 
 let projekt: Projekt
@@ -32,112 +34,114 @@ test.afterAll(async ({ browser }) => {
 	}
 })
 
-test('uebernimmt die allgemeine Einstellung und merkt sich das Abschalten', async ({ page, request }) => {
-	// **Den Ausgangszustand herstellen, nicht voraussetzen.** Diese Tests laufen
-	// gegen eine dauerhafte Instanz; die Zeilen ueberleben den Lauf. Ein
-	// frueherer Durchgang hatte den globalen Schalter umgelegt, und der Test
-	// erwartete den jungfraeulichen Zustand — er war rot, ohne dass am Code
-	// etwas falsch war.
-	//
-	// Der Zustand „gar keine Zeile" (Hinweis „Vorgabe") laesst sich von aussen
-	// nicht wiederherstellen: Es gibt keinen Weg, eine Einstellung auf
-	// „ungesetzt" zurueckzudrehen, nur auf „an". Funktional ist das dasselbe,
-	// nur der Hinweis lautet anders — deshalb prueft dieser Test die beiden
-	// Zustaende, die sich herstellen lassen.
+/**
+ * Den Einstellungsbereich im Seitenmenue oeffnen.
+ *
+ * Der Knopf wird ueber das Seitenmenue eingegrenzt: „Benachrichtigungen" heisst
+ * auch Nextclouds eigene Glocke oben rechts.
+ *
+ * @param page Die Seite des Tests.
+ */
+async function bereichOeffnen(page: Page) {
+	await page.goto(`${APP_PFAD}#/my-settings`)
+	await page.locator('.pw-table').waitFor({ timeout: 30_000 })
+}
+
+/**
+ * @param page Die Seite des Tests.
+ * @param titel Titel des Projekts.
+ */
+function projektZeile(page: Page, titel: string) {
+	return page.locator('.pw-table tbody tr', { hasText: titel })
+}
+
+test('zeigt den allgemeinen Schalter und jedes Projekt darunter', async ({ page, request }) => {
 	const api = await Api.fuer(request)
 	await api.kanalAusnahmenLeeren()
 	await api.kanalSetzen('mail', true, 0)
 
-	await page.goto(`${APP_PFAD}#/boards/${projekt.boardId}/settings`)
+	await bereichOeffnen(page)
 
-	const zeile = page.locator('.pw-settings__row', { hasText: 'E-Mail' })
-	await expect(zeile).toBeVisible({ timeout: 30_000 })
+	// Der allgemeine Teil.
+	await expect(page.getByText('Gilt für alle Projekte — auch für die, die später dazukommen.')).toBeVisible()
 
-	const schalter = zeile.locator('input[type="checkbox"]')
-	await expect(schalter, 'Ohne Projekt-Ausnahme gilt die allgemeine Einstellung').toBeChecked()
-	await expect(zeile).toContainText('Aus Ihrer allgemeinen Einstellung übernommen')
-
-	await schalter.uncheck()
-
-	// Der Hinweis muss mitziehen — sonst stuende „Vorgabe" an einem Schalter,
-	// der ausdruecklich gesetzt wurde.
-	await expect(zeile).toContainText('Für dieses Projekt festgelegt', { timeout: 15_000 })
-
-	// Gegenprobe beim Server: Der Haken im DOM koennte auch nur lokal sitzen.
-	const stand = await api.lesen('/api/v1/notify-prefs')
-	expect(stand.boards[String(projekt.boardId)].mail).toBe(false)
-
-	// Und er ueberlebt einen Neuaufbau.
-	await page.reload()
-	await expect(zeile.locator('input[type="checkbox"]')).not.toBeChecked({ timeout: 30_000 })
-})
-
-/**
- * **Die drei Stufen im Zusammenspiel** — der eigentliche Punkt der Bauform.
- *
- * Der globale Schalter steht in Nextclouds persoenlichen Einstellungen, der
- * Projektschalter in den Projekteinstellungen. Beide wirken auf dieselbe Zeile
- * derselben Tabelle; dass sie es tun, sieht man nur, wenn man sie gegeneinander
- * stellt.
- *
- * Gesetzt wird der globale Wert hier ueber die API und **nicht** ueber
- * Nextclouds Schaltflaeche: Deren Aufbau ist Sache der Plattform und aendert
- * sich mit jeder Version — ein Test, der daran haengt, bricht bei einem
- * NC-Update, ohne dass an unserer App etwas falsch waere. Dass die Seite
- * denselben Speicher LIEST, prueft der Schritt darunter.
- */
-test('global aus, dieses Projekt an — und der Hinweis sagt woher', async ({ page, request }) => {
-	const api = await Api.fuer(request)
-
-	// **Erst aufraeumen.** Der Test davor hinterlaesst eine Projekt-Ausnahme,
-	// und die schlaegt die globale Einstellung — genau das, was hier geprueft
-	// werden soll, waere damit vorweggenommen. Ein Test, der von der
-	// Reihenfolge abhaengt, ist beim naechsten Einschub still falsch.
-	await api.kanalAusnahmenLeeren()
-	await api.kanalSetzen('mail', false, 0)
-
-	// (1) Die Einstellungsseite zeigt unseren Stand — sie liest also dieselbe
-	// Quelle und haelt keinen eigenen.
-	await page.goto('/index.php/settings/user/notifications')
-	await expect(page.getByText('Gilt für alle Projekte ohne eigene Einstellung')).toBeVisible({ timeout: 30_000 })
-	const aus = await page.locator('input[type="checkbox"]:not(:checked)').count()
-	expect(aus, 'Mindestens ein Schalter muss aus sein — der gerade abgeschaltete').toBeGreaterThan(0)
-
-	// (2) Im Projekt schlaegt die globale Einstellung durch, und der Hinweis
-	// benennt sie.
-	await page.goto(`${APP_PFAD}#/boards/${projekt.boardId}/settings`)
-	const zeile = page.locator('.pw-settings__row', { hasText: 'E-Mail' })
-	await expect(zeile).toBeVisible({ timeout: 30_000 })
-	await expect(zeile).toContainText('Aus Ihrer allgemeinen Einstellung übernommen')
-	await expect(zeile.locator('input[type="checkbox"]')).not.toBeChecked()
-
-	// (3) Und dieses eine Projekt wieder an — die Ausnahme schlaegt die globale.
-	await zeile.locator('input[type="checkbox"]').check()
-	await expect(zeile).toContainText('Für dieses Projekt festgelegt', { timeout: 15_000 })
-
-	const stand = await api.lesen('/api/v1/notify-prefs')
-	expect(stand.global.mail).toBe(false)
-	expect(stand.boards[String(projekt.boardId)].mail).toBe(true)
-})
-
-/**
- * Die Kanaele sind unabhaengig: Mails abschalten heisst nicht Glocke
- * abschalten.
- */
-test('der zweite Kanal bleibt davon unberuehrt', async ({ page, request }) => {
-	const api = await Api.fuer(request)
-	await api.kanalAusnahmenLeeren()
-	await api.kanalSetzen('mail', false, 0)
-	await api.kanalSetzen('bell', true, 0)
-
-	await page.goto(`${APP_PFAD}#/boards/${projekt.boardId}/settings`)
-
-	const glocke = page.locator('.pw-settings__row', { hasText: 'Glocke in Nextcloud' })
-	await expect(glocke.locator('input[type="checkbox"]')).toBeChecked({ timeout: 30_000 })
-
-	const mail = page.locator('.pw-settings__row', { hasText: 'E-Mail' })
+	// Und das eben angelegte Projekt steht in der Liste — ohne eigene
+	// Einstellung, also „wie allgemein".
+	const zeile = projektZeile(page, projekt.titel)
+	await expect(zeile).toBeVisible()
 	await expect(
-		mail.locator('input[type="checkbox"]'),
-		'Mails aus heisst nicht Glocke aus — die Kanaele sind unabhaengig',
-	).not.toBeChecked()
+		zeile.locator('.pw-pin--set'),
+		'Ohne eigene Einstellung ist nichts markiert',
+	).toHaveCount(0)
+})
+
+/**
+ * **Der Fall, der die Aufschluesselung noetig gemacht hat:** der Rundruf
+ * allgemein aus, dieses eine Projekt aber an.
+ *
+ * Je Projekt sind nur die **Anlaesse** einstellbar; die Kanaele gelten global
+ * (Entscheidung mit Axel, 2026-08-11). Ein Kanalschalter mit Projekt wird vom
+ * Server abgewiesen — der Test darunter prueft das.
+ */
+test('eine Projekt-Ausnahme schlaegt die allgemeine Wahl', async ({ page, request }) => {
+	const api = await Api.fuer(request)
+	await api.kanalAusnahmenLeeren()
+	await api.kanalSetzen('ticket_created', false, 0)
+
+	await bereichOeffnen(page)
+
+	const zeile = projektZeile(page, projekt.titel)
+	// Die Zeile beginnt mit dem Projektnamen als `<th>`; die `<td>` sind die
+	// drei Anlaesse in der Reihenfolge des Kopfes.
+	const rundruf = zeile.locator('td').nth(2).locator('input[type="checkbox"]')
+
+	await expect(rundruf, 'Ohne Ausnahme gilt die erste Zeile — und die ist aus').not.toBeChecked()
+	await expect(zeile.locator('.pw-pin--set')).toHaveCount(0)
+
+	await rundruf.check()
+
+	// **Der Punkt sitzt am Kaestchen, nicht an der Zeile.** Die beiden anderen
+	// Anlaesse weichen nicht ab und duerfen keine Markierung tragen.
+	await expect(zeile.locator('.pw-pin--set'), 'Genau ein Kaestchen ist markiert').toHaveCount(1, { timeout: 15_000 })
+	await expect(zeile.locator('td').nth(2).locator('.pw-pin--set'), 'und zwar der Rundruf').toHaveCount(1)
+	await expect(zeile.locator('td').nth(0).locator('.pw-pin--set'), 'die Zuweisung nicht').toHaveCount(0)
+
+	const stand = await api.lesen('/api/v1/notify-prefs')
+	expect(stand.global.ticket_created).toBe(false)
+	expect(stand.boards[String(projekt.boardId)].ticket_created).toBe(true)
+})
+
+/**
+ * **Ein Kanal laesst sich nicht je Projekt setzen.**
+ *
+ * „Wie werde ich benachrichtigt" beantwortet niemand je Projekt anders. Der
+ * Server weist es ab, statt still global zu speichern: Ein Wert, den die
+ * Oberflaeche nicht anzeigt, aber die Aufloesung liest, ist genau die Sorte
+ * Einstellung, die niemand mehr findet.
+ */
+test('ein Kanal je Projekt wird abgewiesen', async ({ request }) => {
+	const api = await Api.fuer(request)
+
+	await expect(api.kanalSetzen('mail', false, projekt.boardId)).rejects.toThrow(/400|nur allgemein/)
+})
+
+/**
+ * Der Urlaubsschalter: Abweichungen weg, die erste Zeile bleibt stehen.
+ */
+test('hebt alle Abweichungen auf', async ({ page, request }) => {
+	const api = await Api.fuer(request)
+	await api.kanalSetzen('ticket_created', false, 0)
+	await api.kanalSetzen('ticket_created', true, projekt.boardId)
+
+	await bereichOeffnen(page)
+	await page.getByRole('button', { name: /Alle Abweichungen aufheben/ }).click()
+
+	await expect(
+		projektZeile(page, projekt.titel).locator('.pw-pin--set'),
+		'Nach dem Aufheben ist nichts mehr markiert',
+	).toHaveCount(0, { timeout: 15_000 })
+
+	const stand = await api.lesen('/api/v1/notify-prefs')
+	expect(stand.boards, 'Die Abweichungen sind weg').toEqual({})
+	expect(stand.global.ticket_created, 'Die erste Zeile bleibt — sie ist der Rueckfallwert').toBe(false)
 })

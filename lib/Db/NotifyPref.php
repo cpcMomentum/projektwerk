@@ -46,6 +46,41 @@ class NotifyPref extends Entity {
 	/** E-Mail. Für Gäste der einzige Kanal, der ankommt. */
 	public const CHANNEL_MAIL = 'mail';
 
+	/** Mir wurde ein Vorgang zugewiesen. */
+	public const EVENT_TICKET_ASSIGNED = 'ticket_assigned';
+
+	/** Mir wurde ein Arbeitsschritt zugewiesen. */
+	public const EVENT_STEP_ASSIGNED = 'step_assigned';
+
+	/** Ein neuer Vorgang im Projekt — der Rundruf. */
+	public const EVENT_TICKET_CREATED = 'ticket_created';
+
+	/**
+	 * Die beiden Kanäle: **nur global**.
+	 *
+	 * „Wie werde ich benachrichtigt" ist keine Frage, die man je Projekt anders
+	 * beantwortet (Entscheidung mit Axel, 2026-08-11). Wer keine Mails will,
+	 * will sie nirgends.
+	 *
+	 * @var string[]
+	 */
+	public const CHANNELS = [self::CHANNEL_MAIL, self::CHANNEL_BELL];
+
+	/**
+	 * Die drei Anlässe: **je Projekt**, mit globaler Vorgabe.
+	 *
+	 * „Wovon werde ich benachrichtigt" ist sehr wohl je Projekt verschieden —
+	 * und der dritte ist der, der bei vielen Projekten laut wird: Ein Rundruf an
+	 * alle, die den Vorgang sehen dürfen.
+	 *
+	 * @var string[]
+	 */
+	public const EVENTS = [
+		self::EVENT_TICKET_ASSIGNED,
+		self::EVENT_STEP_ASSIGNED,
+		self::EVENT_TICKET_CREATED,
+	];
+
 	protected ?string $userId = null;
 	protected ?string $channel = null;
 	protected ?int $boardId = null;

@@ -17,6 +17,24 @@
 					<FormatListChecksIcon :size="20" />
 				</template>
 			</NcAppNavigationItem>
+
+			<!--
+				Unten im Seitenmenue, wie in WorkTime. **Eine volle Seite, kein
+				Ausklapp**: Der erste Anlauf haengte die Liste in das
+				Einstellungs-Popover des Seitenmenues — bei zwei Projekten ging
+				das, bei zwanzig ist eine handbreite Spalte der falsche Ort fuer
+				eine Tabelle, in der man vergleichen will.
+			-->
+			<template #footer>
+				<NcAppNavigationItem
+					:name="t('projektwerk', 'Meine Einstellungen')"
+					:to="{ name: 'my-settings' }"
+					@click="closeNavigationOnMobile">
+					<template #icon>
+						<CogIcon :size="20" />
+					</template>
+				</NcAppNavigationItem>
+			</template>
 		</NcAppNavigation>
 		<NcAppContent>
 			<router-view />
@@ -34,12 +52,13 @@ import NcAppContent from '@nextcloud/vue/components/NcAppContent'
 import NcAppNavigation from '@nextcloud/vue/components/NcAppNavigation'
 import NcAppNavigationItem from '@nextcloud/vue/components/NcAppNavigationItem'
 import NcContent from '@nextcloud/vue/components/NcContent'
+import CogIcon from 'vue-material-design-icons/Cog.vue'
 import FolderMultipleIcon from 'vue-material-design-icons/FolderMultiple.vue'
 import FormatListChecksIcon from 'vue-material-design-icons/FormatListChecks.vue'
 
 export default {
 	name: 'App',
-	components: { NcContent, NcAppNavigation, NcAppNavigationItem, NcAppContent, FolderMultipleIcon, FormatListChecksIcon },
+	components: { NcContent, NcAppNavigation, NcAppNavigationItem, NcAppContent, FolderMultipleIcon, FormatListChecksIcon, CogIcon },
 
 	setup() {
 		return { isMobile: useIsMobile() }

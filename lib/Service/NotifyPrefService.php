@@ -26,8 +26,15 @@ use OCA\Projektwerk\Db\NotifyPrefMapper;
  */
 class NotifyPrefService {
 
-	/** Was gespeichert werden darf. */
-	private const KANAELE = [NotifyPref::CHANNEL_BELL, NotifyPref::CHANNEL_MAIL];
+	/**
+	 * Was gespeichert werden darf — und in welchem Geltungsbereich.
+	 *
+	 * **Die Kanaele gibt es nur global.** „Wie werde ich benachrichtigt" ist
+	 * keine Frage, die man je Projekt anders beantwortet; ein Kanalschalter an
+	 * einem Projekt waere ein Wert, den niemand je bewusst gesetzt hat und den
+	 * die Oberflaeche nicht anzeigt.
+	 */
+	private const NUR_GLOBAL = NotifyPref::CHANNELS;
 
 	public function __construct(
 		private NotifyPrefMapper $prefs,
@@ -81,11 +88,17 @@ class NotifyPrefService {
 	 * @throws \InvalidArgumentException unbekannter Kanal oder negatives Projekt
 	 */
 	public function set(string $userId, string $channel, int $boardId, bool $enabled): NotifyPref {
-		if (!in_array($channel, self::KANAELE, true)) {
-			throw new \InvalidArgumentException('Unbekannter Kanal: ' . $channel);
+		if (!in_array($channel, [...NotifyPref::CHANNELS, ...NotifyPref::EVENTS], true)) {
+			throw new \InvalidArgumentException('Unbekannter Schalter: ' . $channel);
 		}
 		if ($boardId < NotifyPrefMapper::GLOBAL_SCOPE) {
 			throw new \InvalidArgumentException('Ungueltiges Projekt: ' . $boardId);
+		}
+		if ($boardId !== NotifyPrefMapper::GLOBAL_SCOPE && in_array($channel, self::NUR_GLOBAL, true)) {
+			// Abgewiesen statt still global gespeichert: Ein Wert, den die
+			// Oberflaeche nicht anzeigt, aber die Aufloesung liest, ist genau
+			// die Sorte Einstellung, die niemand mehr findet.
+			throw new \InvalidArgumentException('Dieser Schalter gilt nur allgemein: ' . $channel);
 		}
 
 		foreach ($this->prefs->findForUser($userId) as $pref) {
