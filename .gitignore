@@ -52,3 +52,6 @@ docs/Plan-Phase*-Details.md
 /playwright-report/
 /test-results/
 /tests/e2e/.sitzungen/
+
+# Screenshots aus Spike-Laeufen — Beleg fuer den Moment, nicht fuer das Repo.
+spike/*.png

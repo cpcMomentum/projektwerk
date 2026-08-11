@@ -151,8 +151,10 @@ App nicht auf dessen Freigabeliste.
 - Nextclouds Kontakt-Autovervollständigung liefert Gästen **belegt eine leere Liste**. Jede
   Komponente, die still darauf zurückfällt (Personenauswahl, Erwähnungen in Kommentaren,
   Freigabe-Seitenleiste), ist beim Kunden funktionslos. Deshalb der App-eigene Personen-Endpunkt.
-- Gäste brauchen ein **Speicherkontingent größer als 0**, sonst sehen sie geteilte Ordner unter
-  Umständen leer.
+- ~~Gäste brauchen ein **Speicherkontingent größer als 0**, sonst sehen sie geteilte Ordner unter
+  Umständen leer.~~ **Am 2026-08-11 widerlegt** (NC 34, Guests 4.9.0): Ein Gast mit `0 B` sieht den
+  geteilten Ordner, öffnet Dateien darin und lädt sogar selbst hoch — das Kontingent des
+  Speichereigentümers zählt, nicht seines. Ausführlich unten unter „S1 abgeschlossen".
 - **Gast-Anzeigenamen:** Ohne gepflegten Namen steht die E-Mail-Adresse des Kunden als Klartext auf
   jeder Ticketkarte — auch für andere Mitarbeiter der Kundenseite sichtbar. Gehört in den
   Einführungsprozess. Im UI grundsätzlich den Anzeigenamen verwenden, nie die Benutzerkennung.
@@ -205,7 +207,7 @@ Fehlstand.
 | 1 | Freigabeliste lesen und ergänzt zurückschreiben | **geht**, aber nur über die App-Konfiguration mit Lexikon-Vorgabe; `occ`-Sicht ist irreführend |
 | 2 | `#[NoAdminRequired]`-JSON-Endpunkt in echter Gast-Sitzung | **geht** (nachgeholt am 2026-08-08). 200 mit `application/json`, Rolle kommt als `external` zurück. Voraussetzung ist `projektwerk` auf der Freigabeliste; ohne sie 500 mit HTML |
 | 5 | Gast-UID-Länge | **exakt 64 Zeichen.** Bei aktivem Datenschutzschalter ist die Kennung ein Hex-Hash der Adresse, nicht die Adresse. `varchar(64)` passt — mit **null** Spielraum |
-| 5 | Quota > 0 | **Nein: `0 B` im Auslieferungszustand.** Die Vorgabe hängt am Instanz-Preset, und der Standardzweig liefert `0 B`. Gehört als eigener Punkt in den Setup-Check und in die Betriebsanleitung |
+| 5 | Quota > 0 | **Nein: `0 B` im Auslieferungszustand** — aber **folgenlos** für unseren Ablauf (am 2026-08-11 nachgemessen, siehe unten). Belastet wird der Speichereigentümer, und unsere Anhänge liegen immer beim Dienstleister |
 | 6 | Auffindbarkeit von Gästen beim Hinzufügen | **Gäste sind auffindbar.** Ein interner Nutzer findet den Gast über Anzeigename und Adresse (OCS `sharees`), zurück kommt die Hash-Kennung |
 | 6 | Personensuche **durch** einen Gast | **Nur exakte Treffer.** Die Suche eines Gasts nach `admin` liefert `users: []` und ausschließlich `exact`. Kein Durchblättern, keine Teiltreffer — die Begründung für den App-eigenen Personen-Endpunkt bleibt gültig, ist aber genauer: nicht „leer", sondern „nur wer exakt benannt wird" |
 
@@ -231,6 +233,54 @@ Admin-Ausnahme" ist damit über HTTP belegt, nicht nur im Test.
   nicht gibt.
 - §11.2 Punkt 4: fragmentfreier Deep-Link aus abgemeldetem Zustand. Braucht die Deep-Link-Route
   `/t/{id}` aus Phase 2 und einen Browser für den Anmeldeumweg.
+
+> **Beide beantwortet am 2026-08-11** — siehe den Abschnitt direkt darunter. S1 ist damit
+> vollständig.
+
+### S1 abgeschlossen — gemessen am 2026-08-11 (NC 34.0.0.12, Guests 4.9.0, PHP 8.4)
+
+Gemessen mit einem **echten Gastkonto** (`occ guests:add`) in einem echten Browser, gegen ein
+Projekt, in dem der Gast Kundenseite ist. Der Spike liegt als `spike/S1-gast-durchstich.spec.ts` bei
+und wird nicht mitausgeliefert.
+
+**§11.2 Punkt 3 — die Datei erreicht der Gast, über die Datei-ID.** `/index.php/f/{fileId}`
+antwortet mit **303** auf `/apps/files/files/{id}?dir=/<Ordner>&openfile=true`; im Browser baut sich
+die Dateiliste auf und der Anhang steht mit Namen da. Nextcloud löst die ID **im Baum des Gastes**
+auf — der Verweis funktioniert also, ohne dass die App einen Pfad kennt oder einen eigenen
+Auslieferungsweg baut. Voraussetzung bleibt `viewer` auf der Freigabeliste und eine Freigabe
+**direkt an die Person**.
+
+**§11.2 Punkt 4 — der fragmentfreie Deep-Link trägt.** `/apps/projektwerk/t/{id}` aus abgemeldetem
+Zustand landet auf `/login`, und das Rücksprungziel enthält **kein `@`** — also genau die Bedingung,
+an der Nextclouds Login-Controller solche Ziele sonst stillschweigend verwirft. Die Entscheidung
+gegen ein `#`-Fragment ist damit belegt richtig und nicht mehr nur begründet.
+
+**Korrektur zum Quota — die Sorge war unbegründet, und zwar aus einem Grund, der es bleibt.**
+Ein frisch angelegtes Gastkonto hat weiterhin `quota: 0 B` (die Vorgabe hängt am Instanz-Preset).
+Die bisher hier stehende Folgerung war trotzdem falsch. Gemessen mit genau diesem Konto:
+
+| Was | Ergebnis |
+|---|---|
+| Geteilten Projektordner sehen | geht |
+| Anhang darin öffnen | geht |
+| **Selbst einen Anhang hochladen** | **geht** — HTTP 201 über `attachment#create` |
+
+Der Grund: Nextcloud belastet das Kontingent des **Speichereigentümers**, nicht des Hochladenden.
+Die Datei landete in `pw-e2e-intern/files/…`, der Speicher des Gastes blieb bei `used: 0`. Weil
+unsere Anhänge **grundsätzlich im Projektordner des Dienstleisters** liegen (§5.18, „der Ablageort
+IST die Sichtbarkeit") und nie im Heimatordner des Gastes, greift das Gastquota an keiner Stelle des
+Ablaufs.
+
+Das ist kein Zufall, sondern eine Folge der Bauform: Eine Entscheidung, die aus Vertraulichkeits-
+gründen fiel, entschärft nebenbei ein Plattformproblem. **Sie bleibt nur so lange richtig, wie kein
+Projektordner dem Gast selbst gehört** — mit `0 B` kann er ohnehin keinen anlegen. Der Setup-Check
+darf das Quota deshalb allenfalls als Hinweis melden, nicht als Fehler.
+
+**Auffindbarkeit, genauer als bisher.** Der App-eigene Personen-Endpunkt findet Gäste über
+Anzeigename **und** Kennung (`Spike` → `pw-spike-gast`, `Kunde Müller` → Hash-Kennung). Wer bereits
+Mitglied des Boards ist, wird ausgeschlossen — das sieht in einem Test wie „Gäste sind nicht
+auffindbar" aus und ist es nicht. Wer das nachmisst, braucht ein **zweites Board ohne diese
+Mitgliedschaft** als Gegenprobe.
 
 **Zur Methode:** Das Anmeldeformular ließ sich per `curl` nicht bedienen (die Anmeldung fällt auf
 `/login?direct=1` zurück, auch mit gültigen Zugangsdaten und frischem `requesttoken`) — die
@@ -366,6 +416,61 @@ enthält `http://localhost/`, weil der Versand aus einem CLI-Kontext lief. Für 
 ein toter Link, und es fällt niemandem auf, der die Mail nicht liest: Versand und Zustellung sind
 erfolgreich. Der `InstanceConfigCheck` muss den Wert deshalb nicht nur auf „gesetzt" prüfen, sondern
 auf „von außen erreichbar" — mindestens auf „nicht `localhost`".
+
+## Team-Ordner und der Datei-Umzug (S2, gemessen am 2026-08-11)
+
+Gemessen an einem echten Team-Ordner (`occ groupfolders:create`, Groupfolders 22.0.6, NC 34) mit
+den beiden Unterordnern `90_Austausch` und `91_Tickets_intern`. Spike:
+`spike/S2-datei-umzug.spec.ts` und `spike/S2b-rechte.spec.ts`.
+
+### §11.3 ist beantwortet: **Ja, der Umzug ist verlustfrei**
+
+| Was | Vor dem Umzug | Nach dem Umzug |
+|---|---|---|
+| Datei-ID | 1567 | **1567 — unverändert** |
+| Versionen | 2 | **2** |
+| Einzelfreigabe an den Gast | 1 | **1, am neuen Ort** |
+| Freigaben am alten Ort | — | 0 |
+
+`MOVE` zwischen zwei Unterordnern desselben Team-Ordners antwortet mit 201 und erhält alle drei
+Eigenschaften. **Die technische Voraussetzung für den Auto-Move aus Phase 7b ist damit gegeben** —
+die Rückfallebene „kleiner Team-Ordner je Projekt" wird nicht gebraucht.
+
+### Der Befund, der mehr zählt als die Frage
+
+Die Gegenprobe hat etwas Wichtigeres gezeigt: **Der Gast erreichte die Datei im internen Ordner
+auch dann, als gar keine Freigabe mehr auf ihr lag.** Grund ist nicht der Umzug, sondern der
+Team-Ordner selbst — er zeigt allen Mitgliedern seiner Gruppe **alles** darin, Unterordner
+eingeschlossen.
+
+**Das trifft nicht erst Phase 7b, sondern den heutigen Stand.** Wer `90_Austausch` und
+`91_Tickets_intern` als zwei Unterordner eines Team-Ordners anlegt und die Kundenseite in dessen
+Gruppe aufnimmt, hat **keine** Trennung: Jeder interne Anhang liegt offen, ohne dass irgendwo ein
+Fehler auftaucht. Die Sichtbarkeitsregel der App stimmt dabei weiterhin — sie regelt Vorgänge, nicht
+Dateien. Der Ablageort ist die Sichtbarkeit (§5.18), und genau deshalb muss der **Ablageort** die
+Trennung tragen.
+
+**Es lässt sich sauber trennen, aber nur ausdrücklich.** Mit erweiterten Rechten:
+
+```bash
+occ groupfolders:permissions <id> --enable
+occ groupfolders:permissions <id> 91_Tickets_intern -u <kundenkonto> -- -read
+```
+
+Danach gemessen: `90_Austausch` → HTTP 207, `91_Tickets_intern` → **HTTP 404**. Der Ordner ist für
+das Kundenkonto nicht mehr vorhanden, nicht bloß leer.
+
+→ **Gehört als Bedingung in die Betriebsanleitung, nicht als Empfehlung** — und ist ein Kandidat für
+einen Setup-Check: Die App kennt beide Ordner-IDs und könnte prüfen, ob ein externes Mitglied den
+internen Ordner erreicht. Solange es den Check nicht gibt, ist es ein Handgriff bei der Einrichtung,
+den niemand vergessen darf.
+
+### Und warum §5.18 „keine von der App angelegten Freigaben" jetzt doppelt richtig ist
+
+Die Einzelfreigabe **wandert mit der Datei**. Hätte die App beim Anhängen eine Freigabe erzeugt,
+trüge ein späterer Auto-Move sie in den internen Ordner mit — und der Kunde behielte Zugriff auf
+eine Datei, die gerade intern geworden ist. Die Regel war als Vereinfachung gedacht; sie ist
+zugleich die Bedingung, unter der der Auto-Move überhaupt sicher sein kann.
 
 ## Noch nicht belegt
 
