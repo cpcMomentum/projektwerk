@@ -482,6 +482,20 @@ class TicketService {
 	 * Gezählt wird über die gefilterte Einermenge — es gibt keinen Weg, „die
 	 * Anhänge zu Vorgang 42" zu zählen, der nicht durch die Sichtbarkeit geht.
 	 *
+	 * **Bekanntes, enges Zeitfenster.** Zwischen dieser Zählung und dem
+	 * `update()` liegt keine Sperre: Wer in genau diesen Millisekunden einen
+	 * Anhang hochlädt, käme mit dem Wechsel noch durch. Das ist dasselbe
+	 * optimistische Muster wie im Rest der Klasse — und anders als dort wäre die
+	 * Folge hier eine Datei im falschen Ordner, also der Fall, den §3.10 gerade
+	 * verhindern soll.
+	 *
+	 * Warum trotzdem keine Sperre: Sie müsste die Anhangzeilen **und** die
+	 * Ticketzeile über die Transaktion halten, und der einzige realistische
+	 * Ausloeser ist eine Person, die im selben Augenblick anhängt, während eine
+	 * andere umstellt. Aufgeschrieben statt behoben, damit es beim Auto-Move aus
+	 * Phase 7b — wo die Datei dann wirklich bewegt wird — nicht neu entdeckt
+	 * werden muss. Dort gehört es zusammen mit `verify-after-move` gelöst.
+	 *
 	 * @throws AttachmentsPresentException
 	 */
 	private function assertNoAttachments(ViewerContext $viewer, int $ticketId): void {

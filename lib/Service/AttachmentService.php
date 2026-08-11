@@ -111,21 +111,6 @@ class AttachmentService {
 	}
 
 	/**
-	 * Wie viele Anhänge hängen an diesem Vorgang?
-	 *
-	 * Über die gefilterte Ticketmenge, nicht über eine eigene Abfrage — ein
-	 * Zähler ist eine Auskunft wie jede andere (§5.8).
-	 */
-	public function countFor(ViewerContext $viewer, int $ticketId): int {
-		$ids = array_map(
-			static fn (Ticket $ticket): int => (int)$ticket->getId(),
-			$this->tickets->findVisibleInBoard($viewer),
-		);
-
-		return $this->attachments->countForTickets($ids)[$ticketId] ?? 0;
-	}
-
-	/**
 	 * Der Ordner, in den ein Anhang dieses Vorgangs gehört.
 	 *
 	 * @throws NoFolderException
