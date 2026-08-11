@@ -160,7 +160,15 @@
         "Zielspalte": "Zielspalte",
         "wartet auf {names} · seit {date}": "wartet auf {names} · seit {date}",
         "Privat": "Privat",
-        "seit {date}": "seit {date}"
+        "seit {date}": "seit {date}",
+        "Dateiablage": "Dateiablage",
+        "Anhänge an Vorgängen landen in diesen Ordnern. Ohne Ordner sind an den betreffenden Vorgängen keine Anhänge möglich.": "Anhänge an Vorgängen landen in diesen Ordnern. Ohne Ordner sind an den betreffenden Vorgängen keine Anhänge möglich.",
+        "Ordner für Vorgänge, die alle Beteiligten sehen": "Ordner für Vorgänge, die alle Beteiligten sehen",
+        "Die Kundenseite hat Zugriff. Leer lassen heißt: an diesen Vorgängen sind keine Anhänge möglich.": "Die Kundenseite hat Zugriff. Leer lassen heißt: an diesen Vorgängen sind keine Anhänge möglich.",
+        "Ordner für interne Vorgänge": "Ordner für interne Vorgänge",
+        "Nur die eigene Seite hat Zugriff. Leer lassen heißt: an internen Vorgängen sind keine Anhänge möglich.": "Nur die eigene Seite hat Zugriff. Leer lassen heißt: an internen Vorgängen sind keine Anhänge möglich.",
+        "Übernehmen": "Übernehmen",
+        "Ordner konnte nicht gespeichert werden": "Ordner konnte nicht gespeichert werden"
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }

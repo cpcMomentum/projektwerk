@@ -792,6 +792,32 @@
 	color: var(--color-text-maxcontrast);
 }
 
+/*
+ * Der hinterlegte Ordnerpfad.
+ *
+ * Als Pfad gesetzt und nicht als Fliesstext: `overflow-wrap: anywhere` bricht
+ * lange Ordnernamen an jeder Stelle, sonst schoebe ein einziger langer Name die
+ * Knoepfe daneben aus der Zeile. Der Pfad ist die einzige Stelle in den
+ * Einstellungen, deren Laenge niemand in der Hand hat.
+ */
+.app-projektwerk .pw-settings__path {
+	font-family: var(--font-face-monospace, monospace);
+	font-size: 13px;
+	overflow-wrap: anywhere;
+}
+
+/* Nicht gesetzt ist ein Zustand, kein Wert — er wird nicht als Pfad gesetzt. */
+.app-projektwerk .pw-settings__path--unset {
+	font-family: inherit;
+	font-style: italic;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-field--grow {
+	flex: 1 1 260px;
+	min-width: 0;
+}
+
 /* ---- Wartemarke ---------------------------------------------------------- */
 
 /*

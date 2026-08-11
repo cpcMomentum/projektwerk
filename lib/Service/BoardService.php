@@ -11,6 +11,7 @@ namespace OCA\Projektwerk\Service;
 
 use OCA\Projektwerk\Access\BoardAccess;
 use OCA\Projektwerk\Access\ViewerContext;
+use OCA\Projektwerk\Db\Attachment;
 use OCA\Projektwerk\Db\Board;
 use OCA\Projektwerk\Db\BoardMapper;
 use OCA\Projektwerk\Db\Column;
@@ -62,6 +63,7 @@ class BoardService {
 		private ColumnMapper $columns,
 		private BoardAccess $access,
 		private IL10N $l10n,
+		private ProjectFolderService $folders,
 	) {
 	}
 
@@ -136,13 +138,16 @@ class BoardService {
 	}
 
 	/**
-	 * Titel, Beschreibung, die beiden Firmennamen und die Chat-Adresse.
+	 * Titel, Beschreibung, die beiden Firmennamen, die Chat-Adresse und die
+	 * beiden Projektordner.
 	 *
-	 * Der Dateiablage-Teil der Einstellungen fehlt hier bewusst — er kommt mit
-	 * Phase 5, wo Anhänge zum ersten Mal einen Ordner brauchen.
+	 * Die Ordner sind seit Migration 1 als Spalten da, aber bis hierher hat sie
+	 * nichts gesetzt — die Anhänge aus Phase 5 sind der erste Anlass. Ohne sie
+	 * hätte ein Anhang keinen Ort, an den er gehört.
 	 *
-	 * @param array{title?: string, description?: ?string, orgInternal?: ?string, orgExternal?: ?string, chatUrl?: ?string} $changes
+	 * @param array{title?: string, description?: ?string, orgInternal?: ?string, orgExternal?: ?string, chatUrl?: ?string, folderPublicPath?: ?string, folderInternalPath?: ?string} $changes
 	 * @throws NotManagerException
+	 * @throws \OCP\Files\NotPermittedException Ordner nicht erreichbar oder nicht beschreibbar
 	 */
 	public function update(ViewerContext $viewer, array $changes): Board {
 		$this->assertManager($viewer);
@@ -166,6 +171,12 @@ class BoardService {
 			// Reine Adresse für den Knopf „Zum Projektchat". Leer heißt: Knopf
 			// entfällt ersatzlos — kein Hinweis, keine Einrichtungsaufforderung.
 			$board->setChatUrl($this->trimOrNull($changes['chatUrl']));
+		}
+		if (array_key_exists('folderPublicPath', $changes)) {
+			$this->setFolder($viewer, $board, Attachment::LOCATION_PUBLIC, $changes['folderPublicPath']);
+		}
+		if (array_key_exists('folderInternalPath', $changes)) {
+			$this->setFolder($viewer, $board, Attachment::LOCATION_INTERNAL, $changes['folderInternalPath']);
 		}
 
 		$board->setUpdatedAt(new \DateTime());
@@ -206,6 +217,42 @@ class BoardService {
 		if (trim($title) === '') {
 			throw new \InvalidArgumentException('Ein Projekt braucht einen Titel.');
 		}
+	}
+
+	/**
+	 * Einen der beiden Projektordner setzen oder entfernen.
+	 *
+	 * **Der Pfad wird mitgeschrieben, aber nie gelesen, um irgendwohin zu
+	 * gelangen** — dafür ist die ID da (§5.18). Er steht in den Einstellungen,
+	 * damit dort „90_Austausch" steht und nicht eine Zahl; veraltet er nach
+	 * einem Umbenennen, ist das eine falsche Beschriftung und kein
+	 * gerissener Verweis.
+	 *
+	 * `null` entfernt die Zuordnung. Ein Board ohne Ordner ist ein
+	 * gültiger Zustand, kein halb eingerichtetes — es hat dann schlicht keine
+	 * Anhänge (§3.10).
+	 *
+	 * @throws \OCP\Files\NotPermittedException Ordner nicht erreichbar oder nicht beschreibbar
+	 */
+	private function setFolder(ViewerContext $viewer, Board $board, string $location, ?string $path): void {
+		$intern = $location === Attachment::LOCATION_INTERNAL;
+
+		if ($path === null || trim($path) === '') {
+			$intern ? $board->setFolderInternalId(null) : $board->setFolderPublicId(null);
+			$intern ? $board->setFolderInternalPath(null) : $board->setFolderPublicPath(null);
+
+			return;
+		}
+
+		$folder = $this->folders->resolvePath($viewer->userId, $path);
+		// **Nicht der eingetippte Pfad, sondern der aufgelöste.** Wer
+		// `/Projekte//Kunde A/` einträgt, soll danach `Projekte/Kunde A` lesen —
+		// sonst steht in den Einstellungen eine Schreibweise, die es so im
+		// Dateibaum nicht gibt, und beim nächsten Vergleich stimmt nichts.
+		$clean = $this->folders->displayPath($viewer->userId, $folder);
+
+		$intern ? $board->setFolderInternalId($folder->getId()) : $board->setFolderPublicId($folder->getId());
+		$intern ? $board->setFolderInternalPath($clean) : $board->setFolderPublicPath($clean);
 	}
 
 	private function trimOrNull(?string $value): ?string {

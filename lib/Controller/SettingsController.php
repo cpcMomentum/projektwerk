@@ -23,6 +23,7 @@ use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\JSONResponse;
+use OCP\Files\NotPermittedException;
 use OCP\IRequest;
 
 /**
@@ -83,13 +84,23 @@ class SettingsController extends Controller {
 		?string $orgInternal = null,
 		?string $orgExternal = null,
 		?string $chatUrl = null,
+		?string $folderPublicPath = null,
+		?string $folderInternalPath = null,
 	): JSONResponse {
+		// **Die beiden Ordner kommen als Pfad, gespeichert wird die Datei-ID.**
+		// Der Pfad benennt den Ordner nur; was in der Datenbank landet, loest
+		// {@see BoardService::update()} daraus auf (§5.18). Der leere String
+		// entfernt die Zuordnung — `onlyGiven` unterscheidet „nicht
+		// mitgeschickt" allein am `null`, ein ausdrueckliches „auf nichts
+		// setzen" waere damit sonst nicht ausdrueckbar.
 		$changes = $this->onlyGiven([
 			'title' => $title,
 			'description' => $description,
 			'orgInternal' => $orgInternal,
 			'orgExternal' => $orgExternal,
 			'chatUrl' => $chatUrl,
+			'folderPublicPath' => $folderPublicPath,
+			'folderInternalPath' => $folderInternalPath,
 		]);
 
 		return $this->write($boardId, fn (ViewerContext $viewer): mixed
@@ -211,7 +222,13 @@ class SettingsController extends Controller {
 			return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_FORBIDDEN);
 		} catch (DoesNotExistException) {
 			return new JSONResponse([], Http::STATUS_NOT_FOUND);
-		} catch (\InvalidArgumentException $e) {
+		} catch (\InvalidArgumentException | NotPermittedException $e) {
+			// **`NotPermittedException` ist hier 400 und nicht 403.** Sie sagt
+			// nichts über die Rechte am Board — die stehen längst fest, sonst
+			// wäre oben schon Schluss gewesen —, sondern über den *Wert*: Der
+			// eingetragene Ordner ist keiner, ist unerreichbar oder nicht
+			// beschreibbar. Ein 403 läse sich als „Sie dürfen die Einstellungen
+			// nicht ändern", und genau das stimmt nicht.
 			return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
 		}
 	}

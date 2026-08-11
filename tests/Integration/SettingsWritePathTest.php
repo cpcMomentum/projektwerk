@@ -130,6 +130,14 @@ class SettingsWritePathTest extends IntegrationTestCase {
 			),
 			fn () => $this->memberService->add($bert, 'lm-neu', ViewerContext::ROLE_INTERNAL),
 			fn () => $this->memberService->update($bert, LeakMatrixFixture::CARLA, ['role' => ViewerContext::ROLE_INTERNAL]),
+			// **Auch die Dateiablage.** Sie ist der Ort, an dem die Sichtbarkeit
+			// physisch wird (§3.10) — wer den Austauschordner umhängen könnte,
+			// könnte damit den Ablageort jedes künftigen Anhangs bestimmen.
+			// Ein leerer Pfad, damit hier keine Datei gebraucht wird: Die
+			// Verwaltungssperre greift vor jeder Auflösung, und genau das ist
+			// die Behauptung.
+			fn () => $this->boardService->update($bert, ['folderPublicPath' => '']),
+			fn () => $this->boardService->update($bert, ['folderInternalPath' => '']),
 		] as $attempt) {
 			try {
 				$attempt();
@@ -139,7 +147,27 @@ class SettingsWritePathTest extends IntegrationTestCase {
 			}
 		}
 
-		$this->assertSame(8, $refused);
+		$this->assertSame(10, $refused);
+	}
+
+	/**
+	 * Ein leerer Pfad entfernt die Zuordnung — ohne den Dateibaum anzufassen.
+	 *
+	 * Das ist mehr als eine Randbedingung: `null` ist der Zustand eines frisch
+	 * angelegten Projekts, und ein Board ohne Ordner muss ein **gültiger**
+	 * Zustand sein und keiner, der halb eingerichtet aussieht. An solchen
+	 * Vorgängen gibt es dann schlicht keine Anhänge (§3.10).
+	 */
+	public function testAnEmptyPathClearsTheFolderAssignment(): void {
+		$board = $this->boardService->update($this->manager(), [
+			'folderPublicPath' => '',
+			'folderInternalPath' => '',
+		]);
+
+		$this->assertNull($board->getFolderPublicId());
+		$this->assertNull($board->getFolderPublicPath());
+		$this->assertNull($board->getFolderInternalId());
+		$this->assertNull($board->getFolderInternalPath());
 	}
 
 	/**
