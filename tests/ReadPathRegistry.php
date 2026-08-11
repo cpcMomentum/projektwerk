@@ -149,6 +149,13 @@ final class ReadPathRegistry {
 		// Liefert Nextcloud-Konten, keine Projektdaten — aber es ist ein
 		// Lesepfad mit Rechtepruefung, und die gehoert in die Matrix.
 		'memberSearch#search',
+		// **Kein Board im Pfad — und trotzdem in der Matrix.** Die Route
+		// liefert keine Projektdaten, sondern die eigenen Kanalschalter. Die
+		// Erwartung ist deshalb eine andere als sonst und trotzdem eine echte:
+		// Jeder Betrachter sieht **nur seine eigenen** Schalter, nie fremde.
+		// Sie hier wegzulassen hiesse, eine Leseroute ohne Erwartung zu haben —
+		// genau das, was der Vollstaendigkeitstest verhindert.
+		'notifyPref#index',
 	];
 
 	/**

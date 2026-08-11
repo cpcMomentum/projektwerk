@@ -1,0 +1,67 @@
+/**
+ * SPDX-FileCopyrightText: 2026 cpcMomentum
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ *
+ * Die eigenen Kanalschalter.
+ *
+ * **Ohne Projekt in der Adresse.** Die Grenze ist die Benutzerkennung aus der
+ * Sitzung — jeder liest und schreibt nur die eigenen Schalter.
+ */
+
+import { apiDelete, apiGet, apiPut } from '@/services/api'
+
+/**
+ * Ein Schalter, wie ihn der Server kennt.
+ *
+ * Zwei Arten, und sie gelten verschieden weit (Entscheidung 2026-08-11):
+ *
+ * - **Kanäle** (`mail`, `bell`) — *wie* benachrichtigt wird. Nur global.
+ * - **Anlässe** (`ticket_assigned`, …) — *wovon*. Global und je Projekt.
+ */
+export type Channel = 'bell' | 'mail'
+
+/** Die drei Anlässe aus §21 der Produktbeschreibung. */
+export type NotifyEvent = 'ticket_assigned' | 'step_assigned' | 'ticket_created'
+
+/** Was in einer Zeile der Tabelle steht — Anlass oder Kanal. */
+export type PrefKey = Channel | NotifyEvent
+
+/**
+ * Der **gespeicherte** Stand, nicht der aufgelöste.
+ *
+ * Ein fehlender Eintrag heißt „hier steht nichts" — und damit „es gilt die
+ * globale Einstellung, sonst an". Die Oberfläche muss das unterscheiden
+ * können: Ein geerbtes „an" sieht sonst aus wie ein gesetztes, und ein Klick
+ * darauf täte nichts Sichtbares.
+ */
+export interface NotifyPrefs {
+	global: Partial<Record<PrefKey, boolean>>
+	boards: Record<number, Partial<Record<NotifyEvent, boolean>>>
+}
+
+/** Der gespeicherte Stand der eigenen Kanalschalter. */
+export async function fetchNotifyPrefs(): Promise<NotifyPrefs> {
+	return apiGet<NotifyPrefs>('/notify-prefs')
+}
+
+/**
+ * Einen Schalter setzen.
+ *
+ * @param channel Glocke oder Mail.
+ * @param enabled Neuer Stand.
+ * @param boardId Projekt, oder 0 für global.
+ */
+export async function setNotifyPref(channel: PrefKey, enabled: boolean, boardId = 0): Promise<NotifyPrefs> {
+	return apiPut<NotifyPrefs, { channel: PrefKey, enabled: boolean, boardId: number }>(
+		'/notify-prefs',
+		{ channel, enabled, boardId },
+	)
+}
+
+/**
+ * Alle Projekt-Ausnahmen wegräumen — danach gilt überall die globale
+ * Einstellung.
+ */
+export async function clearNotifyOverrides(): Promise<NotifyPrefs> {
+	return apiDelete<NotifyPrefs>('/notify-prefs/overrides')
+}

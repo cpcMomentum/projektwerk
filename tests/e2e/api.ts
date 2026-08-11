@@ -154,6 +154,22 @@ export class Api {
 		return this.schreiben('patch', `/api/v1/boards/${boardId}`, { folderPublicPath: pfad })
 	}
 
+	/**
+	 * Einen Kanalschalter setzen — global (`boardId = 0`) oder je Projekt.
+	 *
+	 * @param channel Glocke oder Mail.
+	 * @param enabled Neuer Stand.
+	 * @param boardId Projekt, oder 0 fuer global.
+	 */
+	kanalSetzen(channel: string, enabled: boolean, boardId: number): Promise<any> {
+		return this.schreiben('put', '/api/v1/notify-prefs', { channel, enabled, boardId })
+	}
+
+	/** Alle Projekt-Ausnahmen wegraeumen — danach gilt ueberall die globale. */
+	kanalAusnahmenLeeren(): Promise<any> {
+		return this.schreiben('delete', '/api/v1/notify-prefs/overrides', {})
+	}
+
 	kommentarAnlegen(boardId: number, ticketId: number, body: string): Promise<any> {
 		return this.schreiben('post', `/api/v1/boards/${boardId}/tickets/${ticketId}/comments`, { body })
 	}

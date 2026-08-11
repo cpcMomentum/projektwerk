@@ -32,6 +32,7 @@ use OCA\Projektwerk\Db\TaskFilter;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Db\TicketUserMapper;
 use OCA\Projektwerk\Service\MemberService;
+use OCA\Projektwerk\Service\NotifyPrefService;
 use OCA\Projektwerk\Service\StepService;
 use OCA\Projektwerk\Service\TicketService;
 use OCA\Projektwerk\Tests\ReadPathRegistry;
@@ -241,6 +242,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'deepLink#ticket' => 'testDeepLinkTellsOnlyWhatTheViewerMaySee',
 		'step#assignable' => 'testAssignableNeverOffersSomeoneWhoCannotSeeTheTicket',
 		'memberSearch#search' => 'testMemberSearchRefusesEveryoneWithoutManagementRights',
+		'notifyPref#index' => 'testEveryViewerSeesOnlyTheirOwnChannelSwitches',
 		'task#index' => 'testTaskEndpointMatchesTheVisibleSetAcrossBoards',
 	];
 
@@ -326,6 +328,92 @@ class LeakMatrixTest extends IntegrationTestCase {
 		$this->assertFalse($prefs->isEnabled(LeakMatrixFixture::ANNA, NotifyPref::CHANNEL_MAIL));
 		$this->assertTrue($prefs->isEnabled(LeakMatrixFixture::ANNA, NotifyPref::CHANNEL_BELL));
 		$this->assertTrue($prefs->isEnabled(LeakMatrixFixture::CARLA, NotifyPref::CHANNEL_MAIL));
+	}
+
+	/**
+	 * **Die drei Stufen der Aufloesung** (Entscheidung mit Axel am 2026-08-11).
+	 *
+	 * Projektzeile schlaegt globale Zeile schlaegt Vorgabe. Der Fall, der sie
+	 * noetig gemacht hat: Wer in vielen Projekten Mitglied ist, aber nur wenige
+	 * davon fuehrt, muesste sonst alles abschalten — und verloere die
+	 * Zuweisungen mit.
+	 */
+	public function testProjectSettingsBeatTheGlobalOne(): void {
+		$prefs = Server::get(NotifyPrefMapper::class);
+		$board = $this->fixture->boardId;
+
+		// Global aus …
+		$global = new NotifyPref();
+		$global->setUserId(LeakMatrixFixture::ANNA);
+		$global->setChannel(NotifyPref::EVENT_TICKET_CREATED);
+		$global->setBoardId(NotifyPrefMapper::GLOBAL_SCOPE);
+		$global->setEnabled(0);
+		$prefs->insert($global);
+
+		$this->assertFalse(
+			$prefs->isEnabled(LeakMatrixFixture::ANNA, NotifyPref::EVENT_TICKET_CREATED, $board),
+			'Ohne Projektzeile gilt die globale — auch fuer Projekte, die es beim Einstellen noch nicht gab.',
+		);
+
+		// … dieses eine Projekt aber an.
+		$projekt = new NotifyPref();
+		$projekt->setUserId(LeakMatrixFixture::ANNA);
+		$projekt->setChannel(NotifyPref::EVENT_TICKET_CREATED);
+		$projekt->setBoardId($board);
+		$projekt->setEnabled(1);
+		$prefs->insert($projekt);
+
+		$this->assertTrue(
+			$prefs->isEnabled(LeakMatrixFixture::ANNA, NotifyPref::EVENT_TICKET_CREATED, $board),
+			'Die Projektzeile ist die Ausnahme und schlaegt die globale.',
+		);
+		$this->assertFalse(
+			$prefs->isEnabled(LeakMatrixFixture::ANNA, NotifyPref::EVENT_TICKET_CREATED, $board + 9999),
+			'Ein anderes Projekt bleibt bei der globalen Einstellung.',
+		);
+		$this->assertTrue(
+			$prefs->isEnabled(LeakMatrixFixture::ANNA, NotifyPref::EVENT_TICKET_ASSIGNED, $board),
+			'Ein anderer Anlass ist davon unberuehrt — der Rundruf abzuschalten heisst nicht, Zuweisungen abzuschalten.',
+		);
+	}
+
+	/**
+	 * **Jeder sieht nur seine eigenen Kanalschalter.**
+	 *
+	 * Die Route hat kein Board im Pfad und liefert keine Projektdaten — die
+	 * Erwartung ist deshalb eine andere als sonst in dieser Matrix, aber eine
+	 * echte: Die Grenze verlaeuft an der Benutzerkennung aus der Sitzung.
+	 *
+	 * Dass jemand in Projekt 7 keine Mails will, verraet nichts ueber Projekt 7.
+	 * Es verraet etwas ueber die Person — und die fragt selbst.
+	 */
+	public function testEveryViewerSeesOnlyTheirOwnChannelSwitches(): void {
+		$service = Server::get(NotifyPrefService::class);
+
+		// Je Projekt sind nur die **Anlaesse** einstellbar; die Kanaele gelten
+		// global (Entscheidung 2026-08-11).
+		$service->set(LeakMatrixFixture::ANNA, NotifyPref::EVENT_TICKET_CREATED, $this->fixture->boardId, false);
+		$service->set(LeakMatrixFixture::CARLA, NotifyPref::CHANNEL_BELL, NotifyPrefMapper::GLOBAL_SCOPE, false);
+
+		$annas = $service->forUser(LeakMatrixFixture::ANNA);
+		$carlas = $service->forUser(LeakMatrixFixture::CARLA);
+
+		$this->assertSame([], $annas['global'], 'Anna hat global nichts gesetzt.');
+		$this->assertSame(
+			[NotifyPref::EVENT_TICKET_CREATED => false],
+			$annas['boards'][$this->fixture->boardId] ?? [],
+		);
+
+		$this->assertSame([NotifyPref::CHANNEL_BELL => false], $carlas['global']);
+		$this->assertSame([], $carlas['boards'], 'Carla hat keine Projekt-Ausnahme — und schon gar nicht Annas.');
+
+		// Und der Urlaubsschalter: Ausnahmen weg, globale Zeile bleibt.
+		$service->clearBoardOverrides(LeakMatrixFixture::CARLA);
+		$this->assertSame(
+			[NotifyPref::CHANNEL_BELL => false],
+			$service->forUser(LeakMatrixFixture::CARLA)['global'],
+			'Die globale Zeile ist der Rueckfallwert, keine der Ausnahmen — sie bleibt stehen.',
+		);
 	}
 
 	/**

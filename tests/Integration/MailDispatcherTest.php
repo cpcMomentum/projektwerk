@@ -41,6 +41,9 @@ class MailDispatcherTest extends IntegrationTestCase {
 	private const MIT_ADRESSE = 'pw-mail-mit';
 	private const OHNE_ADRESSE = 'pw-mail-ohne';
 
+	/** Irgendein Projekt — die Aufloesung faellt hier immer auf die Vorgabe. */
+	private const BOARD = 4200;
+
 	private MailOutboxMapper $outbox;
 	private NotifyPrefMapper $prefs;
 
@@ -102,7 +105,7 @@ class MailDispatcherTest extends IntegrationTestCase {
 	public function testASuccessfulSendIsRecordedAsSent(): void {
 		$dispatcher = $this->dispatcher([]);
 
-		$zeile = $dispatcher->queue(self::MIT_ADRESSE, 4711, MailOutbox::EVENT_TICKET_ASSIGNED);
+		$zeile = $dispatcher->queue(self::MIT_ADRESSE, 4711, MailOutbox::EVENT_TICKET_ASSIGNED, self::BOARD);
 		$this->assertNotNull($zeile);
 		$this->assertSame(MailOutbox::STATUS_PENDING, $zeile->getStatus());
 		$this->assertSame('de', $zeile->getLang(), 'Die Sprache des Empfaengers, nicht die des Ausloesers.');
@@ -125,7 +128,7 @@ class MailDispatcherTest extends IntegrationTestCase {
 	public function testAFailedTransportIsRecognisedFromTheReturnValue(): void {
 		$dispatcher = $this->dispatcher(['kunde@example.invalid']);
 
-		$zeile = $dispatcher->queue(self::MIT_ADRESSE, 4711, MailOutbox::EVENT_TICKET_CREATED);
+		$zeile = $dispatcher->queue(self::MIT_ADRESSE, 4711, MailOutbox::EVENT_TICKET_CREATED, self::BOARD);
 		$fertig = $dispatcher->flush($zeile, 'Betreff', 'Text');
 
 		$this->assertSame(MailOutbox::STATUS_FAILED, $fertig->getStatus());
@@ -142,7 +145,7 @@ class MailDispatcherTest extends IntegrationTestCase {
 	public function testAnExceptionIsAlsoRecordedInsteadOfEscaping(): void {
 		$dispatcher = $this->dispatcher(new \RuntimeException('kaputt'));
 
-		$zeile = $dispatcher->queue(self::MIT_ADRESSE, 4711, MailOutbox::EVENT_STEP_ASSIGNED);
+		$zeile = $dispatcher->queue(self::MIT_ADRESSE, 4711, MailOutbox::EVENT_STEP_ASSIGNED, self::BOARD);
 		$fertig = $dispatcher->flush($zeile, 'Betreff', 'Text');
 
 		$this->assertSame(MailOutbox::STATUS_FAILED, $fertig->getStatus());
@@ -158,7 +161,7 @@ class MailDispatcherTest extends IntegrationTestCase {
 		$dispatcher = $this->dispatcher([]);
 
 		// (1) Keine Adresse.
-		$ohne = $dispatcher->queue(self::OHNE_ADRESSE, 4711, MailOutbox::EVENT_TICKET_ASSIGNED);
+		$ohne = $dispatcher->queue(self::OHNE_ADRESSE, 4711, MailOutbox::EVENT_TICKET_ASSIGNED, self::BOARD);
 		$this->assertNotNull($ohne, 'Der Kanal ist an — die Zeile muss entstehen.');
 		$fertig = $dispatcher->flush($ohne, 'Betreff', 'Text');
 
@@ -177,7 +180,7 @@ class MailDispatcherTest extends IntegrationTestCase {
 		$this->prefs->insert($aus);
 
 		$this->assertNull(
-			$dispatcher->queue(self::MIT_ADRESSE, 4711, MailOutbox::EVENT_TICKET_ASSIGNED),
+			$dispatcher->queue(self::MIT_ADRESSE, 4711, MailOutbox::EVENT_TICKET_ASSIGNED, self::BOARD),
 			'Abgeschalteter Kanal darf gar keine Zeile erzeugen — das ist der Unterschied zu „keine Adresse".',
 		);
 	}
@@ -190,18 +193,18 @@ class MailDispatcherTest extends IntegrationTestCase {
 		$dispatcher = $this->dispatcher(['kunde@example.invalid']);
 
 		$gescheitert = $dispatcher->flush(
-			$dispatcher->queue(self::MIT_ADRESSE, 4711, MailOutbox::EVENT_TICKET_CREATED),
+			$dispatcher->queue(self::MIT_ADRESSE, 4711, MailOutbox::EVENT_TICKET_CREATED, self::BOARD),
 			'Betreff',
 			'Text',
 		);
 		$ohneAdresse = $dispatcher->flush(
-			$dispatcher->queue(self::OHNE_ADRESSE, 4711, MailOutbox::EVENT_TICKET_CREATED),
+			$dispatcher->queue(self::OHNE_ADRESSE, 4711, MailOutbox::EVENT_TICKET_CREATED, self::BOARD),
 			'Betreff',
 			'Text',
 		);
 
 		// Eine Zeile, die die Obergrenze erreicht hat.
-		$aufgegeben = $dispatcher->queue(self::MIT_ADRESSE, 4712, MailOutbox::EVENT_TICKET_CREATED);
+		$aufgegeben = $dispatcher->queue(self::MIT_ADRESSE, 4712, MailOutbox::EVENT_TICKET_CREATED, self::BOARD);
 		$aufgegeben->setAttempts(MailOutboxMapper::MAX_ATTEMPTS);
 		$aufgegeben->setStatus(MailOutbox::STATUS_FAILED);
 		$this->outbox->update($aufgegeben);

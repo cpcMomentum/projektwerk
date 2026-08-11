@@ -69,6 +69,13 @@ return [
 		// loescht nie (§5.18).
 		['name' => 'attachment#destroy', 'url' => '/api/v1/boards/{boardId}/attachments/{attachmentId}', 'verb' => 'DELETE'],
 
+		// **Die eigenen Kanalschalter — ohne Board im Pfad.** Die Grenze ist die
+		// Benutzerkennung aus der Sitzung; ein `boardId` davor taeuschte eine
+		// Rechtepruefung vor, die es hier nicht braucht.
+		['name' => 'notifyPref#index', 'url' => '/api/v1/notify-prefs', 'verb' => 'GET'],
+		['name' => 'notifyPref#update', 'url' => '/api/v1/notify-prefs', 'verb' => 'PUT'],
+		['name' => 'notifyPref#clearOverrides', 'url' => '/api/v1/notify-prefs/overrides', 'verb' => 'DELETE'],
+
 		// Board-Einstellungen. Ausschliesslich Schreibwege — gelesen wird ueber
 		// board#show, das Board, Mitglieder und Spalten in einem Zug liefert und
 		// in der Leak-Matrix registriert ist.

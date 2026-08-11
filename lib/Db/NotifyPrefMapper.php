@@ -50,30 +50,51 @@ class NotifyPrefMapper extends QBMapper {
 				'user_id',
 				$qb->createNamedParameter($userId, IQueryBuilder::PARAM_STR),
 			))
-			->orderBy('channel', 'ASC');
+			// Global zuerst, danach die Projekte — dieselbe Reihenfolge, in der
+			// die Oberflaeche sie zeigt.
+			->orderBy('board_id', 'ASC')
+			->addOrderBy('channel', 'ASC');
 
 		return $this->findEntities($qb);
 	}
 
+	/** Der `board_id`-Wert, der „gilt fuer alle Projekte" bedeutet. */
+	public const GLOBAL_SCOPE = 0;
+
 	/**
-	 * Ist dieser Kanal für diese Person eingeschaltet?
+	 * Ist dieser Kanal für diese Person in diesem Projekt eingeschaltet?
 	 *
-	 * **Keine Zeile heisst „an".** Die Vorgabe steht hier und nicht in der
-	 * Datenbank: Ein neues Mitglied bekommt Benachrichtigungen, ohne dass jemand
-	 * für es eine Zeile anlegen müsste. Wäre es andersherum, bliebe jeder Kunde
-	 * stumm, bis ihn jemand freischaltet — und niemand würde merken, dass er
-	 * nie etwas bekommt.
+	 * **Drei Stufen, in dieser Reihenfolge:**
+	 *
+	 * 1. Gibt es eine Zeile für **genau dieses Projekt**, gilt sie.
+	 * 2. Sonst die **globale** Zeile (`board_id = 0`) — sie deckt damit auch
+	 *    jedes Projekt ab, das es beim Einstellen noch gar nicht gab.
+	 * 3. Sonst **an**.
+	 *
+	 * Die dritte Stufe steht hier und nicht in der Datenbank: Ein neues Mitglied
+	 * bekommt Benachrichtigungen, ohne dass jemand für es eine Zeile anlegen
+	 * müsste. Wäre es andersherum, bliebe jeder Kunde stumm, bis ihn jemand
+	 * freischaltet — und niemand würde merken, dass er nie etwas bekommt.
 	 *
 	 * @param string $userId Kennung der Person.
 	 * @param string $channel Einer der Kanäle aus {@see NotifyPref}.
+	 * @param int $boardId Projekt, oder {@see GLOBAL_SCOPE} wenn es um keins geht.
 	 */
-	public function isEnabled(string $userId, string $channel): bool {
+	public function isEnabled(string $userId, string $channel, int $boardId = self::GLOBAL_SCOPE): bool {
+		$global = null;
+
 		foreach ($this->findForUser($userId) as $pref) {
-			if ($pref->getChannel() === $channel) {
+			if ($pref->getChannel() !== $channel) {
+				continue;
+			}
+			if ((int)$pref->getBoardId() === $boardId && $boardId !== self::GLOBAL_SCOPE) {
 				return (int)$pref->getEnabled() === 1;
+			}
+			if ((int)$pref->getBoardId() === self::GLOBAL_SCOPE) {
+				$global = (int)$pref->getEnabled() === 1;
 			}
 		}
 
-		return true;
+		return $global ?? true;
 	}
 }

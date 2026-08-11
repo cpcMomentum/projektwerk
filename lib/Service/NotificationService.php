@@ -73,9 +73,16 @@ class NotificationService {
 			return [];
 		}
 
+		// **Wovon** — je Projekt, mit globaler Vorgabe. Der Anlass entscheidet
+		// zuerst; wer diesen Anlass in diesem Projekt nicht will, bekommt auf
+		// keinem Kanal etwas.
+		if (!$this->prefs->isEnabled($recipientUid, $event, (int)$ticket->getBoardId())) {
+			return [];
+		}
+
 		$this->bell($ticket, $recipientUid, $event);
 
-		$zeile = $this->mail->queue($recipientUid, (int)$ticket->getId(), $event);
+		$zeile = $this->mail->queue($recipientUid, (int)$ticket->getId(), $event, (int)$ticket->getBoardId());
 
 		return $zeile === null ? [] : [$zeile];
 	}

@@ -79,8 +79,13 @@ class MailDispatcher {
 	 * @param string $recipientUid Wer benachrichtigt wird.
 	 * @param int $ticketId Der Vorgang — aufgelöst wird er erst beim Senden.
 	 * @param string $event Einer der `EVENT_*`-Werte aus {@see MailOutbox}.
+	 * @param int $boardId Das Projekt — der Schalter kann projektweise stehen.
 	 */
-	public function queue(string $recipientUid, int $ticketId, string $event): ?MailOutbox {
+	public function queue(string $recipientUid, int $ticketId, string $event, int $boardId): ?MailOutbox {
+		// **Ohne Projekt.** Der Kanal ist global — „wie werde ich benachrichtigt"
+		// beantwortet niemand je Projekt anders. Ob dieser Anlass in diesem
+		// Projekt ueberhaupt zaehlt, hat der NotificationService schon
+		// entschieden, bevor er hierher kommt.
 		if (!$this->prefs->isEnabled($recipientUid, NotifyPref::CHANNEL_MAIL)) {
 			return null;
 		}
