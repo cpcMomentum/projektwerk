@@ -101,7 +101,7 @@ import type { PropType } from 'vue'
 import type { Member, ViewerInfo, Visibility } from '@/types/board'
 import type { Ticket } from '@/types/ticket'
 
-import { t } from '@nextcloud/l10n'
+import { n, t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import AlertIcon from 'vue-material-design-icons/AlertOutline.vue'
@@ -206,13 +206,6 @@ export default defineComponent({
 		},
 
 		/**
-		 * Der Satz aus §9, mit eingesetzten Zahlen.
-		 *
-		 * Ein einziges Literal je Fall statt einer Verkettung: Die
-		 * Übersetzungswerkzeuge lesen die Aufrufe statisch aus und fänden einen
-		 * zusammengesetzten String nicht.
-		 */
-		/**
 		 * Die Betroffenen als Aufzählung in einer Zeile.
 		 *
 		 * Vorher stand jeder Name in einer eigenen Listenzeile — bei vier
@@ -223,20 +216,47 @@ export default defineComponent({
 			return this.impact.losing.map((userId) => this.nameOf(userId)).join(', ')
 		},
 
-		losingLead(): string {
-			const comments = this.impact.comments
-			const attachments = this.impact.attachments
+		/**
+		 * Was am Vorgang mit verloren geht — „3 Kommentare, 1 Anhang".
+		 *
+		 * Je Zahl ein `n()`, verbunden durch ein Komma. Das ist der Ausweg aus
+		 * einem Satz mit **zwei** Zahlen: `n()` beugt nach genau einer, und die
+		 * vier ausgeschriebenen Fassungen von vorher waren an beiden Stellen
+		 * falsch, sobald eine der Zahlen 1 war („seine 1 Kommentare").
+		 *
+		 * Das Komma braucht keine Übersetzung — anders als ein „und", das je
+		 * nach Sprache vor dem letzten Glied steht oder nicht.
+		 */
+		affectedParts(): string {
+			const teile: string[] = []
 
-			if (comments === 0 && attachments === 0) {
+			if (this.impact.comments > 0) {
+				teile.push(n('projektwerk', '%n Kommentar', '%n Kommentare', this.impact.comments))
+			}
+			if (this.impact.attachments > 0) {
+				teile.push(n('projektwerk', '%n Anhang', '%n Anhänge', this.impact.attachments))
+			}
+
+			return teile.join(', ')
+		},
+
+		/**
+		 * Der Satz aus §9 — konkrete Zahlen und Namen statt einer allgemeinen
+		 * Warnung.
+		 *
+		 * Zwei Fassungen statt vier: mit Anhängseln und ohne. Was genau
+		 * mitbetroffen ist, steht gebeugt in `affectedParts`.
+		 */
+		losingLead(): string {
+			if (this.affectedParts === '') {
 				return t('projektwerk', 'Folgende Personen verlieren den Zugriff auf diesen Vorgang:')
 			}
-			if (attachments === 0) {
-				return t('projektwerk', 'Folgende Personen verlieren den Zugriff auf diesen Vorgang und seine {comments} Kommentare:', { comments })
-			}
-			if (comments === 0) {
-				return t('projektwerk', 'Folgende Personen verlieren den Zugriff auf diesen Vorgang und seine {attachments} Anhänge:', { attachments })
-			}
-			return t('projektwerk', 'Folgende Personen verlieren den Zugriff auf diesen Vorgang, seine {comments} Kommentare und {attachments} Anhänge:', { comments, attachments })
+
+			return t(
+				'projektwerk',
+				'Folgende Personen verlieren den Zugriff auf diesen Vorgang und {betroffen}:',
+				{ betroffen: this.affectedParts },
+			)
 		},
 	},
 

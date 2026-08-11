@@ -133,7 +133,7 @@ import type { PropType } from 'vue'
 import type { Column } from '@/types/board'
 import type { Ticket, WaitState } from '@/types/ticket'
 
-import { t } from '@nextcloud/l10n'
+import { n, t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
 import NcActionButton from '@nextcloud/vue/components/NcActionButton'
 import NcActionCaption from '@nextcloud/vue/components/NcActionCaption'
@@ -231,10 +231,23 @@ export default defineComponent({
 				: t('projektwerk', 'Privat')
 		},
 
+		/**
+		 * Der Vorlesetext des Sprechblasensymbols — die Zahl steht nirgends
+		 * sichtbar, nur hier.
+		 *
+		 * `n()` und nicht `t()` mit Platzhalter: Bei genau einem Kommentar stand
+		 * „1 Kommentare".
+		 */
 		commentTitle(): string {
-			return t('projektwerk', '{count} Kommentare', { count: this.commentCount })
+			return n('projektwerk', '%n Kommentar', '%n Kommentare', this.commentCount)
 		},
 
+		/**
+		 * Kein `n()` nötig: Die Zeile erscheint erst **ab zwei** Schritten
+		 * (siehe die Bedingung in der Vorlage), und die Mehrzahl richtet sich
+		 * nach `count`, nicht nach `done`. „1 von 3 Arbeitsschritten erledigt"
+		 * ist richtig; „1 von 1" kommt gar nicht vor.
+		 */
 		stepTitle(): string {
 			return t('projektwerk', '{done} von {count} Arbeitsschritten erledigt', {
 				done: this.stepsDone,
