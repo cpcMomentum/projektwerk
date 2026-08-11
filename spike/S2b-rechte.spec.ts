@@ -46,7 +46,7 @@ test('S2b — sperren erweiterte Rechte den internen Ordner fuer den Gast?', asy
 			headers: { Depth: '1', requesttoken: tk },
 		})
 		const eintraege = Math.max(0, ((await antwort.text()).match(/<d:response>/g) ?? []).length - 1)
-		// eslint-disable-next-line no-console
+
 		console.log(`  BEFUND: Gast auf ${ordner}: HTTP ${antwort.status()}, ${eintraege} Eintraege`)
 	}
 

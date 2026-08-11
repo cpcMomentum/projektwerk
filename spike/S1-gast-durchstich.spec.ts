@@ -29,7 +29,7 @@ const befunde: string[] = []
  */
 function notieren(zeile: string): void {
 	befunde.push(zeile)
-	// eslint-disable-next-line no-console
+
 	console.log('  BEFUND: ' + zeile)
 }
 
@@ -233,6 +233,5 @@ test('S1 — was ein echtes Gastkonto kann und was nicht', async ({ browser }) =
 	await intern2.close()
 	await gast.close()
 
-	// eslint-disable-next-line no-console
 	console.log('\n===== S1-Befunde =====\n' + befunde.map((b) => '- ' + b).join('\n') + '\n')
 })

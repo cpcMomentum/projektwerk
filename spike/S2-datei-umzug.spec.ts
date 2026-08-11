@@ -33,7 +33,7 @@ const befunde: string[] = []
  */
 function notieren(zeile: string): void {
 	befunde.push(zeile)
-	// eslint-disable-next-line no-console
+
 	console.log('  BEFUND: ' + zeile)
 }
 
@@ -78,8 +78,7 @@ test('S2 — Datei-ID, Versionen und Freigabe beim Umzug im Team-Ordner', async 
 	 * @param pfad Pfad unterhalb des Dateibaums.
 	 * @param zusatz Zusätzliche Kopfzeilen oder Rumpf.
 	 */
-	const webdav = (methode: string, pfad: string, zusatz: Record<string, unknown> = {}) =>
-		kontext.request.fetch(`${dav}/${pfad}`, { method: methode, headers: kopf, ...zusatz })
+	const webdav = (methode: string, pfad: string, zusatz: Record<string, unknown> = {}) => kontext.request.fetch(`${dav}/${pfad}`, { method: methode, headers: kopf, ...zusatz })
 
 	// ---- Aufbau -------------------------------------------------------------
 	for (const ordner of [AUSTAUSCH, INTERNORDNER]) {
@@ -202,6 +201,5 @@ test('S2 — Datei-ID, Versionen und Freigabe beim Umzug im Team-Ordner', async 
 
 	await kontext.close()
 
-	// eslint-disable-next-line no-console
 	console.log('\n===== S2-Befunde =====\n' + befunde.map((b) => '- ' + b).join('\n') + '\n')
 })
