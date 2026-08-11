@@ -335,6 +335,87 @@ Konten antworten dort mit `207` auf WebDAV, die Sitzung ist also echt. Für die 
   JS-Bundle bei unveränderter Version liefert im Browser weiter das alte JavaScript — jeder Test
   lügt dann. Version beim Deployen immer nach oben bumpen.
 
+## S4 — Mail und Deep-Link, gemessen am 2026-08-11 (NC 34.0.0.12, PHP 8.4)
+
+Spike: `spike/S4-mail-und-link.php` mit `spike/S4-lauf.sh`. Je Messung ein eigener Prozess — der
+Mailer baut seinen Transport genau **einmal** je Prozess, im selben Prozess misst man sonst immer
+den ersten Versuch (beim ersten Anlauf genau so passiert: vier Messungen, viermal 0,04 s, alle
+gingen an MailHog).
+
+### `IMailer::send()` wirft bei Transportfehlern **nichts**
+
+Das ist der Befund, an dem der ganze Versandweg hängt. `Mailer::send()` fängt
+`TransportExceptionInterface` selbst, schreibt eine `error`-Zeile ins Log und **gibt die
+fehlgeschlagenen Empfänger zurück**. Leeres Array heißt Erfolg.
+
+```php
+$gescheitert = $mailer->send($nachricht);   // [] = zugestellt
+if ($gescheitert !== []) { /* status = failed */ }
+```
+
+→ **Ein `try/catch` allein hält jeden Fehlschlag für einen Erfolg.** Wer die Outbox aus §5.24 baut,
+wertet den Rückgabewert aus, nicht eine Ausnahme.
+
+### Die Zeit, die ein toter Port kostet
+
+| Fall | Dauer | Rückgabe |
+|---|---|---|
+| Erreichbarer Server | 0,05 s | `[]` |
+| **Port abgelehnt** (niemand lauscht) | **0,01 s** | Empfänger |
+| **Verbindung verschluckt** (Pakete verworfen), NC-Vorgabe | **10,02 s** | Empfänger |
+| dasselbe mit `mail_smtptimeout = 5` | 5,01 s | Empfänger |
+| dasselbe mit `mail_smtptimeout = 2` | 2,01 s | Empfänger |
+
+Zwei Dinge daran:
+
+- **Der harmlose Fall ist harmlos.** Ein abgelehnter Port kostet 10 ms — eine falsch
+  konfigurierte Instanz bremst nichts.
+- **Der gefährliche Fall ist die Firewall, die verwirft statt abzulehnen.** Dort wartet der Aufruf
+  bis zur Zeitgrenze, und die steht ohne eigene Angabe bei **10 Sekunden**. Ein Ticket anzulegen
+  würde dann 10 s dauern — der Nutzer hält das für einen Fehler und klickt erneut.
+
+→ **Zeitbudget für den synchronen Versuch: `mail_smtptimeout = 2`.** Die Grenze wirkt exakt
+(2,01 s gemessen). Zwei Sekunden bleiben unter der Schwelle, ab der jemand nachdrückt, und was
+nicht durchgeht, holt der `MailRetryJob` nach — dafür ist die Outbox da. Der Wert gehört in die
+Betriebsanleitung, nicht in den Code: Es ist eine Instanz-Einstellung.
+
+### `overwrite.cli.url` schlägt voll durch
+
+`getBaseUrl()` liefert im CLI-Kontext `http://localhost` — der Wert steht auf dieser Instanz so, und
+`trusted_domains` ändert daran **nichts**. Ein Deep-Link aus einem Hintergrundjob trüge damit
+`http://localhost/index.php/apps/projektwerk/t/42`: für den Kunden wertlos, und niemandem fällt es
+auf, der die Mail selbst nie bekommt.
+
+→ Setup-Check-Schwelle: `overwrite.cli.url` fehlt, ist leer, oder enthält `localhost` bzw.
+`127.0.0.1` → **Warnung**.
+
+### Ein unbekannter Routenname wird still zu einem leeren Link
+
+`Router::generate()` fängt `RouteNotFoundException`, loggt auf **`info`** und gibt `''` zurück
+(`lib/private/Route/Router.php`). Aus `linkToRouteAbsolute()` wird dann die blanke Basisadresse —
+`http://localhost/`. Kein Fehler, keine Ausnahme, nur eine Zeile im Log, die auf `info` niemand
+sieht.
+
+Aufgetreten ist genau das im Spike, und die Ursache ist lehrreich: **In einem nackten CLI-Skript
+ist die App nicht geladen**, also existieren ihre Routen nicht.
+
+```
+App vor loadApp registriert? nein   → 0 projektwerk-Routen, linkToRoute = ''
+App nach loadApp registriert? ja    → 31 Routen, linkToRoute = /index.php/apps/projektwerk/t/42
+```
+
+Ein `TimedJob` läuft im vollen App-Kontext, dort tritt das nicht auf. Die Lehre gilt trotzdem:
+
+→ **Das Ergebnis von `linkToRoute*()` prüfen, bevor es in eine Mail geht.** Ein leerer oder auf der
+Basisadresse endender Link ist ein Fehler und keine Adresse.
+
+**Zur Schreibweise des Routennamens — beide stimmen, aber an verschiedenen Stellen.** Im Code
+schreibt man ihn wie in `appinfo/routes.php`: `projektwerk.deepLink.ticket`. **Registriert ist er
+komplett kleingeschrieben** (`projektwerk.deeplink.ticket`, im Spike aus der Routensammlung
+ausgelesen) — `Router::generate()` senkt sowohl bei der Registrierung als auch beim Aufruf, deshalb
+funktionieren beide Schreibweisen als Eingabe. Wichtig wird der Unterschied nur beim Suchen: Wer
+einen „Route not found"-Fall debuggt und die Sammlung durchsieht, findet `deepLink` dort nicht.
+
 ## Benachrichtigungen im Detail
 
 - Glocke: eigener Notifier, registriert im Bootstrap. Bei fremder App eine passende Ausnahme werfen,
@@ -443,12 +524,12 @@ auch dann, als gar keine Freigabe mehr auf ihr lag.** Grund ist nicht der Umzug,
 Team-Ordner selbst — er zeigt allen Mitgliedern seiner Gruppe **alles** darin, Unterordner
 eingeschlossen.
 
-**Das trifft nicht erst Phase 7b, sondern den heutigen Stand.** Wer `90_Austausch` und
-`91_Tickets_intern` als zwei Unterordner eines Team-Ordners anlegt und die Kundenseite in dessen
-Gruppe aufnimmt, hat **keine** Trennung: Jeder interne Anhang liegt offen, ohne dass irgendwo ein
-Fehler auftaucht. Die Sichtbarkeitsregel der App stimmt dabei weiterhin — sie regelt Vorgänge, nicht
-Dateien. Der Ablageort ist die Sichtbarkeit (§5.18), und genau deshalb muss der **Ablageort** die
-Trennung tragen.
+**Betrifft ausschließlich den Team-Ordner-Aufbau — nicht die Struktur, die die Produktbeschreibung
+vorsieht.** Wer `90_Austausch` und `91_Tickets_intern` als zwei Unterordner **eines Team-Ordners**
+anlegt und die Kundenseite in dessen Gruppe aufnimmt, hat keine Trennung: Jeder interne Anhang liegt
+offen, ohne dass irgendwo ein Fehler auftaucht. Die Sichtbarkeitsregel der App stimmt dabei
+weiterhin — sie regelt Vorgänge, nicht Dateien. Der Ablageort ist die Sichtbarkeit (§5.18), und
+genau deshalb muss der **Ablageort** die Trennung tragen.
 
 **Es lässt sich sauber trennen, aber nur ausdrücklich.** Mit erweiterten Rechten:
 
@@ -460,10 +541,37 @@ occ groupfolders:permissions <id> 91_Tickets_intern -u <kundenkonto> -- -read
 Danach gemessen: `90_Austausch` → HTTP 207, `91_Tickets_intern` → **HTTP 404**. Der Ordner ist für
 das Kundenkonto nicht mehr vorhanden, nicht bloß leer.
 
-→ **Gehört als Bedingung in die Betriebsanleitung, nicht als Empfehlung** — und ist ein Kandidat für
-einen Setup-Check: Die App kennt beide Ordner-IDs und könnte prüfen, ob ein externes Mitglied den
-internen Ordner erreicht. Solange es den Check nicht gibt, ist es ein Handgriff bei der Einrichtung,
-den niemand vergessen darf.
+### Die vorgesehene Struktur hat das Problem nicht
+
+**Die Produktbeschreibung beschreibt bereits den sicheren Aufbau**, und zwar aus einem anderen
+Grund als diesem hier — er fällt als Nebenwirkung ab:
+
+- **§16:** Ein Projektordner je Projekt mit fester Struktur (`00_Angebot_Abrechnung`, `10_Input`,
+  `20_Inhalte`, …, `90_Austausch`, `99_Archiv`). `91_Tickets_intern` kommt als **Geschwisterordner**
+  dazu, „nur von der App gefüllt".
+- **§19:** „Freigabe von `90_Austausch` legt CPC von Hand an." Geteilt wird **genau dieser eine
+  Unterordner** — der Projektordner als Ganzes nie. Er enthält schließlich auch
+  `00_Angebot_Abrechnung`, das der Kunde laut §16 „nie" sehen darf.
+
+Damit ist `91_Tickets_intern` für die Kundenseite nicht verschlossen, sondern **nicht vorhanden**:
+Es wurde ihr nie gegeben. Es gibt keinen Einrichtungsschritt, den jemand vergessen könnte.
+
+Und daraus folgt auch: **Voller Zugriff auf `90_Austausch` ist unbedenklich.** Alles darin gehört
+per Konstruktion zu Vorgängen für „Alle Beteiligten" — die App legt dort nichts anderes ab.
+
+| Aufbau | Trennung | Zusatzschritt |
+|---|---|---|
+| **Projektordner, nur `90_Austausch` freigegeben** (§16/§19) | von selbst | keiner |
+| Team-Ordner mit beiden Unterordnern | nur mit erweiterten Rechten | ein Befehl je Projekt |
+
+→ Ein Setup-Check bleibt sinnvoll — die App kennt beide Ordner-IDs und könnte prüfen, ob ein
+externes Mitglied den internen Ordner erreicht. **Dringlich ist er nicht:** Er sichert einen Aufbau
+ab, den die Produktbeschreibung gar nicht vorsieht, und zahlt sich erst auf fremden Installationen
+aus.
+
+> **Zur Entstehung dieser Notiz:** Der Team-Ordner war der Aufbau des Spikes, weil §11.3 wörtlich
+> nach „zwei Unterordnern desselben Team-Ordners" fragt. Der Befund wurde daraufhin zunächst
+> behandelt, als wäre das die Struktur bei CPC. Ist er nicht — richtiggestellt am 2026-08-11.
 
 ### Und warum §5.18 „keine von der App angelegten Freigaben" jetzt doppelt richtig ist
 
