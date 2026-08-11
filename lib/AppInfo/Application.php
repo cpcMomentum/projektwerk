@@ -12,6 +12,7 @@ namespace OCA\Projektwerk\AppInfo;
 use OCA\Projektwerk\BackgroundJob\MailRetryJob;
 use OCA\Projektwerk\Listener\UserDeletedListener;
 use OCA\Projektwerk\Notification\Notifier;
+use OCA\Projektwerk\Settings\PersonalNotifications;
 use OCA\Projektwerk\SetupCheck\GuestsWhitelistCheck;
 use OCA\Projektwerk\SetupCheck\InstanceConfigCheck;
 use OCP\AppFramework\App;
@@ -40,6 +41,12 @@ class Application extends App implements IBootstrap {
 		// Person inzwischen nicht mehr sichtbar, raeumt Nextcloud den Eintrag
 		// daraufhin ab (§5.23).
 		$context->registerNotifierService(Notifier::class);
+
+		// Die allgemeinen Kanalschalter, deklarativ statt gebaut — fuer zwei
+		// Haekchen waere ein zweiter Vue-Einstiegspunkt reine Zeremonie. Sie
+		// stehen in Nextclouds eigenem Abschnitt „Benachrichtigungen", weil man
+		// solche Schalter dort sucht und nicht unter einem App-Namen.
+		$context->registerDeclarativeSettings(PersonalNotifications::class);
 
 		// Der Nachlauf: ohne diese Zeile registriert Nextcloud den Job nie,
 		// und `pending`/`failed`-Zeilen im Ausgangskorb wuerden nie erneut
