@@ -75,6 +75,43 @@ final class ReadPathRegistry {
 		'AttachmentMapper::countForTickets',
 		'TicketUserMapper::findForTickets',
 		'TicketUserMapper::countForTickets',
+
+		// **Zwei Lesepfade ohne Betrachter — und das ist die Erwartung.**
+		//
+		// Sie stehen hier wie jeder andere, aber die Matrix beantwortet fuer sie
+		// eine andere Frage. „Was sieht die Kundenseite hier?" hat keinen Sinn:
+		// Am Ende des Ausgangskorbs steht ein Hintergrundjob, am Ende der
+		// Kanalschalter die Person selbst. Kein Board, keine Rolle, keine
+		// Sichtbarkeit.
+		//
+		// Statt sie freizustellen, traegt die Matrix eine **Behauptung**:
+		// `testTheseMappersNeverTakeAViewer` prueft, dass keine ihrer Methoden
+		// einen ViewerContext annimmt. Wer spaeter eine betrachterabhaengige
+		// Abfrage nachtraegt, macht den Test rot — und muss dann eine echte
+		// Erwartung formulieren.
+		//
+		// Der Unterschied zu einer Ausnahmeliste: Eine Ausnahme sagt „hier gilt
+		// die Regel nicht". Das hier sagt „hier gilt sie, und zwar so".
+		'MailOutboxMapper::findRetryable',
+		// `NotifyPrefMapper::isEnabled()` steht hier bewusst **nicht**: Es fragt
+		// die Datenbank nicht selbst, sondern ruft `findForUser()` auf. Der
+		// Lesepfad ist der eine darunter; ein zweiter Eintrag waere eine
+		// Erwartung an eine Abfrage, die es nicht gibt.
+		'NotifyPrefMapper::findForUser',
+	];
+
+	/**
+	 * Die Mapper aus {@see MAPPER_PATHS}, deren Erwartung strukturell ist statt
+	 * datenbezogen.
+	 *
+	 * Siehe die Begruendung bei den Eintraegen selbst. Diese Liste ist der
+	 * Eingang fuer `testTheseMappersNeverTakeAViewer`.
+	 *
+	 * @var string[] Kurze Klassennamen aus `lib/Db/`
+	 */
+	public const VIEWERLESS_MAPPERS = [
+		'MailOutboxMapper',
+		'NotifyPrefMapper',
 	];
 
 	/**

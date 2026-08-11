@@ -9,20 +9,25 @@ declare(strict_types=1);
 
 namespace OCA\Projektwerk\Db;
 
-use JsonSerializable;
 use OCP\AppFramework\Db\Entity;
 use OCP\DB\Types;
 
 /**
- * Der persoenliche Schalter fuer einen Benachrichtigungskanal.
+ * Der Kanalschalter einer Person — Glocke oder Mail, an oder aus.
  *
- * **Eine fehlende Zeile bedeutet „an"** — der Kanal ist die Vorgabe, nicht die
- * Ausnahme. Deshalb gibt es keinen Anlegevorgang bei der Registrierung, und
- * deshalb ist `channel` ein Textfeld statt zweier Spalten: Ein dritter Kanal
- * (Talk, Post-MVP 2) kommt dann ohne Migration dazu.
+ * **Persönlich, nicht pro Board** (§3.11): Der Schalter steht in den
+ * persönlichen App-Einstellungen. Wer keine Mails will, will sie in keinem
+ * Projekt — eine Einstellung je Board wäre eine Liste, die mit jedem neuen
+ * Projekt länger wird und die niemand pflegt.
  *
- * Der Mapper folgt in Phase 6 zusammen mit dem Versandpfad — vorher gaebe es
- * niemanden, der ihn liest.
+ * **Keine Zeile heisst „an".** Die Vorgabe steht in
+ * {@see NotifyPrefMapper::isEnabled()} und nicht in der Datenbank: Ein neues
+ * Mitglied bekommt Benachrichtigungen, ohne dass jemand eine Zeile für es
+ * anlegen müsste. Erst wer abschaltet, erzeugt einen Eintrag.
+ *
+ * Das ist zugleich der Unterschied zu `skipped_no_address` im
+ * {@see MailOutbox}: Eine fehlende Zeile hier bedeutet „eingeschaltet", eine
+ * fehlende Outbox-Zeile bedeutet „abgeschaltet, es wurde nichts geschrieben".
  *
  * @method string getUserId()
  * @method void setUserId(string $userId)
@@ -31,9 +36,12 @@ use OCP\DB\Types;
  * @method int getEnabled()
  * @method void setEnabled(int $enabled)
  */
-class NotifyPref extends Entity implements JsonSerializable {
+class NotifyPref extends Entity {
 
+	/** Nextclouds Glocke. */
 	public const CHANNEL_BELL = 'bell';
+
+	/** E-Mail. Für Gäste der einzige Kanal, der ankommt. */
 	public const CHANNEL_MAIL = 'mail';
 
 	protected ?string $userId = null;
@@ -43,19 +51,8 @@ class NotifyPref extends Entity implements JsonSerializable {
 	public function __construct() {
 		$this->addType('userId', Types::STRING);
 		$this->addType('channel', Types::STRING);
-		$this->addType('enabled', Types::SMALLINT);
-	}
-
-	public function isEnabled(): bool {
-		return $this->getEnabled() === 1;
-	}
-
-	public function jsonSerialize(): array {
-		return [
-			'id' => $this->getId(),
-			'userId' => $this->getUserId(),
-			'channel' => $this->getChannel(),
-			'enabled' => $this->isEnabled(),
-		];
+		// `SMALLINT` mit 0/1, nie `BOOLEAN` — `PARAM_BOOL` schriebe auf
+		// PostgreSQL `'f'` statt `0` (siehe `nextcloud-fallstricke.md`).
+		$this->addType('enabled', Types::INTEGER);
 	}
 }

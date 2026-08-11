@@ -9,11 +9,13 @@ declare(strict_types=1);
 
 namespace OCA\Projektwerk\Tests\Unit\Access;
 
+use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Tests\ReadPathRegistry;
 use OCP\AppFramework\Db\QBMapper;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use ReflectionMethod;
+use ReflectionNamedType;
 
 /**
  * Der Vollstaendigkeitstest der Leak-Matrix — die Haelfte, die **ohne**
@@ -98,6 +100,86 @@ class ReadPathCompletenessTest extends TestCase {
 			'eine Erwartung je Betrachter ergaenzen — oder in ROUTES_WITHOUT_DATA',
 			'mit Begruendung. Eine Ausnahme ohne Grund gibt es nicht.',
 		]));
+	}
+
+	/**
+	 * **Die Erwartung an die betrachterlosen Mapper — als Behauptung, nicht als
+	 * Ausnahme.**
+	 *
+	 * Ausgangskorb und Kanalschalter haben keinen Betrachter: Am Ende des einen
+	 * steht ein Hintergrundjob, am Ende des anderen die Person selbst. Die Frage
+	 * „was sieht die Kundenseite hier" hat fuer sie keinen Sinn.
+	 *
+	 * Sie deshalb von der Matrix **freizustellen** waere der bequeme Weg — und
+	 * genau der, der beim naechsten Mapper zur Gewohnheit wird. Stattdessen
+	 * traegt die Matrix eine pruefbare Zusage: Diese Mapper nehmen **keinen**
+	 * ViewerContext an. Solange das gilt, gibt es keinen Weg von einem Menschen
+	 * zu diesen Daten, an dem eine Sichtbarkeitsregel fehlen koennte.
+	 *
+	 * Traegt jemand spaeter doch eine betrachterabhaengige Abfrage nach, faellt
+	 * dieser Test — und dann ist eine echte Erwartung faellig.
+	 */
+	public function testTheseMappersNeverTakeAViewer(): void {
+		$offenders = [];
+
+		foreach (ReadPathRegistry::VIEWERLESS_MAPPERS as $short) {
+			$class = 'OCA\\Projektwerk\\Db\\' . $short;
+			$this->assertTrue(class_exists($class), $short . ' gibt es nicht (mehr).');
+
+			foreach ($this->viewerParameters($class) as $treffer) {
+				$offenders[] = $treffer;
+			}
+		}
+
+		$this->assertSame([], $offenders, implode("\n", [
+			'Betrachterloser Mapper mit ViewerContext-Parameter:',
+			'  ' . implode(', ', $offenders),
+			'',
+			'Diese Mapper stehen in der Matrix mit einer strukturellen Erwartung:',
+			'„hier kommt kein Betrachter her". Wer das aendert, braucht statt der',
+			'Behauptung eine echte Erwartung je Betrachter — und traegt den Mapper',
+			'aus VIEWERLESS_MAPPERS aus.',
+		]));
+	}
+
+	/**
+	 * Der Waechter dazu beisst zu.
+	 *
+	 * Dieselbe Pruefroutine gegen einen Mapper, der sehr wohl einen Betrachter
+	 * nimmt. Ohne diesen Fall waere die Zusage oben eine, die immer gruen ist —
+	 * dieselbe Vorsorge wie bei den beiden Waechtern darunter.
+	 */
+	public function testTheViewerlessGuardBitesOnAMapperThatTakesOne(): void {
+		$this->assertNotSame(
+			[],
+			$this->viewerParameters('OCA\\Projektwerk\\Db\\MemberMapper'),
+			'MemberMapper nimmt einen ViewerContext — findet die Pruefroutine ihn nicht, ist sie kaputt.',
+		);
+	}
+
+	/**
+	 * Alle oeffentlichen Methoden einer Klasse, die einen ViewerContext nehmen.
+	 *
+	 * @param string $class Voll qualifizierter Klassenname.
+	 * @return string[] `Klasse::methode($parameter)`
+	 */
+	private function viewerParameters(string $class): array {
+		$treffer = [];
+		$kurz = (new ReflectionClass($class))->getShortName();
+
+		foreach ((new ReflectionClass($class))->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
+			if ($method->getDeclaringClass()->getName() !== $class) {
+				continue;
+			}
+			foreach ($method->getParameters() as $parameter) {
+				$type = $parameter->getType();
+				if ($type instanceof ReflectionNamedType && $type->getName() === ViewerContext::class) {
+					$treffer[] = $kurz . '::' . $method->getName() . '($' . $parameter->getName() . ')';
+				}
+			}
+		}
+
+		return $treffer;
 	}
 
 	/**
