@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace OCA\Projektwerk\AppInfo;
 
+use OCA\Projektwerk\Notification\Notifier;
 use OCA\Projektwerk\SetupCheck\GuestsWhitelistCheck;
 use OCA\Projektwerk\SetupCheck\InstanceConfigCheck;
 use OCP\AppFramework\App;
@@ -30,6 +31,12 @@ class Application extends App implements IBootstrap {
 		// deren eingebaute Vorgabe ersetzen wuerde.
 		$context->registerSetupCheck(InstanceConfigCheck::class);
 		$context->registerSetupCheck(GuestsWhitelistCheck::class);
+
+		// Die Glocke. Der Notifier loest **erst beim Anzeigen** auf — gespeichert
+		// wird nur die Ticketkennung. Ist der Vorgang fuer die empfangende
+		// Person inzwischen nicht mehr sichtbar, raeumt Nextcloud den Eintrag
+		// daraufhin ab (§5.23).
+		$context->registerNotifierService(Notifier::class);
 
 		// Hier kommt spaeter u.a. der Listener auf UserDeletedEvent hin:
 		// Beim Loeschen eines Kontos muessen dessen private Tickets entfernt

@@ -15,6 +15,7 @@ use OCA\Projektwerk\Db\AttachmentMapper;
 use OCA\Projektwerk\Db\BoardMapper;
 use OCA\Projektwerk\Db\ColumnMapper;
 use OCA\Projektwerk\Db\CommentMapper;
+use OCA\Projektwerk\Db\MailOutbox;
 use OCA\Projektwerk\Db\MemberMapper;
 use OCA\Projektwerk\Db\Ticket;
 use OCA\Projektwerk\Db\TicketMapper;
@@ -50,6 +51,7 @@ class TicketService {
 		private AttachmentMapper $attachments,
 		private TicketScope $scope,
 		private PositionService $positions,
+		private NotificationService $notifications,
 	) {
 	}
 
@@ -204,16 +206,41 @@ class TicketService {
 		if (array_key_exists('description', $changes)) {
 			$ticket->setDescription($changes['description']);
 		}
+		// **Nur eine echte Aenderung loest aus.** Wer denselben Namen noch einmal
+		// speichert — etwa weil er den Titel geaendert hat —, schickt keine
+		// zweite Mail. Deshalb der Vergleich vor dem Setzen.
+		$neuZugewiesen = null;
 		if (array_key_exists('responsibleUserId', $changes)) {
+			$vorher = $ticket->getResponsibleUserId();
 			$ticket->setResponsibleUserId($changes['responsibleUserId']);
+			$nachher = $changes['responsibleUserId'];
+
+			if ($nachher !== null && $nachher !== '' && $nachher !== $vorher) {
+				$neuZugewiesen = (string)$nachher;
+			}
 		}
 		if (array_key_exists('closed', $changes)) {
 			$ticket->setClosedAt($changes['closed'] ? new \DateTime() : null);
 		}
 
 		$this->touch($ticket, $viewer);
+		$gespeichert = $this->tickets->update($ticket);
 
-		return $this->tickets->update($ticket);
+		// Ankuendigen, senden — **in dieser Reihenfolge und nach dem Schreiben**.
+		// `update()` laeuft hier ohne eigene Transaktion; der Versand steht
+		// trotzdem hinter dem Schreibvorgang, damit ein toter Mailserver ihn
+		// nicht mitreisst.
+		if ($neuZugewiesen !== null) {
+			$vorgemerkt = $this->notifications->announce(
+				$gespeichert,
+				$neuZugewiesen,
+				$viewer->userId,
+				MailOutbox::EVENT_TICKET_ASSIGNED,
+			);
+			$this->notifications->deliver($vorgemerkt, $gespeichert);
+		}
+
+		return $gespeichert;
 	}
 
 	/**

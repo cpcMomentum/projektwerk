@@ -11,6 +11,7 @@ namespace OCA\Projektwerk\Service;
 
 use OCA\Projektwerk\Access\TicketScope;
 use OCA\Projektwerk\Access\ViewerContext;
+use OCA\Projektwerk\Db\MailOutbox;
 use OCA\Projektwerk\Db\MemberMapper;
 use OCA\Projektwerk\Db\Step;
 use OCA\Projektwerk\Db\StepMapper;
@@ -48,6 +49,7 @@ class StepService {
 		private TicketMapper $tickets,
 		private MemberMapper $members,
 		private TicketScope $scope,
+		private NotificationService $notifications,
 	) {
 	}
 
@@ -79,9 +81,12 @@ class StepService {
 		$step->setPosition($this->nextPosition($ticketId));
 		$step->setCreatedAt(new \DateTime());
 
-		$this->applyAssignment($step, $ticket, $viewer, $assignedUserId);
+		$neu = $this->applyAssignment($step, $ticket, $viewer, $assignedUserId);
+		$gespeichert = $this->steps->insert($step);
 
-		return $this->steps->insert($step);
+		$this->ankuendigen($ticket, $neu, $viewer);
+
+		return $gespeichert;
 	}
 
 	/**
@@ -114,11 +119,40 @@ class StepService {
 			$step->setDoneAt($changes['done'] ? new \DateTime() : null);
 		}
 
+		$neu = null;
 		if (array_key_exists('assignedUserId', $changes)) {
-			$this->applyAssignment($step, $ticket, $viewer, $changes['assignedUserId']);
+			$neu = $this->applyAssignment($step, $ticket, $viewer, $changes['assignedUserId']);
 		}
 
-		return $this->steps->update($step);
+		$gespeichert = $this->steps->update($step);
+		$this->ankuendigen($ticket, $neu, $viewer);
+
+		return $gespeichert;
+	}
+
+	/**
+	 * Die Zuweisung eines Schritts ankuendigen — **nach** dem Schreiben.
+	 *
+	 * Steht als eigene Methode da, weil `create()` und `update()` sie beide
+	 * brauchen und die Reihenfolge (erst speichern, dann senden) an beiden
+	 * Stellen dieselbe sein muss.
+	 *
+	 * @param Ticket $ticket Der Vorgang, an dem der Schritt haengt.
+	 * @param string|null $recipientUid Wem neu zugewiesen wurde, sonst null.
+	 * @param ViewerContext $viewer Wer die Zuweisung vorgenommen hat.
+	 */
+	private function ankuendigen(Ticket $ticket, ?string $recipientUid, ViewerContext $viewer): void {
+		if ($recipientUid === null) {
+			return;
+		}
+
+		$vorgemerkt = $this->notifications->announce(
+			$ticket,
+			$recipientUid,
+			$viewer->userId,
+			MailOutbox::EVENT_STEP_ASSIGNED,
+		);
+		$this->notifications->deliver($vorgemerkt, $ticket);
 	}
 
 	/**
@@ -155,13 +189,13 @@ class StepService {
 	 *
 	 * @throws \InvalidArgumentException die Person darf dieses Ticket nicht sehen
 	 */
-	private function applyAssignment(Step $step, Ticket $ticket, ViewerContext $viewer, ?string $userId): void {
+	private function applyAssignment(Step $step, Ticket $ticket, ViewerContext $viewer, ?string $userId): ?string {
 		if ($userId === null || trim($userId) === '') {
 			$step->setAssignedUserId(null);
 			$step->setAssignedRole(null);
 			$step->setAssignedAt(null);
 
-			return;
+			return null;
 		}
 
 		$role = null;
@@ -185,12 +219,17 @@ class StepService {
 
 		// Nur bei einem Wechsel neu stempeln: Sonst spraenge die Wartezeit bei
 		// jeder Titelaenderung auf heute, und die Marke verloere ihren Sinn.
-		if ($step->getAssignedUserId() !== $userId) {
+		// **Derselbe Vergleich entscheidet ueber die Benachrichtigung** — wer
+		// denselben Namen noch einmal speichert, bekommt keine zweite Mail.
+		$wechsel = $step->getAssignedUserId() !== $userId;
+		if ($wechsel) {
 			$step->setAssignedAt(new \DateTime());
 		}
 
 		$step->setAssignedUserId($userId);
 		$step->setAssignedRole($role);
+
+		return $wechsel ? $userId : null;
 	}
 
 	/**
