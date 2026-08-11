@@ -237,7 +237,9 @@ describe('VisibilityControl', () => {
 	it('fragt nicht zurück, wenn der Server niemanden nennt', async () => {
 		// Richtung public -> internal, also dem Anschein nach ein Herunterstufen.
 		// Der Server sagt: niemand verliert etwas. Das zählt, nicht der Anschein.
-		fetchVisibilityImpact.mockResolvedValue({ losing: [], comments: 3, attachments: 1 })
+		// Ohne Anhaenge — mit ihnen kaeme der Riegel aus §3.10 zuerst, und der
+		// Test praefte dann etwas anderes, als sein Name sagt.
+		fetchVisibilityImpact.mockResolvedValue({ losing: [], comments: 3, attachments: 0 })
 
 		const wrapper = mountControl(ticketOf({ visibility: 'public' }), viewerOf())
 		await choose(wrapper, 'internal')
@@ -276,24 +278,63 @@ describe('VisibilityControl', () => {
 		expect(einer.find('.pw-viscontrol__losing').text()).toContain('1 Kommentar')
 		expect(einer.find('.pw-viscontrol__losing').text()).not.toContain('1 Kommentare')
 
-		fetchVisibilityImpact.mockResolvedValue({ losing: ['carla'], comments: 3, attachments: 1 })
+		fetchVisibilityImpact.mockResolvedValue({ losing: ['carla'], comments: 3, attachments: 0 })
 
 		const mehrere = mountControl(ticketOf(), viewerOf())
 		await choose(mehrere, 'internal')
 
-		// Beide Zahlen in einem Satz, jede fuer sich gebeugt.
-		expect(mehrere.find('.pw-viscontrol__losing').text()).toContain('3 Kommentare, 1 Anhang')
+		expect(mehrere.find('.pw-viscontrol__losing').text()).toContain('3 Kommentare')
+	})
+
+	/**
+	 * **Anhänge sperren den Wechsel — vor der Rückfrage, nicht danach**
+	 * (§3.10 Stufe 1).
+	 *
+	 * Der Server weist ohnehin ab; das prüft die Integrationssuite. Hier geht es
+	 * um den Handgriff: Ohne diese Sperre bestätigte man erst eine Warnung mit
+	 * Namen und bekäme *danach* die Absage — eine Entscheidung, die nichts
+	 * entscheidet.
+	 *
+	 * Und **kein „Trotzdem"**: Es gibt nichts, was die App an dieser Stelle tun
+	 * könnte, solange der Dateiumzug nicht transaktional zur Datenbank ist.
+	 */
+	it('sperrt den Wechsel bei Anhängen, statt erst zurückzufragen', async () => {
+		fetchVisibilityImpact.mockResolvedValue({ losing: ['carla'], comments: 0, attachments: 2 })
+
+		const wrapper = mountControl(ticketOf({ visibility: 'public' }), viewerOf())
+		await choose(wrapper, 'internal')
+
+		const warn = wrapper.find('.pw-viscontrol__warn')
+		expect(warn.text()).toContain('2 Anhänge')
+		expect(warn.text()).toContain('lösen')
+
+		// Kein Weg vorbei: weder ein Knopf noch ein Aufruf.
+		expect(warn.text()).not.toContain('Sichtbarkeit ändern')
+		expect(changeVisibility).not.toHaveBeenCalled()
+	})
+
+	/**
+	 * Bei genau einem Anhang steht dort kein „1 Anhänge".
+	 */
+	it('beugt die Zahl in der Sperre', async () => {
+		fetchVisibilityImpact.mockResolvedValue({ losing: [], comments: 0, attachments: 1 })
+
+		const wrapper = mountControl(ticketOf({ visibility: 'public' }), viewerOf())
+		await choose(wrapper, 'internal')
+
+		const text = wrapper.find('.pw-viscontrol__warn').text()
+		expect(text).toContain('1 Anhang')
+		expect(text).not.toContain('1 Anhänge')
 	})
 
 	it('nennt in der Rückfrage Namen und Zahlen, nicht Kennungen', async () => {
-		fetchVisibilityImpact.mockResolvedValue({ losing: ['carla', 'dana'], comments: 4, attachments: 2 })
+		fetchVisibilityImpact.mockResolvedValue({ losing: ['carla', 'dana'], comments: 4, attachments: 0 })
 
 		const wrapper = mountControl(ticketOf(), viewerOf())
 		await choose(wrapper, 'internal')
 
 		const warn = wrapper.find('.pw-viscontrol__warn')
 		expect(warn.text()).toContain('4 Kommentare')
-		expect(warn.text()).toContain('2 Anhänge')
 		expect(warn.text()).toContain('Carla Cordes')
 		// Ohne gepflegten Namen bleibt die Kennung — besser als eine leere Zeile.
 		expect(warn.text()).toContain('dana')

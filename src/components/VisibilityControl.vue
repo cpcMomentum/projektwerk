@@ -259,27 +259,23 @@ export default defineComponent({
 		},
 
 		/**
-		 * Was am Vorgang mit verloren geht — „3 Kommentare, 1 Anhang".
+		 * Was am Vorgang mit verloren geht — „3 Kommentare".
 		 *
-		 * Je Zahl ein `n()`, verbunden durch ein Komma. Das ist der Ausweg aus
-		 * einem Satz mit **zwei** Zahlen: `n()` beugt nach genau einer, und die
-		 * vier ausgeschriebenen Fassungen von vorher waren an beiden Stellen
-		 * falsch, sobald eine der Zahlen 1 war („seine 1 Kommentare").
+		 * `n()` und kein Platzhalter in einem festen Text: Bei genau einem
+		 * Kommentar stand dort bis zum 2026-08-10 „seine 1 Kommentare".
 		 *
-		 * Das Komma braucht keine Übersetzung — anders als ein „und", das je
-		 * nach Sprache vor dem letzten Glied steht oder nicht.
+		 * **Anhänge stehen hier nicht mehr**, seit ein Vorgang mit Anhängen gar
+		 * nicht mehr umgestellt werden kann (§3.10 Stufe 1): Die Rückfrage wird
+		 * dann nie erreicht, und ein Satzteil, der nie erscheinen kann, ist
+		 * keine Vorsorge, sondern eine Behauptung über die Oberfläche, die nicht
+		 * stimmt. Mit dem Auto-Move aus Phase 7b kommt er zurück — dann wieder
+		 * je Zahl einzeln gebeugt und mit Komma verbunden, weil `n()` nach genau
+		 * einer Zahl beugt.
 		 */
 		affectedParts(): string {
-			const teile: string[] = []
-
-			if (this.impact.comments > 0) {
-				teile.push(n('projektwerk', '%n Kommentar', '%n Kommentare', this.impact.comments))
-			}
-			if (this.impact.attachments > 0) {
-				teile.push(n('projektwerk', '%n Anhang', '%n Anhänge', this.impact.attachments))
-			}
-
-			return teile.join(', ')
+			return this.impact.comments > 0
+				? n('projektwerk', '%n Kommentar', '%n Kommentare', this.impact.comments)
+				: ''
 		},
 
 		/**

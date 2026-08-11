@@ -50,10 +50,6 @@
             "%n comment",
             "%n comments"
         ],
-        "_%n Anhang_::_%n Anhänge_": [
-            "%n attachment",
-            "%n attachments"
-        ],
         "Die Beteiligten werden nicht benachrichtigt.": "The people involved will not be notified.",
         "Sichtbarkeit ändern": "Change visibility",
         "Sichtbarkeit konnte nicht geprüft werden": "Could not check visibility",
