@@ -10,6 +10,15 @@ on:
   push:
     branches: [main, develop]
   pull_request:
+  # Manuelles Nachtriggern — wie bei phpunit, integration und e2e.
+  #
+  # `node` war das einzige der vier Gates ohne diesen Auslöser. Am 11.08.2026
+  # kamen `pull_request`-Events stundenlang gar nicht an (dasselbe Muster wie
+  # der Incident vom 06.08.), `workflow_dispatch` lief unbeeindruckt weiter —
+  # und ausgerechnet das Frontend-Gate war dann als einziges nicht von Hand
+  # auslösbar. Ein Required Check, den man im Störfall nicht starten kann,
+  # blockiert den Merge ohne Aussage über den Code.
+  workflow_dispatch: {}
 
 permissions:
   contents: read

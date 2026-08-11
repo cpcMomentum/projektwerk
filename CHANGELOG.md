@@ -41,6 +41,13 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
   nicht die Sichtbarkeit des Vorgangs. Das ist einem Kunden gegenüber zu benennen, bevor
   Phase 5 vorgeführt wird. Markdown mit `remark-gfm`: Tabellen, Aufgabenlisten und
   Durchstreichen rendern, statt als Striche im Text zu landen
+- **Arbeitsschritt anlegen mit Zuständiger und Fälligkeit in einem Zug.** Vorher legte man an
+  und wies danach zu; die Fälligkeit ließ sich über die Oberfläche **gar nicht** setzen, nur
+  anzeigen. Der schnelle Weg bleibt: Beide Felder sind leer vorbelegt, Enter sendet ab.
+  Nebeneffekt, erwünscht — die Uhr „wartet seit" beginnt jetzt beim Anlegen statt beim
+  Zuweisen. Auf schmalen Bildschirmen teilen sich Zuständige und Fälligkeit **eine** Zeile:
+  gestapelt wäre aus jedem Schritt ein Block von drei Zeilen geworden, und der Großteil davon
+  wären leere Felder gewesen
 - **Arbeitsschritte** mit Titel, Zuweisung, Fälligkeit und erledigt. Wer einen Schritt bekommen
   darf, folgt aus der Sichtbarkeitsregel und kommt vom Server; bei einem öffentlichen Vorgang
   stehen beide Seiten gemeinsam und ohne Warnung in der Liste
@@ -82,6 +89,12 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Fixed
 
+- **Eine Fälligkeit ließ sich setzen, aber nie wieder löschen.** `StepController::update` baute
+  seine Änderungsliste aus allem, was `!== null` war — und verwarf damit genau das ausdrückliche
+  „Frist entfernen". Dieselbe Falle war für die Zuweisung schon einmal behoben worden; für die
+  Fälligkeit fiel sie erst auf, als das Feld überhaupt aus der Oberfläche heraus zu bedienen war.
+  Beide Felder laufen jetzt über dieselbe `array_key_exists`-Prüfung, und ein Controller-Test hält
+  fest, dass ein ausdrückliches `null` durchkommt
 - **Ein Verbindungsabbruch meldete sich auf Englisch.** Axios legt bei fehlender Antwort
   `Network Error` bei, und das stand wörtlich vor dem Nutzer — beim häufigsten aller Fehler und in
   einer durchgehend deutschen Oberfläche. Betraf jeden Aufruf der App, aufgefallen an der

@@ -892,10 +892,37 @@
 	text-decoration: line-through;
 }
 
-.app-projektwerk .pw-step__due {
-	font-size: 12px;
-	color: var(--color-text-maxcontrast);
-	font-variant-numeric: tabular-nums;
+/*
+ * Zustaendige und Frist als ein Paar.
+ *
+ * Beide Felder behalten ihre Eigenbreite (`flex-basis: auto`) und schrumpfen
+ * erst, wenn der Platz nicht reicht — auf dem Desktop steht der laengste Name
+ * dadurch vollstaendig da, auf 390 px teilen sich die beiden die Zeile.
+ * Mit `flex-basis: 0` waere der Name **auch auf dem Desktop** abgeschnitten:
+ * Die Eigenbreite des Kastens faellt dann auf null zusammen.
+ *
+ * Geschrumpft wird nur die Personenauswahl. Das Datumsfeld hat eine feste
+ * Inhaltsbreite (`TT.MM.JJJJ` plus Kalendersymbol); nimmt man ihr davon etwas
+ * weg, verschwindet nicht Text, sondern die Bedienung.
+ *
+ * `min-width: 0` ist kein Beiwerk: Flex-Kinder schrumpfen sonst nur bis zu
+ * ihrer Inhaltsbreite und nicht darunter.
+ */
+.app-projektwerk .pw-step__fields {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex: 0 1 auto;
+	min-width: 0;
+}
+
+.app-projektwerk .pw-step__fields > select {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.app-projektwerk .pw-step__fields > .native-datetime-picker {
+	flex: 0 0 auto;
 }
 
 .app-projektwerk .pw-step--new {
