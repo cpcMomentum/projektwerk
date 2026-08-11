@@ -94,3 +94,49 @@ test('loescht eine Frist wieder, wenn das Feld geleert wird', async ({ page, req
 		.poll(async () => (await schrittAusDerDatenbank(request, 'Mit Frist')).dueDate)
 		.toBeNull()
 })
+
+/**
+ * Zustaendige und Frist teilen sich auf dem Handy eine Zeile.
+ *
+ * **Warum das ein Test ist und nicht nur eine CSS-Regel.** Mit #86 kamen zwei
+ * Felder in jede Schrittzeile; auf 390 px stapelten sie sich zunaechst
+ * untereinander, und aus jedem Schritt wurde ein Block von drei Zeilen. Die
+ * Entscheidung dagegen steckt in einer einzigen `flex`-Angabe — eine spaetere
+ * Aenderung am Kasten nimmt sie zurueck, ohne dass es jemandem auffaellt,
+ * solange niemand ein Handy in die Hand nimmt.
+ *
+ * Geprueft wird die Zeilenlage ueber die Oberkanten und nicht ueber eine
+ * Hoehe in Pixeln: Was die Felder hoch sind, haengt an Nextclouds Variablen
+ * und aendert sich mit jeder Plattformversion. Dass sie **nebeneinander**
+ * stehen, aendert sich damit nicht.
+ */
+test('auf dem Handy stehen Zustaendige und Frist nebeneinander', async ({ page }) => {
+	await page.setViewportSize({ width: 390, height: 900 })
+
+	await page.goto(`${APP_PFAD}#/boards/${projekt.boardId}`)
+	await expect(page.getByText(projekt.oeffentlich.title)).toBeVisible({ timeout: 30_000 })
+	await page.getByText(projekt.oeffentlich.title).click()
+
+	const zeile = page.locator('.pw-step--new')
+	await zeile.locator('input[type="text"]').fill('Nebeneinander')
+	await page.getByRole('button', { name: 'Hinzufügen' }).click()
+	await expect(page.getByText('Nebeneinander')).toBeVisible()
+
+	const schritt = page.locator('.pw-step', { hasText: 'Nebeneinander' })
+	const person = await schritt.locator('select').boundingBox()
+	const frist = await schritt.locator('input[type="date"]').boundingBox()
+
+	expect(person, 'Die Personenauswahl fehlt').not.toBeNull()
+	expect(frist, 'Das Fristfeld fehlt').not.toBeNull()
+
+	// Zwei Pixel Luft: Die beiden Felder sind unterschiedlich hoch und werden
+	// mittig ausgerichtet, ihre Oberkanten treffen sich also nicht exakt.
+	expect(
+		Math.abs(person!.y - frist!.y),
+		`Oberkanten ${person!.y} und ${frist!.y} — die Felder stehen untereinander`,
+	).toBeLessThanOrEqual(2)
+
+	// Nebeneinander ist nur dann ein Gewinn, wenn nichts hinausragt.
+	const ueber = await schritt.evaluate((el) => el.scrollWidth - el.clientWidth)
+	expect(ueber, 'Die Schrittzeile ragt seitlich heraus').toBeLessThanOrEqual(1)
+})

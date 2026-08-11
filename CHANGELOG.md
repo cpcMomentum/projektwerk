@@ -45,7 +45,9 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
   und wies danach zu; die Fälligkeit ließ sich über die Oberfläche **gar nicht** setzen, nur
   anzeigen. Der schnelle Weg bleibt: Beide Felder sind leer vorbelegt, Enter sendet ab.
   Nebeneffekt, erwünscht — die Uhr „wartet seit" beginnt jetzt beim Anlegen statt beim
-  Zuweisen
+  Zuweisen. Auf schmalen Bildschirmen teilen sich Zuständige und Fälligkeit **eine** Zeile:
+  gestapelt wäre aus jedem Schritt ein Block von drei Zeilen geworden, und der Großteil davon
+  wären leere Felder gewesen
 - **Arbeitsschritte** mit Titel, Zuweisung, Fälligkeit und erledigt. Wer einen Schritt bekommen
   darf, folgt aus der Sichtbarkeitsregel und kommt vom Server; bei einem öffentlichen Vorgang
   stehen beide Seiten gemeinsam und ohne Warnung in der Liste

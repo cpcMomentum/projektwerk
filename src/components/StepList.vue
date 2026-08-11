@@ -23,35 +23,44 @@
 				:size="24"
 				:disableMenu="true" />
 
-			<select
-				:value="step.assignedUserId ?? ''"
-				:aria-label="t('projektwerk', 'Zuständig')"
-				:disabled="busy"
-				@change="assign(step, $event)">
-				<option value="">
-					{{ t('projektwerk', 'Niemand') }}
-				</option>
-				<option v-for="userId in assignable" :key="userId" :value="userId">
-					{{ nameOf(userId) }}
-				</option>
-			</select>
-
 			<!--
-				Die Faelligkeit war bisher **nur Anzeige** — setzen liess sie sich
-				gar nicht, weder hier noch beim Anlegen. Wer eine Frist eintragen
-				wollte, kam nur ueber die API dorthin (#86).
-
-				Immer sichtbar, auch ohne Wert, wie die Personenauswahl daneben:
-				Ein Feld, das erst auf Klick erscheint, findet niemand, der nicht
-				weiss, dass es es gibt.
+				Beide Felder in einer Klammer, damit der Zeilenumbruch **vor**
+				ihnen faellt und nicht zwischen ihnen: Auf 390 px passen sie
+				zusammen nicht mehr neben den Titel, nebeneinander unter ihn aber
+				sehr wohl. Ohne die Klammer wird aus jedem Schritt ein Block von
+				drei Zeilen.
 			-->
-			<NcDateTimePickerNative
-				type="date"
-				:modelValue="asDate(step.dueDate)"
-				:label="t('projektwerk', 'Fälligkeit')"
-				:hideLabel="true"
-				:disabled="busy"
-				@update:modelValue="setDue(step, $event)" />
+			<div class="pw-step__fields">
+				<select
+					:value="step.assignedUserId ?? ''"
+					:aria-label="t('projektwerk', 'Zuständig')"
+					:disabled="busy"
+					@change="assign(step, $event)">
+					<option value="">
+						{{ t('projektwerk', 'Niemand') }}
+					</option>
+					<option v-for="userId in assignable" :key="userId" :value="userId">
+						{{ nameOf(userId) }}
+					</option>
+				</select>
+
+				<!--
+					Die Faelligkeit war bisher **nur Anzeige** — setzen liess sie
+					sich gar nicht, weder hier noch beim Anlegen. Wer eine Frist
+					eintragen wollte, kam nur ueber die API dorthin (#86).
+
+					Immer sichtbar, auch ohne Wert, wie die Personenauswahl
+					daneben: Ein Feld, das erst auf Klick erscheint, findet
+					niemand, der nicht weiss, dass es es gibt.
+				-->
+				<NcDateTimePickerNative
+					type="date"
+					:modelValue="asDate(step.dueDate)"
+					:label="t('projektwerk', 'Fälligkeit')"
+					:hideLabel="true"
+					:disabled="busy"
+					@update:modelValue="setDue(step, $event)" />
+			</div>
 		</div>
 
 		<p v-if="ordered.length === 0" class="pw-detail__empty">
@@ -76,24 +85,26 @@
 				:disabled="busy"
 				@keydown.enter="add" />
 
-			<select
-				v-model="newAssignee"
-				:aria-label="t('projektwerk', 'Zuständig')"
-				:disabled="busy">
-				<option value="">
-					{{ t('projektwerk', 'Niemand') }}
-				</option>
-				<option v-for="userId in assignable" :key="userId" :value="userId">
-					{{ nameOf(userId) }}
-				</option>
-			</select>
+			<div class="pw-step__fields">
+				<select
+					v-model="newAssignee"
+					:aria-label="t('projektwerk', 'Zuständig')"
+					:disabled="busy">
+					<option value="">
+						{{ t('projektwerk', 'Niemand') }}
+					</option>
+					<option v-for="userId in assignable" :key="userId" :value="userId">
+						{{ nameOf(userId) }}
+					</option>
+				</select>
 
-			<NcDateTimePickerNative
-				v-model="newDueDate"
-				type="date"
-				:label="t('projektwerk', 'Fälligkeit')"
-				:hideLabel="true"
-				:disabled="busy" />
+				<NcDateTimePickerNative
+					v-model="newDueDate"
+					type="date"
+					:label="t('projektwerk', 'Fälligkeit')"
+					:hideLabel="true"
+					:disabled="busy" />
+			</div>
 
 			<NcButton :disabled="busy || newTitle.trim() === ''" @click="add">
 				{{ t('projektwerk', 'Hinzufügen') }}
