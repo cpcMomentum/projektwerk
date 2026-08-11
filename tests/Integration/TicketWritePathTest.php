@@ -593,6 +593,97 @@ class TicketWritePathTest extends IntegrationTestCase {
 		);
 	}
 
+	/**
+	 * §7 gilt auch fuer die Zustaendigkeit: An einem internen Ticket der
+	 * eigenen Seite hat die Kundenseite nichts zu suchen — sonst bekaeme sie
+	 * per Mail Kenntnis von einem Vorgang, den sie nicht sehen darf.
+	 */
+	public function testResponsibleUserMustBeAbleToSeeTheTicket(): void {
+		$anna = $this->viewer(LeakMatrixFixture::ANNA);
+
+		$this->expectException(\InvalidArgumentException::class);
+
+		$this->service->update(
+			$anna,
+			$this->fixture->ticketIds['internal/anna'],
+			1,
+			['responsibleUserId' => LeakMatrixFixture::CARLA],
+		);
+	}
+
+	/**
+	 * Ein Nichtmitglied darf nicht zustaendig werden — es koennte den Vorgang,
+	 * ueber den es dann per Mail informiert wuerde, gar nicht sehen.
+	 */
+	public function testResponsibleUserMustBeABoardMember(): void {
+		$anna = $this->viewer(LeakMatrixFixture::ANNA);
+
+		$this->expectException(\InvalidArgumentException::class);
+
+		$this->service->update(
+			$anna,
+			$this->fixture->ticketIds['public/anna'],
+			1,
+			['responsibleUserId' => LeakMatrixFixture::FREMD],
+		);
+	}
+
+	/**
+	 * Die Gegenprobe: Wer das Ticket sehen wuerde, darf auch zustaendig
+	 * werden.
+	 */
+	public function testAVisibleMemberCanBecomeResponsible(): void {
+		$anna = $this->viewer(LeakMatrixFixture::ANNA);
+
+		$updated = $this->service->update(
+			$anna,
+			$this->fixture->ticketIds['internal/anna'],
+			1,
+			['responsibleUserId' => LeakMatrixFixture::BERT],
+		);
+
+		$this->assertSame(LeakMatrixFixture::BERT, $updated->getResponsibleUserId());
+	}
+
+	/**
+	 * **Dieselbe Regel beim Anlegen** — die zweite Haelfte des Befunds vom
+	 * 2026-08-11.
+	 *
+	 * `create()` benachrichtigt heute nicht, hier kann also keine Mail lecken.
+	 * Ohne die Pruefung entstuende aber eine zustaendige Person, die ihren
+	 * eigenen Vorgang nicht sehen kann — und sobald das Anlegen spaeter
+	 * ebenfalls benachrichtigt, waere es genau die Luecke, die im Aendern
+	 * gerade geschlossen wurde.
+	 */
+	public function testANewTicketCannotBeAssignedToSomeoneWhoCannotSeeIt(): void {
+		$this->expectException(\InvalidArgumentException::class);
+
+		$this->service->create(
+			$this->viewer(LeakMatrixFixture::ANNA),
+			'Intern, aber der Kundenseite zugewiesen',
+			null,
+			TicketScope::VISIBILITY_INTERNAL,
+			$this->fixture->columnIds[LeakMatrixFixture::COLUMN_A],
+			LeakMatrixFixture::CARLA,
+		);
+	}
+
+	/**
+	 * Gegenprobe: Wer den neuen Vorgang sehen wuerde, darf zustaendig sein.
+	 */
+	public function testANewTicketCanBeAssignedToSomeoneWhoSeesIt(): void {
+		$ticket = $this->service->create(
+			$this->viewer(LeakMatrixFixture::ANNA),
+			'Intern, an die eigene Seite',
+			null,
+			TicketScope::VISIBILITY_INTERNAL,
+			$this->fixture->columnIds[LeakMatrixFixture::COLUMN_A],
+			LeakMatrixFixture::BERT,
+		);
+
+		$this->assertSame(LeakMatrixFixture::BERT, $ticket->getResponsibleUserId());
+	}
+
 	private function viewer(string $userId): ViewerContext {
 		return $this->fixture->contextFor($userId);
 	}

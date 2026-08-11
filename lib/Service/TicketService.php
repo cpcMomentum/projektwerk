@@ -15,6 +15,7 @@ use OCA\Projektwerk\Db\AttachmentMapper;
 use OCA\Projektwerk\Db\BoardMapper;
 use OCA\Projektwerk\Db\ColumnMapper;
 use OCA\Projektwerk\Db\CommentMapper;
+use OCA\Projektwerk\Db\MailOutbox;
 use OCA\Projektwerk\Db\MemberMapper;
 use OCA\Projektwerk\Db\Ticket;
 use OCA\Projektwerk\Db\TicketMapper;
@@ -50,6 +51,7 @@ class TicketService {
 		private AttachmentMapper $attachments,
 		private TicketScope $scope,
 		private PositionService $positions,
+		private NotificationService $notifications,
 	) {
 	}
 
@@ -204,16 +206,78 @@ class TicketService {
 		if (array_key_exists('description', $changes)) {
 			$ticket->setDescription($changes['description']);
 		}
+		// **Nur eine echte Aenderung loest aus.** Wer denselben Namen noch einmal
+		// speichert — etwa weil er den Titel geaendert hat —, schickt keine
+		// zweite Mail. Deshalb der Vergleich vor dem Setzen.
+		$neuZugewiesen = null;
 		if (array_key_exists('responsibleUserId', $changes)) {
-			$ticket->setResponsibleUserId($changes['responsibleUserId']);
+			$vorher = $ticket->getResponsibleUserId();
+			$nachher = $changes['responsibleUserId'];
+
+			if ($nachher !== null && $nachher !== '') {
+				// Dieselbe Sichtbarkeitspruefung wie bei der Schrittzuweisung
+				// ({@see StepService::applyAssignment()}): Zustaendig darf nur
+				// werden, wer das Ticket auch sehen wuerde. Sonst liesse sich per
+				// API eine Mail an jemanden ausserhalb des Boards ausloesen.
+				if (!$this->mayBecomeResponsible($ticket, $viewer, (string)$nachher)) {
+					throw new \InvalidArgumentException('Diese Person kann diesen Vorgang nicht sehen.');
+				}
+
+				if ($nachher !== $vorher) {
+					$neuZugewiesen = (string)$nachher;
+				}
+			}
+
+			$ticket->setResponsibleUserId($nachher);
 		}
 		if (array_key_exists('closed', $changes)) {
 			$ticket->setClosedAt($changes['closed'] ? new \DateTime() : null);
 		}
 
 		$this->touch($ticket, $viewer);
+		$gespeichert = $this->tickets->update($ticket);
 
-		return $this->tickets->update($ticket);
+		// Ankuendigen, senden — **in dieser Reihenfolge und nach dem Schreiben**.
+		// `update()` laeuft hier ohne eigene Transaktion; der Versand steht
+		// trotzdem hinter dem Schreibvorgang, damit ein toter Mailserver ihn
+		// nicht mitreisst.
+		if ($neuZugewiesen !== null) {
+			$vorgemerkt = $this->notifications->announce(
+				$gespeichert,
+				$neuZugewiesen,
+				$viewer->userId,
+				MailOutbox::EVENT_TICKET_ASSIGNED,
+			);
+			$this->notifications->deliver($vorgemerkt, $gespeichert);
+		}
+
+		return $gespeichert;
+	}
+
+	/**
+	 * Dieselbe Frage wie beim Lesen, nur fuer eine andere Person — analog zu
+	 * {@see StepService::maySee()}.
+	 */
+	private function mayBecomeResponsible(Ticket $ticket, ViewerContext $viewer, string $userId): bool {
+		$role = null;
+		foreach ($this->members->findForBoard($viewer) as $member) {
+			if ((string)$member->getUserId() === $userId) {
+				$role = (string)$member->getRole();
+				break;
+			}
+		}
+
+		if ($role === null) {
+			return false;
+		}
+
+		return $this->scope->wouldSee(
+			(string)$ticket->getVisibility(),
+			(string)$ticket->getCreatorUserId(),
+			(string)$ticket->getCreatorRole(),
+			$userId,
+			$role,
+		);
 	}
 
 	/**
@@ -379,6 +443,18 @@ class TicketService {
 			// Symmetrie von `internal`, sobald jemand die Rolle wechselt oder
 			// das Board verlässt.
 			$ticket->setCreatorRole($viewer->role);
+
+			// **Dieselbe Pruefung wie beim Aendern.** Sie loest hier heute keine
+			// Mail aus — `create()` benachrichtigt nicht —, aber ohne sie
+			// entstuende eine zustaendige Person, die ihren eigenen Vorgang
+			// nicht sehen kann. Und sobald das Anlegen spaeter ebenfalls
+			// benachrichtigt, waere es dieselbe Luecke wie die, die der Review
+			// am 2026-08-11 im Aendern gefunden hat.
+			if ($responsibleUserId !== null && $responsibleUserId !== ''
+				&& !$this->mayBecomeResponsible($ticket, $viewer, $responsibleUserId)) {
+				throw new \InvalidArgumentException('Diese Person kann diesen Vorgang nicht sehen.');
+			}
+
 			$ticket->setResponsibleUserId($responsibleUserId);
 			$ticket->setPosition($this->positions->between($last, null));
 			$ticket->setVersion(1);
