@@ -141,6 +141,19 @@ export class Api {
 		return this.schreiben('post', `/api/v1/boards/${boardId}/tickets`, daten)
 	}
 
+	/**
+	 * Den Austauschordner eines Projekts hinterlegen.
+	 *
+	 * Ueber den Pfad, wie die Oberflaeche auch — der Server loest ihn zur
+	 * Datei-ID auf.
+	 *
+	 * @param boardId Kennung des Projekts.
+	 * @param pfad Der Ordnerpfad im Dateibaum der aufrufenden Person.
+	 */
+	boardOrdnerSetzen(boardId: number, pfad: string): Promise<any> {
+		return this.schreiben('patch', `/api/v1/boards/${boardId}`, { folderPublicPath: pfad })
+	}
+
 	kommentarAnlegen(boardId: number, ticketId: number, body: string): Promise<any> {
 		return this.schreiben('post', `/api/v1/boards/${boardId}/tickets/${ticketId}/comments`, { body })
 	}

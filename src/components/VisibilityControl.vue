@@ -26,7 +26,7 @@
 				:modelValue="ticket.visibility"
 				:unavailable="unavailable"
 				:blockedHint="blockedHint"
-				:busy="busy || stage === 'confirming'"
+				:busy="busy || stage !== 'idle'"
 				@update:modelValue="choose" />
 
 			<!--
@@ -41,6 +41,32 @@
 						<UndoIcon :size="20" />
 					</template>
 					{{ t('projektwerk', 'Rückgängig') }}
+				</NcButton>
+			</div>
+		</div>
+
+		<!--
+			**Anhänge sperren den Wechsel** (§3.10 Stufe 1) — und das steht hier
+			statt hinter einer Bestätigung, die ohnehin abgewiesen würde.
+
+			Kein „Trotzdem"-Knopf: Es gibt nichts, was die App an dieser Stelle
+			tun könnte. Der Ablageort IST die Sichtbarkeit, und die Dateien
+			umzuziehen ist nicht transaktional zur Datenbank — ein halb
+			gelungener Umzug wäre ein Leck, das keine spätere Codekorrektur
+			heilt. Der Satz sagt deshalb, was zu tun ist, statt eine Wahl
+			vorzutäuschen.
+		-->
+		<div v-if="stage === 'blocked'" class="pw-viscontrol__warn">
+			<p class="pw-viscontrol__lead">
+				<AlertIcon :size="20" />
+				<span class="pw-viscontrol__target">
+					{{ blockedByAttachments }}
+				</span>
+			</p>
+
+			<div class="pw-viscontrol__actions">
+				<NcButton @click="reset">
+					{{ t('projektwerk', 'Verstanden') }}
 				</NcButton>
 			</div>
 		</div>
@@ -158,7 +184,7 @@ export default defineComponent({
 
 	data() {
 		return {
-			stage: 'idle' as 'idle' | 'confirming',
+			stage: 'idle' as 'idle' | 'confirming' | 'blocked',
 			/** Die angeklickte Stufe, solange die Rückfrage offen ist. */
 			chosen: 'public' as Visibility,
 			impact: { losing: [], comments: 0, attachments: 0 } as Impact,
@@ -214,6 +240,22 @@ export default defineComponent({
 		 */
 		losingNames(): string {
 			return this.impact.losing.map((userId) => this.nameOf(userId)).join(', ')
+		},
+
+		/**
+		 * Der Satz, der die Sperre erklärt — mit der Zahl, weil sie die
+		 * Handlung bestimmt.
+		 *
+		 * „Lösen", nicht „löschen": Die Dateien bleiben liegen, gelöst wird nur
+		 * die Verknüpfung. Wer hier „löschen" läse, räumte mehr weg als nötig.
+		 */
+		blockedByAttachments(): string {
+			return n(
+				'projektwerk',
+				'Dieser Vorgang hat %n Anhang. Bitte ihn zuerst vom Vorgang lösen — die Datei selbst bleibt dabei liegen.',
+				'Dieser Vorgang hat %n Anhänge. Bitte sie zuerst vom Vorgang lösen — die Dateien selbst bleiben dabei liegen.',
+				this.impact.attachments,
+			)
 		},
 
 		/**
@@ -346,6 +388,19 @@ export default defineComponent({
 				return
 			}
 			this.busy = false
+
+			// **Anhänge sperren den Wechsel** (§3.10 Stufe 1).
+			//
+			// Das ist **keine zweite Regel im Browser**: Der Server weist den
+			// Wechsel ohnehin ab, und genau das prüft ein Test. Hier wird nur
+			// vorweggenommen, was `visibility-impact` bereits mitgeliefert hat —
+			// sonst erführe man die Absage erst nach dem Bestätigen einer
+			// Warnung, die ohnehin nichts bewirkt hätte.
+			if (this.impact.attachments > 0) {
+				this.stage = 'blocked'
+
+				return
+			}
 
 			if (this.impact.losing.length === 0) {
 				// Niemand verliert etwas: durchführen und kurz widerrufbar halten.

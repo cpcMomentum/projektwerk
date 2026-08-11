@@ -188,6 +188,31 @@ export async function apiPost<T, B = unknown>(path: string, body: B): Promise<T>
 }
 
 /**
+ * POST mit einer Datei, als `multipart/form-data`.
+ *
+ * **Nicht als Base64 im JSON-Rumpf.** Das wären ein Drittel mehr Daten, und sie
+ * lägen auf beiden Seiten vollständig im Arbeitsspeicher — beim Browser als
+ * Zeichenkette, beim Server beim Dekodieren. Als Formularteil bleibt die Datei
+ * ein Datenstrom.
+ *
+ * Der `Content-Type` wird **nicht** gesetzt: Der Browser muss ihn selbst
+ * bilden, weil nur er die Trennmarke des Formulars kennt.
+ *
+ * @param path Pfad relativ zu `/apps/projektwerk/api/v1`.
+ * @param file Die Datei aus dem Auswahlfeld.
+ */
+export async function apiUpload<T>(path: string, file: File): Promise<T> {
+	const form = new FormData()
+	form.append('file', file, file.name)
+
+	try {
+		return unwrap(await axios.post<T>(apiUrl(path), form))
+	} catch (e) {
+		throw isApiError(e) ? e : wrapError(e)
+	}
+}
+
+/**
  * PUT gegen die App-API, durch den Nicht-JSON-Wächter geprüft.
  *
  * @param path Pfad relativ zu `/apps/projektwerk/api/v1`.

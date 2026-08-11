@@ -166,11 +166,13 @@
 			:fromClientSide="!store.isInternal"
 			:steps="openSteps"
 			:comments="openComments"
+			:attachments="openAttachments"
 			:waiting="openTicketData ? (store.waiting[openTicketData.id] ?? null) : null"
 			@close="openTicketData = null"
 			@changed="applyChanged"
 			@stepsChanged="reloadOpenTicket"
-			@commentsChanged="reloadOpenTicket" />
+			@commentsChanged="reloadOpenTicket"
+			@attachmentsChanged="reloadOpenTicket" />
 
 		<CreateTicketDialog
 			:open="creating"
@@ -182,7 +184,7 @@
 
 <script lang="ts">
 import type { Column, Visibility } from '@/types/board'
-import type { Comment, Step, Ticket } from '@/types/ticket'
+import type { Attachment, Comment, Step, Ticket } from '@/types/ticket'
 
 import { n, t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
@@ -229,6 +231,7 @@ export default defineComponent({
 			openTicketData: null as Ticket | null,
 			openSteps: [] as Step[],
 			openComments: [] as Comment[],
+			openAttachments: [] as Attachment[],
 		}
 	},
 
@@ -344,6 +347,7 @@ export default defineComponent({
 			// dem neuen Titel.
 			this.openSteps = []
 			this.openComments = []
+			this.openAttachments = []
 			await this.loadDetail(ticket.id)
 		},
 
@@ -361,6 +365,7 @@ export default defineComponent({
 				const detail = await fetchTicket(this.boardId, ticketId)
 				this.openSteps = detail.steps
 				this.openComments = detail.comments
+				this.openAttachments = detail.attachments
 			} catch {
 				this.openSteps = []
 				this.openComments = []

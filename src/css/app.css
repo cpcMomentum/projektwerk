@@ -935,6 +935,49 @@
 	border-top: 1px solid var(--color-border);
 }
 
+/* ---- Anhänge ------------------------------------------------------------- */
+
+.app-projektwerk .pw-attach {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 4px 10px;
+	padding: 4px 0;
+	min-height: var(--default-clickable-area, 44px);
+}
+
+/*
+ * Der Dateiname darf umbrechen — an jeder Stelle.
+ *
+ * Er ist der einzige Text hier, dessen Länge niemand in der Hand hat, und ein
+ * `0042_Angebot_Wartungsvertrag_2026_final_v3.pdf` ohne Bruchstelle schöbe den
+ * Lösen-Knopf auf dem Handy aus der Zeile.
+ */
+.app-projektwerk .pw-attach__name {
+	flex: 1 1 200px;
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+.app-projektwerk .pw-attach__meta {
+	font-size: 13px;
+	color: var(--color-text-maxcontrast);
+}
+
+/*
+ * Das Dateifeld selbst ist unsichtbar, aber **nicht `display: none`**: Ein so
+ * entferntes Feld nimmt in manchen Browsern keinen programmgesteuerten Klick
+ * mehr an, und dann tut der Knopf davor gar nichts.
+ */
+.app-projektwerk .pw-attach__input {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+
 /* ---- Kommentare ---------------------------------------------------------- */
 
 .app-projektwerk .pw-comment {

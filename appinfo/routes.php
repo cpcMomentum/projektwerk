@@ -60,6 +60,15 @@ return [
 		// ohne.
 		['name' => 'comment#destroy', 'url' => '/api/v1/boards/{boardId}/comments/{commentId}', 'verb' => 'DELETE'],
 
+		// Anhaenge. Zwei Schreibwege und **kein Leseweg**: Die Liste kommt ueber
+		// ticket#show mit, und die Datei selbst holt der Browser bei Nextcloud.
+		// Ein eigener Downloadweg waere ein zweiter Ort, an dem der
+		// Dateizugriff stimmen muesste.
+		['name' => 'attachment#create', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/attachments', 'verb' => 'POST'],
+		// „destroy" loest die Verknuepfung — die Datei bleibt liegen, die App
+		// loescht nie (§5.18).
+		['name' => 'attachment#destroy', 'url' => '/api/v1/boards/{boardId}/attachments/{attachmentId}', 'verb' => 'DELETE'],
+
 		// Board-Einstellungen. Ausschliesslich Schreibwege — gelesen wird ueber
 		// board#show, das Board, Mitglieder und Spalten in einem Zug liefert und
 		// in der Leak-Matrix registriert ist.

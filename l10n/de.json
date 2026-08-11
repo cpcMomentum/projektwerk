@@ -168,7 +168,22 @@
         "Ordner für interne Vorgänge": "Ordner für interne Vorgänge",
         "Nur die eigene Seite hat Zugriff. Leer lassen heißt: an internen Vorgängen sind keine Anhänge möglich.": "Nur die eigene Seite hat Zugriff. Leer lassen heißt: an internen Vorgängen sind keine Anhänge möglich.",
         "Übernehmen": "Übernehmen",
-        "Ordner konnte nicht gespeichert werden": "Ordner konnte nicht gespeichert werden"
+        "Ordner konnte nicht gespeichert werden": "Ordner konnte nicht gespeichert werden",
+        "Anhänge": "Anhänge",
+        "Anhang lösen: {name}": "Anhang lösen: {name}",
+        "Anhang lösen?": "Anhang lösen?",
+        "Datei anhängen": "Datei anhängen",
+        "Der Anhang „{name}“ wird vom Vorgang gelöst.": "Der Anhang „{name}“ wird vom Vorgang gelöst.",
+        "Der Anhang konnte nicht gespeichert werden": "Der Anhang konnte nicht gespeichert werden",
+        "Die Datei selbst bleibt liegen, wo sie liegt — diese App löscht keine Dateien.": "Die Datei selbst bleibt liegen, wo sie liegt — diese App löscht keine Dateien.",
+        "Lösen": "Lösen",
+        "Noch keine Anhänge.": "Noch keine Anhänge.",
+        "von {name}": "von {name}",
+        "_Dieser Vorgang hat %n Anhang. Bitte ihn zuerst vom Vorgang lösen — die Datei selbst bleibt dabei liegen._::_Dieser Vorgang hat %n Anhänge. Bitte sie zuerst vom Vorgang lösen — die Dateien selbst bleiben dabei liegen._": [
+            "Dieser Vorgang hat %n Anhang. Bitte ihn zuerst vom Vorgang lösen — die Datei selbst bleibt dabei liegen.",
+            "Dieser Vorgang hat %n Anhänge. Bitte sie zuerst vom Vorgang lösen — die Dateien selbst bleiben dabei liegen."
+        ],
+        "Verstanden": "Verstanden"
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }

@@ -11,7 +11,9 @@ namespace OCA\Projektwerk\Tests\Integration;
 
 use OCA\Projektwerk\Access\TicketScope;
 use OCA\Projektwerk\Access\ViewerContext;
+use OCA\Projektwerk\Db\AttachmentMapper;
 use OCA\Projektwerk\Db\TicketMapper;
+use OCA\Projektwerk\Service\AttachmentsPresentException;
 use OCA\Projektwerk\Service\ConflictException;
 use OCA\Projektwerk\Service\NotOwningSideException;
 use OCA\Projektwerk\Service\PositionService;
@@ -115,6 +117,9 @@ class TicketWritePathTest extends IntegrationTestCase {
 			$moved->getLastEditorUserId(),
 			'Verschieben erhöht die Version, vermerkt aber niemanden.',
 		);
+
+		// Vorbedingung seit §3.10 Stufe 1 — siehe `ohneAnhaenge()`.
+		$this->ohneAnhaenge($ticketId);
 
 		$hidden = $this->service->changeVisibility(
 			$bert,
@@ -458,6 +463,7 @@ class TicketWritePathTest extends IntegrationTestCase {
 	public function testOnlyTheOwningSideChangesVisibility(): void {
 		$anna = $this->viewer(LeakMatrixFixture::ANNA);
 		$ticketId = $this->fixture->ticketIds['public/anna'];
+		$this->ohneAnhaenge($ticketId);
 
 		// Bert ist intern wie Anna — dieselbe Seite, also erlaubt.
 		$bert = $this->viewer(LeakMatrixFixture::BERT);
@@ -467,6 +473,67 @@ class TicketWritePathTest extends IntegrationTestCase {
 		// Und Anna selbst natuerlich auch.
 		$changed = $this->service->changeVisibility($anna, $ticketId, 2, TicketScope::VISIBILITY_PUBLIC);
 		$this->assertSame(TicketScope::VISIBILITY_PUBLIC, $changed->getVisibility());
+	}
+
+	/**
+	 * **Ein Vorgang mit Anhängen lässt sich nicht umstellen** (§3.10 Stufe 1).
+	 *
+	 * Das ist der einzige Punkt, an dem ein Leck physisch würde: Läge die Datei
+	 * erst in `90_Austausch`, hätte die Kundenseite sie gesehen, und keine
+	 * spätere Codekorrektur nähme das zurück. Solange der Umzug nicht
+	 * transaktional zur Datenbank ist (§11.3, Spike S2 offen), wird deshalb gar
+	 * nicht erst verschoben.
+	 */
+	public function testATicketWithAttachmentsKeepsItsVisibility(): void {
+		$anna = $this->viewer(LeakMatrixFixture::ANNA);
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+
+		// Die Fixture hat einen Anhang daran — hier ausdrücklich **nicht**
+		// gelöst.
+		try {
+			$this->service->changeVisibility($anna, $ticketId, 1, TicketScope::VISIBILITY_INTERNAL);
+			$this->fail('Die Sichtbarkeit ließ sich trotz Anhang ändern.');
+		} catch (AttachmentsPresentException $e) {
+			$this->assertSame(1, $e->count, 'Die Meldung nennt die Zahl, weil sie die Handlung bestimmt.');
+		}
+
+		// Und der Vorgang steht unverändert da: Ein abgewiesener Versuch darf
+		// nichts halb erledigt hinterlassen.
+		$ticket = $this->tickets->findVisible($anna, $ticketId);
+		$this->assertSame(TicketScope::VISIBILITY_PUBLIC, $ticket->getVisibility());
+		$this->assertSame(1, (int)$ticket->getVersion());
+	}
+
+	/**
+	 * **Dieselbe Stufe noch einmal zu wählen geht auch mit Anhängen.**
+	 *
+	 * Es bewegt keine Datei, also gibt es nichts zu verweigern. Ohne diese
+	 * Unterscheidung wäre ein Vorgang mit Anhang gegen einen Klick gesperrt,
+	 * der gar nichts tut — und die Meldung dazu wäre schlicht unverständlich.
+	 */
+	public function testChoosingTheSameVisibilityAgainIsNotBlocked(): void {
+		$anna = $this->viewer(LeakMatrixFixture::ANNA);
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+
+		$unchanged = $this->service->changeVisibility($anna, $ticketId, 1, TicketScope::VISIBILITY_PUBLIC);
+
+		$this->assertSame(TicketScope::VISIBILITY_PUBLIC, $unchanged->getVisibility());
+	}
+
+	/**
+	 * **„Darf ich" steht vor „geht es".**
+	 *
+	 * Die andere Seite bekommt die Eigentumsmeldung und **nicht** die Zahl der
+	 * Anhänge. Andersherum wäre der Riegel ein Zählwerk für Leute, die den
+	 * Vorgang ohnehin nicht umstellen dürfen.
+	 */
+	public function testTheOwnershipRuleAnswersBeforeTheAttachmentRule(): void {
+		$carla = $this->viewer(LeakMatrixFixture::CARLA);
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+
+		$this->expectException(NotOwningSideException::class);
+
+		$this->service->changeVisibility($carla, $ticketId, 1, TicketScope::VISIBILITY_INTERNAL);
 	}
 
 	/**
@@ -503,6 +570,7 @@ class TicketWritePathTest extends IntegrationTestCase {
 	public function testTheCreatorMayDowngradeToPrivate(): void {
 		$anna = $this->viewer(LeakMatrixFixture::ANNA);
 		$ticketId = $this->fixture->ticketIds['public/anna'];
+		$this->ohneAnhaenge($ticketId);
 
 		$changed = $this->service->changeVisibility($anna, $ticketId, 1, TicketScope::VISIBILITY_PRIVATE);
 
@@ -527,5 +595,28 @@ class TicketWritePathTest extends IntegrationTestCase {
 
 	private function viewer(string $userId): ViewerContext {
 		return $this->fixture->contextFor($userId);
+	}
+
+	/**
+	 * Die Anhänge eines Vorgangs lösen — die **Vorbedingung** jeder
+	 * Sichtbarkeitsänderung (§3.10 Stufe 1).
+	 *
+	 * Die Fixture hängt an jeden ihrer Vorgänge genau einen Anhang, damit die
+	 * Leak-Matrix auch diesen Lesepfad abdeckt. Seit der Riegel steht, heißt
+	 * das: Wer hier umstellen will, muss vorher lösen — genau wie die Person
+	 * vor dem Bildschirm.
+	 *
+	 * Direkt über den Mapper und nicht über den Dienst: Der greift auf den
+	 * Dateibaum zu, und diese Tests haben keinen. Was hier geprüft wird, ist
+	 * die Sichtbarkeitsregel, nicht das Anhängen.
+	 *
+	 * @param int $ticketId Der Vorgang.
+	 */
+	private function ohneAnhaenge(int $ticketId): void {
+		$attachments = Server::get(AttachmentMapper::class);
+
+		foreach ($attachments->findForTickets([$ticketId]) as $attachment) {
+			$attachments->delete($attachment);
+		}
 	}
 }

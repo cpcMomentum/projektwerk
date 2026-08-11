@@ -277,9 +277,16 @@ class TicketService {
 	 * Kundenticket so herunterstufen, dass er selbst den Zugriff verliert — ein
 	 * Vorgang, der danach für niemanden mehr erreichbar wäre.
 	 *
-	 * @throws DoesNotExistException  Ticket nicht sichtbar
-	 * @throws ConflictException      zwischenzeitlich geändert
-	 * @throws NotOwningSideException die andere Seite besitzt dieses Ticket
+	 * **Ein Vorgang mit Anhängen lässt sich nicht umstellen** (§3.10 Stufe 1).
+	 * Die Begründung steht bei {@see AttachmentsPresentException}; kurz: Der
+	 * Ablageort ist die Sichtbarkeit, ein Umzug der Dateien ist nicht
+	 * transaktional zur Datenbank, und ein halb gelungener Umzug wäre ein Leck,
+	 * das keine spätere Codekorrektur heilt.
+	 *
+	 * @throws DoesNotExistException       Ticket nicht sichtbar
+	 * @throws ConflictException           zwischenzeitlich geändert
+	 * @throws NotOwningSideException      die andere Seite besitzt dieses Ticket
+	 * @throws AttachmentsPresentException es hängen noch Anhänge daran
 	 */
 	public function changeVisibility(ViewerContext $viewer, int $ticketId, int $version, string $visibility): Ticket {
 		$this->assertKnownVisibility($visibility);
@@ -287,17 +294,15 @@ class TicketService {
 		$ticket = $this->tickets->findVisible($viewer, $ticketId);
 		$this->assertVersion($ticket, $version);
 
-		if ($ticket->getCreatorRole() !== $viewer->role) {
-			throw new NotOwningSideException(
-				'Die Sichtbarkeit darf nur die Seite ändern, der das Ticket gehört.',
-			);
-		}
+		$this->assertOwningSide($viewer, $ticket, $visibility);
 
-		if ($visibility === TicketScope::VISIBILITY_PRIVATE
-			&& $ticket->getCreatorUserId() !== $viewer->userId) {
-			throw new NotOwningSideException(
-				'Auf „privat" herunterstufen kann nur die anlegende Person selbst.',
-			);
+		// **„Darf ich" steht vor „geht es".** Wer die Seite nicht besitzt, darf
+		// ohnehin nicht umstellen und bekommt deshalb auch keine Zahl über die
+		// Anhänge zu sehen. Und nur bei einer echten Änderung: Dieselbe Stufe
+		// noch einmal zu wählen bewegt keine Datei und darf an einem Anhang
+		// nicht scheitern.
+		if ($visibility !== (string)$ticket->getVisibility()) {
+			$this->assertNoAttachments($viewer, $ticketId);
 		}
 
 		$ticket->setVisibility($visibility);
@@ -444,6 +449,50 @@ class TicketService {
 		$ticket->setVersion((int)$ticket->getVersion() + 1);
 		$ticket->setLastEditorUserId($viewer->userId);
 		$ticket->setUpdatedAt(new \DateTime());
+	}
+
+	/**
+	 * §7, wörtlich: Ändern darf nur die Seite, der das Ticket gehört — und auf
+	 * „privat" herunter nur die anlegende Person selbst.
+	 *
+	 * Die Begründung ist keine Zierde: Sonst könnte ein interner Mitarbeiter ein
+	 * Kundenticket so herunterstufen, dass er selbst den Zugriff verliert — ein
+	 * Vorgang, der danach für niemanden mehr erreichbar wäre.
+	 *
+	 * @throws NotOwningSideException
+	 */
+	private function assertOwningSide(ViewerContext $viewer, Ticket $ticket, string $visibility): void {
+		if ($ticket->getCreatorRole() !== $viewer->role) {
+			throw new NotOwningSideException(
+				'Die Sichtbarkeit darf nur die Seite ändern, der das Ticket gehört.',
+			);
+		}
+
+		if ($visibility === TicketScope::VISIBILITY_PRIVATE
+			&& $ticket->getCreatorUserId() !== $viewer->userId) {
+			throw new NotOwningSideException(
+				'Auf „privat" herunterstufen kann nur die anlegende Person selbst.',
+			);
+		}
+	}
+
+	/**
+	 * Der Riegel aus §3.10 Stufe 1.
+	 *
+	 * Gezählt wird über die gefilterte Einermenge — es gibt keinen Weg, „die
+	 * Anhänge zu Vorgang 42" zu zählen, der nicht durch die Sichtbarkeit geht.
+	 *
+	 * @throws AttachmentsPresentException
+	 */
+	private function assertNoAttachments(ViewerContext $viewer, int $ticketId): void {
+		$count = $this->attachments->countForTickets([$ticketId])[$ticketId] ?? 0;
+
+		if ($count > 0) {
+			// Die Zahl steht in der Meldung, weil sie die Handlung bestimmt:
+			// „Bitte den Anhang zuerst entfernen" ist eine andere Aufgabe als
+			// dieselbe Bitte für sieben.
+			throw new AttachmentsPresentException($count);
+		}
 	}
 
 	private function assertKnownVisibility(string $visibility): void {

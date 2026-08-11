@@ -60,6 +60,27 @@ export interface Comment {
 	updatedAt: string | null
 }
 
+/**
+ * Ein Anhang — ein **Verweis** auf eine Datei, keine Kopie.
+ *
+ * Führend ist `fileId`. `filePath` dient der Anzeige und darf veralten: Wer den
+ * Projektordner umbenennt, lässt eine Beschriftung falsch werden und keine
+ * Verknüpfung reißen (§5.18).
+ */
+export interface Attachment {
+	id: number
+	ticketId: number
+	/** Die Datei-ID in Nextcloud — der einzige führende Wert. */
+	fileId: number
+	/** Nur zur Anzeige, kann veraltet sein. */
+	filePath: string | null
+	fileName: string
+	/** 'public' | 'internal' — in welchem der beiden Projektordner sie liegt. */
+	location: string
+	uploadedBy: string
+	createdAt: string | null
+}
+
 export interface Step {
 	id: number
 	ticketId: number
@@ -110,6 +131,6 @@ export interface TicketDetail {
 	waiting: WaitState | null
 	comments: Comment[]
 	steps: Step[]
-	attachments: unknown[]
+	attachments: Attachment[]
 	collaborators: unknown[]
 }
