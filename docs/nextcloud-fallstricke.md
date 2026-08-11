@@ -443,12 +443,12 @@ auch dann, als gar keine Freigabe mehr auf ihr lag.** Grund ist nicht der Umzug,
 Team-Ordner selbst — er zeigt allen Mitgliedern seiner Gruppe **alles** darin, Unterordner
 eingeschlossen.
 
-**Das trifft nicht erst Phase 7b, sondern den heutigen Stand.** Wer `90_Austausch` und
-`91_Tickets_intern` als zwei Unterordner eines Team-Ordners anlegt und die Kundenseite in dessen
-Gruppe aufnimmt, hat **keine** Trennung: Jeder interne Anhang liegt offen, ohne dass irgendwo ein
-Fehler auftaucht. Die Sichtbarkeitsregel der App stimmt dabei weiterhin — sie regelt Vorgänge, nicht
-Dateien. Der Ablageort ist die Sichtbarkeit (§5.18), und genau deshalb muss der **Ablageort** die
-Trennung tragen.
+**Betrifft ausschließlich den Team-Ordner-Aufbau — nicht die Struktur, die die Produktbeschreibung
+vorsieht.** Wer `90_Austausch` und `91_Tickets_intern` als zwei Unterordner **eines Team-Ordners**
+anlegt und die Kundenseite in dessen Gruppe aufnimmt, hat keine Trennung: Jeder interne Anhang liegt
+offen, ohne dass irgendwo ein Fehler auftaucht. Die Sichtbarkeitsregel der App stimmt dabei
+weiterhin — sie regelt Vorgänge, nicht Dateien. Der Ablageort ist die Sichtbarkeit (§5.18), und
+genau deshalb muss der **Ablageort** die Trennung tragen.
 
 **Es lässt sich sauber trennen, aber nur ausdrücklich.** Mit erweiterten Rechten:
 
@@ -460,27 +460,37 @@ occ groupfolders:permissions <id> 91_Tickets_intern -u <kundenkonto> -- -read
 Danach gemessen: `90_Austausch` → HTTP 207, `91_Tickets_intern` → **HTTP 404**. Der Ordner ist für
 das Kundenkonto nicht mehr vorhanden, nicht bloß leer.
 
-### Der empfohlene Weg umgeht das Problem ganz
+### Die vorgesehene Struktur hat das Problem nicht
 
-**Nicht ein Team-Ordner mit zwei Unterordnern, sondern eine gezielte Freigabe.** Der
-Austauschordner wird der Kundenseite **direkt freigegeben**, der interne Ordner gar nicht. Dann
-gibt es nichts einzurichten und nichts zu vergessen: Der interne Ordner taucht im Dateibaum des
-Kunden nicht auf, weil er ihm nie gegeben wurde.
+**Die Produktbeschreibung beschreibt bereits den sicheren Aufbau**, und zwar aus einem anderen
+Grund als diesem hier — er fällt als Nebenwirkung ab:
 
-Genau so wird bei CPC bereits gearbeitet (Axel, 2026-08-11), und genau so war der S1-Aufbau
-gebaut — dort ist das Problem nie aufgetreten. Der Team-Ordner ist der Sonderfall, nicht der
-Normalfall.
+- **§16:** Ein Projektordner je Projekt mit fester Struktur (`00_Angebot_Abrechnung`, `10_Input`,
+  `20_Inhalte`, …, `90_Austausch`, `99_Archiv`). `91_Tickets_intern` kommt als **Geschwisterordner**
+  dazu, „nur von der App gefüllt".
+- **§19:** „Freigabe von `90_Austausch` legt CPC von Hand an." Geteilt wird **genau dieser eine
+  Unterordner** — der Projektordner als Ganzes nie. Er enthält schließlich auch
+  `00_Angebot_Abrechnung`, das der Kunde laut §16 „nie" sehen darf.
 
-| Aufbau | Trennung | Aufwand |
+Damit ist `91_Tickets_intern` für die Kundenseite nicht verschlossen, sondern **nicht vorhanden**:
+Es wurde ihr nie gegeben. Es gibt keinen Einrichtungsschritt, den jemand vergessen könnte.
+
+Und daraus folgt auch: **Voller Zugriff auf `90_Austausch` ist unbedenklich.** Alles darin gehört
+per Konstruktion zu Vorgängen für „Alle Beteiligten" — die App legt dort nichts anderes ab.
+
+| Aufbau | Trennung | Zusatzschritt |
 |---|---|---|
-| **Gezielte Freigabe des Austauschordners** | von selbst | keiner |
-| Team-Ordner mit beiden Unterordnern | **nur mit erweiterten Rechten** | ein Befehl je Projekt, unvergesslich zu machen |
+| **Projektordner, nur `90_Austausch` freigegeben** (§16/§19) | von selbst | keiner |
+| Team-Ordner mit beiden Unterordnern | nur mit erweiterten Rechten | ein Befehl je Projekt |
 
-→ Für die Betriebsanleitung heißt das: **die gezielte Freigabe als Weg beschreiben**, den
-Team-Ordner als Variante mit dem Zusatzschritt. Ein Setup-Check bleibt sinnvoll — die App kennt
-beide Ordner-IDs und könnte prüfen, ob ein externes Mitglied den internen Ordner erreicht —, ist
-aber **keine Dringlichkeit**, solange der empfohlene Weg gegangen wird. Er zahlt sich erst auf
-fremden Installationen aus.
+→ Ein Setup-Check bleibt sinnvoll — die App kennt beide Ordner-IDs und könnte prüfen, ob ein
+externes Mitglied den internen Ordner erreicht. **Dringlich ist er nicht:** Er sichert einen Aufbau
+ab, den die Produktbeschreibung gar nicht vorsieht, und zahlt sich erst auf fremden Installationen
+aus.
+
+> **Zur Entstehung dieser Notiz:** Der Team-Ordner war der Aufbau des Spikes, weil §11.3 wörtlich
+> nach „zwei Unterordnern desselben Team-Ordners" fragt. Der Befund wurde daraufhin zunächst
+> behandelt, als wäre das die Struktur bei CPC. Ist er nicht — richtiggestellt am 2026-08-11.
 
 ### Und warum §5.18 „keine von der App angelegten Freigaben" jetzt doppelt richtig ist
 
