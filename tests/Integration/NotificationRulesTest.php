@@ -11,7 +11,6 @@ namespace OCA\Projektwerk\Tests\Integration;
 
 use OCA\Projektwerk\Access\TicketScope;
 use OCA\Projektwerk\Db\MailOutbox;
-use OCA\Projektwerk\Db\MailOutboxMapper;
 use OCA\Projektwerk\Db\Ticket;
 use OCA\Projektwerk\Service\NotificationService;
 use OCP\IL10N;
@@ -34,14 +33,6 @@ use Psr\Log\NullLogger;
  * Zustellung.
  */
 class NotificationRulesTest extends IntegrationTestCase {
-
-	private MailOutboxMapper $outbox;
-
-	protected function setUp(): void {
-		parent::setUp();
-
-		$this->outbox = Server::get(MailOutboxMapper::class);
-	}
 
 	/**
 	 * @param int $erwarteteGlocken Wie viele Glockeneintraege entstehen duerfen.
