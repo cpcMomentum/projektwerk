@@ -212,12 +212,23 @@ class TicketService {
 		$neuZugewiesen = null;
 		if (array_key_exists('responsibleUserId', $changes)) {
 			$vorher = $ticket->getResponsibleUserId();
-			$ticket->setResponsibleUserId($changes['responsibleUserId']);
 			$nachher = $changes['responsibleUserId'];
 
-			if ($nachher !== null && $nachher !== '' && $nachher !== $vorher) {
-				$neuZugewiesen = (string)$nachher;
+			if ($nachher !== null && $nachher !== '') {
+				// Dieselbe Sichtbarkeitspruefung wie bei der Schrittzuweisung
+				// ({@see StepService::applyAssignment()}): Zustaendig darf nur
+				// werden, wer das Ticket auch sehen wuerde. Sonst liesse sich per
+				// API eine Mail an jemanden ausserhalb des Boards ausloesen.
+				if (!$this->mayBecomeResponsible($ticket, $viewer, (string)$nachher)) {
+					throw new \InvalidArgumentException('Diese Person kann diesen Vorgang nicht sehen.');
+				}
+
+				if ($nachher !== $vorher) {
+					$neuZugewiesen = (string)$nachher;
+				}
 			}
+
+			$ticket->setResponsibleUserId($nachher);
 		}
 		if (array_key_exists('closed', $changes)) {
 			$ticket->setClosedAt($changes['closed'] ? new \DateTime() : null);
@@ -241,6 +252,32 @@ class TicketService {
 		}
 
 		return $gespeichert;
+	}
+
+	/**
+	 * Dieselbe Frage wie beim Lesen, nur fuer eine andere Person — analog zu
+	 * {@see StepService::maySee()}.
+	 */
+	private function mayBecomeResponsible(Ticket $ticket, ViewerContext $viewer, string $userId): bool {
+		$role = null;
+		foreach ($this->members->findForBoard($viewer) as $member) {
+			if ((string)$member->getUserId() === $userId) {
+				$role = (string)$member->getRole();
+				break;
+			}
+		}
+
+		if ($role === null) {
+			return false;
+		}
+
+		return $this->scope->wouldSee(
+			(string)$ticket->getVisibility(),
+			(string)$ticket->getCreatorUserId(),
+			(string)$ticket->getCreatorRole(),
+			$userId,
+			$role,
+		);
 	}
 
 	/**
