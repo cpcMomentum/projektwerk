@@ -78,11 +78,14 @@ class NotifyPrefService {
 	 * @param string $channel Einer der Kanäle aus {@see NotifyPref}.
 	 * @param int $boardId Projekt, oder {@see NotifyPrefMapper::GLOBAL_SCOPE}.
 	 * @param bool $enabled Neuer Stand.
-	 * @throws \InvalidArgumentException unbekannter Kanal
+	 * @throws \InvalidArgumentException unbekannter Kanal oder negatives Projekt
 	 */
 	public function set(string $userId, string $channel, int $boardId, bool $enabled): NotifyPref {
 		if (!in_array($channel, self::KANAELE, true)) {
 			throw new \InvalidArgumentException('Unbekannter Kanal: ' . $channel);
+		}
+		if ($boardId < NotifyPrefMapper::GLOBAL_SCOPE) {
+			throw new \InvalidArgumentException('Ungueltiges Projekt: ' . $boardId);
 		}
 
 		foreach ($this->prefs->findForUser($userId) as $pref) {
@@ -96,7 +99,7 @@ class NotifyPrefService {
 		$neu = new NotifyPref();
 		$neu->setUserId($userId);
 		$neu->setChannel($channel);
-		$neu->setBoardId(max(0, $boardId));
+		$neu->setBoardId($boardId);
 		$neu->setEnabled($enabled ? 1 : 0);
 
 		return $this->prefs->insert($neu);
