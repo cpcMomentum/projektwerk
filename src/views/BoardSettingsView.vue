@@ -8,6 +8,56 @@
 		</div>
 
 		<!--
+			Die eigenen Benachrichtigungen stehen VOR der Verwaltung und ausserhalb
+			ihrer Rechtepruefung: Sie gehoeren jedem Mitglied, auch der Kundenseite.
+			Stuenden sie im Block darunter, saehe ein externes Mitglied auf dieser
+			Seite nur „Keine Berechtigung" — und haette keinen Ort, an dem es seine
+			eigenen Mails abstellen kann.
+		-->
+		<div v-if="!store.loading" class="pw-settings">
+			<!--
+			Benachrichtigungen — **persönlich, nicht für das Projekt.**
+
+			Der Abschnitt steht in den Projekteinstellungen, weil man ihn
+			genau dort sucht: in dem Projekt, dessen Mails gerade stören.
+			Er gilt aber nur für die eigene Person; niemand stellt hier
+			etwas für andere ein. Deshalb der Satz darunter — ohne ihn läse
+			sich die Überschrift wie eine Projekteinstellung.
+
+			Und deshalb hängt der Abschnitt **nicht** an `mayManage`: Seine
+			eigenen Benachrichtigungen darf jedes Mitglied regeln, auch die
+			Kundenseite.
+		-->
+			<section class="pw-settings__block">
+				<h3 class="pw-col__head">
+					{{ t('projektwerk', 'Meine Benachrichtigungen') }}
+				</h3>
+
+				<p class="pw-settings__hint">
+					{{ t('projektwerk', 'Gilt nur für Sie und nur für dieses Projekt. Ohne eigene Einstellung gilt, was Sie allgemein festgelegt haben — sonst: eingeschaltet.') }}
+				</p>
+
+				<div v-for="kanal in kanaele" :key="kanal.key" class="pw-settings__row">
+					<label class="pw-settings__check">
+						<input
+							type="checkbox"
+							:checked="kanalStand(kanal.key)"
+							:disabled="busy"
+							@change="setzeKanal(kanal.key, ($event.target as HTMLInputElement).checked)">
+						{{ kanal.label }}
+					</label>
+					<!--
+					Zeigt an, WOHER der Stand kommt. Ohne diesen Hinweis
+					sieht ein geerbtes „an" aus wie ein gesetztes, und wer
+					es abschaltet, wundert sich, dass anderswo nichts
+					passiert.
+				-->
+					<span class="pw-settings__hint">{{ herkunft(kanal.key) }}</span>
+				</div>
+			</section>
+		</div>
+
+		<!--
 			Die Verwaltung steht nur internen Mitgliedern mit Verwaltungsrecht
 			offen (§8). Der Server weist jeden Schreibversuch ohnehin mit 403 ab
 			— hier faellt nur die Bedienung weg, damit niemand ein Formular
@@ -370,6 +420,7 @@
 </template>
 
 <script lang="ts">
+import type { Channel, NotifyPrefs } from '@/services/notifyPrefs'
 import type { Candidate } from '@/services/settings'
 import type { Column, Member, MemberRole } from '@/types/board'
 
@@ -384,6 +435,7 @@ import ArrowDownIcon from 'vue-material-design-icons/ArrowDown.vue'
 import ArrowUpIcon from 'vue-material-design-icons/ArrowUp.vue'
 import DeleteIcon from 'vue-material-design-icons/DeleteOutline.vue'
 import LockIcon from 'vue-material-design-icons/Lock.vue'
+import { fetchNotifyPrefs, setNotifyPref } from '@/services/notifyPrefs'
 import {
 	addMember,
 	createColumn,
@@ -440,6 +492,8 @@ export default defineComponent({
 			// Pfad muss erst geprueft werden, und bis dahin darf er nirgends
 			// als der gespeicherte gelten.
 			folderDrafts: { public: '', internal: '' } as Record<'public' | 'internal', string>,
+			/** Der **gespeicherte** Stand der eigenen Kanalschalter. */
+			notifyPrefs: { global: {}, boards: {} } as NotifyPrefs,
 		}
 	},
 
@@ -451,6 +505,14 @@ export default defineComponent({
 		/** §8: Pflegen darf nur ein internes Mitglied mit Verwaltungsrecht. */
 		mayManage(): boolean {
 			return this.store.viewer?.isManager === true
+		},
+
+		/** Die beiden Kanaele, damit die Vorlage sie nicht doppelt ausschreibt. */
+		kanaele(): { key: Channel, label: string }[] {
+			return [
+				{ key: 'mail', label: t('projektwerk', 'E-Mail') },
+				{ key: 'bell', label: t('projektwerk', 'Glocke in Nextcloud') },
+			]
 		},
 
 		/**
@@ -551,6 +613,16 @@ export default defineComponent({
 			async handler(id: number) {
 				await this.store.open(id)
 				this.fillDraft()
+
+				// Die eigenen Schalter kommen aus einem eigenen Endpunkt: Sie
+				// gehoeren der Person, nicht dem Projekt, und stehen deshalb
+				// nicht in `board#show`.
+				try {
+					this.notifyPrefs = await fetchNotifyPrefs()
+				} catch {
+					// Kein Grund, die Seite scheitern zu lassen — ohne die
+					// Schalter zeigt der Abschnitt die Vorgabe, und die stimmt.
+				}
 			},
 		},
 	},
@@ -573,6 +645,53 @@ export default defineComponent({
 			this.folderDrafts = {
 				public: board.folderPublicPath ?? '',
 				internal: board.folderInternalPath ?? '',
+			}
+		},
+
+		/**
+		 * Der aufgeloeste Stand eines Kanals — dieselben drei Stufen wie auf
+		 * dem Server: Projektzeile, sonst global, sonst an.
+		 *
+		 * @param kanal Glocke oder Mail.
+		 */
+		kanalStand(kanal: Channel): boolean {
+			return this.notifyPrefs.boards[this.boardId]?.[kanal]
+				?? this.notifyPrefs.global[kanal]
+				?? true
+		},
+
+		/**
+		 * Woher der angezeigte Stand kommt.
+		 *
+		 * Ohne diese Zeile sieht ein geerbtes „an" aus wie ein gesetztes.
+		 *
+		 * @param kanal Glocke oder Mail.
+		 */
+		herkunft(kanal: Channel): string {
+			if (this.notifyPrefs.boards[this.boardId]?.[kanal] !== undefined) {
+				return t('projektwerk', 'Für dieses Projekt festgelegt')
+			}
+			if (this.notifyPrefs.global[kanal] !== undefined) {
+				return t('projektwerk', 'Aus Ihrer allgemeinen Einstellung übernommen')
+			}
+			return t('projektwerk', 'Vorgabe')
+		},
+
+		/**
+		 * @param kanal Glocke oder Mail.
+		 * @param an Neuer Stand.
+		 */
+		async setzeKanal(kanal: Channel, an: boolean): Promise<void> {
+			if (this.busy) {
+				return
+			}
+			this.busy = true
+			try {
+				this.notifyPrefs = await setNotifyPref(kanal, an, this.boardId)
+			} catch (e) {
+				showError((e as { message?: string }).message ?? t('projektwerk', 'Einstellung konnte nicht gespeichert werden'))
+			} finally {
+				this.busy = false
 			}
 		},
 
