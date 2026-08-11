@@ -407,8 +407,14 @@ App nach loadApp registriert? ja    → 31 Routen, linkToRoute = /index.php/apps
 Ein `TimedJob` läuft im vollen App-Kontext, dort tritt das nicht auf. Die Lehre gilt trotzdem:
 
 → **Das Ergebnis von `linkToRoute*()` prüfen, bevor es in eine Mail geht.** Ein leerer oder auf der
-Basisadresse endender Link ist ein Fehler und keine Adresse. Der Routenname lautet
-`projektwerk.deepLink.ticket` — aus `deepLink#ticket` in `appinfo/routes.php`, das `L` bleibt groß.
+Basisadresse endender Link ist ein Fehler und keine Adresse.
+
+**Zur Schreibweise des Routennamens — beide stimmen, aber an verschiedenen Stellen.** Im Code
+schreibt man ihn wie in `appinfo/routes.php`: `projektwerk.deepLink.ticket`. **Registriert ist er
+komplett kleingeschrieben** (`projektwerk.deeplink.ticket`, im Spike aus der Routensammlung
+ausgelesen) — `Router::generate()` senkt sowohl bei der Registrierung als auch beim Aufruf, deshalb
+funktionieren beide Schreibweisen als Eingabe. Wichtig wird der Unterschied nur beim Suchen: Wer
+einen „Route not found"-Fall debuggt und die Sammlung durchsieht, findet `deepLink` dort nicht.
 
 ## Benachrichtigungen im Detail
 
