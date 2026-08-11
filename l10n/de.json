@@ -32,7 +32,6 @@
         "Verschieben fehlgeschlagen": "Verschieben fehlgeschlagen",
         "Aktionen für {title}": "Aktionen für {title}",
         "Geändert von {name}": "Geändert von {name}",
-        "{count} Kommentare": "{count} Kommentare",
         "{done} von {count} Arbeitsschritten erledigt": "{done} von {count} Arbeitsschritten erledigt",
         "ProjektWerk ist für Gastkonten nicht freigeschaltet. Die Administration muss die App auf die Freigabeliste der Guests-App setzen.": "ProjektWerk ist für Gastkonten nicht freigeschaltet. Die Administration muss die App auf die Freigabeliste der Guests-App setzen.",
         "Geschlossen": "Geschlossen",
@@ -46,9 +45,15 @@
         "Neue Sichtbarkeit:": "Neue Sichtbarkeit:",
         "Auf „Nur ich\" herunterstufen kann nur die anlegende Person": "Auf „Nur ich\" herunterstufen kann nur die anlegende Person",
         "Folgende Personen verlieren den Zugriff auf diesen Vorgang:": "Folgende Personen verlieren den Zugriff auf diesen Vorgang:",
-        "Folgende Personen verlieren den Zugriff auf diesen Vorgang und seine {comments} Kommentare:": "Folgende Personen verlieren den Zugriff auf diesen Vorgang und seine {comments} Kommentare:",
-        "Folgende Personen verlieren den Zugriff auf diesen Vorgang und seine {attachments} Anhänge:": "Folgende Personen verlieren den Zugriff auf diesen Vorgang und seine {attachments} Anhänge:",
-        "Folgende Personen verlieren den Zugriff auf diesen Vorgang, seine {comments} Kommentare und {attachments} Anhänge:": "Folgende Personen verlieren den Zugriff auf diesen Vorgang, seine {comments} Kommentare und {attachments} Anhänge:",
+        "Folgende Personen verlieren den Zugriff auf diesen Vorgang und {betroffen}:": "Folgende Personen verlieren den Zugriff auf diesen Vorgang und {betroffen}:",
+        "_%n Kommentar_::_%n Kommentare_": [
+            "%n Kommentar",
+            "%n Kommentare"
+        ],
+        "_%n Anhang_::_%n Anhänge_": [
+            "%n Anhang",
+            "%n Anhänge"
+        ],
         "Die Beteiligten werden nicht benachrichtigt.": "Die Beteiligten werden nicht benachrichtigt.",
         "Sichtbarkeit ändern": "Sichtbarkeit ändern",
         "Sichtbarkeit konnte nicht geprüft werden": "Sichtbarkeit konnte nicht geprüft werden",

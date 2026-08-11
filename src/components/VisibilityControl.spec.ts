@@ -35,6 +35,10 @@ vi.mock('@/services/toast', () => ({
 }))
 vi.mock('@nextcloud/l10n', () => ({
 	t: (_app: string, text: string, vars?: Record<string, unknown>) => text.replace(/\{(\w+)\}/g, (match, key: string) => String(vars?.[key] ?? match)),
+	// Dieselbe Regel wie die deutsche Mehrzahlform: eins ist Einzahl, alles
+	// andere Mehrzahl. Ein Platzhalter, der immer die Mehrzahl liefert, liesse
+	// den Fehler durch, um den es hier geht.
+	n: (_app: string, singular: string, plural: string, count: number) => (count === 1 ? singular : plural).replace('%n', String(count)),
 }))
 vi.mock('@nextcloud/vue/components/NcButton', () => ({
 	// Ein echter Knopf statt der Nextcloud-Komponente: Der Test fragt nach
@@ -253,6 +257,32 @@ describe('VisibilityControl', () => {
 
 		expect(wrapper.find('.pw-viscontrol__warn').exists()).toBe(true)
 		expect(changeVisibility).not.toHaveBeenCalled()
+	})
+
+	/**
+	 * **Einzahl und Mehrzahl.**
+	 *
+	 * Der Satz trug bis zum 2026-08-10 die Zahlen als Platzhalter in einem
+	 * festen Text — bei genau einem Kommentar stand dort „seine 1 Kommentare".
+	 * Zwei Zahlen in einem Satz kann `n()` nicht beugen, deshalb wird je Zahl
+	 * einzeln gebeugt und mit Komma verbunden.
+	 */
+	it('beugt die Zahlwörter in der Rückfrage', async () => {
+		fetchVisibilityImpact.mockResolvedValue({ losing: ['carla'], comments: 1, attachments: 0 })
+
+		const einer = mountControl(ticketOf(), viewerOf())
+		await choose(einer, 'internal')
+
+		expect(einer.find('.pw-viscontrol__losing').text()).toContain('1 Kommentar')
+		expect(einer.find('.pw-viscontrol__losing').text()).not.toContain('1 Kommentare')
+
+		fetchVisibilityImpact.mockResolvedValue({ losing: ['carla'], comments: 3, attachments: 1 })
+
+		const mehrere = mountControl(ticketOf(), viewerOf())
+		await choose(mehrere, 'internal')
+
+		// Beide Zahlen in einem Satz, jede fuer sich gebeugt.
+		expect(mehrere.find('.pw-viscontrol__losing').text()).toContain('3 Kommentare, 1 Anhang')
 	})
 
 	it('nennt in der Rückfrage Namen und Zahlen, nicht Kennungen', async () => {

@@ -158,7 +158,11 @@ test.describe('Dienstleisterseite', () => {
 		// Die Zahl steht nicht als Text auf der Karte, sondern nur im
 		// `aria-label` des Symbols — sichtbar ist ein Sprechblasensymbol. Wer
 		// hier auf sichtbaren Text prueft, prueft nichts.
-		await expect(karte.getByRole('img', { name: '1 Kommentare' })).toBeVisible()
+		//
+		// **Einzahl.** Hier stand „1 Kommentare", weil die Beschriftung ueber
+		// `t()` mit Platzhalter lief statt ueber `n()`. Genau der Fall, der ohne
+		// diese Zeile beim naechsten Umbau zurueckkommt.
+		await expect(karte.getByRole('img', { name: '1 Kommentar', exact: true })).toBeVisible()
 
 		await page.getByText(projekt.oeffentlich.title).click()
 		await page.locator('.pw-comment-new').getByRole('textbox').fill('Noch einer.')
