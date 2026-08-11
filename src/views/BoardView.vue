@@ -369,6 +369,7 @@ export default defineComponent({
 			} catch {
 				this.openSteps = []
 				this.openComments = []
+				this.openAttachments = []
 			}
 		},
 
