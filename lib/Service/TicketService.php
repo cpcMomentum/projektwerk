@@ -302,7 +302,7 @@ class TicketService {
 		// noch einmal zu wählen bewegt keine Datei und darf an einem Anhang
 		// nicht scheitern.
 		if ($visibility !== (string)$ticket->getVisibility()) {
-			$this->assertNoAttachments($viewer, $ticketId);
+			$this->assertNoAttachments($ticketId);
 		}
 
 		$ticket->setVisibility($visibility);
@@ -479,8 +479,12 @@ class TicketService {
 	/**
 	 * Der Riegel aus §3.10 Stufe 1.
 	 *
-	 * Gezählt wird über die gefilterte Einermenge — es gibt keinen Weg, „die
-	 * Anhänge zu Vorgang 42" zu zählen, der nicht durch die Sichtbarkeit geht.
+	 * **Die Filterung ist schon passiert, nicht hier.** Gezählt wird über eine
+	 * Einermenge auf dem Mapper; die Sichtbarkeit steckt darin, dass diese
+	 * `$ticketId` aus {@see TicketMapper::findVisible()} kommt und der Aufrufer
+	 * sie nicht anders bekommt. Ein `ViewerContext` als Parameter täuschte hier
+	 * eine zweite Prüfung vor, die es nicht gibt — und eine vorgetäuschte
+	 * Prüfung ist schlechter als gar keine, weil man sich auf sie verlässt.
 	 *
 	 * **Bekanntes, enges Zeitfenster.** Zwischen dieser Zählung und dem
 	 * `update()` liegt keine Sperre: Wer in genau diesen Millisekunden einen
@@ -498,7 +502,7 @@ class TicketService {
 	 *
 	 * @throws AttachmentsPresentException
 	 */
-	private function assertNoAttachments(ViewerContext $viewer, int $ticketId): void {
+	private function assertNoAttachments(int $ticketId): void {
 		$count = $this->attachments->countForTickets([$ticketId])[$ticketId] ?? 0;
 
 		if ($count > 0) {
