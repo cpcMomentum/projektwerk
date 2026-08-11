@@ -42,6 +42,17 @@ class ArchitectureTest extends TestCase {
 			// Kommandozeile, hat keinen Betrachterkontext und beschraenkt sich
 			// auf zwei Anweisungen: auflisten und `deleted_at` leeren.
 			'Command/TicketRestore.php',
+			// **Zweite namentliche Ausnahme, gleiche Form.** Beim Loeschen eines
+			// Kontos muessen dessen private Vorgaenge weg (§29) — und genau die
+			// verbirgt die Sichtbarkeitsregel vor jedem, der noch da ist. Es
+			// gibt keinen Betrachter mehr, der sie finden koennte: Die einzige
+			// Person, die sie je sehen durfte, ist der Grund fuer den Aufruf.
+			//
+			// Die Datei liest nichts aus, das jemandem angezeigt wuerde. Sie
+			// reagiert auf ein Systemereignis, raeumt in einer Transaktion auf
+			// und hat keine oeffentliche Lesemethode. Genau das trennt sie von
+			// dem zweiten Lesepfad, gegen den dieser Waechter gerichtet ist.
+			'Service/MemberLifecycleService.php',
 		];
 
 		$offenders = [];

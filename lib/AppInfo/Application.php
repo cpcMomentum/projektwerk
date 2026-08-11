@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OCA\Projektwerk\AppInfo;
 
 use OCA\Projektwerk\BackgroundJob\MailRetryJob;
+use OCA\Projektwerk\Listener\UserDeletedListener;
 use OCA\Projektwerk\Notification\Notifier;
 use OCA\Projektwerk\SetupCheck\GuestsWhitelistCheck;
 use OCA\Projektwerk\SetupCheck\InstanceConfigCheck;
@@ -17,6 +18,7 @@ use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
 use OCP\AppFramework\Bootstrap\IRegistrationContext;
+use OCP\User\Events\UserDeletedEvent;
 
 class Application extends App implements IBootstrap {
 	public const APP_ID = 'projektwerk';
@@ -44,10 +46,10 @@ class Application extends App implements IBootstrap {
 		// versucht.
 		$context->registerBackgroundJob(MailRetryJob::class);
 
-		// Hier kommt spaeter u.a. der Listener auf UserDeletedEvent hin:
-		// Beim Loeschen eines Kontos muessen dessen private Tickets entfernt
-		// und offene Zuweisungen aufgehoben werden — mangels Admin-Ausnahme
-		// liessen sie sich sonst nie wieder aufraeumen.
+		// **Beim Loeschen eines Kontos raeumt die App hinterher** (§29). Ohne
+		// das blieben unsichtbare private Vorgaenge und ein ewiges „wartet auf
+		// Kunde" stehen — mangels Admin-Ausnahme fuer immer.
+		$context->registerEventListener(UserDeletedEvent::class, UserDeletedListener::class);
 	}
 
 	public function boot(IBootContext $context): void {
