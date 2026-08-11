@@ -49,6 +49,8 @@ export async function createBoard(data: {
  * @param changes.orgInternal
  * @param changes.orgExternal
  * @param changes.chatUrl
+ * @param changes.folderPublicPath
+ * @param changes.folderInternalPath
  */
 export async function updateBoard(boardId: number, changes: {
 	title?: string
@@ -56,6 +58,15 @@ export async function updateBoard(boardId: number, changes: {
 	orgInternal?: string | null
 	orgExternal?: string | null
 	chatUrl?: string | null
+	/**
+	 * Die beiden Projektordner als **Pfad**.
+	 *
+	 * Gespeichert wird daraus die Datei-ID; der Pfad benennt den Ordner nur
+	 * (§5.18). Zurück kommt der aufgelöste, kanonische Pfad — nicht der
+	 * getippte. Der leere String entfernt die Zuordnung.
+	 */
+	folderPublicPath?: string
+	folderInternalPath?: string
 }): Promise<Board> {
 	return apiPatch<Board, typeof changes>(`/boards/${boardId}`, changes)
 }

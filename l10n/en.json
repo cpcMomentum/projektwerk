@@ -160,7 +160,15 @@
         "Zielspalte": "Target column",
         "wartet auf {names} · seit {date}": "waiting for {names} · since {date}",
         "Privat": "Private",
-        "seit {date}": "since {date}"
+        "seit {date}": "since {date}",
+        "Dateiablage": "File storage",
+        "Anhänge an Vorgängen landen in diesen Ordnern. Ohne Ordner sind an den betreffenden Vorgängen keine Anhänge möglich.": "Attachments on tickets are stored in these folders. Without a folder, the tickets concerned cannot have attachments.",
+        "Ordner für Vorgänge, die alle Beteiligten sehen": "Folder for tickets everyone involved can see",
+        "Die Kundenseite hat Zugriff. Leer lassen heißt: an diesen Vorgängen sind keine Anhänge möglich.": "The customer side has access. Leaving it empty means these tickets cannot have attachments.",
+        "Ordner für interne Vorgänge": "Folder for internal tickets",
+        "Nur die eigene Seite hat Zugriff. Leer lassen heißt: an internen Vorgängen sind keine Anhänge möglich.": "Only your own side has access. Leaving it empty means internal tickets cannot have attachments.",
+        "Übernehmen": "Apply",
+        "Ordner konnte nicht gespeichert werden": "Could not save the folder"
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }

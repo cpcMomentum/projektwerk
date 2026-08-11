@@ -792,6 +792,11 @@
 	color: var(--color-text-maxcontrast);
 }
 
+.app-projektwerk .pw-field--grow {
+	flex: 1 1 260px;
+	min-width: 0;
+}
+
 /* ---- Wartemarke ---------------------------------------------------------- */
 
 /*

@@ -8,6 +8,26 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Added
 
+- **Dateiablage in den Projekteinstellungen** — die beiden Projektordner lassen sich am Board
+  hinterlegen. Die Spalten dafür stehen seit Migration 1, gesetzt hat sie bisher nichts; ohne
+  sie hätte ein Anhang keinen Ort, an den er gehört. Eingetragen wird ein **Pfad**, gespeichert
+  wird die **Datei-ID** — wer den Ordner später umbenennt, lässt eine Beschriftung veralten und
+  keine Verknüpfung reißen. Der Server löst auf und antwortet mit dem kanonischen Pfad; ein
+  Ordner, der nicht existiert, keiner ist oder nicht beschreibbar ist, wird beim Eintragen
+  abgewiesen und nicht erst beim ersten Anhang. Ein leeres Feld entfernt die Zuordnung — der
+  Ordner selbst bleibt unangetastet, die App löscht nicht (§5.18).
+
+  Welcher der beiden Ordner für einen Vorgang zuständig ist, folgt aus seiner Sichtbarkeit und
+  steht an **einer** Stelle (`ProjectFolderService::locationFor`). Ein interner Vorgang der
+  Kundenseite und ein „Nur ich"-Vorgang bekommen ausdrücklich **keinen** — für sie gibt es
+  folgerichtig auch keine Anhänge (§3.10).
+
+  **Ohne Nextclouds Dateiwähler, und das ist eine Werkzeuggrenze, keine Entwurfsentscheidung:**
+  `@nextcloud/dialogs` lädt die Auswahl über `import()` nach, und ein IIFE-Bundle verträgt
+  keine Codeaufteilung. Mit Vite 8/Rolldown bricht der Build daran ab — `codeSplitting: false`,
+  die Option, die die Fehlermeldung selbst vorschlägt, greift bei einem gewöhnlichen `import()`,
+  bei diesem Paket nicht. Ein Wähler lässt sich später davorsetzen, ohne ein gespeichertes Feld
+  anzufassen.
 - **Board-Oberfläche**: Projektliste, Board mit Spalten und Karten, Ticket-Detail als Overlay.
   „Verschieben nach …" im Kartenmenü ist der einzige Verschiebeweg — Drag & Drop kommt in
   Phase 7, die Alternative ohne Ziehen war zuerst da

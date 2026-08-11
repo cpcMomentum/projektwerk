@@ -70,6 +70,49 @@
 				</div>
 			</section>
 
+			<!--
+				Dateiablage.
+
+				**Der Ablageort IST die Sichtbarkeit** (§5.18) — deshalb zwei
+				Ordner und nicht einer mit Unterordnern. Was in „Austausch"
+				liegt, sieht die Kundenseite; was im internen Ordner liegt,
+				nicht. Dass Nextcloud diese Trennung durchsetzt und nicht die
+				App, ist der Grund, warum sie trägt.
+
+				Anders als die Felder darüber wird hier **sofort** geschrieben:
+				Einen Ordner auszuwählen ist bereits die Bestätigung, ein
+				„Speichern" danach wäre eine zweite für dieselbe Entscheidung.
+			-->
+			<section class="pw-settings__block">
+				<h3 class="pw-col__head">
+					{{ t('projektwerk', 'Dateiablage') }}
+				</h3>
+
+				<p class="pw-settings__hint">
+					{{ t('projektwerk', 'Anhänge an Vorgängen landen in diesen Ordnern. Ohne Ordner sind an den betreffenden Vorgängen keine Anhänge möglich.') }}
+				</p>
+
+				<div v-for="slot in folderSlots" :key="slot.key" class="pw-settings__row">
+					<div class="pw-field pw-field--grow">
+						<label :for="`pw-set-${slot.key}`">{{ slot.label }}</label>
+						<NcTextField
+							:id="`pw-set-${slot.key}`"
+							v-model="folderDrafts[slot.key]"
+							:label="slot.label"
+							:placeholder="slot.placeholder"
+							:disabled="busy || !mayManage"
+							@keydown.enter="saveFolder(slot.key)" />
+						<span class="pw-settings__hint">{{ slot.hint }}</span>
+					</div>
+
+					<NcButton
+						:disabled="busy || !mayManage || folderDrafts[slot.key] === slot.path"
+						@click="saveFolder(slot.key)">
+						{{ t('projektwerk', 'Übernehmen') }}
+					</NcButton>
+				</div>
+			</section>
+
 			<section class="pw-settings__block">
 				<h3 class="pw-col__head">
 					{{ t('projektwerk', 'Spalten') }}
@@ -393,6 +436,10 @@ export default defineComponent({
 			// stuenden Tippfehler sofort in der Kopfzeile des Boards, und ein
 			// Abbruch waere nicht mehr moeglich.
 			board: { title: '', description: '', orgInternal: '', orgExternal: '', chatUrl: '' },
+			// Eigene Entwuerfe wie beim Board oben, aus demselben Grund: Der
+			// Pfad muss erst geprueft werden, und bis dahin darf er nirgends
+			// als der gespeicherte gelten.
+			folderDrafts: { public: '', internal: '' } as Record<'public' | 'internal', string>,
 		}
 	},
 
@@ -404,6 +451,36 @@ export default defineComponent({
 		/** §8: Pflegen darf nur ein internes Mitglied mit Verwaltungsrecht. */
 		mayManage(): boolean {
 			return this.store.viewer?.isManager === true
+		},
+
+		/**
+		 * Die beiden Ablageorte als Zeilen, damit die Vorlage sie nicht doppelt
+		 * ausschreibt.
+		 *
+		 * Die Reihenfolge ist nicht beliebig: „Austausch" steht oben, weil er
+		 * der Ordner ist, den **beide** Seiten sehen — und weil ein Projekt ohne
+		 * internen Ordner arbeitsfähig ist, eines ohne Austauschordner aber
+		 * seinen Zweck verfehlt.
+		 */
+		folderSlots(): { key: 'public' | 'internal', label: string, hint: string, placeholder: string, path: string }[] {
+			const board = this.store.board
+
+			return [
+				{
+					key: 'public',
+					label: t('projektwerk', 'Ordner für Vorgänge, die alle Beteiligten sehen'),
+					hint: t('projektwerk', 'Die Kundenseite hat Zugriff. Leer lassen heißt: an diesen Vorgängen sind keine Anhänge möglich.'),
+					placeholder: 'Projekte/Kunde A/90_Austausch',
+					path: board?.folderPublicPath ?? '',
+				},
+				{
+					key: 'internal',
+					label: t('projektwerk', 'Ordner für interne Vorgänge'),
+					hint: t('projektwerk', 'Nur die eigene Seite hat Zugriff. Leer lassen heißt: an internen Vorgängen sind keine Anhänge möglich.'),
+					placeholder: 'Projekte/Kunde A/91_Tickets_intern',
+					path: board?.folderInternalPath ?? '',
+				},
+			]
 		},
 
 		/**
@@ -493,6 +570,10 @@ export default defineComponent({
 				orgExternal: board.orgExternal ?? '',
 				chatUrl: board.chatUrl ?? '',
 			}
+			this.folderDrafts = {
+				public: board.folderPublicPath ?? '',
+				internal: board.folderInternalPath ?? '',
+			}
 		},
 
 		back() {
@@ -546,6 +627,32 @@ export default defineComponent({
 					chatUrl: this.blankToNull(this.board.chatUrl),
 				}),
 				t('projektwerk', 'Speichern fehlgeschlagen'),
+			)
+		},
+
+		/**
+		 * Einen Projektordner über seinen Pfad festlegen — oder leeren.
+		 *
+		 * **Der Pfad geht hin, die ID bleibt hier.** Der Server löst auf und
+		 * speichert die Datei-ID; zurück kommt der kanonische Pfad, und
+		 * `fillDraft` schreibt ihn ins Feld. Wer sich vertippt hat, sieht das
+		 * daran, dass die Meldung des Servers kommt und das Feld unverändert
+		 * bleibt.
+		 *
+		 * Ein leeres Feld entfernt die Zuordnung. Der Ordner selbst bleibt
+		 * unangetastet — die App löscht nicht (§5.18); danach sind an den
+		 * betroffenen Vorgängen nur keine Anhänge mehr möglich.
+		 *
+		 * @param slot Welcher der beiden Ordner.
+		 */
+		saveFolder(slot: 'public' | 'internal'): Promise<void> {
+			const path = this.folderDrafts[slot].trim()
+
+			return this.write(
+				() => updateBoard(this.boardId, slot === 'internal'
+					? { folderInternalPath: path }
+					: { folderPublicPath: path }),
+				t('projektwerk', 'Ordner konnte nicht gespeichert werden'),
 			)
 		},
 
