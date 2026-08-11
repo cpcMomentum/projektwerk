@@ -407,8 +407,8 @@ App nach loadApp registriert? ja    → 31 Routen, linkToRoute = /index.php/apps
 Ein `TimedJob` läuft im vollen App-Kontext, dort tritt das nicht auf. Die Lehre gilt trotzdem:
 
 → **Das Ergebnis von `linkToRoute*()` prüfen, bevor es in eine Mail geht.** Ein leerer oder auf der
-Basisadresse endender Link ist ein Fehler und keine Adresse. Der Routenname lautet, kleingeschrieben
-registriert, `projektwerk.deeplink.ticket`.
+Basisadresse endender Link ist ein Fehler und keine Adresse. Der Routenname lautet
+`projektwerk.deepLink.ticket` — aus `deepLink#ticket` in `appinfo/routes.php`, das `L` bleibt groß.
 
 ## Benachrichtigungen im Detail
 
