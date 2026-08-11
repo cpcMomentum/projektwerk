@@ -645,6 +645,45 @@ class TicketWritePathTest extends IntegrationTestCase {
 		$this->assertSame(LeakMatrixFixture::BERT, $updated->getResponsibleUserId());
 	}
 
+	/**
+	 * **Dieselbe Regel beim Anlegen** — die zweite Haelfte des Befunds vom
+	 * 2026-08-11.
+	 *
+	 * `create()` benachrichtigt heute nicht, hier kann also keine Mail lecken.
+	 * Ohne die Pruefung entstuende aber eine zustaendige Person, die ihren
+	 * eigenen Vorgang nicht sehen kann — und sobald das Anlegen spaeter
+	 * ebenfalls benachrichtigt, waere es genau die Luecke, die im Aendern
+	 * gerade geschlossen wurde.
+	 */
+	public function testANewTicketCannotBeAssignedToSomeoneWhoCannotSeeIt(): void {
+		$this->expectException(\InvalidArgumentException::class);
+
+		$this->service->create(
+			$this->viewer(LeakMatrixFixture::ANNA),
+			'Intern, aber der Kundenseite zugewiesen',
+			null,
+			TicketScope::VISIBILITY_INTERNAL,
+			$this->fixture->columnIds[LeakMatrixFixture::COLUMN_A],
+			LeakMatrixFixture::CARLA,
+		);
+	}
+
+	/**
+	 * Gegenprobe: Wer den neuen Vorgang sehen wuerde, darf zustaendig sein.
+	 */
+	public function testANewTicketCanBeAssignedToSomeoneWhoSeesIt(): void {
+		$ticket = $this->service->create(
+			$this->viewer(LeakMatrixFixture::ANNA),
+			'Intern, an die eigene Seite',
+			null,
+			TicketScope::VISIBILITY_INTERNAL,
+			$this->fixture->columnIds[LeakMatrixFixture::COLUMN_A],
+			LeakMatrixFixture::BERT,
+		);
+
+		$this->assertSame(LeakMatrixFixture::BERT, $ticket->getResponsibleUserId());
+	}
+
 	private function viewer(string $userId): ViewerContext {
 		return $this->fixture->contextFor($userId);
 	}

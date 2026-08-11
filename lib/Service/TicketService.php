@@ -443,6 +443,18 @@ class TicketService {
 			// Symmetrie von `internal`, sobald jemand die Rolle wechselt oder
 			// das Board verlässt.
 			$ticket->setCreatorRole($viewer->role);
+
+			// **Dieselbe Pruefung wie beim Aendern.** Sie loest hier heute keine
+			// Mail aus — `create()` benachrichtigt nicht —, aber ohne sie
+			// entstuende eine zustaendige Person, die ihren eigenen Vorgang
+			// nicht sehen kann. Und sobald das Anlegen spaeter ebenfalls
+			// benachrichtigt, waere es dieselbe Luecke wie die, die der Review
+			// am 2026-08-11 im Aendern gefunden hat.
+			if ($responsibleUserId !== null && $responsibleUserId !== ''
+				&& !$this->mayBecomeResponsible($ticket, $viewer, $responsibleUserId)) {
+				throw new \InvalidArgumentException('Diese Person kann diesen Vorgang nicht sehen.');
+			}
+
 			$ticket->setResponsibleUserId($responsibleUserId);
 			$ticket->setPosition($this->positions->between($last, null));
 			$ticket->setVersion(1);
