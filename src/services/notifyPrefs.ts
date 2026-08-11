@@ -26,9 +26,7 @@ export interface NotifyPrefs {
 	boards: Record<number, Partial<Record<Channel, boolean>>>
 }
 
-/**
- *
- */
+/** Der gespeicherte Stand der eigenen Kanalschalter. */
 export async function fetchNotifyPrefs(): Promise<NotifyPrefs> {
 	return apiGet<NotifyPrefs>('/notify-prefs')
 }
