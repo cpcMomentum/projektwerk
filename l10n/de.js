@@ -181,13 +181,8 @@ OC.L10N.register(
         "Dieser Vorgang hat %n Anhänge. Bitte sie zuerst vom Vorgang lösen — die Dateien selbst bleiben dabei liegen."
     ],
     "Verstanden": "Verstanden",
-    "Meine Benachrichtigungen": "Meine Benachrichtigungen",
-    "Gilt nur für Sie und nur für dieses Projekt. Ohne eigene Einstellung gilt, was Sie allgemein festgelegt haben — sonst: eingeschaltet.": "Gilt nur für Sie und nur für dieses Projekt. Ohne eigene Einstellung gilt, was Sie allgemein festgelegt haben — sonst: eingeschaltet.",
     "E-Mail": "E-Mail",
     "Glocke in Nextcloud": "Glocke in Nextcloud",
-    "Für dieses Projekt festgelegt": "Für dieses Projekt festgelegt",
-    "Aus Ihrer allgemeinen Einstellung übernommen": "Aus Ihrer allgemeinen Einstellung übernommen",
-    "Vorgabe": "Vorgabe",
     "Einstellung konnte nicht gespeichert werden": "Einstellung konnte nicht gespeichert werden",
     "Alle Abweichungen aufheben": "Alle Abweichungen aufheben",
     "Alle Projekte": "Alle Projekte",

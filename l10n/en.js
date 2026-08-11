@@ -181,13 +181,8 @@ OC.L10N.register(
         "This ticket has %n attachments. Please detach them first — the files themselves stay where they are."
     ],
     "Verstanden": "Got it",
-    "Meine Benachrichtigungen": "My notifications",
-    "Gilt nur für Sie und nur für dieses Projekt. Ohne eigene Einstellung gilt, was Sie allgemein festgelegt haben — sonst: eingeschaltet.": "Applies to you only, and only to this project. Without a setting of your own, your general setting applies — otherwise: on.",
     "E-Mail": "Email",
     "Glocke in Nextcloud": "Nextcloud notification bell",
-    "Für dieses Projekt festgelegt": "Set for this project",
-    "Aus Ihrer allgemeinen Einstellung übernommen": "Inherited from your general setting",
-    "Vorgabe": "Default",
     "Einstellung konnte nicht gespeichert werden": "Could not save the setting",
     "Alle Abweichungen aufheben": "Clear all exceptions",
     "Alle Projekte": "All projects",
