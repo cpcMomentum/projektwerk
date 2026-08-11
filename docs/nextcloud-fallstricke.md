@@ -335,6 +335,81 @@ Konten antworten dort mit `207` auf WebDAV, die Sitzung ist also echt. Für die 
   JS-Bundle bei unveränderter Version liefert im Browser weiter das alte JavaScript — jeder Test
   lügt dann. Version beim Deployen immer nach oben bumpen.
 
+## S4 — Mail und Deep-Link, gemessen am 2026-08-11 (NC 34.0.0.12, PHP 8.4)
+
+Spike: `spike/S4-mail-und-link.php` mit `spike/S4-lauf.sh`. Je Messung ein eigener Prozess — der
+Mailer baut seinen Transport genau **einmal** je Prozess, im selben Prozess misst man sonst immer
+den ersten Versuch (beim ersten Anlauf genau so passiert: vier Messungen, viermal 0,04 s, alle
+gingen an MailHog).
+
+### `IMailer::send()` wirft bei Transportfehlern **nichts**
+
+Das ist der Befund, an dem der ganze Versandweg hängt. `Mailer::send()` fängt
+`TransportExceptionInterface` selbst, schreibt eine `error`-Zeile ins Log und **gibt die
+fehlgeschlagenen Empfänger zurück**. Leeres Array heißt Erfolg.
+
+```php
+$gescheitert = $mailer->send($nachricht);   // [] = zugestellt
+if ($gescheitert !== []) { /* status = failed */ }
+```
+
+→ **Ein `try/catch` allein hält jeden Fehlschlag für einen Erfolg.** Wer die Outbox aus §5.24 baut,
+wertet den Rückgabewert aus, nicht eine Ausnahme.
+
+### Die Zeit, die ein toter Port kostet
+
+| Fall | Dauer | Rückgabe |
+|---|---|---|
+| Erreichbarer Server | 0,05 s | `[]` |
+| **Port abgelehnt** (niemand lauscht) | **0,01 s** | Empfänger |
+| **Verbindung verschluckt** (Pakete verworfen), NC-Vorgabe | **10,02 s** | Empfänger |
+| dasselbe mit `mail_smtptimeout = 5` | 5,01 s | Empfänger |
+| dasselbe mit `mail_smtptimeout = 2` | 2,01 s | Empfänger |
+
+Zwei Dinge daran:
+
+- **Der harmlose Fall ist harmlos.** Ein abgelehnter Port kostet 10 ms — eine falsch
+  konfigurierte Instanz bremst nichts.
+- **Der gefährliche Fall ist die Firewall, die verwirft statt abzulehnen.** Dort wartet der Aufruf
+  bis zur Zeitgrenze, und die steht ohne eigene Angabe bei **10 Sekunden**. Ein Ticket anzulegen
+  würde dann 10 s dauern — der Nutzer hält das für einen Fehler und klickt erneut.
+
+→ **Zeitbudget für den synchronen Versuch: `mail_smtptimeout = 2`.** Die Grenze wirkt exakt
+(2,01 s gemessen). Zwei Sekunden bleiben unter der Schwelle, ab der jemand nachdrückt, und was
+nicht durchgeht, holt der `MailRetryJob` nach — dafür ist die Outbox da. Der Wert gehört in die
+Betriebsanleitung, nicht in den Code: Es ist eine Instanz-Einstellung.
+
+### `overwrite.cli.url` schlägt voll durch
+
+`getBaseUrl()` liefert im CLI-Kontext `http://localhost` — der Wert steht auf dieser Instanz so, und
+`trusted_domains` ändert daran **nichts**. Ein Deep-Link aus einem Hintergrundjob trüge damit
+`http://localhost/index.php/apps/projektwerk/t/42`: für den Kunden wertlos, und niemandem fällt es
+auf, der die Mail selbst nie bekommt.
+
+→ Setup-Check-Schwelle: `overwrite.cli.url` fehlt, ist leer, oder enthält `localhost` bzw.
+`127.0.0.1` → **Warnung**.
+
+### Ein unbekannter Routenname wird still zu einem leeren Link
+
+`Router::generate()` fängt `RouteNotFoundException`, loggt auf **`info`** und gibt `''` zurück
+(`lib/private/Route/Router.php`). Aus `linkToRouteAbsolute()` wird dann die blanke Basisadresse —
+`http://localhost/`. Kein Fehler, keine Ausnahme, nur eine Zeile im Log, die auf `info` niemand
+sieht.
+
+Aufgetreten ist genau das im Spike, und die Ursache ist lehrreich: **In einem nackten CLI-Skript
+ist die App nicht geladen**, also existieren ihre Routen nicht.
+
+```
+App vor loadApp registriert? nein   → 0 projektwerk-Routen, linkToRoute = ''
+App nach loadApp registriert? ja    → 31 Routen, linkToRoute = /index.php/apps/projektwerk/t/42
+```
+
+Ein `TimedJob` läuft im vollen App-Kontext, dort tritt das nicht auf. Die Lehre gilt trotzdem:
+
+→ **Das Ergebnis von `linkToRoute*()` prüfen, bevor es in eine Mail geht.** Ein leerer oder auf der
+Basisadresse endender Link ist ein Fehler und keine Adresse. Der Routenname lautet, kleingeschrieben
+registriert, `projektwerk.deeplink.ticket`.
+
 ## Benachrichtigungen im Detail
 
 - Glocke: eigener Notifier, registriert im Bootstrap. Bei fremder App eine passende Ausnahme werfen,
