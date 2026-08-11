@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace OCA\Projektwerk\AppInfo;
 
+use OCA\Projektwerk\BackgroundJob\MailRetryJob;
 use OCA\Projektwerk\Notification\Notifier;
 use OCA\Projektwerk\SetupCheck\GuestsWhitelistCheck;
 use OCA\Projektwerk\SetupCheck\InstanceConfigCheck;
@@ -37,6 +38,11 @@ class Application extends App implements IBootstrap {
 		// Person inzwischen nicht mehr sichtbar, raeumt Nextcloud den Eintrag
 		// daraufhin ab (§5.23).
 		$context->registerNotifierService(Notifier::class);
+
+		// Der Nachlauf: ohne diese Zeile registriert Nextcloud den Job nie,
+		// und `pending`/`failed`-Zeilen im Ausgangskorb wuerden nie erneut
+		// versucht.
+		$context->registerBackgroundJob(MailRetryJob::class);
 
 		// Hier kommt spaeter u.a. der Listener auf UserDeletedEvent hin:
 		// Beim Loeschen eines Kontos muessen dessen private Tickets entfernt
