@@ -460,10 +460,27 @@ occ groupfolders:permissions <id> 91_Tickets_intern -u <kundenkonto> -- -read
 Danach gemessen: `90_Austausch` → HTTP 207, `91_Tickets_intern` → **HTTP 404**. Der Ordner ist für
 das Kundenkonto nicht mehr vorhanden, nicht bloß leer.
 
-→ **Gehört als Bedingung in die Betriebsanleitung, nicht als Empfehlung** — und ist ein Kandidat für
-einen Setup-Check: Die App kennt beide Ordner-IDs und könnte prüfen, ob ein externes Mitglied den
-internen Ordner erreicht. Solange es den Check nicht gibt, ist es ein Handgriff bei der Einrichtung,
-den niemand vergessen darf.
+### Der empfohlene Weg umgeht das Problem ganz
+
+**Nicht ein Team-Ordner mit zwei Unterordnern, sondern eine gezielte Freigabe.** Der
+Austauschordner wird der Kundenseite **direkt freigegeben**, der interne Ordner gar nicht. Dann
+gibt es nichts einzurichten und nichts zu vergessen: Der interne Ordner taucht im Dateibaum des
+Kunden nicht auf, weil er ihm nie gegeben wurde.
+
+Genau so wird bei CPC bereits gearbeitet (Axel, 2026-08-11), und genau so war der S1-Aufbau
+gebaut — dort ist das Problem nie aufgetreten. Der Team-Ordner ist der Sonderfall, nicht der
+Normalfall.
+
+| Aufbau | Trennung | Aufwand |
+|---|---|---|
+| **Gezielte Freigabe des Austauschordners** | von selbst | keiner |
+| Team-Ordner mit beiden Unterordnern | **nur mit erweiterten Rechten** | ein Befehl je Projekt, unvergesslich zu machen |
+
+→ Für die Betriebsanleitung heißt das: **die gezielte Freigabe als Weg beschreiben**, den
+Team-Ordner als Variante mit dem Zusatzschritt. Ein Setup-Check bleibt sinnvoll — die App kennt
+beide Ordner-IDs und könnte prüfen, ob ein externes Mitglied den internen Ordner erreicht —, ist
+aber **keine Dringlichkeit**, solange der empfohlene Weg gegangen wird. Er zahlt sich erst auf
+fremden Installationen aus.
 
 ### Und warum §5.18 „keine von der App angelegten Freigaben" jetzt doppelt richtig ist
 
