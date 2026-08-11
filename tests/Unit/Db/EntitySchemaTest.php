@@ -44,7 +44,7 @@ class EntitySchemaTest extends TestCase {
 	 *
 	 * Steht weiterhin einzeln da, weil zwei Pruefungen sich ausdruecklich auf
 	 * sie beziehen: die Zahl der Tabellen und die Breite der
-	 * Benutzerkennungsspalten. Alles Uebrige liest {@see parseMigrations()} aus
+	 * Benutzerkennungsspalten. Alles Uebrige liest {@see parseMigration()} aus
 	 * **allen** Migrationen — sonst faende der Waechter eine spaeter ergaenzte
 	 * Spalte nicht und meldete das Entity als zu breit.
 	 */
@@ -241,9 +241,6 @@ class EntitySchemaTest extends TestCase {
 		$this->assertSame([], $tooShort, 'Zu kurz fuer Gast-UIDs: ' . implode(', ', $tooShort));
 	}
 
-	/**
-	 * @return array<string, array<string, string>> Tabelle => Spalte => Typ
-	 */
 	/**
 	 * Das Schema aus **allen** Migrationen, in ihrer Reihenfolge gelesen.
 	 *
