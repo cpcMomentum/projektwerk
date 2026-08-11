@@ -23,6 +23,11 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
   **Lösen löst nur die Verknüpfung.** Die Datei bleibt liegen, wo sie liegt — die App löscht
   nie (§5.18). Der Rückfragedialog sagt das ausdrücklich, damit niemand „lösen" für
   „wegräumen" hält.
+
+  Eine gesperrte Datei und ein vollgelaufenes Konto antworten mit einer eigenen Meldung statt
+  mit einem 500: `LockedException` und `NotEnoughSpaceException` erben **nicht** von
+  `NotPermittedException` — beide hängen direkt an `\Exception`, und ohne eigenen Fang schlägt
+  ein paralleler Zugriff als „Antwort war kein JSON" durch.
 - **Die Sichtbarkeit eines Vorgangs mit Anhängen lässt sich nicht ändern** (§3.10 Stufe 1).
   Das ist der einzige Punkt, an dem ein Leck **physisch** würde: Läge die Datei erst in
   `90_Austausch`, hätte die Kundenseite sie gesehen, und keine spätere Codekorrektur nähme das

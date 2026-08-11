@@ -21,8 +21,11 @@ use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\UserRateLimit;
 use OCP\AppFramework\Http\JSONResponse;
+use OCP\Files\InvalidPathException;
+use OCP\Files\NotEnoughSpaceException;
 use OCP\Files\NotPermittedException;
 use OCP\IRequest;
+use OCP\Lock\LockedException;
 
 /**
  * Anhaenge anhaengen und wieder loesen.
@@ -111,6 +114,13 @@ class AttachmentController extends Controller {
 	}
 
 	/**
+	 * Ein Schreibvorgang mit Betrachterkontext und uebersetzten Fehlern.
+	 *
+	 * **Was hier NICHT gefangen wird, ist Absicht.** Ein `GenericFileException`
+	 * oder ein Speicherfehler wird 500 — das ist eine Stoerung des Servers und
+	 * gehoert ins Log, nicht in eine hoefliche Meldung, die sie wie eine
+	 * Kleinigkeit aussehen laesst.
+	 *
 	 * @param callable(ViewerContext): mixed $write
 	 */
 	private function run(int $boardId, callable $write, int $status = Http::STATUS_OK): JSONResponse {
@@ -126,10 +136,36 @@ class AttachmentController extends Controller {
 			// Dieselbe Antwort fuer Nichtmitglied, unbekanntes Board, verborgenen
 			// Vorgang und unbekannten Anhang.
 			return new JSONResponse([], Http::STATUS_NOT_FOUND);
-		} catch (NoFolderException|NotPermittedException $e) {
+		} catch (LockedException) {
+			// **409, und die Meldung sagt „nochmal versuchen".** Nextcloud sperrt
+			// eine Datei waehrend eines anderen Zugriffs; das ist voruebergehend
+			// und weder ein Rechte- noch ein Eingabeproblem.
+			//
+			// Der Fang steht hier ausdruecklich, weil `LockedException` **nicht**
+			// von `NotPermittedException` erbt — beide haengen direkt an
+			// `\Exception`. Ohne diese Zeile schlaegt eine gesperrte Datei als
+			// 500 durch, und der Browser zeigt „Antwort war kein JSON".
+			return new JSONResponse(
+				['error' => 'Die Datei ist gerade in Bearbeitung. Bitte in einem Moment erneut versuchen.'],
+				Http::STATUS_CONFLICT,
+			);
+		} catch (NotEnoughSpaceException) {
+			// Speicherplatz ist ein Zustand des Kontos, kein Fehler im Aufruf —
+			// aber die Meldung muss nennen, was zu tun ist, sonst sucht jemand
+			// den Fehler in der App.
+			return new JSONResponse(
+				['error' => 'Der Speicherplatz reicht nicht aus. Bitte im Projektordner aufräumen oder mehr Platz anfordern.'],
+				Http::STATUS_CONFLICT,
+			);
+		} catch (NoFolderException|NotPermittedException|InvalidPathException $e) {
 			// 400 und nicht 403: Es fehlt kein Recht — es gibt nur nichts, woran
-			// der Anhang haengen koennte, oder der hinterlegte Ordner traegt
-			// nicht mehr. Die Begruendung steht bei NoFolderException.
+			// der Anhang haengen koennte, der hinterlegte Ordner traegt nicht
+			// mehr, oder der Name ist keiner. Die Begruendung zum ersten Fall
+			// steht bei NoFolderException.
+			//
+			// `InvalidPathException` erbt ebenfalls direkt von `\Exception`, ist
+			// hier also kein Beiwerk. Ihre Meldung ist die von Nextcloud und
+			// nennt das verbotene Zeichen.
 			return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
 		} catch (\InvalidArgumentException $e) {
 			return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
