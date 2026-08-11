@@ -25,6 +25,10 @@ use OCA\Projektwerk\Db\CommentMapper;
 use OCA\Projektwerk\Db\MemberMapper;
 use OCA\Projektwerk\Db\StepMapper;
 use OCA\Projektwerk\Db\TaskFilter;
+use OCA\Projektwerk\Db\MailOutbox;
+use OCA\Projektwerk\Db\MailOutboxMapper;
+use OCA\Projektwerk\Db\NotifyPref;
+use OCA\Projektwerk\Db\NotifyPrefMapper;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Db\TicketUserMapper;
 use OCA\Projektwerk\Service\MemberService;
@@ -216,6 +220,11 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'AttachmentMapper::countForTickets' => 'testChildCountersFollowTheFilteredTicketSet',
 		'TicketUserMapper::findForTickets' => 'testChildrenFollowTheFilteredTicketSet',
 		'TicketUserMapper::countForTickets' => 'testChildCountersFollowTheFilteredTicketSet',
+		// **Zwei Pfade ohne Betrachter.** Ihre Erwartung ist eine andere Art von
+		// Zusage — die Begruendung steht bei den Eintraegen in der Registry und
+		// bei den beiden Tests selbst.
+		'MailOutboxMapper::findRetryable' => 'testTheOutboxIsNotAViewerPath',
+		'NotifyPrefMapper::findForUser' => 'testChannelPreferencesAreScopedToTheirOwner',
 	];
 
 	/**
@@ -241,6 +250,82 @@ class LeakMatrixTest extends IntegrationTestCase {
 		parent::setUp();
 
 		$this->fixture = new LeakMatrixFixture();
+	}
+
+	/**
+	 * **Der Ausgangskorb ist kein Betrachterpfad — und das ist die Erwartung.**
+	 *
+	 * Jeder andere Eintrag dieser Matrix beantwortet „was sieht wer". Hier gibt
+	 * es kein Wer: Am Ende steht der Nachlauf-Job, der eine Mail nachreicht. Er
+	 * hat kein Board, keine Rolle und keine Sichtbarkeit.
+	 *
+	 * Geprueft wird deshalb das Gegenteil des Ueblichen: Die Abfrage liefert
+	 * **absichtlich** die Zeilen aller Empfaenger. Wuerde sie filtern, waere das
+	 * ein Hinweis darauf, dass hier doch jemand mit Rechten mitliest — und dann
+	 * braeuchte es eine echte Erwartung je Betrachter statt dieser.
+	 *
+	 * Die strukturelle Haelfte der Zusage (kein `ViewerContext` in der Signatur)
+	 * prueft `ReadPathCompletenessTest::testTheseMappersNeverTakeAViewer`.
+	 */
+	public function testTheOutboxIsNotAViewerPath(): void {
+		$outbox = Server::get(MailOutboxMapper::class);
+		$now = new \DateTime();
+
+		foreach ([LeakMatrixFixture::ANNA, LeakMatrixFixture::CARLA] as $uid) {
+			$zeile = new MailOutbox();
+			$zeile->setRecipientUid($uid);
+			$zeile->setTicketId($this->fixture->ticketIds['public/anna']);
+			$zeile->setEvent(MailOutbox::EVENT_TICKET_ASSIGNED);
+			$zeile->setStatus(MailOutbox::STATUS_PENDING);
+			$zeile->setAttempts(0);
+			$zeile->setCreatedAt($now);
+			$outbox->insert($zeile);
+		}
+
+		$empfaenger = array_map(
+			static fn (MailOutbox $z): string => (string)$z->getRecipientUid(),
+			$outbox->findRetryable(),
+		);
+
+		$this->assertContains(LeakMatrixFixture::ANNA, $empfaenger);
+		$this->assertContains(
+			LeakMatrixFixture::CARLA,
+			$empfaenger,
+			'Der Nachlauf muss die Zeilen aller Empfaenger sehen — er ist niemandes Betrachter.',
+		);
+	}
+
+	/**
+	 * **Die Kanalschalter gehoeren ihrer Person.**
+	 *
+	 * Hier gibt es sehr wohl eine Grenze, sie verlaeuft nur nicht am Board,
+	 * sondern an der Benutzerkennung: Wer nach den Schaltern von A fragt,
+	 * bekommt nicht die von B. Das ist die ganze Erwartung — es gibt keine
+	 * Projektinhalte in dieser Tabelle, nur „will ich Mails".
+	 */
+	public function testChannelPreferencesAreScopedToTheirOwner(): void {
+		$prefs = Server::get(NotifyPrefMapper::class);
+
+		$aus = new NotifyPref();
+		$aus->setUserId(LeakMatrixFixture::ANNA);
+		$aus->setChannel(NotifyPref::CHANNEL_MAIL);
+		$aus->setEnabled(0);
+		$prefs->insert($aus);
+
+		$this->assertSame(
+			[NotifyPref::CHANNEL_MAIL],
+			array_map(static fn (NotifyPref $p): string => (string)$p->getChannel(), $prefs->findForUser(LeakMatrixFixture::ANNA)),
+		);
+		$this->assertSame(
+			[],
+			$prefs->findForUser(LeakMatrixFixture::CARLA),
+			'Carla hat nichts eingestellt — sie darf auch nichts von Anna sehen.',
+		);
+
+		// Und die Vorgabe: keine Zeile heisst „an".
+		$this->assertFalse($prefs->isEnabled(LeakMatrixFixture::ANNA, NotifyPref::CHANNEL_MAIL));
+		$this->assertTrue($prefs->isEnabled(LeakMatrixFixture::ANNA, NotifyPref::CHANNEL_BELL));
+		$this->assertTrue($prefs->isEnabled(LeakMatrixFixture::CARLA, NotifyPref::CHANNEL_MAIL));
 	}
 
 	/**

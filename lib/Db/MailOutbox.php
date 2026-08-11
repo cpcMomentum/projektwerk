@@ -14,22 +14,37 @@ use OCP\AppFramework\Db\Entity;
 use OCP\DB\Types;
 
 /**
- * Ein Ausgangsfach-Eintrag fuer den Mailversand.
+ * Eine ausgehende Mail — als **Zeile**, nicht als Auftrag in einer Warteschlange.
  *
- * Der Grund, warum es diese Tabelle ueberhaupt gibt, steht in S4 (07.08.2026):
- * `IMailer::send()` wirft eine `TransportException`, und wer nicht faengt,
- * merkt nichts — `occ user:welcome` liefert bei totem SMTP Exitcode 0 ohne
- * Ausgabe und ohne Mail. Ohne einen Ort fuer Status und Fehlertext ist die
- * Zusage „ein haengender Mailserver kippt das Speichern nie" nicht einloesbar.
+ * **Warum es diese Tabelle gibt.** §5.24 verlangt einen Fehlerstatus in der
+ * Datenbank, und zwar aus einem gemessenen Grund: `IMailer::send()` wirft bei
+ * einem Transportfehler **nichts**. Es fängt selbst, loggt, und gibt die
+ * fehlgeschlagenen Empfänger zurück (S4, 2026-08-11). Wer nur sendet und nicht
+ * schreibt, verliert den Fehlschlag in dem Moment, in dem die HTTP-Antwort
+ * rausgeht.
  *
- * `STATUS_SKIPPED_NO_ADDRESS` ist kein Fehler, sondern der Wert, der §5.24
- * woertlich nimmt: „fehlt eine Adresse, wird der Kanal protokolliert
- * uebersprungen — **unterscheidbar von ‚abgeschaltet'**".
+ * **Die Zeile entsteht in derselben Transaktion wie der Vorgang**, der sie
+ * auslöst, mit `status = pending`. Der Sendeversuch kommt erst **nach** dem
+ * Commit. Damit gilt: Ein toter Mailserver kann das Speichern eines Tickets
+ * nicht mitreißen — die Zusage aus dem Akzeptanzkriterium von #10.
  *
- * Absichtlich **ohne** JsonSerializable: Der Fehlertext eines Mailservers geht
- * an kein Frontend.
+ * **Die drei Zustände, die auseinandergehalten werden müssen** (§5.24):
  *
- * Der Mapper folgt in Phase 6 zusammen mit `MailRetryJob`.
+ * | Zustand | Bedeutung |
+ * |---|---|
+ * | keine Zeile | Der Kanal ist abgeschaltet — es sollte nichts raus |
+ * | `skipped_no_address` | Es sollte raus, aber die Person hat keine Adresse |
+ * | `failed` | Es sollte raus, es ging nicht, der `MailRetryJob` versucht es erneut |
+ *
+ * Die ersten beiden sehen im Postfach gleich aus (nichts kommt an) und sind
+ * völlig verschiedene Probleme. Genau deshalb steht die Unterscheidung im
+ * Datenmodell und nicht im Log.
+ *
+ * **Gespeichert wird die `ticketId`, nicht der Text.** Betreff und Inhalt
+ * entstehen beim Senden aus dem aktuellen Stand — wie beim `Notifier`, der
+ * ebenfalls erst zur Anzeigezeit auflöst (§3.11). Ein vorgefertigter Text in
+ * der Datenbank wäre eine zweite Kopie des Vorgangs, die veraltet und die
+ * niemand gegen die Sichtbarkeit prüft.
  *
  * @method string getRecipientUid()
  * @method void setRecipientUid(string $recipientUid)
@@ -52,10 +67,33 @@ use OCP\DB\Types;
  */
 class MailOutbox extends Entity {
 
+	/** Geschrieben, noch nicht versucht. */
 	public const STATUS_PENDING = 'pending';
+
+	/** Zugestellt — `sentAt` trägt den Zeitpunkt. */
 	public const STATUS_SENT = 'sent';
+
+	/** Versucht und misslungen. Der `MailRetryJob` nimmt sich das vor. */
 	public const STATUS_FAILED = 'failed';
+
+	/**
+	 * Die Person hat keine E-Mail-Adresse.
+	 *
+	 * **Kein Fehler und kein Wiederholungsfall.** Ein erneuter Versuch änderte
+	 * nichts; was fehlt, ist eine Adresse, und die trägt ein Mensch nach. Der
+	 * Zustand steht hier, damit man ihn abfragen kann — „warum bekommt der
+	 * Kunde nichts" ist sonst eine Suche im Log.
+	 */
 	public const STATUS_SKIPPED_NO_ADDRESS = 'skipped_no_address';
+
+	/** Zuweisung eines Vorgangs. */
+	public const EVENT_TICKET_ASSIGNED = 'ticket_assigned';
+
+	/** Zuweisung eines Arbeitsschritts. */
+	public const EVENT_STEP_ASSIGNED = 'step_assigned';
+
+	/** Ein neuer Vorgang im Projekt. */
+	public const EVENT_TICKET_CREATED = 'ticket_created';
 
 	protected ?string $recipientUid = null;
 	protected ?int $ticketId = null;
@@ -73,8 +111,10 @@ class MailOutbox extends Entity {
 		$this->addType('event', Types::STRING);
 		$this->addType('lang', Types::STRING);
 		$this->addType('status', Types::STRING);
-		$this->addType('attempts', Types::SMALLINT);
-		$this->addType('lastError', Types::TEXT);
+		// `SMALLINT` in der Migration, hier `INTEGER`: Der Entity-Typ steuert
+		// die PHP-Umwandlung, nicht die Spaltenbreite.
+		$this->addType('attempts', Types::INTEGER);
+		$this->addType('lastError', Types::STRING);
 		$this->addType('createdAt', Types::DATETIME);
 		$this->addType('sentAt', Types::DATETIME);
 	}
