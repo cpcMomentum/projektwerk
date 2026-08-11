@@ -75,7 +75,7 @@ class NotificationService {
 
 		$this->bell($ticket, $recipientUid, $event);
 
-		$zeile = $this->mail->queue($recipientUid, (int)$ticket->getId(), $event);
+		$zeile = $this->mail->queue($recipientUid, (int)$ticket->getId(), $event, (int)$ticket->getBoardId());
 
 		return $zeile === null ? [] : [$zeile];
 	}
@@ -142,7 +142,7 @@ class NotificationService {
 	 * @param string $event Einer der `EVENT_*`-Werte.
 	 */
 	private function bell(Ticket $ticket, string $recipientUid, string $event): void {
-		if (!$this->prefs->isEnabled($recipientUid, NotifyPref::CHANNEL_BELL)) {
+		if (!$this->prefs->isEnabled($recipientUid, NotifyPref::CHANNEL_BELL, (int)$ticket->getBoardId())) {
 			return;
 		}
 

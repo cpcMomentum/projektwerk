@@ -37,7 +37,18 @@ use PHPUnit\Framework\TestCase;
  */
 class EntitySchemaTest extends TestCase {
 
-	private const MIGRATION = __DIR__ . '/../../../lib/Migration/Version000001Date20260808000000.php';
+	private const MIGRATION_DIR = __DIR__ . '/../../../lib/Migration';
+
+	/**
+	 * Die erste Migration — sie allein legt Tabellen an.
+	 *
+	 * Steht weiterhin einzeln da, weil zwei Pruefungen sich ausdruecklich auf
+	 * sie beziehen: die Zahl der Tabellen und die Breite der
+	 * Benutzerkennungsspalten. Alles Uebrige liest {@see parseMigrations()} aus
+	 * **allen** Migrationen — sonst faende der Waechter eine spaeter ergaenzte
+	 * Spalte nicht und meldete das Entity als zu breit.
+	 */
+	private const MIGRATION = self::MIGRATION_DIR . '/Version000001Date20260808000000.php';
 
 	/**
 	 * Die Zuordnung ist die Registrierung: Eine Tabelle ohne Eintrag laesst
@@ -233,19 +244,33 @@ class EntitySchemaTest extends TestCase {
 	/**
 	 * @return array<string, array<string, string>> Tabelle => Spalte => Typ
 	 */
+	/**
+	 * Das Schema aus **allen** Migrationen, in ihrer Reihenfolge gelesen.
+	 *
+	 * Sowohl `createTable()` als auch `getTable()` eroeffnen einen Abschnitt:
+	 * Die erste Migration legt Tabellen an, spaetere ergaenzen Spalten an
+	 * bestehenden. Wer nur die erste liest, haelt jede spaeter ergaenzte Spalte
+	 * fuer ueberfluessig — genau das ist beim Hinzufuegen von `board_id`
+	 * passiert.
+	 *
+	 * @return array<string, array<string, string>>
+	 */
 	private function parseMigration(): array {
-		$source = (string)file_get_contents(self::MIGRATION);
+		$dateien = glob(self::MIGRATION_DIR . '/Version*.php') ?: [];
+		sort($dateien);
 
 		$schema = [];
-		$table = null;
-		foreach (explode("\n", $source) as $line) {
-			if (preg_match("/createTable\('([a-z_]+)'\)/", $line, $m) === 1) {
-				$table = $m[1];
-				$schema[$table] = [];
-				continue;
-			}
-			if ($table !== null && preg_match("/addColumn\('([a-z_]+)', Types::([A-Z_]+)/", $line, $m) === 1) {
-				$schema[$table][$m[1]] = constant(Types::class . '::' . $m[2]);
+		foreach ($dateien as $datei) {
+			$table = null;
+			foreach (explode("\n", (string)file_get_contents($datei)) as $line) {
+				if (preg_match("/(?:createTable|getTable)\('([a-z_]+)'\)/", $line, $m) === 1) {
+					$table = $m[1];
+					$schema[$table] ??= [];
+					continue;
+				}
+				if ($table !== null && preg_match("/addColumn\('([a-z_]+)', Types::([A-Z_]+)/", $line, $m) === 1) {
+					$schema[$table][$m[1]] = constant(Types::class . '::' . $m[2]);
+				}
 			}
 		}
 

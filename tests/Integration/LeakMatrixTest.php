@@ -329,6 +329,53 @@ class LeakMatrixTest extends IntegrationTestCase {
 	}
 
 	/**
+	 * **Die drei Stufen der Aufloesung** (Entscheidung mit Axel am 2026-08-11).
+	 *
+	 * Projektzeile schlaegt globale Zeile schlaegt Vorgabe. Der Fall, der sie
+	 * noetig gemacht hat: Wer in vielen Projekten Mitglied ist, aber nur wenige
+	 * davon fuehrt, muesste sonst alles abschalten — und verloere die
+	 * Zuweisungen mit.
+	 */
+	public function testProjectSettingsBeatTheGlobalOne(): void {
+		$prefs = Server::get(NotifyPrefMapper::class);
+		$board = $this->fixture->boardId;
+
+		// Global aus …
+		$global = new NotifyPref();
+		$global->setUserId(LeakMatrixFixture::ANNA);
+		$global->setChannel(NotifyPref::CHANNEL_MAIL);
+		$global->setBoardId(NotifyPrefMapper::GLOBAL_SCOPE);
+		$global->setEnabled(0);
+		$prefs->insert($global);
+
+		$this->assertFalse(
+			$prefs->isEnabled(LeakMatrixFixture::ANNA, NotifyPref::CHANNEL_MAIL, $board),
+			'Ohne Projektzeile gilt die globale — auch fuer Projekte, die es beim Einstellen noch nicht gab.',
+		);
+
+		// … dieses eine Projekt aber an.
+		$projekt = new NotifyPref();
+		$projekt->setUserId(LeakMatrixFixture::ANNA);
+		$projekt->setChannel(NotifyPref::CHANNEL_MAIL);
+		$projekt->setBoardId($board);
+		$projekt->setEnabled(1);
+		$prefs->insert($projekt);
+
+		$this->assertTrue(
+			$prefs->isEnabled(LeakMatrixFixture::ANNA, NotifyPref::CHANNEL_MAIL, $board),
+			'Die Projektzeile ist die Ausnahme und schlaegt die globale.',
+		);
+		$this->assertFalse(
+			$prefs->isEnabled(LeakMatrixFixture::ANNA, NotifyPref::CHANNEL_MAIL, $board + 9999),
+			'Ein anderes Projekt bleibt bei der globalen Einstellung.',
+		);
+		$this->assertTrue(
+			$prefs->isEnabled(LeakMatrixFixture::ANNA, NotifyPref::CHANNEL_BELL, $board),
+			'Der andere Kanal ist davon unberuehrt — Mails abschalten heisst nicht Glocke abschalten.',
+		);
+	}
+
+	/**
 	 * Der Hauptfall: die Boardansicht, fuer jeden der fuenf Betrachter.
 	 */
 	public function testEveryViewerSeesExactlyTheirTickets(): void {

@@ -79,9 +79,10 @@ class MailDispatcher {
 	 * @param string $recipientUid Wer benachrichtigt wird.
 	 * @param int $ticketId Der Vorgang — aufgelöst wird er erst beim Senden.
 	 * @param string $event Einer der `EVENT_*`-Werte aus {@see MailOutbox}.
+	 * @param int $boardId Das Projekt — der Schalter kann projektweise stehen.
 	 */
-	public function queue(string $recipientUid, int $ticketId, string $event): ?MailOutbox {
-		if (!$this->prefs->isEnabled($recipientUid, NotifyPref::CHANNEL_MAIL)) {
+	public function queue(string $recipientUid, int $ticketId, string $event, int $boardId): ?MailOutbox {
+		if (!$this->prefs->isEnabled($recipientUid, NotifyPref::CHANNEL_MAIL, $boardId)) {
 			return null;
 		}
 

@@ -33,6 +33,8 @@ use OCP\DB\Types;
  * @method void setUserId(string $userId)
  * @method string getChannel()
  * @method void setChannel(string $channel)
+ * @method int getBoardId()
+ * @method void setBoardId(int $boardId)
  * @method int getEnabled()
  * @method void setEnabled(int $enabled)
  */
@@ -46,11 +48,13 @@ class NotifyPref extends Entity {
 
 	protected ?string $userId = null;
 	protected ?string $channel = null;
+	protected ?int $boardId = null;
 	protected ?int $enabled = null;
 
 	public function __construct() {
 		$this->addType('userId', Types::STRING);
 		$this->addType('channel', Types::STRING);
+		$this->addType('boardId', Types::INTEGER);
 		// `SMALLINT` mit 0/1, nie `BOOLEAN` — `PARAM_BOOL` schriebe auf
 		// PostgreSQL `'f'` statt `0` (siehe `nextcloud-fallstricke.md`).
 		$this->addType('enabled', Types::INTEGER);
