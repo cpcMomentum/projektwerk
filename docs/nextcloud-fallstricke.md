@@ -417,6 +417,61 @@ ein toter Link, und es fällt niemandem auf, der die Mail nicht liest: Versand u
 erfolgreich. Der `InstanceConfigCheck` muss den Wert deshalb nicht nur auf „gesetzt" prüfen, sondern
 auf „von außen erreichbar" — mindestens auf „nicht `localhost`".
 
+## Team-Ordner und der Datei-Umzug (S2, gemessen am 2026-08-11)
+
+Gemessen an einem echten Team-Ordner (`occ groupfolders:create`, Groupfolders 22.0.6, NC 34) mit
+den beiden Unterordnern `90_Austausch` und `91_Tickets_intern`. Spike:
+`spike/S2-datei-umzug.spec.ts` und `spike/S2b-rechte.spec.ts`.
+
+### §11.3 ist beantwortet: **Ja, der Umzug ist verlustfrei**
+
+| Was | Vor dem Umzug | Nach dem Umzug |
+|---|---|---|
+| Datei-ID | 1567 | **1567 — unverändert** |
+| Versionen | 2 | **2** |
+| Einzelfreigabe an den Gast | 1 | **1, am neuen Ort** |
+| Freigaben am alten Ort | — | 0 |
+
+`MOVE` zwischen zwei Unterordnern desselben Team-Ordners antwortet mit 201 und erhält alle drei
+Eigenschaften. **Die technische Voraussetzung für den Auto-Move aus Phase 7b ist damit gegeben** —
+die Rückfallebene „kleiner Team-Ordner je Projekt" wird nicht gebraucht.
+
+### Der Befund, der mehr zählt als die Frage
+
+Die Gegenprobe hat etwas Wichtigeres gezeigt: **Der Gast erreichte die Datei im internen Ordner
+auch dann, als gar keine Freigabe mehr auf ihr lag.** Grund ist nicht der Umzug, sondern der
+Team-Ordner selbst — er zeigt allen Mitgliedern seiner Gruppe **alles** darin, Unterordner
+eingeschlossen.
+
+**Das trifft nicht erst Phase 7b, sondern den heutigen Stand.** Wer `90_Austausch` und
+`91_Tickets_intern` als zwei Unterordner eines Team-Ordners anlegt und die Kundenseite in dessen
+Gruppe aufnimmt, hat **keine** Trennung: Jeder interne Anhang liegt offen, ohne dass irgendwo ein
+Fehler auftaucht. Die Sichtbarkeitsregel der App stimmt dabei weiterhin — sie regelt Vorgänge, nicht
+Dateien. Der Ablageort ist die Sichtbarkeit (§5.18), und genau deshalb muss der **Ablageort** die
+Trennung tragen.
+
+**Es lässt sich sauber trennen, aber nur ausdrücklich.** Mit erweiterten Rechten:
+
+```bash
+occ groupfolders:permissions <id> --enable
+occ groupfolders:permissions <id> 91_Tickets_intern -u <kundenkonto> -- -read
+```
+
+Danach gemessen: `90_Austausch` → HTTP 207, `91_Tickets_intern` → **HTTP 404**. Der Ordner ist für
+das Kundenkonto nicht mehr vorhanden, nicht bloß leer.
+
+→ **Gehört als Bedingung in die Betriebsanleitung, nicht als Empfehlung** — und ist ein Kandidat für
+einen Setup-Check: Die App kennt beide Ordner-IDs und könnte prüfen, ob ein externes Mitglied den
+internen Ordner erreicht. Solange es den Check nicht gibt, ist es ein Handgriff bei der Einrichtung,
+den niemand vergessen darf.
+
+### Und warum §5.18 „keine von der App angelegten Freigaben" jetzt doppelt richtig ist
+
+Die Einzelfreigabe **wandert mit der Datei**. Hätte die App beim Anhängen eine Freigabe erzeugt,
+trüge ein späterer Auto-Move sie in den internen Ordner mit — und der Kunde behielte Zugriff auf
+eine Datei, die gerade intern geworden ist. Die Regel war als Vereinfachung gedacht; sie ist
+zugleich die Bedingung, unter der der Auto-Move überhaupt sicher sein kann.
+
 ## Noch nicht belegt
 
 - Ob Talk-Bot-Nachrichten von der Produktivinstanz aus zugestellt werden (Selbstaufruf hinter
