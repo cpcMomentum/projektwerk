@@ -148,7 +148,7 @@ export default defineComponent({
 		 * @param userId Kennung der Person.
 		 */
 		nameOf(userId: string): string {
-			return this.members.find((m) => m.userId === userId)?.displayName ?? userId
+			return this.members.find((m) => m.userId === userId)?.resolvedName ?? userId
 		},
 
 		/**
