@@ -19,6 +19,7 @@ use OCA\Projektwerk\Db\CommentMapper;
 use OCA\Projektwerk\Db\StepMapper;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Db\TicketUserMapper;
+use OCA\Projektwerk\Service\AttachmentsPresentException;
 use OCA\Projektwerk\Service\ConflictException;
 use OCA\Projektwerk\Service\NotOwningSideException;
 use OCA\Projektwerk\Service\TicketService;
@@ -277,6 +278,16 @@ class TicketController extends Controller {
 				// zu erfahren, was sich geändert hat.
 				return new JSONResponse(
 					['error' => $e->getMessage(), 'current' => $e->current],
+					Http::STATUS_CONFLICT,
+				);
+			} catch (AttachmentsPresentException $e) {
+				// **409 wie beim Versionskonflikt und aus demselben Grund:** Die
+				// Anfrage ist richtig gebaut und das Recht ist da — der Vorgang
+				// ist nur gerade in einem Zustand, in dem sie nicht geht. Die
+				// Zahl kommt mit, damit die Oberflaeche sie nicht aus der
+				// Meldung fischen muss.
+				return new JSONResponse(
+					['error' => $e->getMessage(), 'attachments' => $e->count],
 					Http::STATUS_CONFLICT,
 				);
 			} catch (NotOwningSideException $e) {

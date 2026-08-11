@@ -8,6 +8,33 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Added
 
+- **Anhänge am Vorgang** (Phase 5 Teil B) — eine Datei landet in dem Projektordner, der zur
+  Sichtbarkeit ihres Vorgangs gehört. Flache Ablage mit Vorgangsnummer davor
+  (`0042_angebot.pdf`), bei Namensgleichheit wird gezählt statt überschrieben: Zwei Personen,
+  die am selben Tag „scan.pdf" anhängen, dürfen einander nicht die Datei wegnehmen. Gespeichert
+  wird die **Datei-ID**; der Verweis führt in Nextclouds eigene Dateiansicht, es gibt **keinen
+  eigenen Downloadweg** — wer die Datei sehen darf, entscheidet Nextcloud.
+
+  **Für Vorgänge ohne Ablageort gibt es keine Anhänge.** Ein interner Vorgang der Kundenseite
+  und ein „Nur ich"-Vorgang haben keinen Ordner, in dem die Datei genauso eng läge; einen der
+  beiden vorhandenen zu nehmen hieße, sie jemandem hinzulegen, der den Vorgang nicht sehen
+  darf. Die App lehnt dann ab, statt einen Ort zu raten.
+
+  **Lösen löst nur die Verknüpfung.** Die Datei bleibt liegen, wo sie liegt — die App löscht
+  nie (§5.18). Der Rückfragedialog sagt das ausdrücklich, damit niemand „lösen" für
+  „wegräumen" hält.
+
+  Eine gesperrte Datei und ein vollgelaufenes Konto antworten mit einer eigenen Meldung statt
+  mit einem 500: `LockedException` und `NotEnoughSpaceException` erben **nicht** von
+  `NotPermittedException` — beide hängen direkt an `\Exception`, und ohne eigenen Fang schlägt
+  ein paralleler Zugriff als „Antwort war kein JSON" durch.
+- **Die Sichtbarkeit eines Vorgangs mit Anhängen lässt sich nicht ändern** (§3.10 Stufe 1).
+  Das ist der einzige Punkt, an dem ein Leck **physisch** würde: Läge die Datei erst in
+  `90_Austausch`, hätte die Kundenseite sie gesehen, und keine spätere Codekorrektur nähme das
+  zurück. Ein Umzug der Dateien ist nicht transaktional zur Datenbank, und §11.3 ist
+  unbeantwortet — bis Spike S2 das klärt, wird gar nicht erst verschoben. Die Absage steht
+  **vor** der Bestätigung: `visibility-impact` liefert die Zahl längst mit, und eine Warnung zu
+  bestätigen, die ohnehin abgewiesen würde, wäre ein Handgriff ohne Wirkung.
 - **Dateiablage in den Projekteinstellungen** — die beiden Projektordner lassen sich am Board
   hinterlegen. Die Spalten dafür stehen seit Migration 1, gesetzt hat sie bisher nichts; ohne
   sie hätte ein Anhang keinen Ort, an den er gehört. Eingetragen wird ein **Pfad**, gespeichert

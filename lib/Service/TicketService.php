@@ -277,9 +277,16 @@ class TicketService {
 	 * Kundenticket so herunterstufen, dass er selbst den Zugriff verliert — ein
 	 * Vorgang, der danach für niemanden mehr erreichbar wäre.
 	 *
-	 * @throws DoesNotExistException  Ticket nicht sichtbar
-	 * @throws ConflictException      zwischenzeitlich geändert
-	 * @throws NotOwningSideException die andere Seite besitzt dieses Ticket
+	 * **Ein Vorgang mit Anhängen lässt sich nicht umstellen** (§3.10 Stufe 1).
+	 * Die Begründung steht bei {@see AttachmentsPresentException}; kurz: Der
+	 * Ablageort ist die Sichtbarkeit, ein Umzug der Dateien ist nicht
+	 * transaktional zur Datenbank, und ein halb gelungener Umzug wäre ein Leck,
+	 * das keine spätere Codekorrektur heilt.
+	 *
+	 * @throws DoesNotExistException       Ticket nicht sichtbar
+	 * @throws ConflictException           zwischenzeitlich geändert
+	 * @throws NotOwningSideException      die andere Seite besitzt dieses Ticket
+	 * @throws AttachmentsPresentException es hängen noch Anhänge daran
 	 */
 	public function changeVisibility(ViewerContext $viewer, int $ticketId, int $version, string $visibility): Ticket {
 		$this->assertKnownVisibility($visibility);
@@ -287,17 +294,15 @@ class TicketService {
 		$ticket = $this->tickets->findVisible($viewer, $ticketId);
 		$this->assertVersion($ticket, $version);
 
-		if ($ticket->getCreatorRole() !== $viewer->role) {
-			throw new NotOwningSideException(
-				'Die Sichtbarkeit darf nur die Seite ändern, der das Ticket gehört.',
-			);
-		}
+		$this->assertOwningSide($viewer, $ticket, $visibility);
 
-		if ($visibility === TicketScope::VISIBILITY_PRIVATE
-			&& $ticket->getCreatorUserId() !== $viewer->userId) {
-			throw new NotOwningSideException(
-				'Auf „privat" herunterstufen kann nur die anlegende Person selbst.',
-			);
+		// **„Darf ich" steht vor „geht es".** Wer die Seite nicht besitzt, darf
+		// ohnehin nicht umstellen und bekommt deshalb auch keine Zahl über die
+		// Anhänge zu sehen. Und nur bei einer echten Änderung: Dieselbe Stufe
+		// noch einmal zu wählen bewegt keine Datei und darf an einem Anhang
+		// nicht scheitern.
+		if ($visibility !== (string)$ticket->getVisibility()) {
+			$this->assertNoAttachments($ticketId);
 		}
 
 		$ticket->setVisibility($visibility);
@@ -444,6 +449,68 @@ class TicketService {
 		$ticket->setVersion((int)$ticket->getVersion() + 1);
 		$ticket->setLastEditorUserId($viewer->userId);
 		$ticket->setUpdatedAt(new \DateTime());
+	}
+
+	/**
+	 * §7, wörtlich: Ändern darf nur die Seite, der das Ticket gehört — und auf
+	 * „privat" herunter nur die anlegende Person selbst.
+	 *
+	 * Die Begründung ist keine Zierde: Sonst könnte ein interner Mitarbeiter ein
+	 * Kundenticket so herunterstufen, dass er selbst den Zugriff verliert — ein
+	 * Vorgang, der danach für niemanden mehr erreichbar wäre.
+	 *
+	 * @throws NotOwningSideException
+	 */
+	private function assertOwningSide(ViewerContext $viewer, Ticket $ticket, string $visibility): void {
+		if ($ticket->getCreatorRole() !== $viewer->role) {
+			throw new NotOwningSideException(
+				'Die Sichtbarkeit darf nur die Seite ändern, der das Ticket gehört.',
+			);
+		}
+
+		if ($visibility === TicketScope::VISIBILITY_PRIVATE
+			&& $ticket->getCreatorUserId() !== $viewer->userId) {
+			throw new NotOwningSideException(
+				'Auf „privat" herunterstufen kann nur die anlegende Person selbst.',
+			);
+		}
+	}
+
+	/**
+	 * Der Riegel aus §3.10 Stufe 1.
+	 *
+	 * **Die Filterung ist schon passiert, nicht hier.** Gezählt wird über eine
+	 * Einermenge auf dem Mapper; die Sichtbarkeit steckt darin, dass diese
+	 * `$ticketId` aus {@see TicketMapper::findVisible()} kommt und der Aufrufer
+	 * sie nicht anders bekommt. Ein `ViewerContext` als Parameter täuschte hier
+	 * eine zweite Prüfung vor, die es nicht gibt — und eine vorgetäuschte
+	 * Prüfung ist schlechter als gar keine, weil man sich auf sie verlässt.
+	 *
+	 * **Bekanntes, enges Zeitfenster.** Zwischen dieser Zählung und dem
+	 * `update()` liegt keine Sperre: Wer in genau diesen Millisekunden einen
+	 * Anhang hochlädt, käme mit dem Wechsel noch durch. Das ist dasselbe
+	 * optimistische Muster wie im Rest der Klasse — und anders als dort wäre die
+	 * Folge hier eine Datei im falschen Ordner, also der Fall, den §3.10 gerade
+	 * verhindern soll.
+	 *
+	 * Warum trotzdem keine Sperre: Sie müsste die Anhangzeilen **und** die
+	 * Ticketzeile über die Transaktion halten, und der einzige realistische
+	 * Ausloeser ist eine Person, die im selben Augenblick anhängt, während eine
+	 * andere umstellt. Aufgeschrieben statt behoben, damit es beim Auto-Move aus
+	 * Phase 7b — wo die Datei dann wirklich bewegt wird — nicht neu entdeckt
+	 * werden muss. Dort gehört es zusammen mit `verify-after-move` gelöst.
+	 *
+	 * @throws AttachmentsPresentException
+	 */
+	private function assertNoAttachments(int $ticketId): void {
+		$count = $this->attachments->countForTickets([$ticketId])[$ticketId] ?? 0;
+
+		if ($count > 0) {
+			// Die Zahl steht in der Meldung, weil sie die Handlung bestimmt:
+			// „Bitte den Anhang zuerst entfernen" ist eine andere Aufgabe als
+			// dieselbe Bitte für sieben.
+			throw new AttachmentsPresentException($count);
+		}
 	}
 
 	private function assertKnownVisibility(string $visibility): void {

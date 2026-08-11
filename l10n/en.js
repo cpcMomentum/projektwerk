@@ -51,10 +51,6 @@ OC.L10N.register(
         "%n comment",
         "%n comments"
     ],
-    "_%n Anhang_::_%n Anhänge_": [
-        "%n attachment",
-        "%n attachments"
-    ],
     "Die Beteiligten werden nicht benachrichtigt.": "The people involved will not be notified.",
     "Sichtbarkeit ändern": "Change visibility",
     "Sichtbarkeit konnte nicht geprüft werden": "Could not check visibility",
@@ -169,6 +165,21 @@ OC.L10N.register(
     "Ordner für interne Vorgänge": "Folder for internal tickets",
     "Nur die eigene Seite hat Zugriff. Leer lassen heißt: an internen Vorgängen sind keine Anhänge möglich.": "Only your own side has access. Leaving it empty means internal tickets cannot have attachments.",
     "Übernehmen": "Apply",
-    "Ordner konnte nicht gespeichert werden": "Could not save the folder"
+    "Ordner konnte nicht gespeichert werden": "Could not save the folder",
+    "Anhänge": "Attachments",
+    "Anhang lösen: {name}": "Detach attachment: {name}",
+    "Anhang lösen?": "Detach attachment?",
+    "Datei anhängen": "Attach file",
+    "Der Anhang „{name}“ wird vom Vorgang gelöst.": "The attachment “{name}” will be detached from this ticket.",
+    "Der Anhang konnte nicht gespeichert werden": "Could not save the attachment",
+    "Die Datei selbst bleibt liegen, wo sie liegt — diese App löscht keine Dateien.": "The file itself stays where it is — this app never deletes files.",
+    "Lösen": "Detach",
+    "Noch keine Anhänge.": "No attachments yet.",
+    "von {name}": "by {name}",
+    "_Dieser Vorgang hat %n Anhang. Bitte ihn zuerst vom Vorgang lösen — die Datei selbst bleibt dabei liegen._::_Dieser Vorgang hat %n Anhänge. Bitte sie zuerst vom Vorgang lösen — die Dateien selbst bleiben dabei liegen._": [
+        "This ticket has %n attachment. Please detach it first — the file itself stays where it is.",
+        "This ticket has %n attachments. Please detach them first — the files themselves stay where they are."
+    ],
+    "Verstanden": "Got it"
 },
 "nplurals=2; plural=(n != 1);");

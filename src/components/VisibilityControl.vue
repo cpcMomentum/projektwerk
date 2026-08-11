@@ -26,7 +26,7 @@
 				:modelValue="ticket.visibility"
 				:unavailable="unavailable"
 				:blockedHint="blockedHint"
-				:busy="busy || stage === 'confirming'"
+				:busy="busy || stage !== 'idle'"
 				@update:modelValue="choose" />
 
 			<!--
@@ -41,6 +41,32 @@
 						<UndoIcon :size="20" />
 					</template>
 					{{ t('projektwerk', 'Rückgängig') }}
+				</NcButton>
+			</div>
+		</div>
+
+		<!--
+			**Anhänge sperren den Wechsel** (§3.10 Stufe 1) — und das steht hier
+			statt hinter einer Bestätigung, die ohnehin abgewiesen würde.
+
+			Kein „Trotzdem"-Knopf: Es gibt nichts, was die App an dieser Stelle
+			tun könnte. Der Ablageort IST die Sichtbarkeit, und die Dateien
+			umzuziehen ist nicht transaktional zur Datenbank — ein halb
+			gelungener Umzug wäre ein Leck, das keine spätere Codekorrektur
+			heilt. Der Satz sagt deshalb, was zu tun ist, statt eine Wahl
+			vorzutäuschen.
+		-->
+		<div v-if="stage === 'blocked'" class="pw-viscontrol__warn">
+			<p class="pw-viscontrol__lead">
+				<AlertIcon :size="20" />
+				<span class="pw-viscontrol__target">
+					{{ blockedByAttachments }}
+				</span>
+			</p>
+
+			<div class="pw-viscontrol__actions">
+				<NcButton @click="reset">
+					{{ t('projektwerk', 'Verstanden') }}
 				</NcButton>
 			</div>
 		</div>
@@ -158,7 +184,7 @@ export default defineComponent({
 
 	data() {
 		return {
-			stage: 'idle' as 'idle' | 'confirming',
+			stage: 'idle' as 'idle' | 'confirming' | 'blocked',
 			/** Die angeklickte Stufe, solange die Rückfrage offen ist. */
 			chosen: 'public' as Visibility,
 			impact: { losing: [], comments: 0, attachments: 0 } as Impact,
@@ -217,27 +243,39 @@ export default defineComponent({
 		},
 
 		/**
-		 * Was am Vorgang mit verloren geht — „3 Kommentare, 1 Anhang".
+		 * Der Satz, der die Sperre erklärt — mit der Zahl, weil sie die
+		 * Handlung bestimmt.
 		 *
-		 * Je Zahl ein `n()`, verbunden durch ein Komma. Das ist der Ausweg aus
-		 * einem Satz mit **zwei** Zahlen: `n()` beugt nach genau einer, und die
-		 * vier ausgeschriebenen Fassungen von vorher waren an beiden Stellen
-		 * falsch, sobald eine der Zahlen 1 war („seine 1 Kommentare").
+		 * „Lösen", nicht „löschen": Die Dateien bleiben liegen, gelöst wird nur
+		 * die Verknüpfung. Wer hier „löschen" läse, räumte mehr weg als nötig.
+		 */
+		blockedByAttachments(): string {
+			return n(
+				'projektwerk',
+				'Dieser Vorgang hat %n Anhang. Bitte ihn zuerst vom Vorgang lösen — die Datei selbst bleibt dabei liegen.',
+				'Dieser Vorgang hat %n Anhänge. Bitte sie zuerst vom Vorgang lösen — die Dateien selbst bleiben dabei liegen.',
+				this.impact.attachments,
+			)
+		},
+
+		/**
+		 * Was am Vorgang mit verloren geht — „3 Kommentare".
 		 *
-		 * Das Komma braucht keine Übersetzung — anders als ein „und", das je
-		 * nach Sprache vor dem letzten Glied steht oder nicht.
+		 * `n()` und kein Platzhalter in einem festen Text: Bei genau einem
+		 * Kommentar stand dort bis zum 2026-08-10 „seine 1 Kommentare".
+		 *
+		 * **Anhänge stehen hier nicht mehr**, seit ein Vorgang mit Anhängen gar
+		 * nicht mehr umgestellt werden kann (§3.10 Stufe 1): Die Rückfrage wird
+		 * dann nie erreicht, und ein Satzteil, der nie erscheinen kann, ist
+		 * keine Vorsorge, sondern eine Behauptung über die Oberfläche, die nicht
+		 * stimmt. Mit dem Auto-Move aus Phase 7b kommt er zurück — dann wieder
+		 * je Zahl einzeln gebeugt und mit Komma verbunden, weil `n()` nach genau
+		 * einer Zahl beugt.
 		 */
 		affectedParts(): string {
-			const teile: string[] = []
-
-			if (this.impact.comments > 0) {
-				teile.push(n('projektwerk', '%n Kommentar', '%n Kommentare', this.impact.comments))
-			}
-			if (this.impact.attachments > 0) {
-				teile.push(n('projektwerk', '%n Anhang', '%n Anhänge', this.impact.attachments))
-			}
-
-			return teile.join(', ')
+			return this.impact.comments > 0
+				? n('projektwerk', '%n Kommentar', '%n Kommentare', this.impact.comments)
+				: ''
 		},
 
 		/**
@@ -346,6 +384,19 @@ export default defineComponent({
 				return
 			}
 			this.busy = false
+
+			// **Anhänge sperren den Wechsel** (§3.10 Stufe 1).
+			//
+			// Das ist **keine zweite Regel im Browser**: Der Server weist den
+			// Wechsel ohnehin ab, und genau das prüft ein Test. Hier wird nur
+			// vorweggenommen, was `visibility-impact` bereits mitgeliefert hat —
+			// sonst erführe man die Absage erst nach dem Bestätigen einer
+			// Warnung, die ohnehin nichts bewirkt hätte.
+			if (this.impact.attachments > 0) {
+				this.stage = 'blocked'
+
+				return
+			}
 
 			if (this.impact.losing.length === 0) {
 				// Niemand verliert etwas: durchführen und kurz widerrufbar halten.
