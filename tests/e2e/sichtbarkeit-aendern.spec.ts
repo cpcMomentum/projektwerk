@@ -54,8 +54,9 @@ test('ein freigegebener Vorgang kommt bei der Kundenseite an', async ({ browser 
 		// **Ein Klick ist die ganze Handlung** (#75) — kein „Ändern" davor, kein
 		// „Übernehmen" danach. Die Auswahl steht offen im Abschnitt.
 		//
-		// `.pw-visrow` grenzt trotzdem ein: Hinter dem Overlay liegt das Board,
-		// und dessen Karten tragen dieselben Stufennamen als Marke.
+		// `stufeWaehlen` grenzt trotzdem auf `.pw-vischoice` ein: Hinter dem
+		// Overlay liegt das Board, und dessen Karten tragen dieselben
+		// Stufennamen als Marke.
 		await stufeWaehlen(seite, 'Alle Beteiligten')
 
 		// Die Rueckfrage erscheint nur, wenn jemand Zugriff *verliert*. Beim
