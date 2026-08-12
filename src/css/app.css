@@ -765,6 +765,28 @@
 	display: none;
 }
 
+/*
+ * **Links muessen als Links zu erkennen sein.**
+ *
+ * `NcRichText` rendert einen Markdown-Link als echtes `<a href target="_blank">`
+ * — anklickbar ist er also —, faerbt ihn aber nicht: Er stand in der normalen
+ * Textfarbe `#222` mitten im Absatz. Fuer ein Beschreibungsfeld, dessen
+ * Markdown-Faehigkeit gerade wegen der Links gewaehlt wurde, ist das der halbe
+ * Weg.
+ *
+ * Farbe **und** Unterstreichung, nicht nur Farbe (§9 Querschnitt: nie eine
+ * Auskunft allein ueber die Farbe).
+ *
+ * Gilt auch fuer die Kommentare — dort besteht dasselbe seit Phase 5, es faellt
+ * nur weniger auf, weil dort seltener Links stehen.
+ */
+.app-projektwerk .pw-beschreibung__text a,
+.app-projektwerk .pw-comment__text a {
+	color: var(--color-primary-element);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
 .app-projektwerk .pw-beschreibung__text > :first-child {
 	margin-block-start: 0;
 }
