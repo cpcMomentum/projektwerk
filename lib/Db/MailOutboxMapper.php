@@ -69,6 +69,31 @@ class MailOutboxMapper extends QBMapper {
 	 *
 	 * @return MailOutbox[]
 	 */
+	public function findRetryable(): array {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->select('*')
+			->from($this->getTableName())
+			->where($qb->expr()->in(
+				'status',
+				$qb->createNamedParameter(
+					[MailOutbox::STATUS_PENDING, MailOutbox::STATUS_FAILED],
+					IQueryBuilder::PARAM_STR_ARRAY,
+				),
+			))
+			->andWhere($qb->expr()->lt(
+				'attempts',
+				$qb->createNamedParameter(self::MAX_ATTEMPTS, IQueryBuilder::PARAM_INT),
+			))
+			// Aeltestes zuerst: Eine Mail, die seit Stunden liegt, ist
+			// dringender als eine von gerade eben.
+			->orderBy('created_at', 'ASC')
+			->addOrderBy('id', 'ASC')
+			->setMaxResults(self::BATCH_SIZE);
+
+		return $this->findEntities($qb);
+	}
+
 	/**
 	 * Gab es zu diesem Vorgang schon eine Mail dieses Anlasses an diese Person?
 	 *
@@ -105,30 +130,5 @@ class MailOutboxMapper extends QBMapper {
 		$ergebnis->closeCursor();
 
 		return $anzahl > 0;
-	}
-
-	public function findRetryable(): array {
-		$qb = $this->db->getQueryBuilder();
-
-		$qb->select('*')
-			->from($this->getTableName())
-			->where($qb->expr()->in(
-				'status',
-				$qb->createNamedParameter(
-					[MailOutbox::STATUS_PENDING, MailOutbox::STATUS_FAILED],
-					IQueryBuilder::PARAM_STR_ARRAY,
-				),
-			))
-			->andWhere($qb->expr()->lt(
-				'attempts',
-				$qb->createNamedParameter(self::MAX_ATTEMPTS, IQueryBuilder::PARAM_INT),
-			))
-			// Aeltestes zuerst: Eine Mail, die seit Stunden liegt, ist
-			// dringender als eine von gerade eben.
-			->orderBy('created_at', 'ASC')
-			->addOrderBy('id', 'ASC')
-			->setMaxResults(self::BATCH_SIZE);
-
-		return $this->findEntities($qb);
 	}
 }
