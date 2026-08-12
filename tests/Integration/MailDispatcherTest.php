@@ -296,4 +296,37 @@ class MailDispatcherTest extends IntegrationTestCase {
 			'Eine andere Person hat ihr eigenes Fenster.',
 		);
 	}
+
+	/**
+	 * **Das Fenster erneuert sich nicht selbst.**
+	 *
+	 * Der naheliegende Fehler: `existsSince()` zaehlt auch die unterdrueckten
+	 * Zeilen mit. Dann setzt jede Unterdrueckung das Fenster neu, und ein
+	 * Vorgang, an dem alle 25 Minuten jemand schreibt, bliebe **dauerhaft**
+	 * stumm — aus „hoechstens eine Mail je Fenster" wuerde „Stille, solange
+	 * jemand schreibt".
+	 *
+	 * Geprueft wird ueber eine unterdrueckte Zeile, die **aelter** als das
+	 * Fenster ist: Sie darf die naechste Mail nicht aufhalten, obwohl eine
+	 * frischere unterdrueckte Zeile existiert.
+	 */
+	public function testASuppressedRowDoesNotKeepTheWindowOpen(): void {
+		$dispatcher = $this->dispatcher(['kunde@example.invalid']);
+
+		// Eine unterdrueckte Zeile von eben — sie allein darf nichts sperren.
+		$alt = new MailOutbox();
+		$alt->setRecipientUid(self::MIT_ADRESSE);
+		$alt->setTicketId(4715);
+		$alt->setEvent(MailOutbox::EVENT_COMMENT_ADDED);
+		$alt->setLang('de');
+		$alt->setStatus(MailOutbox::STATUS_SUPPRESSED);
+		$alt->setAttempts(0);
+		$alt->setCreatedAt(new \DateTime());
+		$this->outbox->insert($alt);
+
+		$this->assertNotNull(
+			$dispatcher->queue(self::MIT_ADRESSE, 4715, MailOutbox::EVENT_COMMENT_ADDED, self::BOARD),
+			'Eine unterdrueckte Zeile ist keine gesendete — sie darf das Fenster nicht offen halten.',
+		);
+	}
 }

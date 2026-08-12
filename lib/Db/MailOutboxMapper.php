@@ -111,6 +111,13 @@ class MailOutboxMapper extends QBMapper {
 	 * wann die Nachricht **entstand**. Eine Zeile, die noch im Nachlauf haengt,
 	 * hat ihren Zweck als Ankuendigung bereits erfuellt.
 	 *
+	 * **Unterdrueckte Zeilen zaehlen ausdruecklich nicht mit.** Sonst
+	 * erneuerte jede Unterdrueckung das Fenster: Ein Vorgang mit einem
+	 * Kommentar alle 25 Minuten bliebe dauerhaft stumm, weil die jeweils letzte
+	 * unterdrueckte Zeile die naechste Pruefung wieder ausloest. Gemeint ist
+	 * „hoechstens eine Mail je Fenster" — nicht „Stille, solange jemand
+	 * schreibt".
+	 *
 	 * @param string $recipientUid Wer benachrichtigt wuerde.
 	 * @param int $ticketId Der Vorgang.
 	 * @param string $event Einer der `EVENT_*`-Werte.
@@ -123,7 +130,8 @@ class MailOutboxMapper extends QBMapper {
 			->where($qb->expr()->eq('recipient_uid', $qb->createNamedParameter($recipientUid)))
 			->andWhere($qb->expr()->eq('ticket_id', $qb->createNamedParameter($ticketId, IQueryBuilder::PARAM_INT)))
 			->andWhere($qb->expr()->eq('event', $qb->createNamedParameter($event)))
-			->andWhere($qb->expr()->gte('created_at', $qb->createNamedParameter($seit, IQueryBuilder::PARAM_DATETIME_MUTABLE)));
+			->andWhere($qb->expr()->gte('created_at', $qb->createNamedParameter($seit, IQueryBuilder::PARAM_DATETIME_MUTABLE)))
+			->andWhere($qb->expr()->neq('status', $qb->createNamedParameter(MailOutbox::STATUS_SUPPRESSED)));
 
 		$ergebnis = $qb->executeQuery();
 		$anzahl = (int)$ergebnis->fetchOne();
