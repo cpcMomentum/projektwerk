@@ -710,4 +710,61 @@ class TicketWritePathTest extends IntegrationTestCase {
 			$attachments->delete($attachment);
 		}
 	}
+
+	/**
+	 * **Nur der Uebergang benachrichtigt, nicht der Zustand** (#98).
+	 *
+	 * Ein zweites `closed: true` an einem bereits geschlossenen Vorgang darf
+	 * keine zweite Runde ausloesen. Der naheliegende Fehler waere gewesen, auf
+	 * `$changes['closed']` zu schauen statt auf den Stand davor — dann schickte
+	 * jeder Speichervorgang an einem geschlossenen Vorgang erneut „Eure Sache
+	 * ist durch" an alle Beteiligten.
+	 *
+	 * Gezaehlt wird im Ausgangskorb und nicht an der Glocke: Die Mail ist der
+	 * Weg, auf den sich ein Gast verlaesst, und sie ist nachzaehlbar.
+	 */
+	public function testClosingNotifiesOnceNotOnEverySave(): void {
+		$bert = $this->viewer(LeakMatrixFixture::BERT);
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+
+		$vorher = $this->geschlossenZeilen($ticketId);
+
+		$zu = $this->service->update($bert, $ticketId, 1, ['closed' => true]);
+		$einmal = $this->geschlossenZeilen($ticketId);
+		$this->assertGreaterThan($vorher, $einmal, 'Das Schliessen muss ankuendigen.');
+
+		// Noch einmal dasselbe — der Vorgang ist bereits geschlossen.
+		$this->service->update($bert, $ticketId, (int)$zu->getVersion(), ['closed' => true]);
+
+		$this->assertSame(
+			$einmal,
+			$this->geschlossenZeilen($ticketId),
+			'Ein zweites „closed: true" ist kein Uebergang und darf nicht erneut ausloesen.',
+		);
+	}
+
+	/**
+	 * Zeilen im Ausgangskorb, die zum Schliessen dieses Vorgangs gehoeren.
+	 *
+	 * **Direkt auf der Tabelle und nicht ueber den Mapper.** Der Mapper hat
+	 * keine Methode „alle Zeilen" — und er bekommt hier auch keine: Eine
+	 * Produktionsmethode, die es nur gibt, weil ein Test sie braucht, ist eine
+	 * Lesemoeglichkeit mehr, als das Produkt kennt.
+	 *
+	 * @param int $ticketId Der Vorgang.
+	 */
+	private function geschlossenZeilen(int $ticketId): int {
+		$db = Server::get(\OCP\IDBConnection::class);
+		$qb = $db->getQueryBuilder();
+		$qb->select($qb->func()->count('*', 'anzahl'))
+			->from('pwerk_mail_outbox')
+			->where($qb->expr()->eq('ticket_id', $qb->createNamedParameter($ticketId, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)))
+			->andWhere($qb->expr()->eq('event', $qb->createNamedParameter(\OCA\Projektwerk\Db\MailOutbox::EVENT_TICKET_CLOSED)));
+
+		$ergebnis = $qb->executeQuery();
+		$anzahl = (int)$ergebnis->fetchOne();
+		$ergebnis->closeCursor();
+
+		return $anzahl;
+	}
 }

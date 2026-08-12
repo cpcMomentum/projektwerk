@@ -70,11 +70,19 @@ class Version000003Date20260812000000 extends SimpleMigrationStep {
 		$table = $schema->getTable('pwerk_notify_prefs');
 
 		if (!$table->hasColumn('pref_key')) {
-			// Dieselben Masse wie `channel` in Migration 1 — es soll dieselbe
-			// Spalte sein, nur anders benannt.
+			// **32 statt der 16 von `channel`** — und das ist der einzige
+			// Unterschied zur alten Spalte.
+			//
+			// 16 reichte fuer die bisherigen Werte gerade so: `ticket_assigned`
+			// hat 15 Zeichen. Der naechste Anlass sprengt es lautlos —
+			// `attachment_added` sind genau 16, `visibility_changed` schon 18.
+			// Was dann passiert, haengt an der Datenbank: stille Abschneidung
+			// oder ein Fehler auf einer fremden Installation. Dieselbe
+			// Fehlerklasse wie die zu langen Tabellennamen, und dieselbe
+			// Antwort: vorher Luft lassen statt hinterher suchen.
 			$table->addColumn('pref_key', Types::STRING, [
 				'notnull' => true,
-				'length' => 16,
+				'length' => 32,
 				'default' => '',
 			]);
 		}

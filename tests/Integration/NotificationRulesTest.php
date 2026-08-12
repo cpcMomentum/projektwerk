@@ -78,12 +78,18 @@ class NotificationRulesTest extends IntegrationTestCase {
 	/**
 	 * @param string $visibility Sichtbarkeit des Vorgangs.
 	 */
-	private function ticket(string $visibility): Ticket {
+	private function ticket(string $visibility, ?string $responsible = null): Ticket {
 		$ticket = new Ticket();
 		$ticket->setId($this->fixtureTicketId());
 		$ticket->setNumber(42);
 		$ticket->setTitle('Ein Vorgang');
 		$ticket->setVisibility($visibility);
+		// Die Fixture legt Ersteller, Kommentarverfasser und Schrittinhaber auf
+		// **dieselbe** Person. Die Zustaendigkeit ist damit die einzige der vier
+		// Quellen, die sich getrennt pruefen laesst — und genau deshalb steht
+		// sie hier als Parameter.
+		$ticket->setCreatorUserId(LeakMatrixFixture::ANNA);
+		$ticket->setResponsibleUserId($responsible);
 
 		return $ticket;
 	}
@@ -145,5 +151,76 @@ class NotificationRulesTest extends IntegrationTestCase {
 		$this->assertCount(1, $vorgemerkt);
 		$this->assertSame(MailOutbox::STATUS_PENDING, $vorgemerkt[0]->getStatus());
 		$this->assertSame(LeakMatrixFixture::BERT, $vorgemerkt[0]->getRecipientUid());
+	}
+
+	/**
+	 * **Die vier Quellen ergeben eine Menge, nicht vier Nachrichten** (#98).
+	 *
+	 * In der Fixture sind Ersteller, Kommentarverfasser und Schrittinhaber
+	 * dieselbe Person (Anna). Wer die Quellen naiv aneinanderhaengt, bekommt
+	 * drei Zeilen fuer einen Menschen — und Anna bekaeme drei Mails fuer einen
+	 * Kommentar. Dieser Test faellt genau dann.
+	 *
+	 * Bert ist zusaetzlich zustaendig und muss **einmal** dazukommen.
+	 */
+	public function testTheFourSourcesAreOneSetNotFourMessages(): void {
+		$service = $this->service(2);
+
+		$vorgemerkt = $service->announceToInvolved(
+			$this->ticket(TicketScope::VISIBILITY_PUBLIC, LeakMatrixFixture::BERT),
+			LeakMatrixFixture::CARLA,
+			MailOutbox::EVENT_COMMENT_ADDED,
+		);
+
+		$empfaenger = array_map(
+			static fn (MailOutbox $z): string => (string)$z->getRecipientUid(),
+			$vorgemerkt,
+		);
+		sort($empfaenger);
+
+		$this->assertSame(
+			[LeakMatrixFixture::ANNA, LeakMatrixFixture::BERT],
+			$empfaenger,
+			'Anna genau einmal (Erstellerin, Kommentarverfasserin, Schrittinhaberin), Bert als Zustaendiger.',
+		);
+	}
+
+	/**
+	 * Die auslesende Person faellt heraus — **auch wenn sie beteiligt ist**.
+	 *
+	 * Anna ist in der Fixture gleich dreifach beteiligt. Kommentiert sie
+	 * selbst, darf trotzdem nichts an sie gehen: `announce()` prueft das je
+	 * Empfaenger, und `announceToInvolved()` darf diese Pruefung nicht
+	 * umgehen, indem es die Menge vorher anders bildet.
+	 */
+	public function testTheActorFallsOutEvenWhenInvolvedThreefold(): void {
+		$service = $this->service(0);
+
+		$vorgemerkt = $service->announceToInvolved(
+			$this->ticket(TicketScope::VISIBILITY_PUBLIC),
+			LeakMatrixFixture::ANNA,
+			MailOutbox::EVENT_COMMENT_ADDED,
+		);
+
+		$this->assertSame([], $vorgemerkt);
+	}
+
+	/**
+	 * Auch der Sammelweg schweigt zu einem privaten Vorgang.
+	 *
+	 * Die Regel sitzt in `announce()`, nicht in der Empfaengerermittlung — der
+	 * Test haelt fest, dass der neue Weg sie nicht umgeht. Ein Entwurf hat
+	 * genau eine sichtbare Person, und die loest ihn selbst aus.
+	 */
+	public function testTheCollectiveRouteAlsoStaysSilentOnPrivateTickets(): void {
+		$service = $this->service(0);
+
+		$vorgemerkt = $service->announceToInvolved(
+			$this->ticket(TicketScope::VISIBILITY_PRIVATE, LeakMatrixFixture::BERT),
+			LeakMatrixFixture::CARLA,
+			MailOutbox::EVENT_COMMENT_ADDED,
+		);
+
+		$this->assertSame([], $vorgemerkt);
 	}
 }

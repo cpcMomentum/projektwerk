@@ -226,4 +226,74 @@ class MailDispatcherTest extends IntegrationTestCase {
 			'Nach MAX_ATTEMPTS wird nicht weiter versucht.',
 		);
 	}
+
+	/**
+	 * **Das Unterdrueckungsfenster** (#98): Die erste Kommentar-Mail geht raus,
+	 * die zweite zum selben Vorgang nicht mehr.
+	 *
+	 * Ein lebhafter Abgleich mit zehn Kommentaren erzeugte sonst zehn Mails an
+	 * jeden Beteiligten — und das ist der Punkt, an dem jemand den Mailkanal
+	 * abschaltet und dabei die Zuweisungen verliert, die die wichtigen sind.
+	 *
+	 * Die zweite Zeile wird **festgehalten**, nicht weggelassen: „unterdrueckt"
+	 * ist etwas anderes als „abgeschaltet" (gar keine Zeile) und als
+	 * „keine Adresse". Wer spaeter fragt, warum eine Mail ausblieb, findet die
+	 * Antwort im Ausgangskorb statt im Log.
+	 */
+	public function testASecondCommentWithinTheWindowIsSuppressed(): void {
+		$dispatcher = $this->dispatcher(['kunde@example.invalid']);
+
+		$erste = $dispatcher->queue(self::MIT_ADRESSE, 4711, MailOutbox::EVENT_COMMENT_ADDED, self::BOARD);
+		$this->assertNotNull($erste, 'Die erste Kommentar-Mail geht sofort raus.');
+		$this->assertSame(MailOutbox::STATUS_PENDING, $erste->getStatus());
+
+		$zweite = $dispatcher->queue(self::MIT_ADRESSE, 4711, MailOutbox::EVENT_COMMENT_ADDED, self::BOARD);
+		$this->assertNull($zweite, 'Im Fenster entsteht keine zweite zu versendende Zeile.');
+
+		$alle = $this->outbox->findRetryable();
+		$this->assertCount(
+			1,
+			array_filter($alle, static fn (MailOutbox $z): bool => (int)$z->getTicketId() === 4711),
+			'Der Nachlauf darf die unterdrueckte Zeile nicht aufgreifen — sie ist kein Fehlschlag.',
+		);
+	}
+
+	/**
+	 * **Zuweisungen werden nie unterdrueckt.**
+	 *
+	 * Sie sind die Nachrichten, die zaehlen, und sie kommen einzeln. Sich davon
+	 * abzumelden, dass einem Arbeit zugewiesen wird, waere kein Komfort,
+	 * sondern ein Loch — deshalb steht in `GEDROSSELT` nur der Kommentar.
+	 */
+	public function testAssignmentsAreNeverSuppressed(): void {
+		$dispatcher = $this->dispatcher(['kunde@example.invalid']);
+
+		$erste = $dispatcher->queue(self::MIT_ADRESSE, 4712, MailOutbox::EVENT_TICKET_ASSIGNED, self::BOARD);
+		$zweite = $dispatcher->queue(self::MIT_ADRESSE, 4712, MailOutbox::EVENT_STEP_ASSIGNED, self::BOARD);
+		$dritte = $dispatcher->queue(self::MIT_ADRESSE, 4712, MailOutbox::EVENT_TICKET_ASSIGNED, self::BOARD);
+
+		$this->assertNotNull($erste);
+		$this->assertNotNull($zweite, 'Ein anderer Anlass zum selben Vorgang bleibt ohnehin unberuehrt.');
+		$this->assertNotNull($dritte, 'Auch dieselbe Zuweisung ein zweites Mal geht raus.');
+	}
+
+	/**
+	 * Das Fenster trennt nach Vorgang **und** nach Person.
+	 *
+	 * Sonst brachte ein Kommentar an Vorgang A den an Vorgang B zum Schweigen —
+	 * oder schlimmer: Annas Mail unterdrueckte Berts.
+	 */
+	public function testTheWindowSeparatesByTicketAndByPerson(): void {
+		$dispatcher = $this->dispatcher(['kunde@example.invalid']);
+
+		$this->assertNotNull($dispatcher->queue(self::MIT_ADRESSE, 4713, MailOutbox::EVENT_COMMENT_ADDED, self::BOARD));
+		$this->assertNotNull(
+			$dispatcher->queue(self::MIT_ADRESSE, 4714, MailOutbox::EVENT_COMMENT_ADDED, self::BOARD),
+			'Ein anderer Vorgang hat sein eigenes Fenster.',
+		);
+		$this->assertNotNull(
+			$dispatcher->queue(self::OHNE_ADRESSE, 4713, MailOutbox::EVENT_COMMENT_ADDED, self::BOARD),
+			'Eine andere Person hat ihr eigenes Fenster.',
+		);
+	}
 }
