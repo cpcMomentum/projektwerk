@@ -199,7 +199,8 @@
 						:user="member.userId"
 						:displayName="member.resolvedName"
 						:size="32"
-						:disableMenu="true" />
+						:disableMenu="true"
+						:hideStatus="true" />
 
 					<span class="pw-person__body">
 						<span class="pw-person__name">{{ member.resolvedName }}</span>

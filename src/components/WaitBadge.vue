@@ -18,7 +18,8 @@
 				:user="person.userId"
 				:displayName="person.name"
 				:size="18"
-				:disableMenu="true" />
+				:disableMenu="true"
+				:hideStatus="true" />
 			<span v-if="more > 0" class="pw-wait__more">+{{ more }}</span>
 		</span>
 
