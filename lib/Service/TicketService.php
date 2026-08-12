@@ -230,7 +230,13 @@ class TicketService {
 
 			$ticket->setResponsibleUserId($nachher);
 		}
+		// **Nur der Uebergang zaehlt**, nicht der Zustand: Ein zweites
+		// `closed: true` an einem bereits geschlossenen Vorgang darf nicht noch
+		// einmal benachrichtigen. Deshalb wird der Stand **vorher** gelesen.
+		$frischGeschlossen = false;
 		if (array_key_exists('closed', $changes)) {
+			$warOffen = $ticket->getClosedAt() === null;
+			$frischGeschlossen = $warOffen && (bool)$changes['closed'];
 			$ticket->setClosedAt($changes['closed'] ? new \DateTime() : null);
 		}
 
@@ -247,6 +253,22 @@ class TicketService {
 				$neuZugewiesen,
 				$viewer->userId,
 				MailOutbox::EVENT_TICKET_ASSIGNED,
+			);
+			$this->notifications->deliver($vorgemerkt, $gespeichert);
+		}
+
+		// **Das Schliessen ist das Gegenstueck zum Rundruf** (#98) — Anfang und
+		// Ende. Eine Nachricht pro Vorgangsleben, und weil die auslesende Person
+		// in `announce()` herausfaellt, bekommt sie genau die andere Seite:
+		// „Eure Sache ist durch."
+		//
+		// Das Verschieben nach „Erledigt" schliesst laut §9 ausdruecklich
+		// **nicht**; Schliessen ist eine bewusste Handlung.
+		if ($frischGeschlossen) {
+			$vorgemerkt = $this->notifications->announceToInvolved(
+				$gespeichert,
+				$viewer->userId,
+				MailOutbox::EVENT_TICKET_CLOSED,
 			);
 			$this->notifications->deliver($vorgemerkt, $gespeichert);
 		}

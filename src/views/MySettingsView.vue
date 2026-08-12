@@ -219,6 +219,16 @@ export default defineComponent({
 					label: t('projektwerk', 'Neuer Vorgang'),
 					lang: t('projektwerk', 'Ein neuer Vorgang entsteht im Projekt'),
 				},
+				{
+					key: 'comment_added',
+					label: t('projektwerk', 'Kommentar'),
+					lang: t('projektwerk', 'Jemand kommentiert einen Vorgang, an dem ich beteiligt bin'),
+				},
+				{
+					key: 'ticket_closed',
+					label: t('projektwerk', 'Abschluss'),
+					lang: t('projektwerk', 'Ein Vorgang, an dem ich beteiligt bin, wird geschlossen'),
+				},
 			]
 		},
 

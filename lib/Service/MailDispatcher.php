@@ -58,6 +58,30 @@ class MailDispatcher {
 	 */
 	public const EMPFOHLENE_ZEITGRENZE_SEKUNDEN = 2;
 
+	/**
+	 * Wie lange nach einer Kommentar-Mail keine zweite zum selben Vorgang geht.
+	 *
+	 * **Eine Konstante, keine Einstellung** (#98). Eine Schraube, an der
+	 * niemand dreht, ist eine Einstellung zu viel — und wer es wirklich leiser
+	 * will, schaltet den Anlass fuer dieses Projekt ab. Genau dafuer gibt es
+	 * die zwei Achsen.
+	 *
+	 * 30 Minuten faengt den lebhaften Abgleich; laenger verzoegerte die
+	 * Nachricht ueber einen wirklich neuen Punkt entsprechend lange.
+	 */
+	private const FENSTER_MINUTEN = 30;
+
+	/**
+	 * Anlaesse, die im Fenster unterdrueckt werden.
+	 *
+	 * **Zuweisungen nie.** Sie sind die Nachrichten, die zaehlen, und sie
+	 * kommen einzeln — sich davon abzumelden, dass einem Arbeit zugewiesen
+	 * wird, waere kein Komfort, sondern ein Loch.
+	 *
+	 * @var string[]
+	 */
+	private const GEDROSSELT = [MailOutbox::EVENT_COMMENT_ADDED];
+
 	public function __construct(
 		private MailOutboxMapper $outbox,
 		private NotifyPrefMapper $prefs,
@@ -87,6 +111,30 @@ class MailDispatcher {
 		// Projekt ueberhaupt zaehlt, hat der NotificationService schon
 		// entschieden, bevor er hierher kommt.
 		if (!$this->prefs->isEnabled($recipientUid, NotifyPref::CHANNEL_MAIL)) {
+			return null;
+		}
+
+		// **Bündeln durch Unterdruecken, nicht durch Aufschieben.** Die erste
+		// Mail geht sofort raus, mit Inhalt und Direktlink; jede weitere zum
+		// selben Vorgang an dieselbe Person bleibt im Fenster aus. Die Glocke
+		// laeuft weiter, die Person hat ihren Link, und im Vorgang steht
+		// ohnehin alles.
+		//
+		// Die Zeile wird **nicht** weggelassen, sondern als `suppressed`
+		// festgehalten: „unterdrueckt" ist etwas anderes als „abgeschaltet"
+		// (keine Zeile) und als „keine Adresse" — und der Unterschied gehoert
+		// im Ausgangskorb ablesbar, sonst sucht man ihn spaeter im Log.
+		if (in_array($event, self::GEDROSSELT, true) && $this->imFenster($recipientUid, $ticketId, $event)) {
+			$unterdrueckt = new MailOutbox();
+			$unterdrueckt->setRecipientUid($recipientUid);
+			$unterdrueckt->setTicketId($ticketId);
+			$unterdrueckt->setEvent($event);
+			$unterdrueckt->setLang($this->spracheVon($recipientUid));
+			$unterdrueckt->setStatus(MailOutbox::STATUS_SUPPRESSED);
+			$unterdrueckt->setAttempts(0);
+			$unterdrueckt->setCreatedAt(new \DateTime());
+			$this->outbox->insert($unterdrueckt);
+
 			return null;
 		}
 
@@ -194,5 +242,18 @@ class MailDispatcher {
 		return $user === null
 			? $this->l10nFactory->findGenericLanguage(Application::APP_ID)
 			: $this->l10nFactory->getUserLanguage($user);
+	}
+
+	/**
+	 * Ging in den letzten {@see FENSTER_MINUTEN} Minuten schon eine solche Mail raus?
+	 *
+	 * @param string $recipientUid Wer benachrichtigt wuerde.
+	 * @param int $ticketId Der Vorgang.
+	 * @param string $event Einer der `EVENT_*`-Werte.
+	 */
+	private function imFenster(string $recipientUid, int $ticketId, string $event): bool {
+		$seit = (new \DateTime())->modify('-' . self::FENSTER_MINUTEN . ' minutes');
+
+		return $this->outbox->existsSince($recipientUid, $ticketId, $event, $seit);
 	}
 }

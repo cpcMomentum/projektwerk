@@ -13,7 +13,11 @@ use OCP\AppFramework\Db\Entity;
 use OCP\DB\Types;
 
 /**
- * Der Kanalschalter einer Person — Glocke oder Mail, an oder aus.
+ * Ein Schalter einer Person — Kanal oder Anlass, an oder aus.
+ *
+ * **Die Spalte heisst `pref_key` und nicht mehr `channel`** (#98, Migration 3
+ * und 4). Sie traegt beides: die zwei Kanaele und die fuenf Anlaesse. „Kanal"
+ * benannte davon die kleinere Haelfte und verdeckte die groessere.
  *
  * **Persönlich, nicht pro Board** (§3.11): Der Schalter steht in den
  * persönlichen App-Einstellungen. Wer keine Mails will, will sie in keinem
@@ -31,8 +35,8 @@ use OCP\DB\Types;
  *
  * @method string getUserId()
  * @method void setUserId(string $userId)
- * @method string getChannel()
- * @method void setChannel(string $channel)
+ * @method string getPrefKey()
+ * @method void setPrefKey(string $prefKey)
  * @method int getBoardId()
  * @method void setBoardId(int $boardId)
  * @method int getEnabled()
@@ -56,6 +60,25 @@ class NotifyPref extends Entity {
 	public const EVENT_TICKET_CREATED = 'ticket_created';
 
 	/**
+	 * Ein Kommentar an einem Vorgang, an dem ich beteiligt bin.
+	 *
+	 * Der Anlass, der die eigentliche Luecke schliesst (#98): Bis dahin
+	 * erreichte einen nach dem Rundruf beim Anlegen nichts mehr, ausser man
+	 * bekam etwas zugewiesen. Die Kundenseite schrieb, und niemand erfuhr es.
+	 */
+	public const EVENT_COMMENT_ADDED = 'comment_added';
+
+	/**
+	 * Ein Vorgang wurde geschlossen.
+	 *
+	 * Eine Nachricht pro Vorgangsleben und das Gegenstueck zum Rundruf —
+	 * Anfang und Ende. Das Verschieben nach „Erledigt" schliesst laut §9
+	 * ausdruecklich **nicht**; Schliessen ist eine bewusste Handlung, und die
+	 * darf die andere Seite erfahren.
+	 */
+	public const EVENT_TICKET_CLOSED = 'ticket_closed';
+
+	/**
 	 * Die beiden Kanäle: **nur global**.
 	 *
 	 * „Wie werde ich benachrichtigt" ist keine Frage, die man je Projekt anders
@@ -67,7 +90,7 @@ class NotifyPref extends Entity {
 	public const CHANNELS = [self::CHANNEL_MAIL, self::CHANNEL_BELL];
 
 	/**
-	 * Die drei Anlässe: **je Projekt**, mit globaler Vorgabe.
+	 * Die fünf Anlässe: **je Projekt**, mit globaler Vorgabe.
 	 *
 	 * „Wovon werde ich benachrichtigt" ist sehr wohl je Projekt verschieden —
 	 * und der dritte ist der, der bei vielen Projekten laut wird: Ein Rundruf an
@@ -79,16 +102,18 @@ class NotifyPref extends Entity {
 		self::EVENT_TICKET_ASSIGNED,
 		self::EVENT_STEP_ASSIGNED,
 		self::EVENT_TICKET_CREATED,
+		self::EVENT_COMMENT_ADDED,
+		self::EVENT_TICKET_CLOSED,
 	];
 
 	protected ?string $userId = null;
-	protected ?string $channel = null;
+	protected ?string $prefKey = null;
 	protected ?int $boardId = null;
 	protected ?int $enabled = null;
 
 	public function __construct() {
 		$this->addType('userId', Types::STRING);
-		$this->addType('channel', Types::STRING);
+		$this->addType('prefKey', Types::STRING);
 		$this->addType('boardId', Types::INTEGER);
 		// `SMALLINT` mit 0/1, nie `BOOLEAN` — `PARAM_BOOL` schriebe auf
 		// PostgreSQL `'f'` statt `0` (siehe `nextcloud-fallstricke.md`).

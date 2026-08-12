@@ -17,11 +17,14 @@ import { apiDelete, apiGet, apiPut } from '@/services/api'
  *
  * - **Kanäle** (`mail`, `bell`) — *wie* benachrichtigt wird. Nur global.
  * - **Anlässe** (`ticket_assigned`, …) — *wovon*. Global und je Projekt.
+ *
+ * Der Feldname heißt `prefKey` und nicht mehr `channel` (#98): Er trägt beides,
+ * und „Kanal" benannte davon die kleinere Hälfte.
  */
 export type Channel = 'bell' | 'mail'
 
 /** Die drei Anlässe aus §21 der Produktbeschreibung. */
-export type NotifyEvent = 'ticket_assigned' | 'step_assigned' | 'ticket_created'
+export type NotifyEvent = 'ticket_assigned' | 'step_assigned' | 'ticket_created' | 'comment_added' | 'ticket_closed'
 
 /** Was in einer Zeile der Tabelle steht — Anlass oder Kanal. */
 export type PrefKey = Channel | NotifyEvent
@@ -47,14 +50,14 @@ export async function fetchNotifyPrefs(): Promise<NotifyPrefs> {
 /**
  * Einen Schalter setzen.
  *
- * @param channel Glocke oder Mail.
+ * @param prefKey Kanal oder Anlass.
  * @param enabled Neuer Stand.
  * @param boardId Projekt, oder 0 für global.
  */
-export async function setNotifyPref(channel: PrefKey, enabled: boolean, boardId = 0): Promise<NotifyPrefs> {
-	return apiPut<NotifyPrefs, { channel: PrefKey, enabled: boolean, boardId: number }>(
+export async function setNotifyPref(prefKey: PrefKey, enabled: boolean, boardId = 0): Promise<NotifyPrefs> {
+	return apiPut<NotifyPrefs, { prefKey: PrefKey, enabled: boolean, boardId: number }>(
 		'/notify-prefs',
-		{ channel, enabled, boardId },
+		{ prefKey, enabled, boardId },
 	)
 }
 

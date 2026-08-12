@@ -70,6 +70,8 @@ class NotificationRulesTest extends IntegrationTestCase {
 			$factory,
 			$urls,
 			new NullLogger(),
+			Server::get(\OCA\Projektwerk\Db\StepMapper::class),
+			Server::get(\OCA\Projektwerk\Db\CommentMapper::class),
 		);
 	}
 

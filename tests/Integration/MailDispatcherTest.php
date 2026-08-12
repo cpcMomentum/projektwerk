@@ -175,7 +175,7 @@ class MailDispatcherTest extends IntegrationTestCase {
 		// (2) Kanal abgeschaltet — keine Zeile.
 		$aus = new NotifyPref();
 		$aus->setUserId(self::MIT_ADRESSE);
-		$aus->setChannel(NotifyPref::CHANNEL_MAIL);
+		$aus->setPrefKey(NotifyPref::CHANNEL_MAIL);
 		$aus->setEnabled(0);
 		$this->prefs->insert($aus);
 

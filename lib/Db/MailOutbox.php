@@ -86,6 +86,20 @@ class MailOutbox extends Entity {
 	 */
 	public const STATUS_SKIPPED_NO_ADDRESS = 'skipped_no_address';
 
+	/**
+	 * Im Fenster unterdrueckt — es gab kurz vorher schon eine zu diesem Vorgang.
+	 *
+	 * **Ein eigener Status und keine fehlende Zeile.** „Unterdrueckt" ist etwas
+	 * anderes als „abgeschaltet" (dann steht gar nichts hier) und als
+	 * „keine Adresse". Wer spaeter fragt, warum eine Mail ausblieb, findet die
+	 * Antwort damit im Ausgangskorb statt im Log.
+	 *
+	 * Diese Zeilen werden **nie** nachgesendet: Sie sind kein Fehlschlag,
+	 * sondern eine Entscheidung. {@see MailOutboxMapper::findRetryable()}
+	 * nimmt nur `pending` und `failed`.
+	 */
+	public const STATUS_SUPPRESSED = 'suppressed';
+
 	/** Zuweisung eines Vorgangs. */
 	public const EVENT_TICKET_ASSIGNED = 'ticket_assigned';
 
@@ -94,6 +108,12 @@ class MailOutbox extends Entity {
 
 	/** Ein neuer Vorgang im Projekt. */
 	public const EVENT_TICKET_CREATED = 'ticket_created';
+
+	/** Ein Kommentar an einem Vorgang, an dem der Empfaenger beteiligt ist. */
+	public const EVENT_COMMENT_ADDED = 'comment_added';
+
+	/** Ein Vorgang wurde geschlossen. */
+	public const EVENT_TICKET_CLOSED = 'ticket_closed';
 
 	protected ?string $recipientUid = null;
 	protected ?int $ticketId = null;

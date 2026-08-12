@@ -268,6 +268,15 @@ class EntitySchemaTest extends TestCase {
 				if ($table !== null && preg_match("/addColumn\('([a-z_]+)', Types::([A-Z_]+)/", $line, $m) === 1) {
 					$schema[$table][$m[1]] = constant(Types::class . '::' . $m[2]);
 				}
+				// **Auch Abwuerfe zaehlen.** Der Parser kannte bis #98 nur das
+				// Anlegen — eine spaeter entfernte Spalte blieb im erwarteten
+				// Schema stehen, und der Waechter meldete das Entity als
+				// unvollstaendig, obwohl es stimmte. Die Dateien werden
+				// sortiert gelesen, ein Abwurf in Migration 4 hebt damit ein
+				// Anlegen aus Migration 1 auf.
+				if ($table !== null && preg_match("/dropColumn\('([a-z_]+)'\)/", $line, $m) === 1) {
+					unset($schema[$table][$m[1]]);
+				}
 			}
 		}
 

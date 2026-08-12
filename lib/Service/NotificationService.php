@@ -11,9 +11,11 @@ namespace OCA\Projektwerk\Service;
 
 use OCA\Projektwerk\Access\TicketScope;
 use OCA\Projektwerk\AppInfo\Application;
+use OCA\Projektwerk\Db\CommentMapper;
 use OCA\Projektwerk\Db\MailOutbox;
 use OCA\Projektwerk\Db\NotifyPref;
 use OCA\Projektwerk\Db\NotifyPrefMapper;
+use OCA\Projektwerk\Db\StepMapper;
 use OCA\Projektwerk\Db\Ticket;
 use OCA\Projektwerk\Notification\Notifier;
 use OCP\IURLGenerator;
@@ -37,10 +39,15 @@ use Psr\Log\LoggerInterface;
  *    Ticket-Abfrage.** Bei der Glocke geschieht das erst beim Anzeigen
  *    ({@see Notifier}); bei der Mail hier, beim Auslösen.
  *
- * **Was NICHT auslöst** (§ Anlässe in #10): Kommentare, Verschieben und
- * Erledigen. Das ist eine Produktentscheidung und keine Auslassung — ein Board,
- * das bei jeder Bewegung mailt, wird nach zwei Tagen stummgeschaltet, und
- * danach kommt auch das an, was gezählt hätte.
+ * **Was NICHT auslöst:** Verschieben und das Abhaken einzelner Schritte. Das
+ * ist eine Produktentscheidung und keine Auslassung — ein Board, das bei jeder
+ * Bewegung mailt, wird nach zwei Tagen stummgeschaltet, und danach kommt auch
+ * das an, was gezählt hätte.
+ *
+ * **Kommentare lösen seit #98 aus**, und das Schliessen ebenfalls. §21 hatte
+ * beides ausgeschlossen; die Folge im Einsatz war, dass einen nach dem Rundruf
+ * beim Anlegen nichts mehr erreichte, ausser man bekam etwas zugewiesen — die
+ * Kundenseite schrieb, und niemand erfuhr es.
  */
 class NotificationService {
 
@@ -51,6 +58,12 @@ class NotificationService {
 		private IFactory $l10nFactory,
 		private IURLGenerator $urls,
 		private LoggerInterface $logger,
+		// **Hinten angehaengt, nicht eingeschoben.** Die Reihenfolge der
+		// Konstruktorargumente ist hier Teil der Schnittstelle: Tests bauen den
+		// Dienst von Hand. Ein Einschub in der Mitte laesst sie mit einer
+		// Typfehlermeldung auflaufen, die auf die falsche Stelle zeigt.
+		private StepMapper $steps,
+		private CommentMapper $comments,
 	) {
 	}
 
@@ -88,6 +101,62 @@ class NotificationService {
 	}
 
 	/**
+	 * Einen Anlass an **alle Beteiligten** ankündigen.
+	 *
+	 * **Das Abo entsteht aus dem Handeln, nicht aus einer Liste** (#98).
+	 * Beteiligt ist, wer den Vorgang angelegt hat, wer für ihn verantwortlich
+	 * ist, wer einen Arbeitsschritt daran hat oder wer kommentiert hat. Vier
+	 * Quellen, eine Menge — kein Schreibpfad, keine Tabelle, nichts, was
+	 * veralten kann. Wer nachträglich einen Schritt bekommt, ist ab dann dabei;
+	 * wer nie etwas tut, ist nie dabei.
+	 *
+	 * Eine Beteiligtenliste zum Pflegen wurde ausdrücklich verworfen: Sie
+	 * funktioniert erst, wenn jemand sie gefüllt hat, und veraltet danach.
+	 *
+	 * **Bei den Arbeitsschritten zählt jeder je zugewiesene, auch der
+	 * abgehakte.** Wer beim Erledigen aus dem Abo fiele, verpasste die Antwort
+	 * auf den eigenen Kommentar — der falsche Moment zum Stummschalten.
+	 *
+	 * Die Kinder kommen über `findForTickets([...])` und damit über den einzigen
+	 * Lesepfad, den {@see \OCA\Projektwerk\Db\TicketChildMapper} anbietet. Eine
+	 * Methode „die Schritte zu Vorgang 42" gibt es dort bewusst nicht, und dieser
+	 * Dienst ist kein Grund, sie einzuführen: Der Vorgang, dessen Kennung hier
+	 * hineingeht, wurde vom Aufrufer bereits über den gefilterten Weg geladen.
+	 *
+	 * Jeder einzelne Empfänger läuft danach durch {@see announce()} — dort
+	 * sitzen die Sichtbarkeitsregel, der Ausschluss der auslösenden Person und
+	 * der Schalter je Projekt. Diese Methode entscheidet nichts davon neu.
+	 *
+	 * @param Ticket $ticket Der Vorgang, um den es geht.
+	 * @param string $actorUid Wer die Handlung ausgelöst hat.
+	 * @param string $event Einer der `EVENT_*`-Werte aus {@see MailOutbox}.
+	 * @return MailOutbox[] Was nach dem Commit zu senden ist.
+	 */
+	public function announceToInvolved(Ticket $ticket, string $actorUid, string $event): array {
+		$ticketId = (int)$ticket->getId();
+
+		$beteiligte = [
+			(string)$ticket->getCreatorUserId(),
+			(string)($ticket->getResponsibleUserId() ?? ''),
+		];
+
+		foreach ($this->steps->findForTickets([$ticketId]) as $schritt) {
+			$beteiligte[] = (string)($schritt->getAssignedUserId() ?? '');
+		}
+
+		foreach ($this->comments->findForTickets([$ticketId]) as $kommentar) {
+			$beteiligte[] = (string)$kommentar->getAuthorUserId();
+		}
+
+		$vorgemerkt = [];
+		foreach (array_unique(array_filter($beteiligte)) as $uid) {
+			$vorgemerkt = [...$vorgemerkt, ...$this->announce($ticket, $uid, $actorUid, $event)];
+		}
+
+		return $vorgemerkt;
+	}
+
+	/**
 	 * Die vorgemerkten Mails senden — **nach** dem Commit.
 	 *
 	 * @param MailOutbox[] $zeilen Was {@see announce()} zurückgegeben hat.
@@ -101,6 +170,8 @@ class NotificationService {
 			$betreff = match ((string)$zeile->getEvent()) {
 				MailOutbox::EVENT_TICKET_ASSIGNED => $l->t('Vorgang #%1$s wurde Ihnen zugewiesen', [$nummer]),
 				MailOutbox::EVENT_STEP_ASSIGNED => $l->t('Arbeitsschritt in Vorgang #%1$s wurde Ihnen zugewiesen', [$nummer]),
+				MailOutbox::EVENT_COMMENT_ADDED => $l->t('Neuer Kommentar zu Vorgang #%1$s', [$nummer]),
+				MailOutbox::EVENT_TICKET_CLOSED => $l->t('Vorgang #%1$s wurde geschlossen', [$nummer]),
 				default => $l->t('Neuer Vorgang #%1$s', [$nummer]),
 			};
 
@@ -174,6 +245,8 @@ class NotificationService {
 		return match ($event) {
 			MailOutbox::EVENT_TICKET_ASSIGNED => Notifier::SUBJECT_TICKET_ASSIGNED,
 			MailOutbox::EVENT_STEP_ASSIGNED => Notifier::SUBJECT_STEP_ASSIGNED,
+			MailOutbox::EVENT_COMMENT_ADDED => Notifier::SUBJECT_COMMENT_ADDED,
+			MailOutbox::EVENT_TICKET_CLOSED => Notifier::SUBJECT_TICKET_CLOSED,
 			default => Notifier::SUBJECT_TICKET_CREATED,
 		};
 	}
