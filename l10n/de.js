@@ -36,7 +36,6 @@ OC.L10N.register(
     "{done} von {count} Arbeitsschritten erledigt": "{done} von {count} Arbeitsschritten erledigt",
     "ProjektWerk ist für Gastkonten nicht freigeschaltet. Die Administration muss die App auf die Freigabeliste der Guests-App setzen.": "ProjektWerk ist für Gastkonten nicht freigeschaltet. Die Administration muss die App auf die Freigabeliste der Guests-App setzen.",
     "Geschlossen": "Geschlossen",
-    "Keine Beschreibung hinterlegt.": "Keine Beschreibung hinterlegt.",
     "Personen": "Personen",
     "angelegt": "angelegt",
     "zuständig": "zuständig",
@@ -47,10 +46,7 @@ OC.L10N.register(
     "Auf „Nur ich\" herunterstufen kann nur die anlegende Person": "Auf „Nur ich\" herunterstufen kann nur die anlegende Person",
     "Folgende Personen verlieren den Zugriff auf diesen Vorgang:": "Folgende Personen verlieren den Zugriff auf diesen Vorgang:",
     "Folgende Personen verlieren den Zugriff auf diesen Vorgang und {betroffen}:": "Folgende Personen verlieren den Zugriff auf diesen Vorgang und {betroffen}:",
-    "_%n Kommentar_::_%n Kommentare_": [
-        "%n Kommentar",
-        "%n Kommentare"
-    ],
+    "_%n Kommentar_::_%n Kommentare_": ["%n Kommentar", "%n Kommentare"],
     "Die Beteiligten werden nicht benachrichtigt.": "Die Beteiligten werden nicht benachrichtigt.",
     "Sichtbarkeit ändern": "Sichtbarkeit ändern",
     "Sichtbarkeit konnte nicht geprüft werden": "Sichtbarkeit konnte nicht geprüft werden",
@@ -127,26 +123,17 @@ OC.L10N.register(
     "Zielspalte wählen": "Zielspalte wählen",
     "Alle Vorgänge wandern in die gewählte Spalte, danach fällt „{from}“ weg.": "Alle Vorgänge wandern in die gewählte Spalte, danach fällt „{from}“ weg.",
     "Alle Vorgänge wandern nach „{to}“, danach fällt „{from}“ weg.": "Alle Vorgänge wandern nach „{to}“, danach fällt „{from}“ weg.",
-    "_Für dich sichtbar ist davon %n Vorgang._::_Für dich sichtbar sind davon %n Vorgänge._": [
-        "Für dich sichtbar ist davon %n Vorgang.",
-        "Für dich sichtbar sind davon %n Vorgänge."
-    ],
+    "_Für dich sichtbar ist davon %n Vorgang._::_Für dich sichtbar sind davon %n Vorgänge._": ["Für dich sichtbar ist davon %n Vorgang.", "Für dich sichtbar sind davon %n Vorgänge."],
     "Verborgene Vorgänge wandern mit, ohne hier aufzutauchen. Es geht nichts verloren.": "Verborgene Vorgänge wandern mit, ohne hier aufzutauchen. Es geht nichts verloren.",
     "Verschieben und entfernen": "Verschieben und entfernen",
     "Spalte konnte nicht entfernt werden": "Spalte konnte nicht entfernt werden",
     "Spalte „{title}“ entfernen": "Spalte „{title}“ entfernen",
-    "_%n älteren Vorgang anzeigen_::_%n ältere Vorgänge anzeigen_": [
-        "%n älteren Vorgang anzeigen",
-        "%n ältere Vorgänge anzeigen"
-    ],
+    "_%n älteren Vorgang anzeigen_::_%n ältere Vorgänge anzeigen_": ["%n älteren Vorgang anzeigen", "%n ältere Vorgänge anzeigen"],
     "Ältere wieder ausblenden": "Ältere wieder ausblenden",
     "Meine Arbeitsschritte": "Meine Arbeitsschritte",
     "Meine Vorgänge": "Meine Vorgänge",
     "Sobald Ihnen ein Arbeitsschritt zugewiesen wird oder Sie für einen Vorgang zuständig sind, steht er hier.": "Sobald Ihnen ein Arbeitsschritt zugewiesen wird oder Sie für einen Vorgang zuständig sind, steht er hier.",
-    "_%n Arbeitsschritt ist überfällig_::_%n Arbeitsschritte sind überfällig_": [
-        "%n Arbeitsschritt ist überfällig",
-        "%n Arbeitsschritte sind überfällig"
-    ],
+    "_%n Arbeitsschritt ist überfällig_::_%n Arbeitsschritte sind überfällig_": ["%n Arbeitsschritt ist überfällig", "%n Arbeitsschritte sind überfällig"],
     "„{title}“ erledigen": "„{title}“ erledigen",
     "überfällig seit {date}": "überfällig seit {date}",
     "fällig {date}": "fällig {date}",
@@ -176,10 +163,7 @@ OC.L10N.register(
     "Lösen": "Lösen",
     "Noch keine Anhänge.": "Noch keine Anhänge.",
     "von {name}": "von {name}",
-    "_Dieser Vorgang hat %n Anhang. Bitte ihn zuerst vom Vorgang lösen — die Datei selbst bleibt dabei liegen._::_Dieser Vorgang hat %n Anhänge. Bitte sie zuerst vom Vorgang lösen — die Dateien selbst bleiben dabei liegen._": [
-        "Dieser Vorgang hat %n Anhang. Bitte ihn zuerst vom Vorgang lösen — die Datei selbst bleibt dabei liegen.",
-        "Dieser Vorgang hat %n Anhänge. Bitte sie zuerst vom Vorgang lösen — die Dateien selbst bleiben dabei liegen."
-    ],
+    "_Dieser Vorgang hat %n Anhang. Bitte ihn zuerst vom Vorgang lösen — die Datei selbst bleibt dabei liegen._::_Dieser Vorgang hat %n Anhänge. Bitte sie zuerst vom Vorgang lösen — die Dateien selbst bleiben dabei liegen._": ["Dieser Vorgang hat %n Anhang. Bitte ihn zuerst vom Vorgang lösen — die Datei selbst bleibt dabei liegen.", "Dieser Vorgang hat %n Anhänge. Bitte sie zuerst vom Vorgang lösen — die Dateien selbst bleiben dabei liegen."],
     "Verstanden": "Verstanden",
     "E-Mail": "E-Mail",
     "Glocke in Nextcloud": "Glocke in Nextcloud",
@@ -204,6 +188,19 @@ OC.L10N.register(
     "für dieses Projekt festgelegt": "für dieses Projekt festgelegt",
     "wie alle Projekte": "wie alle Projekte",
     "{event} — für alle Projekte": "{event} — für alle Projekte",
-    "{event} — {project}": "{event} — {project}"
+    "{event} — {project}": "{event} — {project}",
+    "Arbeitsschritt hinzufügen": "Arbeitsschritt hinzufügen",
+    "Beschreibung bearbeiten": "Beschreibung bearbeiten",
+    "Beschreibung hinzufügen": "Beschreibung hinzufügen",
+    "Beschreibung konnte nicht gespeichert werden": "Beschreibung konnte nicht gespeichert werden",
+    "Fertig": "Fertig",
+    "Mehr anzeigen": "Mehr anzeigen",
+    "Weniger anzeigen": "Weniger anzeigen",
+    "Zurzeit wartet nichts auf Sie.": "Zurzeit wartet nichts auf Sie.",
+    "Zuständige Person festlegen": "Zuständige Person festlegen",
+    "Zuständigkeit konnte nicht gesetzt werden": "Zuständigkeit konnte nicht gesetzt werden",
+    "Zuständigkeit ändern": "Zuständigkeit ändern",
+    "Zuweisen oder Frist setzen": "Zuweisen oder Frist setzen",
+    "Zuweisung und Fälligkeit ändern: {title}": "Zuweisung und Fälligkeit ändern: {title}"
 },
 "nplurals=2; plural=(n != 1);");

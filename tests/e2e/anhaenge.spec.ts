@@ -3,7 +3,7 @@ import type { Projekt } from './projekt.ts'
 
 import { expect, test } from '@playwright/test'
 import { Api } from './api.ts'
-import { marke, projektAufbauen, projektAufraeumen } from './projekt.ts'
+import { marke, projektAufbauen, projektAufraeumen, stufeWaehlen } from './projekt.ts'
 import { APP_PFAD, INTERN } from './rollen.ts'
 
 /**
@@ -133,7 +133,7 @@ test('verweigert den Sichtbarkeitswechsel, solange Anhaenge haengen', async ({ p
 
 	// Ueber die Klasse des Umschalters: „Intern" steht auch auf einer Karte im
 	// Hintergrund und in einem Aktionsmenue.
-	await page.locator('.pw-visopt', { hasText: 'Intern' }).click()
+	await stufeWaehlen(page, 'Intern')
 
 	// Die Absage steht **vor** der Bestaetigung: `visibility-impact` liefert die
 	// Zahl mit, und eine Warnung zu bestaetigen, die ohnehin abgewiesen wuerde,

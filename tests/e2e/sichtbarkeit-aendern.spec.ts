@@ -1,7 +1,7 @@
 import type { Projekt } from './projekt.ts'
 
 import { expect, test } from '@playwright/test'
-import { marke, projektAufbauen, projektAufraeumen } from './projekt.ts'
+import { marke, projektAufbauen, projektAufraeumen, stufeWaehlen } from './projekt.ts'
 import { APP_PFAD, INTERN, KUNDE } from './rollen.ts'
 
 /**
@@ -54,9 +54,10 @@ test('ein freigegebener Vorgang kommt bei der Kundenseite an', async ({ browser 
 		// **Ein Klick ist die ganze Handlung** (#75) — kein „Ändern" davor, kein
 		// „Übernehmen" danach. Die Auswahl steht offen im Abschnitt.
 		//
-		// `.pw-visrow` grenzt trotzdem ein: Hinter dem Overlay liegt das Board,
-		// und dessen Karten tragen dieselben Stufennamen als Marke.
-		await seite.locator('.pw-visrow').getByText('Alle Beteiligten', { exact: true }).click()
+		// `stufeWaehlen` grenzt trotzdem auf `.pw-vischoice` ein: Hinter dem
+		// Overlay liegt das Board, und dessen Karten tragen dieselben
+		// Stufennamen als Marke.
+		await stufeWaehlen(seite, 'Alle Beteiligten')
 
 		// Die Rueckfrage erscheint nur, wenn jemand Zugriff *verliert*. Beim
 		// Hochstufen verliert niemand etwas, also darf sie ausbleiben — der
@@ -70,7 +71,7 @@ test('ein freigegebener Vorgang kommt bei der Kundenseite an', async ({ browser 
 		// `or()` wartet, bis die Oberflaeche *eine* der beiden Stufen erreicht
 		// hat — die Rueckfrage oder den vollzogenen Wechsel.
 		const rueckfrage = seite.getByRole('button', { name: 'Sichtbarkeit ändern' })
-		const vollzogen = seite.locator('.pw-visopt[aria-pressed="true"]', { hasText: 'Alle Beteiligten' })
+		const vollzogen = seite.locator('.pw-viscontrol input[type="radio"]:checked[value="public"]')
 		await expect(rueckfrage.or(vollzogen).first()).toBeVisible()
 
 		if (await rueckfrage.isVisible()) {
@@ -109,7 +110,7 @@ test('das Herunterstufen nennt die Betroffenen und entzieht den Zugriff', async 
 		// interner Sichtbarkeit tragen die Marke „Intern", und solange eine auf
 		// dem Board liegt, treffen zwei Elemente. Gruen ist sie heute nur, weil
 		// der Test darueber den einzigen internen Vorgang vorher hochstuft.
-		await seite.locator('.pw-visrow').getByText('Intern', { exact: true }).click()
+		await stufeWaehlen(seite, 'Intern')
 
 		// Hier muss die Rueckfrage kommen — und sie muss die Kundenseite beim
 		// Namen nennen. Eine Warnung ohne Namen liest man zweimal und danach nie
@@ -125,7 +126,7 @@ test('das Herunterstufen nennt die Betroffenen und entzieht den Zugriff', async 
 		// Waehrend die Rueckfrage steht, markiert die Auswahl weiter die
 		// **geltende** Stufe. Spraenge sie schon auf „Intern", saehe eine
 		// Aenderung erledigt aus, die noch niemand bestaetigt hat.
-		await expect(seite.locator('.pw-visopt[aria-pressed="true"]')).toContainText('Alle Beteiligten')
+		await expect(seite.locator('.pw-viscontrol input[type="radio"]:checked')).toHaveValue('public')
 
 		await rueckfrage.click()
 
@@ -133,7 +134,7 @@ test('das Herunterstufen nennt die Betroffenen und entzieht den Zugriff', async 
 		// tatsaechlich gespeichert wurde — bliebe die Rueckfrage wegen eines
 		// Fehlers stehen, bliebe auch die Markierung, wo sie war, und die Zeile
 		// faellt hier statt erst unten an der Kundenprobe.
-		await expect(seite.locator('.pw-visopt[aria-pressed="true"]')).toContainText('Intern')
+		await expect(seite.locator('.pw-viscontrol input[type="radio"]:checked')).toHaveValue('internal')
 	} finally {
 		await innen.close()
 	}

@@ -1,65 +1,90 @@
 <template>
-	<section class="pw-detail__section">
-		<h3 class="pw-col__head">
-			{{ t('projektwerk', 'Arbeitsschritte') }}
-		</h3>
+	<section class="pw-abschnitt">
+		<div class="pw-abschnitt__kopf">
+			<h3>{{ t('projektwerk', 'Arbeitsschritte') }}</h3>
+			<span v-if="ordered.length > 0" class="pw-abschnitt__zaehler">{{ fortschritt }}</span>
+		</div>
 
+		<!--
+			**Variante C** (#99). Wo eine Zuweisung oder eine Frist steht, steht
+			sie als Text; wo nichts steht, stehen zwei flache Knoepfe.
+
+			Das haelt die Festlegung aus #86 — sichtbar, dass es die Felder gibt —
+			ohne bei fuenf Schritten fuenf Comboboxen und fuenf Datumsfelder
+			untereinanderzustellen. Genau das war die Kritik am alten Stand.
+		-->
 		<div v-for="step in ordered" :key="step.id" class="pw-step">
-			<input
+			<NcCheckboxRadioSwitch
 				type="checkbox"
-				:checked="step.done"
+				class="pw-step__check"
+				:modelValue="step.done"
 				:disabled="busy"
-				:aria-label="step.title"
-				@change="toggle(step)">
+				@update:modelValue="toggle(step)">
+				<span :class="{ 'pw-step__title--done': step.done }">{{ step.title }}</span>
+			</NcCheckboxRadioSwitch>
 
-			<span class="pw-step__title" :class="{ 'pw-step__title--done': step.done }">
-				{{ step.title }}
-			</span>
+			<div class="pw-step__rechts">
+				<template v-if="editing === step.id">
+					<label class="hidden-visually" :for="'pw-step-user-' + step.id">
+						{{ t('projektwerk', 'Zuständig') }}
+					</label>
+					<NcSelectUsers
+						class="pw-step__picker"
+						:options="options"
+						:modelValue="optionFor(step.assignedUserId)"
+						:inputId="'pw-step-user-' + step.id"
+						:labelOutside="true"
+						:disabled="busy"
+						:placeholder="t('projektwerk', 'Niemand')"
+						@update:modelValue="assign(step, $event)" />
 
-			<NcAvatar
-				v-if="step.assignedUserId"
-				:user="step.assignedUserId"
-				:displayName="nameOf(step.assignedUserId)"
-				:size="24"
-				:disableMenu="true" />
+					<NcDateTimePicker
+						type="date"
+						class="pw-step__datum"
+						:modelValue="asDate(step.dueDate)"
+						:clearable="true"
+						:appendToBody="true"
+						:ariaLabel="t('projektwerk', 'Fälligkeit')"
+						:placeholder="t('projektwerk', 'Fälligkeit')"
+						:disabled="busy"
+						@update:modelValue="setDue(step, $event)" />
 
-			<!--
-				Beide Felder in einer Klammer, damit der Zeilenumbruch **vor**
-				ihnen faellt und nicht zwischen ihnen: Auf 390 px passen sie
-				zusammen nicht mehr neben den Titel, nebeneinander unter ihn aber
-				sehr wohl. Ohne die Klammer wird aus jedem Schritt ein Block von
-				drei Zeilen.
-			-->
-			<div class="pw-step__fields">
-				<select
-					:value="step.assignedUserId ?? ''"
-					:aria-label="t('projektwerk', 'Zuständig')"
-					:disabled="busy"
-					@change="assign(step, $event)">
-					<option value="">
-						{{ t('projektwerk', 'Niemand') }}
-					</option>
-					<option v-for="userId in assignable" :key="userId" :value="userId">
-						{{ nameOf(userId) }}
-					</option>
-				</select>
+					<NcButton variant="tertiary" :ariaLabel="t('projektwerk', 'Fertig')" @click="editing = null">
+						<template #icon>
+							<CheckIcon :size="20" />
+						</template>
+					</NcButton>
+				</template>
 
-				<!--
-					Die Faelligkeit war bisher **nur Anzeige** — setzen liess sie
-					sich gar nicht, weder hier noch beim Anlegen. Wer eine Frist
-					eintragen wollte, kam nur ueber die API dorthin (#86).
+				<template v-else-if="step.assignedUserId || step.dueDate">
+					<span class="pw-step__info">
+						<NcAvatar
+							v-if="step.assignedUserId"
+							:user="step.assignedUserId"
+							:displayName="nameOf(step.assignedUserId)"
+							:size="24"
+							:disableMenu="true"
+							:hideStatus="true"
+							:isGuest="roleOf(step.assignedUserId) === 'external'" />
+						{{ infoFor(step) }}
+					</span>
+					<NcButton
+						variant="tertiary"
+						:ariaLabel="t('projektwerk', 'Zuweisung und Fälligkeit ändern: {title}', { title: step.title })"
+						@click="editing = step.id">
+						<template #icon>
+							<PencilOutlineIcon :size="20" />
+						</template>
+					</NcButton>
+				</template>
 
-					Immer sichtbar, auch ohne Wert, wie die Personenauswahl
-					daneben: Ein Feld, das erst auf Klick erscheint, findet
-					niemand, der nicht weiss, dass es es gibt.
-				-->
-				<NcDateTimePickerNative
-					type="date"
-					:modelValue="asDate(step.dueDate)"
-					:label="t('projektwerk', 'Fälligkeit')"
-					:hideLabel="true"
-					:disabled="busy"
-					@update:modelValue="setDue(step, $event)" />
+				<NcButton
+					v-else
+					variant="tertiary"
+					class="pw-step__flach"
+					@click="editing = step.id">
+					{{ t('projektwerk', 'Zuweisen oder Frist setzen') }}
+				</NcButton>
 			</div>
 		</div>
 
@@ -81,33 +106,56 @@
 		<div class="pw-step pw-step--new">
 			<NcTextField
 				v-model="newTitle"
+				class="pw-step__neu-titel"
 				:label="t('projektwerk', 'Neuer Arbeitsschritt')"
 				:disabled="busy"
 				@keydown.enter="add" />
 
-			<div class="pw-step__fields">
-				<select
-					v-model="newAssignee"
-					:aria-label="t('projektwerk', 'Zuständig')"
-					:disabled="busy">
-					<option value="">
-						{{ t('projektwerk', 'Niemand') }}
-					</option>
-					<option v-for="userId in assignable" :key="userId" :value="userId">
-						{{ nameOf(userId) }}
-					</option>
-				</select>
+			<label class="hidden-visually" for="pw-step-new-user">
+				{{ t('projektwerk', 'Zuständig') }}
+			</label>
+			<NcSelectUsers
+				id="pw-step-new-user-wrap"
+				class="pw-step__neu-person"
+				:options="options"
+				:modelValue="newAssignee"
+				inputId="pw-step-new-user"
+				:labelOutside="true"
+				:disabled="busy"
+				:placeholder="t('projektwerk', 'Niemand')"
+				@update:modelValue="newAssignee = single($event)" />
 
-				<NcDateTimePickerNative
-					v-model="newDueDate"
-					type="date"
-					:label="t('projektwerk', 'Fälligkeit')"
-					:hideLabel="true"
-					:disabled="busy" />
-			</div>
+			<NcDateTimePicker
+				v-model="newDueDate"
+				type="date"
+				class="pw-step__neu-datum"
+				:clearable="true"
+				:appendToBody="true"
+				:ariaLabel="t('projektwerk', 'Fälligkeit')"
+				:placeholder="t('projektwerk', 'Fälligkeit')"
+				:disabled="busy" />
 
-			<NcButton :disabled="busy || newTitle.trim() === ''" @click="add">
-				{{ t('projektwerk', 'Hinzufügen') }}
+			<!--
+				**Ein Plus statt eines breiten Knopfes** (#99) — damit passt die
+				Neuanlage in eine Zeile statt in drei.
+
+				Ausdruecklich **ohne** `size="small"`: Das waere
+				`--clickable-area-small` (24 px) und damit unter der
+				Plattformgrenze. `NcButton` setzt von sich aus
+				`--default-clickable-area`, also 34 px.
+
+				Der schnelle Weg bleibt: Enter im Textfeld sendet weiterhin ab,
+				das Plus ist nur die sichtbare Entsprechung.
+			-->
+			<NcButton
+				variant="primary"
+				class="pw-step__neu-plus"
+				:disabled="busy || newTitle.trim() === ''"
+				:ariaLabel="t('projektwerk', 'Arbeitsschritt hinzufügen')"
+				@click="add">
+				<template #icon>
+					<PlusIcon :size="20" />
+				</template>
 			</NcButton>
 		</div>
 	</section>
@@ -122,10 +170,23 @@ import { t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
 import NcAvatar from '@nextcloud/vue/components/NcAvatar'
 import NcButton from '@nextcloud/vue/components/NcButton'
-import NcDateTimePickerNative from '@nextcloud/vue/components/NcDateTimePickerNative'
+import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
+import NcDateTimePicker from '@nextcloud/vue/components/NcDateTimePicker'
+import NcSelectUsers from '@nextcloud/vue/components/NcSelectUsers'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
+import CheckIcon from 'vue-material-design-icons/Check.vue'
+import PencilOutlineIcon from 'vue-material-design-icons/PencilOutline.vue'
+import PlusIcon from 'vue-material-design-icons/Plus.vue'
 import { createStep, fetchAssignable, updateStep } from '@/services/steps'
 import { showError } from '@/services/toast'
+
+interface PersonOption {
+	id: string
+	displayName: string
+	user: string
+	subname?: string
+	isGuest?: boolean
+}
 
 /**
  * Ein `Date` in das Format, das der Server verlangt (`JJJJ-MM-TT`).
@@ -164,7 +225,7 @@ function alsIsoTag(date: Date | null): string | null {
 export default defineComponent({
 	name: 'StepList',
 
-	components: { NcAvatar, NcButton, NcDateTimePickerNative, NcTextField },
+	components: { CheckIcon, NcAvatar, NcButton, NcCheckboxRadioSwitch, NcDateTimePicker, NcSelectUsers, NcTextField, PencilOutlineIcon, PlusIcon },
 
 	props: {
 		boardId: { type: Number, required: true },
@@ -172,6 +233,9 @@ export default defineComponent({
 		steps: { type: Array as PropType<Step[]>, default: () => [] },
 		/** Nur zur Anzeige der Namen. */
 		members: { type: Array as PropType<Member[]>, default: () => [] },
+		/** Fuer die Zweitzeile in der Personenauswahl. */
+		orgInternal: { type: String, default: '' },
+		orgExternal: { type: String, default: '' },
 	},
 
 	emits: ['changed'],
@@ -180,10 +244,17 @@ export default defineComponent({
 		return {
 			busy: false,
 			newTitle: '',
-			/** Leer heißt „Niemand" — der schnelle Weg bleibt unbelastet. */
-			newAssignee: '',
+			/** `null` heißt „Niemand" — der schnelle Weg bleibt unbelastet. */
+			newAssignee: null as PersonOption | null,
 			newDueDate: null as Date | null,
 			assignable: [] as string[],
+			/**
+			 * Der Schritt, dessen Zuweisung und Frist gerade offenstehen.
+			 *
+			 * Immer nur einer: Zwei offene Zeilen waeren wieder die Wand aus
+			 * Formularfeldern, die Variante C abgeraeumt hat.
+			 */
+			editing: null as number | null,
 			/**
 			 * Wohin der Fokus nach dem Anlegen gehört.
 			 *
@@ -203,6 +274,27 @@ export default defineComponent({
 		ordered(): Step[] {
 			return [...this.steps].sort((a, b) => a.position - b.position)
 		},
+
+		/** „2/5" — dieselbe Auskunft wie auf der Karte (§9). */
+		fortschritt(): string {
+			return `${this.steps.filter((s) => s.done).length}/${this.steps.length}`
+		},
+
+		/**
+		 * Die Auswahlliste, wie `NcSelectUsers` sie erwartet.
+		 *
+		 * `subname` traegt die Firma, `isGuest` die Kundenkonten — die laden
+		 * ihren Avatar ueber einen anderen Endpunkt.
+		 */
+		options(): PersonOption[] {
+			return this.assignable.map((userId) => ({
+				id: userId,
+				displayName: this.nameOf(userId),
+				user: userId,
+				subname: this.roleOf(userId) === 'internal' ? this.orgInternal : this.orgExternal,
+				isGuest: this.roleOf(userId) === 'external',
+			}))
+		},
 	},
 
 	watch: {
@@ -213,8 +305,9 @@ export default defineComponent({
 				// Angefangenes gehört zum vorigen Vorgang und darf nicht stehen
 				// bleiben — sonst trüge der nächste Schritt dessen Zuweisung.
 				this.newTitle = ''
-				this.newAssignee = ''
+				this.newAssignee = null
 				this.newDueDate = null
+				this.editing = null
 			},
 		},
 
@@ -248,6 +341,63 @@ export default defineComponent({
 		 */
 		nameOf(userId: string): string {
 			return this.members.find((m) => m.userId === userId)?.resolvedName ?? userId
+		},
+
+		/**
+		 * @param userId Kennung der Person.
+		 */
+		roleOf(userId: string): string {
+			return this.members.find((m) => m.userId === userId)?.role ?? 'internal'
+		},
+
+		/**
+		 * @param userId Kennung der Person, oder null.
+		 */
+		optionFor(userId: string | null): PersonOption | null {
+			if (userId === null) {
+				return null
+			}
+
+			return this.options.find((o) => o.id === userId) ?? {
+				id: userId,
+				displayName: this.nameOf(userId),
+				user: userId,
+			}
+		},
+
+		/**
+		 * `NcSelectUsers` kann auch mehrfach — hier nie. Die Liste faellt auf
+		 * ihren ersten Eintrag zusammen, damit der Rest mit einem Wert rechnen
+		 * kann statt mit zweien.
+		 *
+		 * @param value Was die Auswahl geliefert hat.
+		 */
+		single(value: PersonOption | PersonOption[] | null): PersonOption | null {
+			return Array.isArray(value) ? (value[0] ?? null) : value
+		},
+
+		/**
+		 * Zuweisung und Frist als ein Satzstueck.
+		 *
+		 * Der Name steht neben dem Avatar, die Frist dahinter; fehlt eines von
+		 * beiden, entfaellt es samt Trenner. Ein „· " ohne Fortsetzung sieht aus
+		 * wie ein Fehler.
+		 *
+		 * @param step Der Schritt.
+		 */
+		infoFor(step: Step): string {
+			const teile: string[] = []
+			if (step.assignedUserId !== null) {
+				teile.push(this.nameOf(step.assignedUserId))
+			}
+			if (step.dueDate !== null && step.dueDate !== '') {
+				const datum = this.asDate(step.dueDate)
+				if (datum !== null) {
+					teile.push(datum.toLocaleDateString(undefined, { day: '2-digit', month: '2-digit', year: 'numeric' }))
+				}
+			}
+
+			return teile.join(' · ')
 		},
 
 		async loadAssignable(): Promise<void> {
@@ -325,11 +475,11 @@ export default defineComponent({
 						// Ausdrücklich `null` statt weglassen: Der Dienst
 						// unterscheidet „nicht genannt" von „keine Zuweisung",
 						// und gemeint ist hier das Zweite.
-						assignedUserId: this.newAssignee === '' ? null : this.newAssignee,
+						assignedUserId: this.newAssignee?.id ?? null,
 						dueDate: alsIsoTag(this.newDueDate),
 					})
 					this.newTitle = ''
-					this.newAssignee = ''
+					this.newAssignee = null
 					this.newDueDate = null
 					this.fokusZiel = '.pw-step--new input[type="text"]'
 				},
@@ -354,13 +504,16 @@ export default defineComponent({
 		 * „unverändert", und die Zuweisung ließe sich nie wieder entfernen.
 		 *
 		 * @param step Der Schritt.
-		 * @param event Das Auswahlereignis.
+		 * @param value Die gewaehlte Person, oder null beim Leeren.
 		 */
-		assign(step: Step, event: Event) {
-			const gewaehlt = (event.target as HTMLSelectElement).value
+		assign(step: Step, value: PersonOption | PersonOption[] | null) {
+			const gewaehlt = this.single(value)?.id ?? null
+			if (gewaehlt === (step.assignedUserId ?? null)) {
+				return
+			}
 
 			return this.write(
-				() => updateStep(this.boardId, step.id, { assignedUserId: gewaehlt === '' ? null : gewaehlt }),
+				() => updateStep(this.boardId, step.id, { assignedUserId: gewaehlt }),
 				t('projektwerk', 'Zuweisung fehlgeschlagen'),
 			)
 		},

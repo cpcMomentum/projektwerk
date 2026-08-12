@@ -1,8 +1,25 @@
 <template>
-	<section class="pw-detail__section">
-		<h3 class="pw-col__head">
-			{{ t('projektwerk', 'Anhänge') }}
-		</h3>
+	<section class="pw-abschnitt">
+		<!--
+			Der Knopf steht **in** der Abschnittszeile, nicht als eigene Zeile
+			darunter (#99): Dort kostete er 34 px plus Abstand fuer eine Handlung,
+			die zur Ueberschrift gehoert.
+		-->
+		<div class="pw-abschnitt__kopf">
+			<h3>{{ t('projektwerk', 'Anhänge') }}</h3>
+			<span v-if="attachments.length > 0" class="pw-abschnitt__zaehler">{{ attachments.length }}</span>
+
+			<NcButton
+				variant="tertiary"
+				class="pw-abschnitt__aktion"
+				:disabled="busy"
+				@click="choose">
+				<template #icon>
+					<PaperclipIcon :size="20" />
+				</template>
+				{{ t('projektwerk', 'Datei anhängen') }}
+			</NcButton>
+		</div>
 
 		<div v-for="file in attachments" :key="file.id" class="pw-attach">
 			<!--
@@ -48,10 +65,6 @@
 			type="file"
 			:disabled="busy"
 			@change="upload">
-
-		<NcButton :disabled="busy" @click="choose">
-			{{ t('projektwerk', 'Datei anhängen') }}
-		</NcButton>
 
 		<!--
 			**Der Satz nennt, was NICHT passiert.** „Entfernen" liest sich wie
@@ -103,6 +116,7 @@ import { defineComponent } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcDialog from '@nextcloud/vue/components/NcDialog'
 import LinkOffIcon from 'vue-material-design-icons/LinkOff.vue'
+import PaperclipIcon from 'vue-material-design-icons/Paperclip.vue'
 import { createAttachment, deleteAttachment } from '@/services/attachments'
 import { showError } from '@/services/toast'
 
@@ -122,7 +136,7 @@ import { showError } from '@/services/toast'
 export default defineComponent({
 	name: 'AttachmentList',
 
-	components: { LinkOffIcon, NcButton, NcDialog },
+	components: { LinkOffIcon, NcButton, NcDialog, PaperclipIcon },
 
 	props: {
 		boardId: { type: Number, required: true },

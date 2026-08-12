@@ -2,7 +2,7 @@ import type { Projekt } from './projekt.ts'
 
 import { expect, test } from '@playwright/test'
 import { Api } from './api.ts'
-import { marke, projektAufbauen, projektAufraeumen } from './projekt.ts'
+import { fristLoeschen, fristSetzen, marke, personWaehlen, projektAufbauen, projektAufraeumen } from './projekt.ts'
 import { APP_PFAD, INTERN, KUNDE } from './rollen.ts'
 
 /**
@@ -47,9 +47,9 @@ test('legt einen Schritt samt Zustaendiger und Frist in einem Zug an', async ({ 
 
 	const zeile = page.locator('.pw-step--new')
 	await zeile.locator('input[type="text"]').fill('Freigabe holen')
-	await zeile.locator('select').selectOption(KUNDE.uid)
-	await zeile.locator('input[type="date"]').fill('2026-09-01')
-	await page.getByRole('button', { name: 'Hinzufügen' }).click()
+	await personWaehlen(page, '#pw-step-new-user', KUNDE.name)
+	const frist = await fristSetzen(page, zeile, 20)
+	await page.locator('.pw-step__neu-plus').click()
 
 	await expect(page.getByText('Freigabe holen')).toBeVisible()
 
@@ -58,7 +58,7 @@ test('legt einen Schritt samt Zustaendiger und Frist in einem Zug an', async ({ 
 	expect(schritt.assignedUserId).toBe(KUNDE.uid)
 	// **Der Tag, der im Feld stand.** Ueber `toISOString()` waere daraus in
 	// Mitteleuropa der 31.08. geworden — eine Frist einen Tag zu frueh.
-	expect(schritt.dueDate).toBe('2026-09-01')
+	expect(schritt.dueDate).toBe(frist)
 	// Die Wartezeit beginnt jetzt beim Anlegen und nicht erst beim spaeteren
 	// Zuweisen; das ist der erwuenschte Nebeneffekt aus #86.
 	expect(schritt.assignedAt).not.toBeNull()
@@ -79,16 +79,19 @@ test('loescht eine Frist wieder, wenn das Feld geleert wird', async ({ page, req
 
 	const zeile = page.locator('.pw-step--new')
 	await zeile.locator('input[type="text"]').fill('Mit Frist')
-	await zeile.locator('input[type="date"]').fill('2026-09-15')
-	await page.getByRole('button', { name: 'Hinzufügen' }).click()
+	const frist = await fristSetzen(page, zeile, 21)
+	await page.locator('.pw-step__neu-plus').click()
 	await expect(page.getByText('Mit Frist')).toBeVisible()
 
 	// Erst die Gegenprobe: Ohne sie wuerde die Zeile unten auch dann gruen,
 	// wenn das Setzen schon nicht funktioniert haette.
-	expect((await schrittAusDerDatenbank(request, 'Mit Frist')).dueDate).toBe('2026-09-15')
+	expect((await schrittAusDerDatenbank(request, 'Mit Frist')).dueDate).toBe(frist)
 
+	// Seit Variante C (#99) stehen Zuweisung und Frist als Text; die Felder
+	// erscheinen erst, wenn die Zeile zum Bearbeiten geoeffnet ist.
 	const gesetzt = page.locator('.pw-step', { hasText: 'Mit Frist' })
-	await gesetzt.locator('input[type="date"]').fill('')
+	await gesetzt.locator('.pw-step__rechts button').first().click()
+	await fristLoeschen(gesetzt)
 
 	await expect
 		.poll(async () => (await schrittAusDerDatenbank(request, 'Mit Frist')).dueDate)
@@ -119,12 +122,15 @@ test('auf dem Handy stehen Zustaendige und Frist nebeneinander', async ({ page }
 
 	const zeile = page.locator('.pw-step--new')
 	await zeile.locator('input[type="text"]').fill('Nebeneinander')
-	await page.getByRole('button', { name: 'Hinzufügen' }).click()
+	await page.locator('.pw-step__neu-plus').click()
 	await expect(page.getByText('Nebeneinander')).toBeVisible()
 
-	const schritt = page.locator('.pw-step', { hasText: 'Nebeneinander' })
-	const person = await schritt.locator('select').boundingBox()
-	const frist = await schritt.locator('input[type="date"]').boundingBox()
+	// Seit #99 stehen die beiden Felder in der **Neuanlage-Zeile**; am
+	// bestehenden Schritt steht dort Text (Variante C). Die Frage bleibt
+	// dieselbe: Auf 390 px duerfen sie sich nicht uebereinander stapeln.
+	const schritt = page.locator('.pw-step--new')
+	const person = await schritt.locator('.pw-step__neu-person').boundingBox()
+	const frist = await schritt.locator('.pw-step__neu-datum').boundingBox()
 
 	expect(person, 'Die Personenauswahl fehlt').not.toBeNull()
 	expect(frist, 'Das Fristfeld fehlt').not.toBeNull()

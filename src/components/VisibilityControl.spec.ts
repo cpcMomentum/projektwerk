@@ -115,7 +115,10 @@ const LABELS: Record<Visibility, string> = {
  * @param target Die angestrebte Stufe.
  */
 function optionFor(wrapper: ReturnType<typeof mountControl>, target: Visibility) {
-	return wrapper.findAll('.pw-visopt').find((b) => b.text().includes(LABELS[target]))
+	// Seit #99 rendert `NcRadioGroupButton` echte Radio-Knoepfe. Gesucht wird
+	// ueber `value` und nicht ueber eine Klasse: Die Klassen der Komponente sind
+	// CSS-Module mit Hash im Namen und aendern sich mit jeder Fassung.
+	return wrapper.findAll('input[type="radio"]').find((i) => i.attributes('value') === target)
 }
 
 /**
@@ -128,7 +131,7 @@ function optionFor(wrapper: ReturnType<typeof mountControl>, target: Visibility)
  * @param target Die angestrebte Stufe.
  */
 async function choose(wrapper: ReturnType<typeof mountControl>, target: Visibility) {
-	await optionFor(wrapper, target)?.trigger('click')
+	await optionFor(wrapper, target)?.setValue(true)
 	await new Promise((resolve) => setTimeout(resolve, 0))
 	await wrapper.vm.$nextTick()
 }
@@ -162,11 +165,18 @@ describe('VisibilityControl', () => {
 	it('reiht die Stufen von zu nach offen', () => {
 		const wrapper = mountControl(ticketOf(), viewerOf())
 
-		expect(wrapper.findAll('.pw-visopt').map((o) => o.text())).toEqual([
-			'Nur ich',
-			'Intern',
-			'Alle Beteiligten',
+		expect(wrapper.findAll('input[type="radio"]').map((o) => o.attributes('value'))).toEqual([
+			'private',
+			'internal',
+			'public',
 		])
+
+		// Und die Beschriftungen stehen dran — sie sind das Einzige, woran
+		// jemand ablesen kann, wer den Vorgang danach sieht.
+		const text = wrapper.text()
+		expect(text).toContain(LABELS.private)
+		expect(text).toContain(LABELS.internal)
+		expect(text).toContain(LABELS.public)
 	})
 
 	it('sperrt „Nur ich" an einem fremden Ticket der eigenen Seite', async () => {
@@ -209,14 +219,14 @@ describe('VisibilityControl', () => {
 		// die Sperre liesse sich eine dritte Stufe anklicken, und deren Rückfrage
 		// überschriebe die erste — bestätigt würde dann etwas anderes als das,
 		// was auf dem Schirm stand.
-		expect(wrapper.findAll('.pw-visopt').every((o) => o.attributes('disabled') !== undefined)).toBe(true)
+		expect(wrapper.findAll('input[type="radio"]').every((o) => o.attributes('disabled') !== undefined)).toBe(true)
 
 		// Abbrechen führt zurück, ohne dass die Markierung je gewandert wäre.
 		await wrapper.findAll('button').find((b) => b.text() === 'Abbrechen')?.trigger('click')
 		await wrapper.vm.$nextTick()
 
-		expect(optionFor(wrapper, 'public')?.attributes('aria-pressed')).toBe('true')
-		expect(optionFor(wrapper, 'internal')?.attributes('aria-pressed')).toBe('false')
+		expect((optionFor(wrapper, 'public')?.element as HTMLInputElement).checked).toBe(true)
+		expect((optionFor(wrapper, 'internal')?.element as HTMLInputElement).checked).toBe(false)
 	})
 
 	/**
