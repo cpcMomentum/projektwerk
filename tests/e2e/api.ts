@@ -157,12 +157,12 @@ export class Api {
 	/**
 	 * Einen Kanalschalter setzen — global (`boardId = 0`) oder je Projekt.
 	 *
-	 * @param channel Glocke oder Mail.
+	 * @param prefKey Kanal oder Anlass.
 	 * @param enabled Neuer Stand.
 	 * @param boardId Projekt, oder 0 fuer global.
 	 */
-	kanalSetzen(channel: string, enabled: boolean, boardId: number): Promise<any> {
-		return this.schreiben('put', '/api/v1/notify-prefs', { channel, enabled, boardId })
+	kanalSetzen(prefKey: string, enabled: boolean, boardId: number): Promise<any> {
+		return this.schreiben('put', '/api/v1/notify-prefs', { prefKey, enabled, boardId })
 	}
 
 	/** Alle Projekt-Ausnahmen wegraeumen — danach gilt ueberall die globale. */

@@ -310,13 +310,13 @@ class LeakMatrixTest extends IntegrationTestCase {
 
 		$aus = new NotifyPref();
 		$aus->setUserId(LeakMatrixFixture::ANNA);
-		$aus->setChannel(NotifyPref::CHANNEL_MAIL);
+		$aus->setPrefKey(NotifyPref::CHANNEL_MAIL);
 		$aus->setEnabled(0);
 		$prefs->insert($aus);
 
 		$this->assertSame(
 			[NotifyPref::CHANNEL_MAIL],
-			array_map(static fn (NotifyPref $p): string => (string)$p->getChannel(), $prefs->findForUser(LeakMatrixFixture::ANNA)),
+			array_map(static fn (NotifyPref $p): string => (string)$p->getPrefKey(), $prefs->findForUser(LeakMatrixFixture::ANNA)),
 		);
 		$this->assertSame(
 			[],
@@ -345,7 +345,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 		// Global aus …
 		$global = new NotifyPref();
 		$global->setUserId(LeakMatrixFixture::ANNA);
-		$global->setChannel(NotifyPref::EVENT_TICKET_CREATED);
+		$global->setPrefKey(NotifyPref::EVENT_TICKET_CREATED);
 		$global->setBoardId(NotifyPrefMapper::GLOBAL_SCOPE);
 		$global->setEnabled(0);
 		$prefs->insert($global);
@@ -358,7 +358,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 		// … dieses eine Projekt aber an.
 		$projekt = new NotifyPref();
 		$projekt->setUserId(LeakMatrixFixture::ANNA);
-		$projekt->setChannel(NotifyPref::EVENT_TICKET_CREATED);
+		$projekt->setPrefKey(NotifyPref::EVENT_TICKET_CREATED);
 		$projekt->setBoardId($board);
 		$projekt->setEnabled(1);
 		$prefs->insert($projekt);

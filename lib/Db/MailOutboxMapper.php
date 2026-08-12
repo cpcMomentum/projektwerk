@@ -93,4 +93,50 @@ class MailOutboxMapper extends QBMapper {
 
 		return $this->findEntities($qb);
 	}
+
+	/**
+	 * Gab es zu diesem Vorgang schon eine Mail dieses Anlasses an diese Person?
+	 *
+	 * Die Frage hinter dem Unterdrueckungsfenster (#98): Ein lebhafter Abgleich
+	 * mit zehn Kommentaren erzeugte sonst zehn Mails an jeden Beteiligten — und
+	 * das ist der Punkt, an dem jemand den Mailkanal abschaltet und dabei die
+	 * Zuweisungen verliert, die die wichtigen sind.
+	 *
+	 * **Kein neuer Zustand.** Diese Tabelle wird ohnehin geschrieben; sie fuehrt
+	 * Empfaenger, Vorgang, Anlass und Zeitpunkt. Ein Digest waere der andere Weg
+	 * gewesen und ist verworfen: Er haette cron fuer den Normalfall tragend
+	 * gemacht, und genau das ist der Vorwurf an Nextclouds eingebauten Weg.
+	 *
+	 * Gezaehlt wird ueber `created_at`, nicht ueber `sent_at`: Massgeblich ist,
+	 * wann die Nachricht **entstand**. Eine Zeile, die noch im Nachlauf haengt,
+	 * hat ihren Zweck als Ankuendigung bereits erfuellt.
+	 *
+	 * **Unterdrueckte Zeilen zaehlen ausdruecklich nicht mit.** Sonst
+	 * erneuerte jede Unterdrueckung das Fenster: Ein Vorgang mit einem
+	 * Kommentar alle 25 Minuten bliebe dauerhaft stumm, weil die jeweils letzte
+	 * unterdrueckte Zeile die naechste Pruefung wieder ausloest. Gemeint ist
+	 * „hoechstens eine Mail je Fenster" — nicht „Stille, solange jemand
+	 * schreibt".
+	 *
+	 * @param string $recipientUid Wer benachrichtigt wuerde.
+	 * @param int $ticketId Der Vorgang.
+	 * @param string $event Einer der `EVENT_*`-Werte.
+	 * @param \DateTimeInterface $seit Ab wann gezaehlt wird.
+	 */
+	public function existsSince(string $recipientUid, int $ticketId, string $event, \DateTimeInterface $seit): bool {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select($qb->func()->count('*', 'anzahl'))
+			->from($this->getTableName())
+			->where($qb->expr()->eq('recipient_uid', $qb->createNamedParameter($recipientUid)))
+			->andWhere($qb->expr()->eq('ticket_id', $qb->createNamedParameter($ticketId, IQueryBuilder::PARAM_INT)))
+			->andWhere($qb->expr()->eq('event', $qb->createNamedParameter($event)))
+			->andWhere($qb->expr()->gte('created_at', $qb->createNamedParameter($seit, IQueryBuilder::PARAM_DATETIME_MUTABLE)))
+			->andWhere($qb->expr()->neq('status', $qb->createNamedParameter(MailOutbox::STATUS_SUPPRESSED)));
+
+		$ergebnis = $qb->executeQuery();
+		$anzahl = (int)$ergebnis->fetchOne();
+		$ergebnis->closeCursor();
+
+		return $anzahl > 0;
+	}
 }

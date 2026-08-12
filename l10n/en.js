@@ -201,6 +201,14 @@ OC.L10N.register(
     "Zuständigkeit konnte nicht gesetzt werden": "Responsibility could not be set",
     "Zuständigkeit ändern": "Change responsibility",
     "Zuweisen oder Frist setzen": "Assign or set a due date",
-    "Zuweisung und Fälligkeit ändern: {title}": "Change assignment and due date: {title}"
+    "Zuweisung und Fälligkeit ändern: {title}": "Change assignment and due date: {title}",
+    "Kommentar": "Comment",
+    "Jemand kommentiert einen Vorgang, an dem ich beteiligt bin": "Someone comments on a ticket I am involved in",
+    "Abschluss": "Completion",
+    "Ein Vorgang, an dem ich beteiligt bin, wird geschlossen": "A ticket I am involved in is closed",
+    "Neuer Kommentar zu Vorgang #%1$s": "New comment on ticket #%1$s",
+    "Vorgang #%1$s wurde geschlossen": "Ticket #%1$s was closed",
+    "Neuer Kommentar: #%1$s %2$s": "New comment: #%1$s %2$s",
+    "Vorgang geschlossen: #%1$s %2$s": "Ticket closed: #%1$s %2$s"
 },
 "nplurals=2; plural=(n != 1);");

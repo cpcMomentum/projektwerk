@@ -8,6 +8,17 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Added
 
+- **Kommentar und Abschluss benachrichtigen** (#98) — bis dahin erreichte einen nach dem
+  einmaligen Rundruf beim Anlegen nichts mehr, außer man bekam etwas zugewiesen: Die Kundenseite
+  schrieb, und niemand erfuhr es. Wer benachrichtigt wird, folgt aus dem **Handeln** und nicht aus
+  einer gepflegten Liste — beteiligt ist, wer den Vorgang angelegt hat, wer verantwortlich ist, wer
+  einen Arbeitsschritt daran hat oder wer kommentiert hat. Vier Quellen, eine Menge, keine neue
+  Tabelle.
+- **Bündelung durch Unterdrücken** — die erste Kommentar-Mail geht sofort raus, jede weitere an
+  dieselbe Person zum selben Vorgang bleibt 30 Minuten aus; die Glocke läuft weiter. Zuweisungen
+  werden nie unterdrückt. Ein Digest wurde verworfen: Er machte cron für den Normalfall tragend,
+  und für einen Gast ist die Mail der einzige Kanal, der ankommt.
+
 - **Anhänge am Vorgang** (Phase 5 Teil B) — eine Datei landet in dem Projektordner, der zur
   Sichtbarkeit ihres Vorgangs gehört. Flache Ablage mit Vorgangsnummer davor
   (`0042_angebot.pdf`), bei Namensgleichheit wird gezählt statt überschrieben: Zwei Personen,
@@ -159,6 +170,10 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
   `isset()` und kann ein ausdrückliches `null` nicht von „nicht genannt" unterscheiden
 
 ### Changed
+
+- **`notify_prefs.channel` heißt `pref_key`** (#98, Migrationen 3 und 4) — die Spalte trug Kanäle
+  *und* Anlässe; mit fünf Anlässen gegen zwei Kanäle verdeckte der Name mehr, als er benannte.
+  Vor dem ersten Release, danach wäre es eine Migration auf fremden Installationen.
 
 - Plattformfenster auf Nextcloud 33–34 und PHP 8.4 angehoben. Nextcloud 32 erreicht im
   September 2026 sein Lebensende; eine Untergrenze, die vor dem ersten Release stirbt, ist keine

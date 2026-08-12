@@ -51,6 +51,12 @@ class Notifier implements INotifier {
 	/** Ein neuer Vorgang im Projekt. */
 	public const SUBJECT_TICKET_CREATED = 'ticket_created';
 
+	/** Ein Kommentar an einem Vorgang, an dem der Empfaenger beteiligt ist. */
+	public const SUBJECT_COMMENT_ADDED = 'comment_added';
+
+	/** Ein Vorgang wurde geschlossen. */
+	public const SUBJECT_TICKET_CLOSED = 'ticket_closed';
+
 	public function __construct(
 		private IFactory $l10nFactory,
 		private IURLGenerator $urls,
@@ -90,6 +96,8 @@ class Notifier implements INotifier {
 			self::SUBJECT_TICKET_ASSIGNED => $l->t('Ihnen wurde ein Vorgang zugewiesen: #%1$s %2$s', [$nummer, $titel]),
 			self::SUBJECT_STEP_ASSIGNED => $l->t('Ihnen wurde ein Arbeitsschritt zugewiesen: #%1$s %2$s', [$nummer, $titel]),
 			self::SUBJECT_TICKET_CREATED => $l->t('Neuer Vorgang im Projekt: #%1$s %2$s', [$nummer, $titel]),
+			self::SUBJECT_COMMENT_ADDED => $l->t('Neuer Kommentar: #%1$s %2$s', [$nummer, $titel]),
+			self::SUBJECT_TICKET_CLOSED => $l->t('Vorgang geschlossen: #%1$s %2$s', [$nummer, $titel]),
 			// Ein Betreff, den diese Fassung nicht kennt — etwa nach einem
 			// Downgrade. Ihn stehen zu lassen waere eine leere Zeile in der
 			// Glocke; abzuraeumen ist ehrlicher.

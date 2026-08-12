@@ -52,18 +52,18 @@ class NotifyPrefController extends Controller {
 	}
 
 	/**
-	 * @param string $channel Einer der Kanaele.
+	 * @param string $prefKey Einer der Kanaele oder Anlaesse.
 	 * @param bool $enabled Neuer Stand.
 	 * @param int $boardId Projekt, oder 0 fuer global.
 	 */
 	#[NoAdminRequired]
-	public function update(string $channel, bool $enabled, int $boardId = 0): JSONResponse {
+	public function update(string $prefKey, bool $enabled, int $boardId = 0): JSONResponse {
 		if ($this->userId === null) {
 			return new JSONResponse([], Http::STATUS_UNAUTHORIZED);
 		}
 
 		try {
-			$this->service->set($this->userId, $channel, $boardId, $enabled);
+			$this->service->set($this->userId, $prefKey, $boardId, $enabled);
 		} catch (\InvalidArgumentException $e) {
 			return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
 		}

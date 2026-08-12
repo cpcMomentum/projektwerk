@@ -201,6 +201,14 @@ OC.L10N.register(
     "Zuständigkeit konnte nicht gesetzt werden": "Zuständigkeit konnte nicht gesetzt werden",
     "Zuständigkeit ändern": "Zuständigkeit ändern",
     "Zuweisen oder Frist setzen": "Zuweisen oder Frist setzen",
-    "Zuweisung und Fälligkeit ändern: {title}": "Zuweisung und Fälligkeit ändern: {title}"
+    "Zuweisung und Fälligkeit ändern: {title}": "Zuweisung und Fälligkeit ändern: {title}",
+    "Kommentar": "Kommentar",
+    "Jemand kommentiert einen Vorgang, an dem ich beteiligt bin": "Jemand kommentiert einen Vorgang, an dem ich beteiligt bin",
+    "Abschluss": "Abschluss",
+    "Ein Vorgang, an dem ich beteiligt bin, wird geschlossen": "Ein Vorgang, an dem ich beteiligt bin, wird geschlossen",
+    "Neuer Kommentar zu Vorgang #%1$s": "Neuer Kommentar zu Vorgang #%1$s",
+    "Vorgang #%1$s wurde geschlossen": "Vorgang #%1$s wurde geschlossen",
+    "Neuer Kommentar: #%1$s %2$s": "Neuer Kommentar: #%1$s %2$s",
+    "Vorgang geschlossen: #%1$s %2$s": "Vorgang geschlossen: #%1$s %2$s"
 },
 "nplurals=2; plural=(n != 1);");

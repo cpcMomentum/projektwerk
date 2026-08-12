@@ -58,7 +58,7 @@ class NotifyPrefService {
 
 		foreach ($this->prefs->findForUser($userId) as $pref) {
 			$an = (int)$pref->getEnabled() === 1;
-			$kanal = (string)$pref->getChannel();
+			$kanal = (string)$pref->getPrefKey();
 			$boardId = (int)$pref->getBoardId();
 
 			if ($boardId === NotifyPrefMapper::GLOBAL_SCOPE) {
@@ -82,27 +82,27 @@ class NotifyPrefService {
 	 * ohnehin keine Benachrichtigung.
 	 *
 	 * @param string $userId Kennung der Person.
-	 * @param string $channel Einer der Kanäle aus {@see NotifyPref}.
+	 * @param string $prefKey Einer der Kanäle oder Anlässe aus {@see NotifyPref}.
 	 * @param int $boardId Projekt, oder {@see NotifyPrefMapper::GLOBAL_SCOPE}.
 	 * @param bool $enabled Neuer Stand.
 	 * @throws \InvalidArgumentException unbekannter Kanal oder negatives Projekt
 	 */
-	public function set(string $userId, string $channel, int $boardId, bool $enabled): NotifyPref {
-		if (!in_array($channel, [...NotifyPref::CHANNELS, ...NotifyPref::EVENTS], true)) {
-			throw new \InvalidArgumentException('Unbekannter Schalter: ' . $channel);
+	public function set(string $userId, string $prefKey, int $boardId, bool $enabled): NotifyPref {
+		if (!in_array($prefKey, [...NotifyPref::CHANNELS, ...NotifyPref::EVENTS], true)) {
+			throw new \InvalidArgumentException('Unbekannter Schalter: ' . $prefKey);
 		}
 		if ($boardId < NotifyPrefMapper::GLOBAL_SCOPE) {
 			throw new \InvalidArgumentException('Ungueltiges Projekt: ' . $boardId);
 		}
-		if ($boardId !== NotifyPrefMapper::GLOBAL_SCOPE && in_array($channel, self::NUR_GLOBAL, true)) {
+		if ($boardId !== NotifyPrefMapper::GLOBAL_SCOPE && in_array($prefKey, self::NUR_GLOBAL, true)) {
 			// Abgewiesen statt still global gespeichert: Ein Wert, den die
 			// Oberflaeche nicht anzeigt, aber die Aufloesung liest, ist genau
 			// die Sorte Einstellung, die niemand mehr findet.
-			throw new \InvalidArgumentException('Dieser Schalter gilt nur allgemein: ' . $channel);
+			throw new \InvalidArgumentException('Dieser Schalter gilt nur allgemein: ' . $prefKey);
 		}
 
 		foreach ($this->prefs->findForUser($userId) as $pref) {
-			if ((string)$pref->getChannel() === $channel && (int)$pref->getBoardId() === $boardId) {
+			if ((string)$pref->getPrefKey() === $prefKey && (int)$pref->getBoardId() === $boardId) {
 				$pref->setEnabled($enabled ? 1 : 0);
 
 				return $this->prefs->update($pref);
@@ -111,7 +111,7 @@ class NotifyPrefService {
 
 		$neu = new NotifyPref();
 		$neu->setUserId($userId);
-		$neu->setChannel($channel);
+		$neu->setPrefKey($prefKey);
 		$neu->setBoardId($boardId);
 		$neu->setEnabled($enabled ? 1 : 0);
 

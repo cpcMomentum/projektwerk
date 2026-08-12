@@ -12,6 +12,7 @@ namespace OCA\Projektwerk\Service;
 use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Db\Comment;
 use OCA\Projektwerk\Db\CommentMapper;
+use OCA\Projektwerk\Db\MailOutbox;
 use OCA\Projektwerk\Db\Ticket;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCP\AppFramework\Db\DoesNotExistException;
@@ -51,6 +52,7 @@ class CommentService {
 	public function __construct(
 		private CommentMapper $comments,
 		private TicketMapper $tickets,
+		private NotificationService $notifications,
 	) {
 	}
 
@@ -64,7 +66,7 @@ class CommentService {
 		// Erst die Sichtbarkeit, dann der Inhalt: Sonst unterschiede sich die
 		// Antwort auf ein verborgenes Ticket je nachdem, ob der Text gueltig
 		// war — und genau daran liesse sich seine Existenz ablesen.
-		$this->tickets->findVisible($viewer, $ticketId);
+		$ticket = $this->tickets->findVisible($viewer, $ticketId);
 		$text = $this->clean($body);
 
 		$now = new \DateTime();
@@ -79,7 +81,23 @@ class CommentService {
 		// Oberflaeche braucht dafuer kein zweites Feld.
 		$comment->setUpdatedAt($now);
 
-		return $this->comments->insert($comment);
+		$gespeichert = $this->comments->insert($comment);
+
+		// **Ankuendigen und senden — nach dem Schreiben** (#98). Erst hier steht
+		// der Kommentar in der Datenbank; die Empfaengermenge liest ihn mit, und
+		// die auslesende Person faellt in `announce()` ohnehin heraus.
+		//
+		// Der Versand haengt bewusst **hinter** dem Insert: Ein toter Mailserver
+		// darf einen geschriebenen Kommentar nicht mitreissen. Dieselbe
+		// Reihenfolge wie bei Ticket und Arbeitsschritt.
+		$vorgemerkt = $this->notifications->announceToInvolved(
+			$ticket,
+			$viewer->userId,
+			MailOutbox::EVENT_COMMENT_ADDED,
+		);
+		$this->notifications->deliver($vorgemerkt, $ticket);
+
+		return $gespeichert;
 	}
 
 	/**

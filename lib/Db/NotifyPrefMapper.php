@@ -53,7 +53,7 @@ class NotifyPrefMapper extends QBMapper {
 			// Global zuerst, danach die Projekte — dieselbe Reihenfolge, in der
 			// die Oberflaeche sie zeigt.
 			->orderBy('board_id', 'ASC')
-			->addOrderBy('channel', 'ASC');
+			->addOrderBy('pref_key', 'ASC');
 
 		return $this->findEntities($qb);
 	}
@@ -77,14 +77,14 @@ class NotifyPrefMapper extends QBMapper {
 	 * freischaltet — und niemand würde merken, dass er nie etwas bekommt.
 	 *
 	 * @param string $userId Kennung der Person.
-	 * @param string $channel Einer der Kanäle aus {@see NotifyPref}.
+	 * @param string $prefKey Einer der Kanäle oder Anlässe aus {@see NotifyPref}.
 	 * @param int $boardId Projekt, oder {@see GLOBAL_SCOPE} wenn es um keins geht.
 	 */
-	public function isEnabled(string $userId, string $channel, int $boardId = self::GLOBAL_SCOPE): bool {
+	public function isEnabled(string $userId, string $prefKey, int $boardId = self::GLOBAL_SCOPE): bool {
 		$global = null;
 
 		foreach ($this->findForUser($userId) as $pref) {
-			if ($pref->getChannel() !== $channel) {
+			if ($pref->getPrefKey() !== $prefKey) {
 				continue;
 			}
 			if ((int)$pref->getBoardId() === $boardId && $boardId !== self::GLOBAL_SCOPE) {
