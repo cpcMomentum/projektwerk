@@ -74,7 +74,7 @@ class Version000003Date20260812000000 extends SimpleMigrationStep {
 			// Spalte sein, nur anders benannt.
 			$table->addColumn('pref_key', Types::STRING, [
 				'notnull' => true,
-				'length' => 32,
+				'length' => 16,
 				'default' => '',
 			]);
 		}
