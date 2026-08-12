@@ -1,4 +1,4 @@
-import type { Browser } from '@playwright/test'
+import type { Browser, Locator, Page } from '@playwright/test'
 
 import { Api } from './api.ts'
 import { INTERN, KUNDE } from './rollen.ts'
@@ -104,4 +104,86 @@ export async function projektAufraeumen(browser: Browser, boardId: number): Prom
 	} finally {
 		await kontext.close()
 	}
+}
+
+/**
+ * Eine Sichtbarkeitsstufe im geoeffneten Vorgang waehlen.
+ *
+ * **Nicht ueber den Radio-Knopf selbst.** Seit #99 rendert `NcRadioGroupButton`
+ * ein `<input type="radio">` mit `hidden-visually` — es steht bei
+ * `left: -10000px` und ist damit fuer einen Klick unerreichbar. Sichtbar und
+ * anklickbar ist die Beschriftung daneben; genau die trifft auch ein Mensch.
+ *
+ * Die Klasse wird ueber ihren **Namensteil** gesucht: `_radioGroupButton__label`
+ * ist ein CSS-Modul, dessen Hash sich mit jeder Fassung von `@nextcloud/vue`
+ * aendert — der Name davor nicht.
+ *
+ * @param seite Die Playwright-Seite.
+ * @param stufe Die Beschriftung der Stufe, genau wie sie dasteht.
+ */
+export async function stufeWaehlen(seite: Page, stufe: string): Promise<void> {
+	await seite
+		.locator('.pw-vischoice [class*="_radioGroupButton__label"]')
+		.getByText(stufe, { exact: true })
+		.click()
+}
+
+/**
+ * Eine Person in einer `NcSelectUsers`-Auswahl waehlen.
+ *
+ * Getippt statt aus einer Liste geklickt: Die Auswahl filtert im Browser, und
+ * ein Mensch tippt hier auch. Die Liste haengt am `body` (`appendToBody`),
+ * deshalb wird sie ueber die Seite und nicht ueber den Umschlag gesucht.
+ *
+ * @param seite Die Playwright-Seite.
+ * @param feld Auswahl der Combobox, z. B. `#pw-step-new-user`.
+ * @param name Anzeigename der Person, wie er in der Liste steht.
+ */
+export async function personWaehlen(seite: Page, feld: string, name: string): Promise<void> {
+	await seite.locator(feld).click()
+	await seite.locator(feld).fill(name)
+	await seite.locator('ul[role="listbox"] li', { hasText: name }).last().click()
+}
+
+/**
+ * Eine Frist ueber den Kalender setzen und den gewaehlten Tag zurueckgeben.
+ *
+ * **Getippt geht nicht.** `NcDateTimePicker` laesst die Texteingabe von
+ * `@vuepic/vue-datepicker` aus; das Feld nimmt nur entgegen, was im Kalender
+ * angeklickt wurde. Beim vorherigen `input[type="date"]` liess sich das Datum
+ * tippen — das ist mit #99 weggefallen und hier festgehalten, damit es nicht in
+ * Vergessenheit geraet.
+ *
+ * Gewaehlt wird im **angezeigten Monat**, ohne Blaettern: Monatsnavigation
+ * waere eine zweite Fehlerquelle in einem Test, der die Frist pruefen will und
+ * nicht den Kalender.
+ *
+ * @param seite Die Playwright-Seite.
+ * @param umschlag Der Bereich, in dem das Feld steht.
+ * @param tag Der Tag im angezeigten Monat, z. B. 20.
+ * @returns Das gewaehlte Datum als `JJJJ-MM-TT`.
+ */
+export async function fristSetzen(seite: Page, umschlag: Locator, tag: number): Promise<string> {
+	await umschlag.locator('.dp__input').click()
+
+	const kalender = seite.locator('.dp--menu-wrapper').last()
+	await kalender.locator('.dp__cell_inner', { hasText: new RegExp(`^${tag}$`) }).first().click()
+
+	// Der Kalender zeigt Monat und Jahr; daraus entsteht der erwartete Wert,
+	// damit der Test nicht an einem festen Datum klebt.
+	const jetzt = new Date()
+
+	return `${jetzt.getFullYear()}-${String(jetzt.getMonth() + 1).padStart(2, '0')}-${String(tag).padStart(2, '0')}`
+}
+
+/**
+ * Eine Frist wieder entfernen.
+ *
+ * Ueber den Loesch-Knopf des Waehlers (`clearable`) — auch das geht seit #99
+ * nicht mehr ueber ein geleertes Textfeld.
+ *
+ * @param umschlag Der Bereich, in dem das Feld steht.
+ */
+export async function fristLoeschen(umschlag: Locator): Promise<void> {
+	await umschlag.locator('.dp--clear-btn').click()
 }

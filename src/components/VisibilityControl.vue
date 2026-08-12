@@ -1,9 +1,24 @@
 <template>
-	<section v-if="mayChange" class="pw-detail__section pw-viscontrol">
-		<h3 class="pw-col__head">
-			{{ t('projektwerk', 'Sichtbarkeit') }}
-		</h3>
+	<!--
+		Sitzt seit #99 **in der Kopfzeile**, nicht mehr in einem eigenen
+		Abschnitt: Ueberschrift, Trennlinie und die beiden Erklaerzeilen kosteten
+		zusammen 110 px fuer eine Angabe, die §9 als Chip in der Kopfzeile fuehrt.
 
+		`--offen` bricht die Zeile auf: Solange nur der Schalter dasteht, ist er
+		ein rechtsbuendiges Element neben Nummer und Spaltenname. Sobald eine
+		Rueckfrage oder ein Widerruf dazukommt, nimmt der Block die volle Breite
+		— eine Warnung mit Namen passt nicht neben `#0001`.
+
+		**Der Nur-Lese-Chip haengt mit hier drin** und nicht im Elternteil: Wer
+		aendern darf, folgt aus `mayChange`, und diese Frage soll an genau einer
+		Stelle beantwortet werden. Im Elternteil waere sie ein zweites Mal
+		formuliert — mit der Gefahr, dass beide auseinanderlaufen und die
+		Kundenseite entweder zwei Anzeigen oder gar keine bekommt.
+	-->
+	<div
+		v-if="mayChange"
+		class="pw-viscontrol"
+		:class="{ 'pw-viscontrol--offen': stage !== 'idle' || undoTo !== null }">
 		<!--
 			Die Auswahl steht **offen und immer da**, ein Klick ist die
 			Entscheidung. Kein vorgeschaltetes „Ändern" und kein „Übernehmen"
@@ -27,6 +42,7 @@
 				:unavailable="unavailable"
 				:blockedHint="blockedHint"
 				:busy="busy || stage !== 'idle'"
+				:hideHints="true"
 				@update:modelValue="choose" />
 
 			<!--
@@ -119,7 +135,25 @@
 				</NcButton>
 			</div>
 		</div>
-	</section>
+	</div>
+
+	<!--
+		Wer nicht aendern darf, sieht die Stufe als Chip — aber nur, wenn die
+		Kennzeichnung ueberhaupt fuer ihn gilt. §9: In der Kundenansicht entfaellt
+		sie ganz, dort ist jeder sichtbare Vorgang oeffentlich und die Markierung
+		waere Rauschen.
+
+		Farbe **plus** Symbol **plus** Text, nie Farbe allein (§9 Querschnitt).
+	-->
+	<span
+		v-else-if="showChip"
+		class="pw-vis"
+		:class="'pw-vis--' + ticket.visibility">
+		<AccountMultipleIcon v-if="ticket.visibility === 'public'" :size="16" />
+		<OfficeBuildingIcon v-else-if="ticket.visibility === 'internal'" :size="16" />
+		<PencilIcon v-else :size="16" />
+		{{ labelFor(ticket.visibility) }}
+	</span>
 </template>
 
 <script lang="ts">
@@ -130,7 +164,10 @@ import type { Ticket } from '@/types/ticket'
 import { n, t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
+import AccountMultipleIcon from 'vue-material-design-icons/AccountMultiple.vue'
 import AlertIcon from 'vue-material-design-icons/AlertOutline.vue'
+import OfficeBuildingIcon from 'vue-material-design-icons/OfficeBuilding.vue'
+import PencilIcon from 'vue-material-design-icons/Pencil.vue'
 import UndoIcon from 'vue-material-design-icons/UndoVariant.vue'
 import VisibilityChoice from '@/components/VisibilityChoice.vue'
 import { changeVisibility, fetchVisibilityImpact } from '@/services/tickets'
@@ -168,16 +205,22 @@ const UNDO_WINDOW_MS = 15000
 export default defineComponent({
 	name: 'VisibilityControl',
 
-	// Die drei Sichtbarkeitssymbole stehen jetzt ausschliesslich in
-	// `VisibilityChoice` — hier zeigte sie der Chip des Ruhezustands, und den
-	// ersetzt die markierte Karte.
-	components: { AlertIcon, NcButton, UndoIcon, VisibilityChoice },
+	components: { AccountMultipleIcon, AlertIcon, NcButton, OfficeBuildingIcon, PencilIcon, UndoIcon, VisibilityChoice },
 
 	props: {
 		ticket: { type: Object as PropType<Ticket>, required: true },
 		viewer: { type: Object as PropType<ViewerInfo | null>, default: null },
 		/** Nur zur Anzeige der Namen — die Rechnung selbst macht der Server. */
 		members: { type: Array as PropType<Member[]>, default: () => [] },
+		/**
+		 * Ob die Kennzeichnung fuer diesen Betrachter ueberhaupt gilt (§9).
+		 *
+		 * Steuert **nur den Nur-Lese-Chip**. Der Schalter haengt an `mayChange`
+		 * und ausdruecklich nicht hieran: Das ist die Kennzeichnung fuer interne
+		 * Betrachter — waere der Schalter daran gebunden, koennte die Kundenseite
+		 * die Sichtbarkeit ihrer eigenen Vorgaenge nie aendern.
+		 */
+		showChip: { type: Boolean, default: false },
 	},
 
 	emits: ['changed'],

@@ -36,7 +36,6 @@ OC.L10N.register(
     "{done} von {count} Arbeitsschritten erledigt": "{done} of {count} work steps done",
     "ProjektWerk ist für Gastkonten nicht freigeschaltet. Die Administration muss die App auf die Freigabeliste der Guests-App setzen.": "ProjektWerk is not enabled for guest accounts. An administrator has to add the app to the allow list of the Guests app.",
     "Geschlossen": "Closed",
-    "Keine Beschreibung hinterlegt.": "No description yet.",
     "Personen": "People",
     "angelegt": "created",
     "zuständig": "responsible",
@@ -47,10 +46,7 @@ OC.L10N.register(
     "Auf „Nur ich\" herunterstufen kann nur die anlegende Person": "Only the person who created it can restrict it to “Only me”",
     "Folgende Personen verlieren den Zugriff auf diesen Vorgang:": "The following people will lose access to this item:",
     "Folgende Personen verlieren den Zugriff auf diesen Vorgang und {betroffen}:": "The following people will lose access to this item and {betroffen}:",
-    "_%n Kommentar_::_%n Kommentare_": [
-        "%n comment",
-        "%n comments"
-    ],
+    "_%n Kommentar_::_%n Kommentare_": ["%n comment", "%n comments"],
     "Die Beteiligten werden nicht benachrichtigt.": "The people involved will not be notified.",
     "Sichtbarkeit ändern": "Change visibility",
     "Sichtbarkeit konnte nicht geprüft werden": "Could not check visibility",
@@ -127,26 +123,17 @@ OC.L10N.register(
     "Zielspalte wählen": "Choose a target column",
     "Alle Vorgänge wandern in die gewählte Spalte, danach fällt „{from}“ weg.": "All items move to the chosen column, then “{from}” is removed.",
     "Alle Vorgänge wandern nach „{to}“, danach fällt „{from}“ weg.": "All items move to “{to}”, then “{from}” is removed.",
-    "_Für dich sichtbar ist davon %n Vorgang._::_Für dich sichtbar sind davon %n Vorgänge._": [
-        "%n of them is visible to you.",
-        "%n of them are visible to you."
-    ],
+    "_Für dich sichtbar ist davon %n Vorgang._::_Für dich sichtbar sind davon %n Vorgänge._": ["%n of them is visible to you.", "%n of them are visible to you."],
     "Verborgene Vorgänge wandern mit, ohne hier aufzutauchen. Es geht nichts verloren.": "Hidden items move along without appearing here. Nothing is lost.",
     "Verschieben und entfernen": "Move and remove",
     "Spalte konnte nicht entfernt werden": "Column could not be removed",
     "Spalte „{title}“ entfernen": "Remove column “{title}”",
-    "_%n älteren Vorgang anzeigen_::_%n ältere Vorgänge anzeigen_": [
-        "Show %n older item",
-        "Show %n older items"
-    ],
+    "_%n älteren Vorgang anzeigen_::_%n ältere Vorgänge anzeigen_": ["Show %n older item", "Show %n older items"],
     "Ältere wieder ausblenden": "Hide older items again",
     "Meine Arbeitsschritte": "My work steps",
     "Meine Vorgänge": "My items",
     "Sobald Ihnen ein Arbeitsschritt zugewiesen wird oder Sie für einen Vorgang zuständig sind, steht er hier.": "As soon as a work step is assigned to you or you are responsible for an item, it will appear here.",
-    "_%n Arbeitsschritt ist überfällig_::_%n Arbeitsschritte sind überfällig_": [
-        "%n work step is overdue",
-        "%n work steps are overdue"
-    ],
+    "_%n Arbeitsschritt ist überfällig_::_%n Arbeitsschritte sind überfällig_": ["%n work step is overdue", "%n work steps are overdue"],
     "„{title}“ erledigen": "Complete “{title}”",
     "überfällig seit {date}": "overdue since {date}",
     "fällig {date}": "due {date}",
@@ -176,10 +163,7 @@ OC.L10N.register(
     "Lösen": "Detach",
     "Noch keine Anhänge.": "No attachments yet.",
     "von {name}": "by {name}",
-    "_Dieser Vorgang hat %n Anhang. Bitte ihn zuerst vom Vorgang lösen — die Datei selbst bleibt dabei liegen._::_Dieser Vorgang hat %n Anhänge. Bitte sie zuerst vom Vorgang lösen — die Dateien selbst bleiben dabei liegen._": [
-        "This ticket has %n attachment. Please detach it first — the file itself stays where it is.",
-        "This ticket has %n attachments. Please detach them first — the files themselves stay where they are."
-    ],
+    "_Dieser Vorgang hat %n Anhang. Bitte ihn zuerst vom Vorgang lösen — die Datei selbst bleibt dabei liegen._::_Dieser Vorgang hat %n Anhänge. Bitte sie zuerst vom Vorgang lösen — die Dateien selbst bleiben dabei liegen._": ["This ticket has %n attachment. Please detach it first — the file itself stays where it is.", "This ticket has %n attachments. Please detach them first — the files themselves stay where they are."],
     "Verstanden": "Got it",
     "E-Mail": "Email",
     "Glocke in Nextcloud": "Nextcloud notification bell",
@@ -204,6 +188,19 @@ OC.L10N.register(
     "für dieses Projekt festgelegt": "set for this project",
     "wie alle Projekte": "same as all projects",
     "{event} — für alle Projekte": "{event} — for all projects",
-    "{event} — {project}": "{event} — {project}"
+    "{event} — {project}": "{event} — {project}",
+    "Arbeitsschritt hinzufügen": "Add work step",
+    "Beschreibung bearbeiten": "Edit description",
+    "Beschreibung hinzufügen": "Add description",
+    "Beschreibung konnte nicht gespeichert werden": "Description could not be saved",
+    "Fertig": "Done",
+    "Mehr anzeigen": "Show more",
+    "Weniger anzeigen": "Show less",
+    "Zurzeit wartet nichts auf Sie.": "Nothing is waiting for you right now.",
+    "Zuständige Person festlegen": "Set responsible person",
+    "Zuständigkeit konnte nicht gesetzt werden": "Responsibility could not be set",
+    "Zuständigkeit ändern": "Change responsibility",
+    "Zuweisen oder Frist setzen": "Assign or set a due date",
+    "Zuweisung und Fälligkeit ändern: {title}": "Change assignment and due date: {title}"
 },
 "nplurals=2; plural=(n != 1);");

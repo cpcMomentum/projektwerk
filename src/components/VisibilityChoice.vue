@@ -1,30 +1,34 @@
 <template>
-	<div class="pw-vischoice">
+	<div class="pw-vischoice" :class="{ 'pw-vischoice--knapp': hideHints }">
 		<!--
-			Segmentierter Schalter nach dem Muster aus WorkTime (`layout-seg` /
-			`seg-btn`, dort in Zeiterfassung und Auswertung). Uebernommen und nicht
-			neu erfunden: Die Flotte soll an gleichen Stellen gleich aussehen.
+			`NcRadioGroup` statt des handgebauten Schalters (#99). Optisch
+			derselbe Eindruck; dazu kommen echte Radio-Semantik, Bedienung mit
+			den Pfeiltasten und der Fokusring der Plattform — an einer Auswahl,
+			an der haengt, wer den Vorgang sieht, ist das kein Beiwerk.
 
-			`role="group"` und `aria-pressed` gehen darueber hinaus — WorkTime
-			markiert den aktiven Knopf nur ueber eine Klasse, und eine Klasse sagt
-			einem Screenreader nichts. Hier haengt an der Auswahl, wer den Vorgang
-			sieht; das darf nicht nur sichtbar sein.
+			Der Weg ist der von Nextcloud vorgesehene: `NcCheckboxRadioSwitch`
+			fuehrt seine Props `buttonVariant`/`buttonVariantGrouped`
+			ausdruecklich als „@deprecated — Use `NcRadioGroup` instead".
 		-->
-		<div class="pw-visrow" role="group" :aria-label="t('projektwerk', 'Sichtbarkeit')">
-			<button
+		<NcRadioGroup
+			ref="gruppe"
+			:modelValue="modelValue"
+			:label="t('projektwerk', 'Sichtbarkeit')"
+			:hideLabel="true"
+			@update:modelValue="waehlen">
+			<NcRadioGroupButton
 				v-for="option in options"
 				:key="option.value"
-				type="button"
-				class="pw-visopt"
-				:aria-pressed="modelValue === option.value"
-				:disabled="isBlocked(option.value) || busy"
-				@click="$emit('update:modelValue', option.value)">
-				<AccountMultipleIcon v-if="option.value === 'public'" :size="16" />
-				<OfficeBuildingIcon v-else-if="option.value === 'internal'" :size="16" />
-				<PencilIcon v-else :size="16" />
-				{{ option.name }}
-			</button>
-		</div>
+				:value="option.value"
+				:label="option.name"
+				:disabled="isBlocked(option.value) || busy">
+				<template #icon>
+					<AccountMultipleIcon v-if="option.value === 'public'" :size="20" />
+					<OfficeBuildingIcon v-else-if="option.value === 'internal'" :size="20" />
+					<PencilIcon v-else :size="20" />
+				</template>
+			</NcRadioGroupButton>
+		</NcRadioGroup>
 
 		<!--
 			Die Erklaerung stand frueher in jeder Karte und machte den Abschnitt
@@ -32,19 +36,26 @@
 			anderen beiden bedeuten, erfaehrt man, indem man sie waehlt. Der Satz
 			bleibt damit da, wo er gebraucht wird, und kostet eine Zeile statt
 			neun.
-		-->
-		<p class="pw-vishint">
-			{{ selectedHint }}
-		</p>
 
-		<!--
-			Warum eine Stufe fehlt, muss **sichtbar** dastehen. Frueher trug der
-			gesperrte Knopf den Grund im Text; als `title` allein waere er auf dem
-			Telefon unerreichbar, weil es dort kein Ueberfahren gibt.
+			**Im Vorgang entfaellt er ganz** (`hideHints`, #99): §9 verlangt die
+			Zusatzzeile fuer das **Anlege-Formular**, wo man die Stufe zum ersten
+			Mal waehlt. Im geoeffneten Vorgang nennt die Beschriftung des
+			markierten Segments das Publikum bereits.
 		-->
-		<p v-if="blockedReason !== ''" class="pw-vishint pw-vishint--blocked">
-			{{ blockedReason }}
-		</p>
+		<template v-if="!hideHints">
+			<p class="pw-vishint">
+				{{ selectedHint }}
+			</p>
+
+			<!--
+				Warum eine Stufe fehlt, muss **sichtbar** dastehen. Frueher trug der
+				gesperrte Knopf den Grund im Text; als `title` allein waere er auf dem
+				Telefon unerreichbar, weil es dort kein Ueberfahren gibt.
+			-->
+			<p v-if="blockedReason !== ''" class="pw-vishint pw-vishint--blocked">
+				{{ blockedReason }}
+			</p>
+		</template>
 	</div>
 </template>
 
@@ -54,6 +65,8 @@ import type { Visibility } from '@/types/board'
 
 import { t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
+import NcRadioGroup from '@nextcloud/vue/components/NcRadioGroup'
+import NcRadioGroupButton from '@nextcloud/vue/components/NcRadioGroupButton'
 import AccountMultipleIcon from 'vue-material-design-icons/AccountMultiple.vue'
 import OfficeBuildingIcon from 'vue-material-design-icons/OfficeBuilding.vue'
 import PencilIcon from 'vue-material-design-icons/Pencil.vue'
@@ -81,7 +94,7 @@ import PencilIcon from 'vue-material-design-icons/Pencil.vue'
 export default defineComponent({
 	name: 'VisibilityChoice',
 
-	components: { AccountMultipleIcon, OfficeBuildingIcon, PencilIcon },
+	components: { AccountMultipleIcon, NcRadioGroup, NcRadioGroupButton, OfficeBuildingIcon, PencilIcon },
 
 	props: {
 		modelValue: { type: String as PropType<Visibility>, required: true },
@@ -106,6 +119,17 @@ export default defineComponent({
 		 * Im Anlege-Formular gibt es nichts zu warten; dort bleibt es bei `false`.
 		 */
 		busy: { type: Boolean, default: false },
+		/**
+		 * Ohne die Erklaerzeilen — fuer den geoeffneten Vorgang (#99).
+		 *
+		 * §9 verlangt die Zusatzzeile („Auch die Kundenseite sieht diesen
+		 * Vorgang") fuer das **Anlege-Formular**, wo die Stufe zum ersten Mal
+		 * gewaehlt wird. Im Vorgang steht der Schalter in der Kopfzeile, und
+		 * dort nennt die Beschriftung des markierten Segments das Publikum
+		 * bereits — zwei Zeilen Text darunter waeren die Wand, die der Umbau
+		 * abgeraeumt hat.
+		 */
+		hideHints: { type: Boolean, default: false },
 	},
 
 	emits: ['update:modelValue'],
@@ -152,6 +176,34 @@ export default defineComponent({
 
 	methods: {
 		t,
+
+		/**
+		 * Eine Stufe wurde gewaehlt — nur weitergereicht, nie selbst uebernommen.
+		 *
+		 * **Die Markierung zeigt, was gilt, nicht was geklickt wurde.** Zwischen
+		 * Klick und Antwort liegt ein Netzaufruf und moeglicherweise eine
+		 * Rueckfrage; spraenge die Markierung sofort, saehe eine Aenderung
+		 * erledigt aus, die noch aussteht.
+		 *
+		 * Der Nachtrag im `nextTick` ist der Preis fuer echte Radio-Knoepfe: Ein
+		 * `<input type="radio">` setzt sich beim Klick **selbst**, und Vue
+		 * korrigiert das nicht, weil sich aus seiner Sicht nichts geaendert hat
+		 * — `modelValue` haengt am Ticket und steht noch auf dem alten Wert. Der
+		 * handgebaute Schalter hatte dieses Problem nicht, weil ein `<button>`
+		 * keinen Eigenzustand hat.
+		 *
+		 * @param value Die angeklickte Stufe.
+		 */
+		waehlen(value: string): void {
+			this.$emit('update:modelValue', value as Visibility)
+
+			this.$nextTick(() => {
+				const radios = this.$el?.querySelectorAll?.('input[type="radio"]')
+				radios?.forEach((radio: HTMLInputElement) => {
+					radio.checked = radio.value === this.modelValue
+				})
+			})
+		},
 
 		/**
 		 * @param value Die angefragte Stufe.

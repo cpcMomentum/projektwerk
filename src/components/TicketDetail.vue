@@ -1,8 +1,15 @@
 <template>
+	<!--
+		**`:labelId` statt `:name`** (#99). `:name` rendert ein zweites `h2` in
+		einer Leiste, die `NcModal` absolut an den Rand des Overlays haengt — der
+		Titel stand damit zweimal da: als weisse Schrift ueber dem Hintergrund und
+		als Ueberschrift in der Karte. `labelId` benennt den Dialog ueber die
+		Ueberschrift, die ohnehin da ist.
+	-->
 	<NcModal
 		v-if="ticket"
 		size="large"
-		:name="ticket.title"
+		:labelId="titleId"
 		@close="$emit('close')">
 		<!--
 			Die App-Klasse MUSS hier drin stehen, nicht nur aussen an der App.
@@ -15,52 +22,160 @@
 		<div class="app-projektwerk">
 			<div class="pw-detail">
 				<!--
-					Kopfzeile von oben nach §9: Nummer, Titel, Spalte,
-					Sichtbarkeits-Chip. Die Wartemarke kommt mit Phase 3, wenn es
-					Arbeitsschritte gibt, aus denen sie entsteht.
+					Der Kopfbereich klebt beim Scrollen: Nummer, Titel und
+					Sichtbarkeit bleiben stehen, waehrend man durch lange Kommentare
+					faehrt. Er kostet dafuer dauerhaft rund 62 px Lesehoehe —
+					Axels Entscheidung vom 2026-08-12.
 				-->
-				<header class="pw-detail__head">
-					<span class="pw-num">#{{ paddedNumber }}</span>
-					<span class="pw-detail__column">{{ columnTitle }}</span>
-					<span v-if="showVisibility" class="pw-vis" :class="'pw-vis--' + ticket.visibility">
-						<AccountMultipleIcon v-if="ticket.visibility === 'public'" :size="14" />
-						<OfficeBuildingIcon v-else-if="ticket.visibility === 'internal'" :size="14" />
-						<PencilIcon v-else :size="14" />
-						{{ visibilityLabel }}
-					</span>
-					<span v-if="ticket.closedAt" class="pw-detail__closed">
-						{{ t('projektwerk', 'Geschlossen') }}
-					</span>
+				<header class="pw-kopf">
+					<!--
+						Nummer, Spaltenname und Sichtbarkeit auf **einer** Zeile und
+						in **gleicher Groesse** (15 px statt 13): Fuer Axel haben die
+						drei dieselbe Wertigkeit, und das soll man sehen. Der
+						Schalter bleibt bei 34 px — flacher waere unter
+						`--default-clickable-area`, und er ist der einzige Weg, die
+						Sichtbarkeit zu aendern.
+
+						Die CSS haelt rechts 42 px frei: Dort setzt `NcModal` seinen
+						Schliessen-Knopf absolut in die Karte.
+					-->
+					<div class="pw-meta">
+						<span class="pw-num">#{{ paddedNumber }}</span>
+						<span class="pw-meta__sep" aria-hidden="true">·</span>
+						<span class="pw-meta__column">{{ columnTitle }}</span>
+						<span v-if="ticket.closedAt" class="pw-meta__closed">
+							{{ t('projektwerk', 'Geschlossen') }}
+						</span>
+
+						<!--
+							Der Schalter zeigt sich nur der besitzenden Seite und
+							blendet sich sonst selbst aus (§7); fuer alle anderen
+							steht dort der Chip, sofern die Kennzeichnung fuer sie
+							ueberhaupt gilt. Beides entscheidet die Komponente
+							selbst — die Frage „wer darf aendern" gehoert an genau
+							eine Stelle.
+						-->
+						<VisibilityControl
+							:ticket="ticket"
+							:viewer="viewer"
+							:members="members"
+							:showChip="showVisibility"
+							@changed="$emit('changed', $event)" />
+					</div>
+
+					<h2 :id="titleId" class="pw-detail__title">
+						{{ ticket.title }}
+					</h2>
+
+					<!-- Die Marke steht ueber dem Titel (§9), hier als ganze Zeile. -->
+					<WaitBadge :state="waiting" :fromClientSide="fromClientSide" />
+
+					<!--
+						Im Detail als Satz mit Namen, nicht nur als Marke: Wer wartet,
+						ist hier die eigentliche Auskunft.
+					-->
+					<p v-if="waitingSentence" class="pw-wait__sentence">
+						{{ waitingSentence }}
+					</p>
 				</header>
 
-				<!-- Die Marke steht ueber dem Titel (§9), hier als ganze Zeile. -->
-				<WaitBadge :state="waiting" :fromClientSide="fromClientSide" />
+				<!--
+					**Die Beschreibung ist das Hauptbeschreibungsmittel** (#99) und
+					damit kein blosser Absatz mehr:
 
-				<h2 class="pw-detail__title">
-					{{ ticket.title }}
-				</h2>
+					- **Markdown wie bei den Kommentaren.** Absaetze, Listen, Links.
+					  Damit scheidet der einfache Klick zum Bearbeiten aus — er
+					  zerstoerte jede Textauswahl und machte Links unklickbar. Der
+					  Stift ist der Hauptweg, der Doppelklick die Abkuerzung.
+					- **Auf 150 px gedeckelt**, sonst schoebe ein langer Text alles
+					  Uebrige um mehrere hundert Pixel nach unten. Bewusst ueber
+					  `max-height` und nicht ueber `-webkit-line-clamp`: Mit
+					  `useExtendedMarkdown` sind Tabellen moeglich, und ein Clamp
+					  greift auf `display: table` nicht — er versagte genau bei dem
+					  Inhalt, fuer den der Deckel da ist.
+				-->
+				<div class="pw-beschreibung">
+					<template v-if="!editingText">
+						<div
+							ref="textbereich"
+							class="pw-beschreibung__text"
+							:class="{ 'pw-beschreibung__text--offen': textOffen }"
+							@dblclick="startEditText">
+							<NcRichText
+								v-if="ticket.description"
+								:text="ticket.description"
+								:useMarkdown="true"
+								:useExtendedMarkdown="true"
+								:interactive="false" />
+							<!--
+								Sprechender Leerzustand (§9) — und er bietet gleich
+								den Weg an, statt nur festzustellen, dass nichts da
+								ist.
+							-->
+							<NcButton v-else variant="tertiary" @click="startEditText">
+								<template #icon>
+									<PlusIcon :size="20" />
+								</template>
+								{{ t('projektwerk', 'Beschreibung hinzufügen') }}
+							</NcButton>
+							<span class="pw-beschreibung__deckel" aria-hidden="true" />
+						</div>
+
+						<NcButton
+							v-if="textZuHoch"
+							variant="tertiary"
+							class="pw-beschreibung__mehr"
+							@click="textOffen = !textOffen">
+							<template #icon>
+								<ChevronUpIcon v-if="textOffen" :size="20" />
+								<ChevronDownIcon v-else :size="20" />
+							</template>
+							{{ textOffen ? t('projektwerk', 'Weniger anzeigen') : t('projektwerk', 'Mehr anzeigen') }}
+						</NcButton>
+
+						<NcButton
+							v-if="ticket.description"
+							variant="tertiary"
+							class="pw-beschreibung__stift"
+							:ariaLabel="t('projektwerk', 'Beschreibung bearbeiten')"
+							@click="startEditText">
+							<template #icon>
+								<PencilOutlineIcon :size="20" />
+							</template>
+						</NcButton>
+					</template>
+
+					<div v-else class="pw-beschreibung__edit">
+						<NcTextArea
+							v-model="textEntwurf"
+							:label="t('projektwerk', 'Beschreibung')"
+							:disabled="busy"
+							resize="vertical"
+							@keydown.esc.stop="cancelEditText"
+							@keydown.enter.ctrl.exact="saveText"
+							@keydown.enter.meta.exact="saveText" />
+						<div class="pw-beschreibung__actions">
+							<NcButton :disabled="busy" @click="cancelEditText">
+								{{ t('projektwerk', 'Abbrechen') }}
+							</NcButton>
+							<NcButton variant="primary" :disabled="busy || !textGeaendert" @click="saveText">
+								{{ t('projektwerk', 'Speichern') }}
+							</NcButton>
+						</div>
+					</div>
+				</div>
 
 				<!--
-					Im Detail als Satz mit Namen, nicht nur als Marke: Wer wartet,
-					ist hier die eigentliche Auskunft.
-				-->
-				<p v-if="waitingSentence" class="pw-wait__sentence">
-					{{ waitingSentence }}
-				</p>
+					Zwei Personen, nebeneinander in einer Zeile. Mehr koennen es
+					nicht werden: Nach der Entscheidung zu #97 traegt der Vorgang
+					genau zwei Rollen — die anlegende Person und die zustaendige.
+					Zugearbeitet wird ueber die Arbeitsschritte.
 
-				<!--
-					Sprechender Leerzustand statt einer leeren Flaeche (§9) — er sagt
-					auch gleich, was zu tun waere.
+					Die sichtbare Ueberschrift entfaellt (#99); zwei Namen mit
+					Avatar erklaeren sich. Fuer Screenreader bleibt sie stehen.
 				-->
-				<p v-if="ticket.description" class="pw-detail__body">
-					{{ ticket.description }}
-				</p>
-				<p v-else class="pw-detail__empty">
-					{{ t('projektwerk', 'Keine Beschreibung hinterlegt.') }}
-				</p>
-
-				<section class="pw-detail__section">
-					<h3 class="pw-col__head">
+				<div class="pw-personen">
+					<h3 class="hidden-visually">
 						{{ t('projektwerk', 'Personen') }}
 					</h3>
 
@@ -69,7 +184,9 @@
 							:user="ticket.creatorUserId"
 							:displayName="nameOf(ticket.creatorUserId)"
 							:size="32"
-							:disableMenu="true" />
+							:disableMenu="true"
+							:hideStatus="true"
+							:isGuest="ticket.creatorRole === 'external'" />
 						<span class="pw-person__body">
 							<span class="pw-person__name">{{ nameOf(ticket.creatorUserId) }}</span>
 							<!--
@@ -81,38 +198,95 @@
 						</span>
 					</div>
 
-					<div v-if="ticket.responsibleUserId" class="pw-person">
-						<NcAvatar
-							:user="ticket.responsibleUserId"
-							:displayName="nameOf(ticket.responsibleUserId)"
-							:size="32"
-							:disableMenu="true" />
-						<span class="pw-person__body">
-							<span class="pw-person__name">{{ nameOf(ticket.responsibleUserId) }}</span>
-							<span class="pw-person__org">{{ orgLine(roleOf(ticket.responsibleUserId), t('projektwerk', 'zuständig')) }}</span>
-						</span>
-					</div>
-				</section>
+					<!--
+						**Die Zustaendigkeit war bis #97 nirgends setzbar.** Server
+						und Dienst konnten sie von Anfang an, nur fuehrte kein Weg
+						der Oberflaeche dorthin — und der bereits gebaute Ausloeser
+						`EVENT_TICKET_ASSIGNED` blieb damit unerreichbar.
 
-				<!--
-					Der Bereich zeigt sich nur der besitzenden Seite und blendet
-					sich sonst selbst aus (§7). Er haengt bewusst NICHT an
-					`showVisibility`: Das ist die Kennzeichnung fuer interne
-					Betrachter — waere der Knopf daran gebunden, koennte die
-					Kundenseite die Sichtbarkeit ihrer eigenen Vorgaenge nie aendern.
-				-->
-				<VisibilityControl
-					:ticket="ticket"
-					:viewer="viewer"
-					:members="members"
-					@changed="$emit('changed', $event)" />
+						Dasselbe Muster wie bei den Arbeitsschritten: Wo etwas
+						steht, steht Text; wo nichts steht, steht ein flacher Knopf.
+					-->
+					<div class="pw-person">
+						<template v-if="editingResponsible">
+							<label class="hidden-visually" :for="responsibleInputId">
+								{{ t('projektwerk', 'Zuständig') }}
+							</label>
+							<NcSelectUsers
+								class="pw-person__picker"
+								:options="assignableOptions"
+								:modelValue="responsibleOption"
+								:inputId="responsibleInputId"
+								:labelOutside="true"
+								:disabled="busy"
+								:placeholder="t('projektwerk', 'Niemand')"
+								@update:modelValue="setResponsible" />
+							<NcButton
+								variant="tertiary"
+								:ariaLabel="t('projektwerk', 'Abbrechen')"
+								@click="editingResponsible = false">
+								<template #icon>
+									<CloseIcon :size="20" />
+								</template>
+							</NcButton>
+						</template>
+
+						<template v-else-if="ticket.responsibleUserId">
+							<NcAvatar
+								:user="ticket.responsibleUserId"
+								:displayName="nameOf(ticket.responsibleUserId)"
+								:size="32"
+								:disableMenu="true"
+								:hideStatus="true"
+								:isGuest="roleOf(ticket.responsibleUserId) === 'external'" />
+							<span class="pw-person__body">
+								<span class="pw-person__name">{{ nameOf(ticket.responsibleUserId) }}</span>
+								<span class="pw-person__org">{{ orgLine(roleOf(ticket.responsibleUserId), t('projektwerk', 'zuständig')) }}</span>
+							</span>
+							<NcButton
+								variant="tertiary"
+								:ariaLabel="t('projektwerk', 'Zuständigkeit ändern')"
+								@click="startEditResponsible">
+								<template #icon>
+									<PencilOutlineIcon :size="20" />
+								</template>
+							</NcButton>
+						</template>
+
+						<NcButton
+							v-else
+							variant="tertiary"
+							class="pw-person__flach"
+							@click="startEditResponsible">
+							<template #icon>
+								<AccountPlusIcon :size="20" />
+							</template>
+							{{ t('projektwerk', 'Zuständige Person festlegen') }}
+						</NcButton>
+					</div>
+				</div>
 
 				<StepList
 					:boardId="ticket.boardId"
 					:ticketId="ticket.id"
 					:steps="steps"
 					:members="members"
+					:orgInternal="orgInternal"
+					:orgExternal="orgExternal"
 					@changed="$emit('stepsChanged')" />
+
+				<!--
+					**Anhaenge vor Kommentaren** — so gibt §9 die Reihenfolge vor,
+					und der Code hielt sie bis #99 umgekehrt. Kommentare sind die
+					einzige Liste, die unbegrenzt waechst; zuletzt behaelt alles
+					darueber eine feste Position.
+				-->
+				<AttachmentList
+					:boardId="ticket.boardId"
+					:ticketId="ticket.id"
+					:attachments="attachments"
+					:members="members"
+					@changed="$emit('attachmentsChanged')" />
 
 				<CommentList
 					:boardId="ticket.boardId"
@@ -121,13 +295,6 @@
 					:members="members"
 					:viewer="viewer"
 					@changed="$emit('commentsChanged')" />
-
-				<AttachmentList
-					:boardId="ticket.boardId"
-					:ticketId="ticket.id"
-					:attachments="attachments"
-					:members="members"
-					@changed="$emit('attachmentsChanged')" />
 			</div>
 		</div>
 	</NcModal>
@@ -141,20 +308,41 @@ import type { Attachment, Comment, Step, Ticket, WaitState } from '@/types/ticke
 import { t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
 import NcAvatar from '@nextcloud/vue/components/NcAvatar'
+import NcButton from '@nextcloud/vue/components/NcButton'
 import NcModal from '@nextcloud/vue/components/NcModal'
-import AccountMultipleIcon from 'vue-material-design-icons/AccountMultiple.vue'
-import OfficeBuildingIcon from 'vue-material-design-icons/OfficeBuilding.vue'
-import PencilIcon from 'vue-material-design-icons/Pencil.vue'
+import NcRichText from '@nextcloud/vue/components/NcRichText'
+import NcSelectUsers from '@nextcloud/vue/components/NcSelectUsers'
+import NcTextArea from '@nextcloud/vue/components/NcTextArea'
+import AccountPlusIcon from 'vue-material-design-icons/AccountPlusOutline.vue'
+import ChevronDownIcon from 'vue-material-design-icons/ChevronDown.vue'
+import ChevronUpIcon from 'vue-material-design-icons/ChevronUp.vue'
+import CloseIcon from 'vue-material-design-icons/Close.vue'
+import PencilOutlineIcon from 'vue-material-design-icons/PencilOutline.vue'
+import PlusIcon from 'vue-material-design-icons/Plus.vue'
 import AttachmentList from '@/components/AttachmentList.vue'
 import CommentList from '@/components/CommentList.vue'
 import StepList from '@/components/StepList.vue'
 import VisibilityControl from '@/components/VisibilityControl.vue'
 import WaitBadge from '@/components/WaitBadge.vue'
+import { fetchAssignable } from '@/services/steps'
+import { updateTicket } from '@/services/tickets'
+import { reportWriteError } from '@/services/writeError'
+
+/** Ab welcher Hoehe die Beschreibung gedeckelt wird. Deckt sich mit der CSS. */
+const TEXT_DECKEL_PX = 150
+
+interface PersonOption {
+	id: string
+	displayName: string
+	user: string
+	subname?: string
+	isGuest?: boolean
+}
 
 export default defineComponent({
 	name: 'TicketDetail',
 
-	components: { AccountMultipleIcon, AttachmentList, CommentList, NcAvatar, NcModal, OfficeBuildingIcon, PencilIcon, StepList, VisibilityControl, WaitBadge },
+	components: { AccountPlusIcon, AttachmentList, ChevronDownIcon, ChevronUpIcon, CloseIcon, CommentList, NcAvatar, NcButton, NcModal, NcRichText, NcSelectUsers, NcTextArea, PencilOutlineIcon, PlusIcon, StepList, VisibilityControl, WaitBadge },
 
 	props: {
 		ticket: { type: Object as PropType<Ticket | null>, default: null },
@@ -175,9 +363,80 @@ export default defineComponent({
 
 	emits: ['close', 'changed', 'stepsChanged', 'commentsChanged', 'attachmentsChanged'],
 
+	data() {
+		return {
+			busy: false,
+			/** Die Beschreibung wird gerade bearbeitet. */
+			editingText: false,
+			textEntwurf: '',
+			/** Der Deckel ist aufgeklappt. */
+			textOffen: false,
+			/** Der Text reicht ueber den Deckel hinaus — erst dann lohnt „Mehr anzeigen". */
+			textZuHoch: false,
+			/** Die Zustaendigkeit wird gerade gewaehlt. */
+			editingResponsible: false,
+			/**
+			 * Wer einen Arbeitsschritt bekommen darf — und damit auch, wer
+			 * zustaendig sein darf.
+			 *
+			 * **Vom Server, nicht aus den Board-Mitgliedern.** Wen der Vorgang
+			 * zulaesst, folgt aus der Sichtbarkeitsregel; im Browser nachgebaut
+			 * waere das ihre zweite Fassung, und die zweite prueft niemand.
+			 *
+			 * `StepList` holt dieselbe Liste noch einmal fuer sich. Ein zweiter
+			 * Aufruf auf einen billigen Endpunkt, dafuer bleibt der Vertrag der
+			 * Schrittliste unangetastet.
+			 */
+			assignable: [] as string[],
+		}
+	},
+
 	computed: {
 		paddedNumber(): string {
 			return String(this.ticket?.number ?? 0).padStart(4, '0')
+		},
+
+		/** Benennt den Dialog ueber die Ueberschrift, die ohnehin dasteht. */
+		titleId(): string {
+			return `pw-detail-title-${this.ticket?.id ?? 0}`
+		},
+
+		responsibleInputId(): string {
+			return `pw-detail-responsible-${this.ticket?.id ?? 0}`
+		},
+
+		/** Leerer Entwurf und leere Beschreibung sind dasselbe — beides heisst `null`. */
+		textGeaendert(): boolean {
+			return this.textEntwurf.trim() !== (this.ticket?.description ?? '').trim()
+		},
+
+		/**
+		 * Die Auswahlliste, wie `NcSelectUsers` sie erwartet.
+		 *
+		 * `subname` traegt die Firma, `isGuest` die Kundenkonten — fuer die laedt
+		 * Nextcloud den Avatar ueber einen anderen Endpunkt.
+		 */
+		assignableOptions(): PersonOption[] {
+			return this.assignable.map((userId) => ({
+				id: userId,
+				displayName: this.nameOf(userId),
+				user: userId,
+				subname: this.roleOf(userId) === 'internal' ? this.orgInternal : this.orgExternal,
+				isGuest: this.roleOf(userId) === 'external',
+			}))
+		},
+
+		responsibleOption(): PersonOption | null {
+			const userId = this.ticket?.responsibleUserId ?? null
+			if (userId === null) {
+				return null
+			}
+
+			return this.assignableOptions.find((o) => o.id === userId) ?? {
+				id: userId,
+				displayName: this.nameOf(userId),
+				user: userId,
+			}
 		},
 
 		columnTitle(): string {
@@ -206,19 +465,152 @@ export default defineComponent({
 				: t('projektwerk', 'Dieser Vorgang wartet auf die Kundenseite: {names}', { names: liste })
 		},
 
-		visibilityLabel(): string {
-			if (this.ticket?.visibility === 'public') {
-				return t('projektwerk', 'Alle Beteiligten')
-			}
-			if (this.ticket?.visibility === 'internal') {
-				return t('projektwerk', 'Intern')
-			}
-			return t('projektwerk', 'Nur ich')
+	},
+
+	watch: {
+		/**
+		 * Ein anderer Vorgang im selben Overlay.
+		 *
+		 * Angefangenes gehoert zum vorigen und darf nicht stehen bleiben — ein
+		 * Entwurf im Textfeld landete sonst beim naechsten Speichern am falschen
+		 * Vorgang.
+		 */
+		'ticket.id': {
+			immediate: true,
+			handler() {
+				this.editingText = false
+				this.editingResponsible = false
+				this.textEntwurf = ''
+				this.textOffen = false
+				this.ladeAssignable()
+			},
 		},
+
+		/** Der Deckel haengt an der Hoehe, und die kennt man erst nach dem Rendern. */
+		'ticket.description': {
+			immediate: true,
+			handler() {
+				this.$nextTick(() => this.messenDeckel())
+			},
+		},
+	},
+
+	mounted() {
+		this.messenDeckel()
 	},
 
 	methods: {
 		t,
+
+		/**
+		 * Reicht der Text ueber den Deckel hinaus?
+		 *
+		 * Gemessen statt geschaetzt: Wie viele Zeilen ein Markdown-Abschnitt
+		 * ergibt, haengt an Listen, Tabellen und der Fensterbreite. Ein
+		 * Zeichenzaehler laege bei jedem zweiten Vorgang daneben — und „Mehr
+		 * anzeigen" unter einem vollstaendig sichtbaren Text ist schlimmer als
+		 * kein Knopf.
+		 */
+		messenDeckel(): void {
+			const el = this.$refs.textbereich as HTMLElement | undefined
+			this.textZuHoch = el !== undefined && el.scrollHeight > TEXT_DECKEL_PX + 1
+		},
+
+		async ladeAssignable(): Promise<void> {
+			if (this.ticket === null) {
+				return
+			}
+			try {
+				this.assignable = await fetchAssignable(this.ticket.boardId, this.ticket.id)
+			} catch {
+				// Ohne Liste bleibt die Auswahl leer; alles Uebrige am Vorgang
+				// funktioniert weiter. Eine Meldung waere hier Laerm.
+				this.assignable = []
+			}
+		},
+
+		startEditText(): void {
+			this.textEntwurf = this.ticket?.description ?? ''
+			this.editingText = true
+		},
+
+		cancelEditText(): void {
+			this.editingText = false
+			this.textEntwurf = ''
+		},
+
+		/**
+		 * Die Beschreibung schreiben.
+		 *
+		 * Leer heisst ausdruecklich `null` und nicht `''` — sonst stuende in der
+		 * Datenbank eine leere Zeichenkette, und der Leerzustand im Vorgang
+		 * unterschiede sich nicht mehr von „nie etwas eingetragen".
+		 */
+		async saveText(): Promise<void> {
+			if (this.ticket === null || this.busy || !this.textGeaendert) {
+				return
+			}
+
+			const text = this.textEntwurf.trim()
+			this.busy = true
+			try {
+				const updated = await updateTicket(
+					this.ticket.boardId,
+					this.ticket.id,
+					this.ticket.version,
+					{ description: text === '' ? null : text },
+				)
+				this.$emit('changed', updated)
+				this.editingText = false
+				this.textEntwurf = ''
+			} catch (e) {
+				reportWriteError(e, t('projektwerk', 'Beschreibung konnte nicht gespeichert werden'))
+			} finally {
+				this.busy = false
+			}
+		},
+
+		startEditResponsible(): void {
+			this.editingResponsible = true
+		},
+
+		/**
+		 * Die Zustaendigkeit setzen oder loeschen.
+		 *
+		 * Der leere Wert sendet ausdruecklich `null` — weggelassen hiesse
+		 * „unveraendert", und die Zustaendigkeit liesse sich nie wieder entfernen.
+		 *
+		 * @param option Die gewaehlte Person, oder null beim Leeren.
+		 */
+		async setResponsible(option: PersonOption | PersonOption[] | null): Promise<void> {
+			if (this.ticket === null || this.busy) {
+				return
+			}
+
+			const gewaehlt = Array.isArray(option) ? (option[0] ?? null) : option
+			const userId = gewaehlt?.id ?? null
+			if (userId === (this.ticket.responsibleUserId ?? null)) {
+				this.editingResponsible = false
+
+				return
+			}
+
+			this.busy = true
+			try {
+				const updated = await updateTicket(
+					this.ticket.boardId,
+					this.ticket.id,
+					this.ticket.version,
+					{ responsibleUserId: userId },
+				)
+				this.$emit('changed', updated)
+				this.editingResponsible = false
+			} catch (e) {
+				reportWriteError(e, t('projektwerk', 'Zuständigkeit konnte nicht gesetzt werden'))
+			} finally {
+				this.busy = false
+			}
+		},
 
 		/**
 		 * Der vom Server aufgelöste Name, sonst die Kennung.

@@ -35,7 +35,6 @@
         "{done} von {count} Arbeitsschritten erledigt": "{done} von {count} Arbeitsschritten erledigt",
         "ProjektWerk ist für Gastkonten nicht freigeschaltet. Die Administration muss die App auf die Freigabeliste der Guests-App setzen.": "ProjektWerk ist für Gastkonten nicht freigeschaltet. Die Administration muss die App auf die Freigabeliste der Guests-App setzen.",
         "Geschlossen": "Geschlossen",
-        "Keine Beschreibung hinterlegt.": "Keine Beschreibung hinterlegt.",
         "Personen": "Personen",
         "angelegt": "angelegt",
         "zuständig": "zuständig",
@@ -203,7 +202,20 @@
         "für dieses Projekt festgelegt": "für dieses Projekt festgelegt",
         "wie alle Projekte": "wie alle Projekte",
         "{event} — für alle Projekte": "{event} — für alle Projekte",
-        "{event} — {project}": "{event} — {project}"
+        "{event} — {project}": "{event} — {project}",
+        "Arbeitsschritt hinzufügen": "Arbeitsschritt hinzufügen",
+        "Beschreibung bearbeiten": "Beschreibung bearbeiten",
+        "Beschreibung hinzufügen": "Beschreibung hinzufügen",
+        "Beschreibung konnte nicht gespeichert werden": "Beschreibung konnte nicht gespeichert werden",
+        "Fertig": "Fertig",
+        "Mehr anzeigen": "Mehr anzeigen",
+        "Weniger anzeigen": "Weniger anzeigen",
+        "Zurzeit wartet nichts auf Sie.": "Zurzeit wartet nichts auf Sie.",
+        "Zuständige Person festlegen": "Zuständige Person festlegen",
+        "Zuständigkeit konnte nicht gesetzt werden": "Zuständigkeit konnte nicht gesetzt werden",
+        "Zuständigkeit ändern": "Zuständigkeit ändern",
+        "Zuweisen oder Frist setzen": "Zuweisen oder Frist setzen",
+        "Zuweisung und Fälligkeit ändern: {title}": "Zuweisung und Fälligkeit ändern: {title}"
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }

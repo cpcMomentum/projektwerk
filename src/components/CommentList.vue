@@ -1,8 +1,9 @@
 <template>
-	<section class="pw-detail__section">
-		<h3 class="pw-col__head">
-			{{ t('projektwerk', 'Kommentare') }}
-		</h3>
+	<section class="pw-abschnitt">
+		<div class="pw-abschnitt__kopf">
+			<h3>{{ t('projektwerk', 'Kommentare') }}</h3>
+			<span v-if="comments.length > 0" class="pw-abschnitt__zaehler">{{ comments.length }}</span>
+		</div>
 
 		<article
 			v-for="comment in comments"
@@ -119,13 +120,27 @@
 			`display: flex` der Karte wieder ausschalten — und jeder Test, der
 			„die Kommentare" zaehlt, haette sie mitgezaehlt.
 		-->
-		<div class="pw-comment-new">
+		<!--
+			**Das Feld ruht zweizeilig** und waechst erst beim Hineinklicken
+			(#99); die Knopfzeile erscheint mit ihm. Vorher standen 86 px
+			Eingabeflaeche und ein Knopf dauerhaft unter jedem Vorgang, auch unter
+			denen, in die nie jemand schreibt.
+
+			Kein Fallstrick beim Verlassen: Der Knopf verschwindet nur, solange
+			das Feld leer ist — und dann war er ohnehin gesperrt, ein Klick
+			darauf haette nichts getan.
+		-->
+		<div
+			class="pw-comment-new"
+			:class="{ 'pw-comment-new--aktiv': fokusImFeld || newBody !== '' }"
+			@focusin="fokusImFeld = true"
+			@focusout="fokusImFeld = false">
 			<NcTextArea
 				v-model="newBody"
 				:label="t('projektwerk', 'Neuer Kommentar')"
 				:disabled="busy"
 				resize="vertical" />
-			<div class="pw-comment__actions">
+			<div v-if="fokusImFeld || newBody !== ''" class="pw-comment__actions">
 				<NcButton
 					variant="primary"
 					:disabled="busy || newBody.trim() === ''"
@@ -191,6 +206,14 @@ export default defineComponent({
 		return {
 			busy: false,
 			newBody: '',
+			/**
+			 * Der Fokus steht im neuen Kommentarfeld oder auf seinem Knopf.
+			 *
+			 * `focusin`/`focusout` am Umschlag statt `focus` am Feld: Nur so
+			 * bleibt die Knopfzeile stehen, waehrend man vom Textfeld auf den
+			 * Knopf tabbt.
+			 */
+			fokusImFeld: false,
 			/** Kennung des Kommentars, der gerade geändert wird. */
 			editing: null as number | null,
 			/** Kennung des Kommentars, für den die Rückfrage steht. */

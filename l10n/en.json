@@ -35,7 +35,6 @@
         "{done} von {count} Arbeitsschritten erledigt": "{done} of {count} work steps done",
         "ProjektWerk ist für Gastkonten nicht freigeschaltet. Die Administration muss die App auf die Freigabeliste der Guests-App setzen.": "ProjektWerk is not enabled for guest accounts. An administrator has to add the app to the allow list of the Guests app.",
         "Geschlossen": "Closed",
-        "Keine Beschreibung hinterlegt.": "No description yet.",
         "Personen": "People",
         "angelegt": "created",
         "zuständig": "responsible",
@@ -203,7 +202,20 @@
         "für dieses Projekt festgelegt": "set for this project",
         "wie alle Projekte": "same as all projects",
         "{event} — für alle Projekte": "{event} — for all projects",
-        "{event} — {project}": "{event} — {project}"
+        "{event} — {project}": "{event} — {project}",
+        "Arbeitsschritt hinzufügen": "Add work step",
+        "Beschreibung bearbeiten": "Edit description",
+        "Beschreibung hinzufügen": "Add description",
+        "Beschreibung konnte nicht gespeichert werden": "Description could not be saved",
+        "Fertig": "Done",
+        "Mehr anzeigen": "Show more",
+        "Weniger anzeigen": "Show less",
+        "Zurzeit wartet nichts auf Sie.": "Nothing is waiting for you right now.",
+        "Zuständige Person festlegen": "Set responsible person",
+        "Zuständigkeit konnte nicht gesetzt werden": "Responsibility could not be set",
+        "Zuständigkeit ändern": "Change responsibility",
+        "Zuweisen oder Frist setzen": "Assign or set a due date",
+        "Zuweisung und Fälligkeit ändern: {title}": "Change assignment and due date: {title}"
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }

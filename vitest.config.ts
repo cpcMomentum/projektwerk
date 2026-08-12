@@ -22,5 +22,23 @@ export default defineConfig({
 		// hier ein Muster ergaenzt, prueft bitte, dass tests/e2e/ draussen
 		// bleibt.
 		include: ['src/**/*.{spec,test}.{ts,js}', 'tests/ci/**/*.{spec,test}.{ts,js}'],
+		/*
+		 * `@nextcloud/vue` wird mitverarbeitet statt als fertiges Paket geladen.
+		 *
+		 * Einige seiner Komponenten — `NcRadioGroup`, `NcCheckboxRadioSwitch`,
+		 * `NcSelectUsers` — bringen eine eigene `.css` mit und importieren sie
+		 * aus dem JavaScript heraus. Ausserhalb der Vite-Verarbeitung landet
+		 * dieser Import bei Node, und Node kennt die Endung nicht: „Unknown file
+		 * extension .css", noch bevor ein einziger Test laeuft.
+		 *
+		 * Das Fehlerbild ist irrefuehrend — es sieht nach kaputtem Testcode aus
+		 * und ist eine Frage der Aufloesung. Aufgefallen mit #99, als die ersten
+		 * dieser Komponenten in Gebrauch kamen.
+		 */
+		server: {
+			deps: {
+				inline: ['@nextcloud/vue'],
+			},
+		},
 	},
 })

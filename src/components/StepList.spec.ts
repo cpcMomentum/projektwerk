@@ -51,16 +51,35 @@ vi.mock('@nextcloud/vue/components/NcTextField', () => ({
 vi.mock('@nextcloud/vue/components/NcAvatar', () => ({
 	default: { name: 'NcAvatar', template: '<span />' },
 }))
-vi.mock('@nextcloud/vue/components/NcDateTimePickerNative', () => ({
+vi.mock('@nextcloud/vue/components/NcDateTimePicker', () => ({
 	// Ein Platzhalter, der das Wesentliche der echten Komponente hat: Er gibt
 	// ein `Date` auf **lokaler** Mitternacht heraus, so wie der native
 	// Datumswähler auch. Genau daran hängt die Umrechnung, die hier geprüft
 	// wird — ein Stub, der schon einen ISO-Tag lieferte, prüfte nichts.
 	default: {
-		name: 'NcDateTimePickerNative',
+		name: 'NcDateTimePicker',
 		props: ['modelValue'],
 		emits: ['update:modelValue'],
 		template: '<input type="date" class="pw-test-datum" @input="$emit(\'update:modelValue\', $event.target.value === \'\' ? null : new Date($event.target.value + \'T00:00\'))">',
+	},
+}))
+
+vi.mock('@nextcloud/vue/components/NcSelectUsers', () => ({
+	// Gibt ein Options-Objekt heraus wie die echte Komponente, nicht die blosse
+	// Kennung: Genau an dieser Umformung haengt, ob `assignedUserId` ankommt.
+	default: {
+		name: 'NcSelectUsers',
+		props: ['modelValue', 'options'],
+		emits: ['update:modelValue'],
+		template: '<select class="pw-test-person" :value="modelValue?.id ?? \'\'" @change="$emit(\'update:modelValue\', $event.target.value === \'\' ? null : { id: $event.target.value, displayName: $event.target.value, user: $event.target.value })"><option value="" /><option v-for="o in options" :key="o.id" :value="o.id">{{ o.displayName }}</option></select>',
+	},
+}))
+vi.mock('@nextcloud/vue/components/NcCheckboxRadioSwitch', () => ({
+	default: {
+		name: 'NcCheckboxRadioSwitch',
+		props: ['modelValue'],
+		emits: ['update:modelValue'],
+		template: '<label><input type="checkbox" :checked="modelValue" @change="$emit(\'update:modelValue\', $event.target.checked)"><slot /></label>',
 	},
 }))
 
@@ -123,7 +142,7 @@ async function fuelleZeile(
 	await zeile.find('input[type="text"]').setValue(titel)
 
 	if (person !== '') {
-		await zeile.find('select').setValue(person)
+		await zeile.find('.pw-test-person').setValue(person)
 	}
 	if (datum !== '') {
 		await zeile.find('.pw-test-datum').setValue(datum)
@@ -131,10 +150,26 @@ async function fuelleZeile(
 }
 
 /**
+ * Die Bearbeitung einer bestehenden Schrittzeile oeffnen.
+ *
+ * Seit Variante C (#99) stehen Zuweisung und Frist dort als **Text**; die
+ * Felder erscheinen erst auf Klick. Der Weg dorthin ist Teil dessen, was hier
+ * geprueft wird — ein Test, der die Felder direkt anspraeche, liefe an der
+ * Bedienung vorbei.
+ *
+ * @param wrapper Die montierte Komponente.
+ */
+async function oeffneZeile(wrapper: ReturnType<typeof mountList>) {
+	const zeile = wrapper.find('.pw-step:not(.pw-step--new)')
+	await zeile.find('.pw-step__rechts button').trigger('click')
+	await wrapper.vm.$nextTick()
+}
+
+/**
  * @param wrapper Die montierte Komponente.
  */
 async function klickeHinzufuegen(wrapper: ReturnType<typeof mountList>) {
-	await wrapper.findAll('button').find((b) => b.text() === 'Hinzufügen')?.trigger('click')
+	await wrapper.find('.pw-step__neu-plus').trigger('click')
 	await new Promise((resolve) => setTimeout(resolve, 0))
 	await wrapper.vm.$nextTick()
 }
@@ -203,7 +238,7 @@ describe('StepList', () => {
 
 		const zeile = wrapper.find('.pw-step--new')
 		expect((zeile.find('input[type="text"]').element as HTMLInputElement).value).toBe('')
-		expect((zeile.find('select').element as HTMLSelectElement).value).toBe('')
+		expect((zeile.find('.pw-test-person').element as HTMLSelectElement).value).toBe('')
 	})
 
 	/**
@@ -216,6 +251,7 @@ describe('StepList', () => {
 	 */
 	it('schreibt nicht, wenn dasselbe Datum noch einmal gesetzt wird', async () => {
 		const wrapper = mountList([mitFrist('2026-08-11')])
+		await oeffneZeile(wrapper)
 
 		await wrapper.find('.pw-step .pw-test-datum').setValue('2026-08-11')
 		await wrapper.vm.$nextTick()
@@ -232,6 +268,7 @@ describe('StepList', () => {
 	 */
 	it('löscht die Frist, wenn das Feld geleert wird', async () => {
 		const wrapper = mountList([mitFrist('2026-08-11')])
+		await oeffneZeile(wrapper)
 
 		await wrapper.find('.pw-step .pw-test-datum').setValue('')
 		await wrapper.vm.$nextTick()
