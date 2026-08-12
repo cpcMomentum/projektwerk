@@ -64,17 +64,25 @@
 	color: var(--color-text-maxcontrast);
 }
 
-/* ---- Abschnittskopf: 13 px, versal (rw-section > h3) -------------------- */
+/* ---- Abschnittskopf: 13 px, Satzschreibung ------------------------------ */
 
+/*
+ * **Keine Kapitaelchen mehr.** Nextclouds Design-Foundations sagen woertlich:
+ * „Do not use italics or upper case as they are less legible." Der Kopf trug
+ * beides — Versalien und eine Sperrung, die sie noch schwerer lesbar macht.
+ *
+ * Im Vorgang war das mit #99 behoben; hier stand es weiter, weil die Klasse
+ * auch die Spaltenkoepfe des Boards und die Einstellungen traegt und die
+ * Aenderung dort sichtbar ist. Sie ist trotzdem faellig: Eine Regel, die nur
+ * an der zuletzt angefassten Stelle gilt, ist keine.
+ */
 .app-projektwerk .pw-col__head {
 	display: flex;
 	align-items: baseline;
 	gap: 8px;
-	padding: 0 2px 10px;
+	padding: 0 2px 8px;
 	font-size: 13px;
 	font-weight: 600;
-	letter-spacing: 0.04em;
-	text-transform: uppercase;
 	color: var(--color-text-maxcontrast);
 }
 
@@ -1738,10 +1746,8 @@
 }
 
 .app-projektwerk .pw-table thead th {
-	font-size: 12px;
+	font-size: 13px;
 	font-weight: 600;
-	letter-spacing: 0.04em;
-	text-transform: uppercase;
 	color: var(--color-text-maxcontrast);
 	border-bottom: 1px solid var(--color-border-dark);
 }
@@ -1840,10 +1846,8 @@
 
 .app-projektwerk .pw-subnav__group {
 	margin: 8px 0 4px;
-	font-size: 12px;
+	font-size: 13px;
 	font-weight: 600;
-	letter-spacing: 0.04em;
-	text-transform: uppercase;
 	color: var(--color-text-maxcontrast);
 }
 

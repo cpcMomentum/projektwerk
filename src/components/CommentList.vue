@@ -14,7 +14,8 @@
 				:user="comment.authorUserId"
 				:displayName="nameOf(comment.authorUserId)"
 				:size="32"
-				:disableMenu="true" />
+				:disableMenu="true"
+				:hideStatus="true" />
 
 			<div class="pw-comment__body">
 				<header class="pw-comment__head">

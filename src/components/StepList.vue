@@ -64,8 +64,7 @@
 							:displayName="nameOf(step.assignedUserId)"
 							:size="24"
 							:disableMenu="true"
-							:hideStatus="true"
-							:isGuest="roleOf(step.assignedUserId) === 'external'" />
+							:hideStatus="true" />
 						{{ infoFor(step) }}
 					</span>
 					<NcButton
@@ -185,7 +184,6 @@ interface PersonOption {
 	displayName: string
 	user: string
 	subname?: string
-	isGuest?: boolean
 }
 
 /**
@@ -283,8 +281,14 @@ export default defineComponent({
 		/**
 		 * Die Auswahlliste, wie `NcSelectUsers` sie erwartet.
 		 *
-		 * `subname` traegt die Firma, `isGuest` die Kundenkonten — die laden
-		 * ihren Avatar ueber einen anderen Endpunkt.
+		 * `subname` traegt die Firma.
+		 *
+		 * **Ohne `isGuest`.** Die Prop schaltet in `NcAvatar` auf einen anderen
+		 * Bild-Endpunkt, und sie meint den **Kontotyp**. Unsere Rolle
+		 * `external` sagt darueber nichts: „Was die Kundenseite zur Kundenseite
+		 * macht, ist `role = 'external'` in `pwerk_members`, nicht ihr
+		 * Kontotyp." Ein Vollkonto mit Rolle „Kundenseite" laedt sonst vom
+		 * falschen Ort.
 		 */
 		options(): PersonOption[] {
 			return this.assignable.map((userId) => ({
@@ -292,7 +296,6 @@ export default defineComponent({
 				displayName: this.nameOf(userId),
 				user: userId,
 				subname: this.roleOf(userId) === 'internal' ? this.orgInternal : this.orgExternal,
-				isGuest: this.roleOf(userId) === 'external',
 			}))
 		},
 	},

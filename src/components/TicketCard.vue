@@ -53,7 +53,8 @@
 					:user="ticket.responsibleUserId"
 					:displayName="responsibleName"
 					:size="18"
-					:disableMenu="true" />
+					:disableMenu="true"
+					:hideStatus="true" />
 			</span>
 
 			<span class="pw-card__title">{{ ticket.title }}</span>
