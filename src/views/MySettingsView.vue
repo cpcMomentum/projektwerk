@@ -108,8 +108,8 @@
 									</th>
 									<!--
 										Die Markierung sitzt am Kästchen, nicht an der
-										Zeile: Die drei Anlässe sind unabhängig, eine
-										Angabe am Zeilenende wäre für zwei von ihnen
+										Zeile: Die fünf Anlässe sind unabhängig, eine
+										Angabe am Zeilenende wäre für vier von ihnen
 										falsch.
 									-->
 									<td v-for="anlass in anlaesse" :key="anlass.key" class="pw-table__mid">
@@ -162,7 +162,7 @@ import { showError } from '@/services/toast'
  *
  * - **Wie** benachrichtigt wird — E-Mail, Glocke. Nur global; das beantwortet
  *   niemand je Projekt anders.
- * - **Wovon** — die drei Anlässe aus §21. Je Projekt, denn genau hier sitzt das
+ * - **Wovon** — die fünf Anlässe aus §21 und #98. Je Projekt, denn genau hier sitzt das
  *   Rauschen: „Neuer Vorgang im Projekt" ist ein Rundruf und kommt bei zwanzig
  *   Projekten zwanzigmal.
  *
@@ -193,7 +193,7 @@ export default defineComponent({
 		},
 
 		/**
-		 * Die drei Anlässe aus §21 — die Spalten der Tabelle.
+		 * Die fünf Anlässe aus §21 und #98 — die Spalten der Tabelle.
 		 *
 		 * **Kurze Spaltentitel, lange Vorlesebeschriftung.** „Arbeitsschritt mir
 		 * zugewiesen" als Spaltenkopf machte die Tabelle breiter als der Platz,
@@ -277,8 +277,8 @@ export default defineComponent({
 		/**
 		 * Ist **dieses Kästchen** ausdrücklich gesetzt — oder geerbt?
 		 *
-		 * Je Anlass, nicht je Zeile: Die drei sind unabhängig, und eine Angabe
-		 * für alle wäre für zwei von ihnen falsch.
+		 * Je Anlass, nicht je Zeile: Die fünf sind unabhängig, und eine Angabe
+		 * für alle wäre für vier von ihnen falsch.
 		 *
 		 * @param key Ein Anlass.
 		 * @param boardId Projekt.
