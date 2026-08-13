@@ -33,14 +33,14 @@ test.afterAll(async ({ browser }) => {
 })
 
 /**
- * Welches Element ein Klick auf die Mitte dieses Kastens wirklich traefe.
+ * Welches Element ein Klick auf diesen Punkt wirklich traefe.
  *
  * Gibt den Namen des Ziels zurueck, wenn es getroffen wurde, und sonst eine
  * Beschreibung dessen, was stattdessen im Weg stand — damit ein Fehlschlag die
  * Ursache nennt („div.pw-meta") statt nur „Klick ging daneben".
  *
  * @param seite Die Playwright-Seite.
- * @param punkt Der Punkt, der geprueft wird.
+ * @param punkt Der Punkt in Ansichtskoordinaten, der geprueft wird.
  * @param ziel Auswahl dessen, was dort getroffen werden soll.
  * @returns `ziel`, `'nichts'` oder das im Weg stehende Element.
  */
