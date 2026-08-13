@@ -23,6 +23,9 @@ return [
 		// Board ueber den Verbund auf `pwerk_members`. Steht in der
 		// Leak-Matrix wie jede andere Leseroute.
 		['name' => 'task#index', 'url' => '/api/v1/tasks', 'verb' => 'GET'],
+		// Der Einstieg (#76). Wie `task#index` ohne Board im Pfad — die Ansicht
+		// gehoert zu allen Projekten, nicht zu einem.
+		['name' => 'overview#index', 'url' => '/api/v1/overview', 'verb' => 'GET'],
 
 		['name' => 'ticket#index', 'url' => '/api/v1/boards/{boardId}/tickets', 'verb' => 'GET'],
 		['name' => 'ticket#show', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}', 'verb' => 'GET'],

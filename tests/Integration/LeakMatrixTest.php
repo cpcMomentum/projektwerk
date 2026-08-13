@@ -16,6 +16,7 @@ use OCA\Projektwerk\Access\WaitStateCalculator;
 use OCA\Projektwerk\Controller\BoardController;
 use OCA\Projektwerk\Controller\DeepLinkController;
 use OCA\Projektwerk\Controller\MemberSearchController;
+use OCA\Projektwerk\Controller\OverviewController;
 use OCA\Projektwerk\Controller\TaskController;
 use OCA\Projektwerk\Controller\TicketController;
 use OCA\Projektwerk\Db\AttachmentMapper;
@@ -204,6 +205,8 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'TicketMapper::findVisibleInBoard' => 'testEveryViewerSeesExactlyTheirTickets',
 		'TicketMapper::findVisible' => 'testSingleTicketAccessMatchesTheSameSet',
 		'TicketMapper::findVisibleAcrossBoards' => 'testMyTasksNeverWidensBeyondTheVisibleSet',
+		'TicketMapper::findVisibleAcrossBoardsAll' => 'testTheOverviewMapperNeverWidensBeyondTheVisibleSet',
+		'MemberMapper::findForUserBoards' => 'testMemberNamesCoverOnlyMyOwnBoards',
 		'TicketMapper::findVisibleWithMyOpenSteps' => 'testMyStepsNeverWidensBeyondTheVisibleSet',
 		'TicketMapper::findVisibleAnywhere' => 'testDeepLinkLookupMatchesTheVisibleSet',
 		'TicketMapper::countVisibleInBoard' => 'testCountersNeverCountWhatIsHidden',
@@ -243,6 +246,34 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'memberSearch#search' => 'testMemberSearchRefusesEveryoneWithoutManagementRights',
 		'notifyPref#index' => 'testEveryViewerSeesOnlyTheirOwnChannelSwitches',
 		'task#index' => 'testTaskEndpointMatchesTheVisibleSetAcrossBoards',
+		'overview#index' => 'testOverviewEndpointMatchesTheVisibleSetAcrossBoards',
+	];
+
+	/**
+	 * Der Ueberblick (#76) — **alles Sichtbare** ueber alle Boards, nur Offenes.
+	 *
+	 * Die breiteste Menge dieser Matrix und deshalb die wichtigste Zeile: Jede
+	 * andere Leseroute engt zusaetzlich ein (auf ein Board, auf meine Vorgaenge,
+	 * auf meine Schritte). Diese engt **nur** ueber die Sichtbarkeitsregel ein.
+	 * Faellt die Regel aus, faellt sie hier zuerst auf.
+	 *
+	 * Der Unterschied zu {@see VISIBLE} ist genau `public/carla` — geschlossen,
+	 * und der Ueberblick zeigt, wo etwas hakt, nicht was erledigt ist.
+	 *
+	 * **Bert traegt wieder den Kern.** Er ist im ersten Board intern, im zweiten
+	 * extern, und bekommt aus einer Abfrage je Board die dort geltende Menge:
+	 * `b:internal/bert` sieht er nur, weil er *dort* die Kundenseite ist;
+	 * `b:internal/erna` sieht er aus demselben Grund **nicht**. Wer die Rolle
+	 * einmal global aufloest, vertauscht die beiden.
+	 *
+	 * @var array<string, string[]>
+	 */
+	private const OVERVIEW_OPEN = [
+		self::ANNA => ['public/anna', 'public/bert', 'internal/anna', 'internal/bert', 'private/anna'],
+		self::BERT => ['public/anna', 'public/bert', 'internal/anna', 'internal/bert', 'private/bert', 'b:public/erna', 'b:internal/bert'],
+		self::CARLA => ['public/anna', 'public/bert', 'internal/carla', 'private/carla'],
+		self::DIRK => ['public/anna', 'public/bert', 'internal/carla'],
+		self::FREMD => [],
 	];
 
 	private LeakMatrixFixture $fixture;
@@ -721,6 +752,156 @@ class LeakMatrixTest extends IntegrationTestCase {
 		$this->assertSame([], $fremd->getData()['steps']);
 		$this->assertSame([], $fremd->getData()['stepTickets']);
 		$this->assertSame([], $fremd->getData()['boards']);
+	}
+
+	/**
+	 * Der Mapper hinter dem Ueberblick — **dieselbe Erwartung wie am Endpunkt,
+	 * eine Schicht tiefer** (#76).
+	 *
+	 * Beide stehen da, und das ist Absicht: Der Endpunkt koennte nachtraeglich
+	 * filtern und damit einen zu breiten Mapper verdecken. Genau das tut er
+	 * sogar — er laesst archivierte Projekte weg. Die Fixture hat keine, die
+	 * Mengen sind hier also gleich; waere nur der Endpunkt geprueft, liesse
+	 * sich die Regel im Mapper aufweichen, ohne dass ein Test rot wird.
+	 */
+	public function testTheOverviewMapperNeverWidensBeyondTheVisibleSet(): void {
+		$tickets = Server::get(TicketMapper::class);
+
+		foreach (self::OVERVIEW_OPEN as $userId => $expected) {
+			$this->assertTicketLabels(
+				$expected,
+				$tickets->findVisibleAcrossBoardsAll($userId, TaskFilter::openOnly()),
+				$userId . ': Der Ueberblick am Mapper',
+			);
+		}
+	}
+
+	/**
+	 * **Die Namensliste des Ueberblicks deckt nur die eigenen Projekte** (#76).
+	 *
+	 * `findForUserBoards()` liest ueber alle Boards des Betrachters auf einmal —
+	 * noetig, weil die Wartemarke Namen nennt (#104) und ein Aufruf je Board bei
+	 * ueber zwanzig Projekten keine Loesung waere.
+	 *
+	 * Die Gefahr steckt in der Unterabfrage: Faellt sie weg, liefert die Methode
+	 * **jede** Mitgliedschaft der Instanz. Das waeren keine Ticketdaten, aber
+	 * die Mitgliederliste fremder Projekte — namentlich, auf der Startseite.
+	 *
+	 * Anna traegt die Zusicherung: Sie ist nur im ersten Board und darf Erna,
+	 * die es nur im zweiten gibt, nirgends sehen. Bert ist in beiden und
+	 * bekommt beide.
+	 */
+	public function testMemberNamesCoverOnlyMyOwnBoards(): void {
+		$members = Server::get(MemberMapper::class);
+		$erwartet = [
+			self::ANNA => [$this->fixture->boardId],
+			self::BERT => [$this->fixture->boardId, $this->fixture->otherBoardId],
+			self::CARLA => [$this->fixture->boardId],
+			self::DIRK => [$this->fixture->boardId],
+			self::FREMD => [],
+		];
+
+		foreach ($erwartet as $userId => $boards) {
+			$gefunden = $members->findForUserBoards($userId);
+
+			$boardIds = array_values(array_unique(array_map(
+				static fn ($m): int => (int)$m->getBoardId(),
+				$gefunden,
+			)));
+			sort($boardIds);
+			sort($boards);
+
+			$this->assertSame($boards, $boardIds, $userId . ': fremde Projekte in der Namensliste');
+
+			// Und die Gegenprobe zur Gegenprobe: Wer Boards hat, bekommt auch
+			// Mitglieder. Ohne sie waere eine Methode, die immer nichts
+			// liefert, dauerhaft gruen.
+			if ($boards !== []) {
+				$this->assertNotEmpty($gefunden, $userId . ': keine Mitglieder trotz eigener Projekte');
+			}
+		}
+
+		// Anna sieht Erna nicht — namentlich benannt, damit ein Fehlschlag die
+		// Ursache nennt statt einer ID-Liste.
+		$annasLeute = array_map(
+			static fn ($m): string => (string)$m->getUserId(),
+			$members->findForUserBoards(self::ANNA),
+		);
+		$this->assertNotContains(
+			LeakMatrixFixture::ERNA,
+			$annasLeute,
+			'Anna bekommt ein Mitglied aus Ernas Zweitboard in ihre Namensliste.',
+		);
+	}
+
+	/**
+	 * Der Ueberblick (#76) — **die breiteste Menge dieser Matrix**.
+	 *
+	 * Jede andere Leseroute engt zusaetzlich ein: auf ein Board, auf meine
+	 * Vorgaenge, auf meine Schritte. Diese engt allein ueber die
+	 * Sichtbarkeitsregel ein — sie ist damit die Route, an der ein Ausfall der
+	 * Regel als Erstes und am deutlichsten sichtbar wuerde. Und sie ist die
+	 * **Startseite**: Was hier durchscheint, sieht man, ohne etwas anzuklicken.
+	 *
+	 * Drei Zusicherungen, von denen die letzten beiden neu sind:
+	 *
+	 * 1. **Die Ticketmenge** ist ausgeschrieben, nicht als Teilmenge geprueft.
+	 * 2. **Kein Wartezustand ohne seinen Vorgang.** Der Wartezustand nennt
+	 *    Kennungen von Personen und ein Datum; stuende er zu einem Vorgang da,
+	 *    den der Betrachter nicht sehen darf, waere das die Auskunft, dass es
+	 *    ihn gibt — und wer daran arbeitet.
+	 * 3. **Die Namen decken nur die eigenen Projekte.** `namesForUserBoards()`
+	 *    ist mit #76 dazugekommen und liest ueber alle Boards des Betrachters
+	 *    auf einmal. Eine Zuordnung, die ein fremdes Projekt mitbringt,
+	 *    verriete dessen Mitglieder — namentlich. Anna darf Ernas Zweitboard
+	 *    nicht in ihrer Namensliste haben, Bert schon.
+	 */
+	public function testOverviewEndpointMatchesTheVisibleSetAcrossBoards(): void {
+		foreach ([self::ANNA, self::BERT, self::CARLA, self::DIRK] as $userId) {
+			$response = $this->overviewController($userId)->index();
+			$this->assertSame(Http::STATUS_OK, $response->getStatus(), $userId);
+
+			$data = $response->getData();
+
+			$this->assertTicketLabels(
+				self::OVERVIEW_OPEN[$userId],
+				$data['tickets'],
+				$userId . ': Der Ueberblick am Endpunkt',
+			);
+
+			// (2) Jeder Wartezustand gehoert zu einem gelieferten Vorgang.
+			$geliefert = array_map(static fn ($t): int => (int)$t->getId(), $data['tickets']);
+			foreach (array_keys($data['waiting']) as $ticketId) {
+				$this->assertContains(
+					(int)$ticketId,
+					$geliefert,
+					$userId . ': Ein Wartezustand ohne seinen Vorgang — das verraet dessen Existenz.',
+				);
+			}
+
+			// (3) Die Namen decken genau die eigenen Projekte.
+			$this->assertSame(
+				self::TASK_BOARDS[$userId],
+				array_values(array_map(static fn ($b): string => $b['title'], $data['boards'])),
+				$userId . ': Ein fremdes Board in der Herkunftszeile.',
+			);
+			$this->assertSame(
+				array_keys($data['boards']),
+				array_keys($data['names']),
+				$userId . ': Die Namensliste deckt andere Projekte als die Herkunftszeile — '
+				. 'eines von beidem liefert ein fremdes Projekt mit.',
+			);
+		}
+
+		// Und das Nichtmitglied: leere Listen, kein 404 — wie bei `task#index`
+		// und aus demselben Grund. Diese Route haengt an keinem Board, sie kann
+		// nichts verbergen, was es zu verbergen gaebe.
+		$fremd = $this->overviewController(self::FREMD)->index();
+		$this->assertSame(Http::STATUS_OK, $fremd->getStatus());
+		$this->assertSame([], $fremd->getData()['tickets']);
+		$this->assertSame([], $fremd->getData()['waiting']);
+		$this->assertSame([], $fremd->getData()['boards']);
+		$this->assertSame([], $fremd->getData()['names']);
 	}
 
 	/**
@@ -1523,6 +1704,18 @@ class LeakMatrixTest extends IntegrationTestCase {
 			Server::get(TicketMapper::class),
 			Server::get(StepMapper::class),
 			Server::get(BoardMapper::class),
+			$userId,
+		);
+	}
+
+	private function overviewController(string $userId): OverviewController {
+		return new OverviewController(
+			$this->createStub(IRequest::class),
+			Server::get(TicketMapper::class),
+			Server::get(StepMapper::class),
+			Server::get(BoardMapper::class),
+			Server::get(WaitStateCalculator::class),
+			Server::get(MemberService::class),
 			$userId,
 		);
 	}

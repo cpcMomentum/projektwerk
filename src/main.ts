@@ -36,7 +36,10 @@ function applyDeepLink(): void {
 	// Projekt. Sie zu unterscheiden hieße zu beantworten, was die
 	// Sichtbarkeitsregel verbirgt, und zwar auf Zuruf einer Zahl im Link.
 	showError(t('projektwerk', 'Dieser Vorgang steht Ihnen nicht zur Verfügung. Fragen Sie die Projektleitung, falls Sie ihn erwartet haben.'))
-	router.replace({ name: 'boards' })
+	// **Auf den Einstieg, nicht auf die Projektliste** (#76). Wer einem Link
+	// gefolgt ist, der ins Leere fuehrt, soll dort landen, wo die App anfaengt —
+	// seit dem 2026-08-13 ist das der Ueberblick.
+	router.replace({ name: 'overview' })
 }
 
 document.addEventListener('DOMContentLoaded', () => {

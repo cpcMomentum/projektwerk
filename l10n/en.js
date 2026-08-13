@@ -223,6 +223,16 @@ OC.L10N.register(
     "Hintergrundaufträge laufen im Modus „%s\" statt „cron\". ProjektWerk verschickt Benachrichtigungen aus einem zeitgesteuerten Auftrag. Im Modus „ajax\" läuft dieser nur, wenn jemand eine Seite dieser Instanz öffnet — die Empfänger sind aber überwiegend Kunden, die genau das selten tun. Umstellen mit: occ background:cron" : "Background jobs run in \"%s\" mode instead of \"cron\". ProjektWerk sends notifications from a scheduled job. In \"ajax\" mode that job only runs when someone opens a page of this instance — but the recipients are mostly customers, who rarely do. Switch with: occ background:cron",
     "„overwrite.cli.url\" ist nicht gesetzt. Links in E-Mails an Kunden entstehen aus diesem Wert und wären unbrauchbar. In config.php auf die von außen erreichbare Adresse setzen." : "\"overwrite.cli.url\" is not set. Links in emails to customers are built from this value and would be unusable. Set it in config.php to the address reachable from outside.",
     "„overwrite.cli.url\" zeigt auf „%s\". Links in E-Mails an Kunden entstehen aus diesem Wert und führen damit ins Leere — Versand und Zustellung melden trotzdem Erfolg. In config.php auf die von außen erreichbare Adresse setzen." : "\"overwrite.cli.url\" points to \"%s\". Links in emails to customers are built from this value and therefore lead nowhere — sending and delivery still report success. Set it in config.php to the address reachable from outside.",
-    "„mail_smtptimeout\" steht auf %1$s Sekunden (ohne Eintrag gilt Nextclouds Vorgabe von 10). Antwortet der Mailserver nicht, hängt diese Zeit im Schreibvorgang der Person, die gerade ein Ticket anlegt. Gemessen funktionsfähig sind %2$s Sekunden." : "\"mail_smtptimeout\" is set to %1$s seconds (without an entry Nextcloud's default of 10 applies). If the mail server does not answer, that time hangs in the save operation of whoever is creating a ticket right now. %2$s seconds is measured to work."
+    "„mail_smtptimeout\" steht auf %1$s Sekunden (ohne Eintrag gilt Nextclouds Vorgabe von 10). Antwortet der Mailserver nicht, hängt diese Zeit im Schreibvorgang der Person, die gerade ein Ticket anlegt. Gemessen funktionsfähig sind %2$s Sekunden." : "\"mail_smtptimeout\" is set to %1$s seconds (without an entry Nextcloud's default of 10 applies). If the mail server does not answer, that time hangs in the save operation of whoever is creating a ticket right now. %2$s seconds is measured to work.",
+    "Überblick" : "Overview",
+    "Der Überblick konnte nicht geladen werden" : "The overview could not be loaded",
+    "Zurzeit hakt nichts." : "Nothing is stuck right now.",
+    "Hier steht, was bei der Kundenseite liegt und in welchen Projekten sich etwas bewegt. Solange alle Vorgänge erledigt sind, bleibt die Seite leer." : "This is where you see what is sitting with the client side and which projects have activity. As long as every ticket is done, the page stays empty.",
+    "Wartet auf die Kundenseite" : "Waiting on the client side",
+    "Projekte mit Bewegung" : "Projects with activity",
+    "seit heute" : "since today",
+    "_seit %n Tag_::_seit %n Tagen_" : ["for %n day", "for %n days"],
+    "_%n offen_::_%n offen_" : ["%n open", "%n open"],
+    "_%n wartet_::_%n warten_" : ["%n waiting", "%n waiting"]
 },
 "nplurals=2; plural=(n != 1);");
