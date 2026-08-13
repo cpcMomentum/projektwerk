@@ -175,6 +175,24 @@ export class Api {
 	}
 
 	/**
+	 * Einen Arbeitsschritt anlegen, wahlweise jemandem zugewiesen.
+	 *
+	 * Die Zuweisung ist der einzige Weg, den Zustand „wartet auf Kunde"
+	 * entstehen zu lassen — er ist berechnet und nicht setzbar (§9).
+	 *
+	 * @param boardId Kennung des Projekts.
+	 * @param ticketId Kennung des Vorgangs.
+	 * @param title Text des Schritts.
+	 * @param assignedUserId Wem er gehoert, sonst niemandem.
+	 */
+	schrittAnlegen(boardId: number, ticketId: number, title: string, assignedUserId?: string): Promise<any> {
+		return this.schreiben('post', `/api/v1/boards/${boardId}/tickets/${ticketId}/steps`, {
+			title,
+			...(assignedUserId === undefined ? {} : { assignedUserId }),
+		})
+	}
+
+	/**
 	 * Aufraeumen heisst archivieren, nicht loeschen.
 	 *
 	 * Es gibt bewusst keine Route zum Loeschen eines Boards — §5.18 sagt „sie

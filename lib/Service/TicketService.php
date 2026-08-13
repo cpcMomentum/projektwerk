@@ -303,55 +303,6 @@ class TicketService {
 	}
 
 	/**
-	 * Wer verliert den Zugriff, wenn die Sichtbarkeit auf `$visibility` geht?
-	 *
-	 * Für den Rückfragedialog aus §9, der **konkrete Zahlen und Namen** nennen
-	 * soll statt einer allgemeinen Warnung — „Folgende Personen verlieren den
-	 * Zugriff auf dieses Ticket, seine 4 Kommentare und 2 Anhänge: …".
-	 *
-	 * **Diese Rechnung gehört auf den Server**, obwohl das Frontend die
-	 * Mitgliederliste ohnehin hat. Sie im Browser zu machen hieße, die
-	 * Sichtbarkeitsregel ein zweites Mal umzusetzen — genau das, wogegen die
-	 * ganze Bauform gerichtet ist. Sie läuft deshalb über
-	 * {@see TicketScope::wouldSee()}, das unmittelbar neben dem JOIN steht und
-	 * von der Leak-Matrix gegen ihn geprüft wird.
-	 *
-	 * @return array{losing: string[], comments: int, attachments: int}
-	 * @throws DoesNotExistException Ticket nicht sichtbar
-	 */
-	public function visibilityImpact(ViewerContext $viewer, int $ticketId, string $visibility): array {
-		$this->assertKnownVisibility($visibility);
-
-		$ticket = $this->tickets->findVisible($viewer, $ticketId);
-		$creator = (string)$ticket->getCreatorUserId();
-		$creatorRole = (string)$ticket->getCreatorRole();
-
-		$losing = [];
-		foreach ($this->members->findForBoard($viewer) as $member) {
-			$userId = (string)$member->getUserId();
-			$role = (string)$member->getRole();
-
-			$now = $this->scope->wouldSee((string)$ticket->getVisibility(), $creator, $creatorRole, $userId, $role);
-			$after = $this->scope->wouldSee($visibility, $creator, $creatorRole, $userId, $role);
-
-			if ($now && !$after) {
-				$losing[] = $userId;
-			}
-		}
-
-		$ids = [$ticketId];
-
-		return [
-			'losing' => $losing,
-			// Über die gefilterte Einermenge, wie überall: Es gibt keinen Weg,
-			// „die Kommentare zu Ticket 42" zu zählen, der nicht durch die
-			// Sichtbarkeit geht.
-			'comments' => $this->comments->countForTickets($ids)[$ticketId] ?? 0,
-			'attachments' => $this->attachments->countForTickets($ids)[$ticketId] ?? 0,
-		];
-	}
-
-	/**
 	 * Die Sichtbarkeit ändern — die einzige Schreibregel, die §7 formuliert.
 	 *
 	 * Zwei Sätze, wörtlich: „Ändern darf die Sichtbarkeit nur die Seite, der das

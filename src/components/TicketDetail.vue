@@ -58,7 +58,6 @@
 						<VisibilityControl
 							:ticket="ticket"
 							:viewer="viewer"
-							:members="members"
 							:showChip="showVisibility"
 							@changed="$emit('changed', $event)" />
 					</div>
@@ -67,16 +66,23 @@
 						{{ ticket.title }}
 					</h2>
 
-					<!-- Die Marke steht ueber dem Titel (§9), hier als ganze Zeile. -->
-					<WaitBadge :state="waiting" :fromClientSide="fromClientSide" />
-
 					<!--
-						Im Detail als Satz mit Namen, nicht nur als Marke: Wer wartet,
-						ist hier die eigentliche Auskunft.
+						Die Marke steht ueber dem Titel (§9), hier als ganze Zeile.
+
+						**`:names` ist der eigentliche Fehler aus #104.** Ohne die
+						Zuordnung faellt `WaitBadge` auf die rohe Kennung zurueck und
+						schrieb „wartet auf pw-carla, pw-dirk". Auf der Karte fiel es
+						nicht auf, weil die kompakte Fassung Avatare zeigt und den Satz
+						nur im `title` fuehrt; im Vorgang stand er sichtbar da.
+
+						**Der Satz darunter ist entfallen** (Variante A, Axel
+						2026-08-13). Er sagte dasselbe ein zweites Mal — einmal kaputt,
+						einmal richtig. Die Marke ist die informativere von beiden: Sie
+						traegt die Uhr als einziges farbiges Zeichen, das Datum, und mit
+						#72 wird dieselbe Uhr rot. Welcher Seite die Person angehoert,
+						beantwortet der Personen-Block zwei Zeilen weiter.
 					-->
-					<p v-if="waitingSentence" class="pw-wait__sentence">
-						{{ waitingSentence }}
-					</p>
+					<WaitBadge :state="waiting" :fromClientSide="fromClientSide" :names="memberNames" />
 				</header>
 
 				<!--
@@ -446,25 +452,14 @@ export default defineComponent({
 		},
 
 		/**
-		 * Der Satz mit Namen, den §9 im Detail verlangt.
+		 * Kennung auf Anzeigenamen, wie `WaitBadge` sie erwartet.
 		 *
-		 * Aus den Kennungen, die der Server geliefert hat — die Rechnung selbst
-		 * bleibt dort. Hier werden nur Namen eingesetzt.
+		 * **Der Server löst die Namen auf** (`resolvedName`) — im Browser
+		 * nachzuschlagen bliebe ausgerechnet beim Gast stumm. Hier wird die
+		 * Mitgliederliste nur in die Form gebracht, die die Marke liest.
 		 */
-		waitingSentence(): string {
-			const namen = (this.waiting?.userIds ?? []).map((userId) => this.nameOf(userId))
-			if (namen.length === 0) {
-				return ''
-			}
-
-			const liste = namen.join(', ')
-
-			// Aus Kundensicht ist „wartet auf" schief — sie sind die Wartenden.
-			// „Liegt bei" sagt dasselbe aus ihrer Lage heraus und nennt, wer
-			// von ihnen gemeint ist.
-			return this.fromClientSide
-				? t('projektwerk', 'Dieser Vorgang liegt bei: {names}', { names: liste })
-				: t('projektwerk', 'Dieser Vorgang wartet auf die Kundenseite: {names}', { names: liste })
+		memberNames(): Record<string, string> {
+			return Object.fromEntries(this.members.map((m) => [m.userId, m.resolvedName ?? m.userId]))
 		},
 
 	},

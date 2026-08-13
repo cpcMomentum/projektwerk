@@ -135,10 +135,16 @@ test('verweigert den Sichtbarkeitswechsel, solange Anhaenge haengen', async ({ p
 	// Hintergrund und in einem Aktionsmenue.
 	await stufeWaehlen(page, 'Intern')
 
-	// Die Absage steht **vor** der Bestaetigung: `visibility-impact` liefert die
-	// Zahl mit, und eine Warnung zu bestaetigen, die ohnehin abgewiesen wuerde,
-	// waere ein Handgriff ohne Wirkung.
+	// **Die Absage kommt seit #103 vom Server**, nicht aus einer Vorabpruefung:
+	// `visibility-impact` ist mit der Rueckfrage aufgegeben. Der Wechsel wird
+	// versucht, der Server weist ihn mit 409 ab und legt die Zahl bei — und die
+	// Oberflaeche spricht ihren eigenen, gebeugten Satz.
+	//
+	// Genau hier haengt die Unterscheidung der beiden 409er: Liest die
+	// Oberflaeche das Feld `attachments` nicht, stuende an dieser Stelle „Der
+	// Vorgang wurde zwischenzeitlich geaendert. Bitte neu laden."
 	await expect(page.getByText(/zuerst vom Vorgang lösen/)).toBeVisible({ timeout: 15_000 })
+	await expect(page.getByText(/zwischenzeitlich geändert/)).toHaveCount(0)
 	await expect(page.getByRole('button', { name: 'Sichtbarkeit ändern' })).toHaveCount(0)
 
 	// Und der Vorgang steht unveraendert da: Ein abgewiesener Versuch darf nichts

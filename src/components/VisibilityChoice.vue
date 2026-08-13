@@ -42,20 +42,28 @@
 			Mal waehlt. Im geoeffneten Vorgang nennt die Beschriftung des
 			markierten Segments das Publikum bereits.
 		-->
-		<template v-if="!hideHints">
-			<p class="pw-vishint">
-				{{ selectedHint }}
-			</p>
+		<p v-if="!hideHints" class="pw-vishint">
+			{{ selectedHint }}
+		</p>
 
-			<!--
-				Warum eine Stufe fehlt, muss **sichtbar** dastehen. Frueher trug der
-				gesperrte Knopf den Grund im Text; als `title` allein waere er auf dem
-				Telefon unerreichbar, weil es dort kein Ueberfahren gibt.
-			-->
-			<p v-if="blockedReason !== ''" class="pw-vishint pw-vishint--blocked">
-				{{ blockedReason }}
-			</p>
-		</template>
+		<!--
+			Warum eine Stufe fehlt, muss **sichtbar** dastehen. Frueher trug der
+			gesperrte Knopf den Grund im Text; als `title` allein waere er auf dem
+			Telefon unerreichbar, weil es dort kein Ueberfahren gibt.
+
+			**Und deshalb haengt er nicht mehr an `hideHints`** (#103). Bis dahin
+			lag er mit dem Erklaersatz im selben Zweig und war im Vorgang damit
+			nie zu sehen: Dort stand „Nur ich" grau da, ohne ein Wort dazu, warum.
+			Der Satz oben nahm das schon fuer sich in Anspruch — die Regel stand
+			im Kommentar und war seit #99 ausser Kraft.
+
+			Der Unterschied ist der Grund: Der Erklaersatz sagt, was eine Stufe
+			bedeutet, und das sagt die Beschriftung im Vorgang bereits. Warum eine
+			Stufe **nicht waehlbar** ist, sagt sie nicht.
+		-->
+		<p v-if="blockedReason !== ''" class="pw-vishint pw-vishint--blocked">
+			{{ blockedReason }}
+		</p>
 	</div>
 </template>
 
