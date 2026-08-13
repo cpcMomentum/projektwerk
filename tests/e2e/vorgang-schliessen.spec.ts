@@ -40,7 +40,7 @@ test.afterAll(async ({ browser }) => {
  * Ursache nennt („div.pw-meta") statt nur „Klick ging daneben".
  *
  * @param seite Die Playwright-Seite.
- * @param was Das Element, dessen Mitte geprueft wird.
+ * @param punkt Der Punkt, der geprueft wird.
  * @param ziel Auswahl dessen, was dort getroffen werden soll.
  * @returns `ziel`, `'nichts'` oder das im Weg stehende Element.
  */
