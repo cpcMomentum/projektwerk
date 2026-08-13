@@ -90,8 +90,9 @@ import PencilIcon from 'vue-material-design-icons/Pencil.vue'
  *
  * Die Reihenfolge ist **zu → offen** (`private` → `internal` → `public`): Von
  * links nach rechts wird der Kreis größer, und genau so liest man eine Zeile.
- * Sie ist aber **Anzeige, keine Rangfolge im Code** — ob ein Wechsel jemandem
- * den Zugriff nimmt, beantwortet allein der Server über `visibility-impact`.
+ * Sie ist aber **Anzeige, keine Rangfolge im Code** — ob ein Wechsel geht,
+ * entscheidet allein der Server, der jeden Versuch direkt annimmt oder abweist
+ * (seit #103, ohne den Umweg über `visibility-impact`).
  *
  * Der Unterschied ist der ganze Punkt und darf nicht verwischen: Wer aus der
  * sichtbaren Reihenfolge ein `if (neuerIndex < alterIndex)` ableitet, hat die

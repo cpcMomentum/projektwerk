@@ -14,7 +14,6 @@ use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Db\AttachmentMapper;
 use OCA\Projektwerk\Db\BoardMapper;
 use OCA\Projektwerk\Db\ColumnMapper;
-use OCA\Projektwerk\Db\CommentMapper;
 use OCA\Projektwerk\Db\MailOutbox;
 use OCA\Projektwerk\Db\MemberMapper;
 use OCA\Projektwerk\Db\Ticket;
@@ -47,7 +46,6 @@ class TicketService {
 		private BoardMapper $boards,
 		private ColumnMapper $columns,
 		private MemberMapper $members,
-		private CommentMapper $comments,
 		private AttachmentMapper $attachments,
 		private TicketScope $scope,
 		private PositionService $positions,
