@@ -658,11 +658,33 @@
  * Der Kopfbereich klebt: Nummer, Titel und Sichtbarkeit bleiben stehen, waehrend
  * man durch lange Kommentare faehrt. Scroll-Container ist NcModals
  * `.modal-container__content`.
+ *
+ * **`z-index: 1` und nicht 2** (#103). Auf 2 deckte die Zeile den
+ * Schliessen-Knopf von `NcModal` ab — der liegt auf 1, haengt an der Karte statt
+ * am scrollenden Inhalt, und keiner der beiden Kaesten dazwischen bildet einen
+ * eigenen Stapelkontext. Ein Klick auf die Mitte des X landete auf `.pw-meta`:
+ * Der Knopf war nicht teilweise verdeckt, sondern gar nicht erreichbar. Das
+ * `padding-inline-end` an `.pw-meta` haelt die Ecke nur **optisch** frei.
+ *
+ * Auf 1 steht die Zeile gleichauf mit dem Knopf — und der gewinnt, weil er im
+ * DOM **nach** `.modal-container__content` steht. Ueber `.pw-beschreibung`
+ * bleibt die Zeile trotzdem: Die ist `position: relative` ohne `z-index`, also
+ * Stufe 0.
+ *
+ * **Nicht 0.** Dann faellt die Zeile auf dieselbe Stufe wie `.pw-beschreibung`,
+ * und weil die im DOM spaeter steht, liefe ihr Text beim Scrollen ueber die
+ * klebende Zeile.
+ *
+ * **Nicht ueber `pointer-events`.** Den Kopf durchlaessig zu machen holt die
+ * Ecke zurueck, macht aber die ganze Zeile durchlaessig: Gemessen wurden 70
+ * Punkte innerhalb der Kopfzeile, an denen ein unter ihr weggescrollter
+ * `button.pw-abschnitt__aktion` anklickbar wurde — dieselbe Fehlerklasse, nur
+ * andersherum.
  */
 .app-projektwerk .pw-kopf {
 	position: sticky;
 	top: 0;
-	z-index: 2;
+	z-index: 1;
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
