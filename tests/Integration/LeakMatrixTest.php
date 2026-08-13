@@ -238,7 +238,6 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'board#show' => 'testBoardShowEndpointRefusesNonMembers',
 		'ticket#index' => 'testTicketIndexEndpointMatchesTheVisibleSet',
 		'ticket#show' => 'testTicketShowEndpointMatchesTheVisibleSet',
-		'ticket#visibilityImpact' => 'testVisibilityImpactNamesWhoLosesAccess',
 		'deepLink#ticket' => 'testDeepLinkTellsOnlyWhatTheViewerMaySee',
 		'step#assignable' => 'testAssignableNeverOffersSomeoneWhoCannotSeeTheTicket',
 		'memberSearch#search' => 'testMemberSearchRefusesEveryoneWithoutManagementRights',
@@ -1160,11 +1159,14 @@ class LeakMatrixTest extends IntegrationTestCase {
 	 * registrierten** — Board-, Einzel-, Deep-Link- und projektuebergreifende
 	 * Abfrage plus die Zaehler.
 	 *
-	 * Er prueft ausserdem die beiden Wege, die `wouldSee()` benutzen
-	 * (Herunterstufen-Dialog und Schrittzuweisung). Dort steht **keine** eigene
-	 * Loeschpruefung, und das ist Absicht: Beide bekommen ihr Ticket aus einer
-	 * bereits gefilterten Abfrage. Dieser Test belegt, dass die Annahme traegt —
-	 * ohne ihn waere sie bloss eine Behauptung im Kommentar.
+	 * Er prueft ausserdem den Weg, der `wouldSee()` benutzt (Schrittzuweisung).
+	 * Dort steht **keine** eigene Loeschpruefung, und das ist Absicht: Er
+	 * bekommt sein Ticket aus einer bereits gefilterten Abfrage. Dieser Test
+	 * belegt, dass die Annahme traegt — ohne ihn waere sie bloss eine
+	 * Behauptung im Kommentar.
+	 *
+	 * Bis #103 stand hier ein zweiter solcher Weg, der Herunterstufen-Dialog
+	 * (`visibilityImpact`). Er ist mit der Rueckfrage aufgegeben.
 	 */
 	public function testADeletedTicketLeavesEveryReadPath(): void {
 		$tickets = Server::get(TicketMapper::class);
@@ -1199,7 +1201,6 @@ class LeakMatrixTest extends IntegrationTestCase {
 			foreach ([
 				fn (): mixed => $tickets->findVisible($kontext, $ticketId),
 				fn (): mixed => $tickets->findVisibleAnywhere($userId, $ticketId),
-				fn (): mixed => $service->visibilityImpact($kontext, $ticketId, TicketScope::VISIBILITY_INTERNAL),
 				fn (): mixed => $steps->assignableFor($kontext, $ticketId),
 			] as $index => $pfad) {
 				try {
@@ -1422,43 +1423,39 @@ class LeakMatrixTest extends IntegrationTestCase {
 	}
 
 	/**
-	 * Was ein Herunterstufen kostet: Namen und Zahlen, keine Warnung.
+	 * **Die Anhaenge-Absage nennt ihre Zahl im Rumpf** (§3.10 Stufe 1).
 	 *
-	 * Ueber den Controller, nicht den Service direkt — sonst bliebe die
-	 * eigentliche Route (Parameterbindung, Fehlerabbildung auf HTTP-Status)
-	 * ungeprueft, obwohl {@see ReadPathRegistry::ROUTE_PATHS} sie als
-	 * gefahren fuehrt.
+	 * Steht hier als Ersatz fuer `testVisibilityImpactNamesWhoLosesAccess`, das
+	 * mit `visibility-impact` weggefallen ist (#103). Der Lesepfad, der die
+	 * Anhaenge vorab zaehlte, ist aufgegeben — die Oberflaeche erfaehrt den Fall
+	 * seither allein aus dieser Antwort.
+	 *
+	 * **Geprueft wird die Form, nicht nur die Ablehnung.** Der Server
+	 * beantwortet zwei verschiedene Faelle mit 409: den Versionskonflikt und
+	 * diesen. Wer sie unterscheiden will, hat nur das Feld `attachments` — faellt
+	 * es weg, meldet die Oberflaeche der Person mit Anhaengen „bitte neu laden",
+	 * und Neuladen hilft nichts. `TicketWritePathTest` prueft die Ausnahme am
+	 * Dienst; hier steht, was ueber die Leitung geht.
 	 */
-	public function testVisibilityImpactNamesWhoLosesAccess(): void {
+	public function testTheAttachmentRefusalCarriesItsCountOverTheWire(): void {
 		$controller = $this->ticketController(self::ANNA);
 		$boardId = $this->fixture->boardId;
 		$publicAnna = $this->fixture->ticketIds['public/anna'];
 
-		// public/anna sehen alle vier. Auf 'internal' verlieren die beiden
-		// Externen den Zugriff, auf 'private' zusaetzlich Bert.
-		$response = $controller->visibilityImpact($boardId, $publicAnna, 'internal');
-		$this->assertSame(Http::STATUS_OK, $response->getStatus());
-		$internal = $response->getData();
-		sort($internal['losing']);
-		$this->assertSame([self::CARLA, self::DIRK], $internal['losing']);
-		$this->assertSame(1, $internal['comments'], 'Jedes Ticket der Fixture hat genau einen Kommentar.');
-		$this->assertSame(1, $internal['attachments']);
+		// Die Fixture haengt genau einen Anhang an dieses Ticket.
+		$response = $controller->visibility($boardId, $publicAnna, 1, 'internal');
 
-		$private = $controller->visibilityImpact($boardId, $publicAnna, 'private')->getData();
-		sort($private['losing']);
-		$this->assertSame([self::BERT, self::CARLA, self::DIRK], $private['losing']);
+		$this->assertSame(Http::STATUS_CONFLICT, $response->getStatus());
+		$daten = $response->getData();
+		$this->assertArrayHasKey('attachments', $daten, 'Ohne die Zahl ist die Absage vom Versionskonflikt nicht zu trennen.');
+		$this->assertSame(1, $daten['attachments']);
+		$this->assertNotSame('', (string)($daten['error'] ?? ''));
 
-		// Hochstufen nimmt niemandem etwas.
-		$public = $controller->visibilityImpact($boardId, $this->fixture->ticketIds['private/anna'], 'public')->getData();
-		$this->assertSame([], $public['losing']);
-
-		// Ein unbekannter Wert ist eine 400, kein durchgereichter Serverfehler.
-		$badRequest = $controller->visibilityImpact($boardId, $publicAnna, 'gestohlen');
-		$this->assertSame(Http::STATUS_BAD_REQUEST, $badRequest->getStatus());
-
-		// Das Nichtmitglied bekommt 404 wie an jedem anderen Lesepfad.
-		$fremdResponse = $this->ticketController(self::FREMD)->visibilityImpact($boardId, $publicAnna, 'internal');
-		$this->assertSame(Http::STATUS_NOT_FOUND, $fremdResponse->getStatus());
+		// Und der Vorgang steht unveraendert da.
+		$this->assertSame(
+			TicketScope::VISIBILITY_PUBLIC,
+			Server::get(TicketMapper::class)->findVisible($this->contextFor(self::ANNA), $publicAnna)->getVisibility(),
+		);
 	}
 
 	/**

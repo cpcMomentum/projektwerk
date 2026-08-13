@@ -138,7 +138,6 @@ final class ReadPathRegistry {
 		'task#index',
 		'ticket#index',
 		'ticket#show',
-		'ticket#visibilityImpact',
 		// Liefert zwar nur die Vue-Huelle, aber der Initial State darin
 		// beantwortet die Frage „darfst du diesen Vorgang sehen" — und damit
 		// gehoert die Route in die Matrix und nicht unter ROUTES_WITHOUT_DATA.

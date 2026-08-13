@@ -99,3 +99,46 @@ test('die Fusszeile der Karte bleibt einzeilig', async ({ page }) => {
 		expect(hoehe, `Fusszeile ist ${hoehe} px hoch — das sind zwei Zeilen`).toBeLessThanOrEqual(26)
 	}
 })
+
+/**
+ * **Der Sichtbarkeitsschalter bleibt einzeilig und damit 34 px hoch** (#103).
+ *
+ * Dieselbe Klasse Fehler wie bei der Fusszeile oben, nur im Vorgang: „Alle
+ * Beteiligten" brach bei knappem Platz um, das Segment wurde dadurch hoeher als
+ * seine Nachbarn, und die Gruppe rutschte unter die Nummer statt rechtsbuendig
+ * zu stehen.
+ *
+ * **34 px ist keine Geschmacksfrage**, sondern `--default-clickable-area` — die
+ * dokumentierte Untergrenze fuer Anklickbares. Gemessen wurde am 2026-08-13:
+ * ohne `white-space: nowrap` sind es 43 px, mit 34, und zwar bei **jeder**
+ * Breite. Die Vermutung in #103, `NcFormBox` bemesse zu gross und tiefer ginge
+ * es nur ueber ein drittes Eingreifen in fremde CSS-Module, war falsch — es war
+ * allein der Umbruch.
+ *
+ * Der Wert wird zur Laufzeit gelesen und nicht als 34 hartkodiert: Nextcloud
+ * darf ihn aendern, und ein Test, der eine fremde Konstante nachschreibt, meldet
+ * dann einen Fehler, der keiner ist.
+ */
+test('der Sichtbarkeitsschalter im Vorgang bleibt einzeilig', async ({ page }) => {
+	await page.goto(`${APP_PFAD}#/boards/${projekt.boardId}`)
+	await expect(page.getByText(LANGER_TITEL)).toBeVisible({ timeout: 30_000 })
+	await page.getByText(LANGER_TITEL).click()
+
+	const schalter = page.locator('.pw-vischoice')
+	await expect(schalter).toBeVisible()
+
+	const gemessen = await page.evaluate(() => {
+		const soll = getComputedStyle(document.documentElement).getPropertyValue('--default-clickable-area').trim()
+
+		return {
+			hoehe: document.querySelector('.pw-vischoice')!.getBoundingClientRect().height,
+			soll: Number.parseFloat(soll) || 34,
+		}
+	})
+
+	// Ein Pixel Luft gegen Unterpixel-Layout, wie bei den Karten oben.
+	expect(
+		gemessen.hoehe,
+		`Der Schalter ist ${gemessen.hoehe} px hoch statt ${gemessen.soll} — die Beschriftung bricht um`,
+	).toBeLessThanOrEqual(gemessen.soll + 1)
+})

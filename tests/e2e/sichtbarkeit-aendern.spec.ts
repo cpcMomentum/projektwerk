@@ -59,28 +59,14 @@ test('ein freigegebener Vorgang kommt bei der Kundenseite an', async ({ browser 
 		// Stufennamen als Marke.
 		await stufeWaehlen(seite, 'Alle Beteiligten')
 
-		// Die Rueckfrage erscheint nur, wenn jemand Zugriff *verliert*. Beim
-		// Hochstufen verliert niemand etwas, also darf sie ausbleiben — der
-		// Test darf daran nicht haengen, aber auch nicht daran vorbeilaufen.
+		// **Kein Zwischenschritt mehr** (#103). Bis dahin stand hier eine
+		// Verzweigung: Rueckfrage abwarten, falls sie kommt, sonst weiter. Sie
+		// kommt nicht mehr — weder beim Hochstufen noch beim Herunterstufen.
 		//
-		// **Erst warten, dann fragen.** Der Klick loest einen Netzaufruf aus
-		// (`visibility-impact`); ein `isVisible()` unmittelbar danach fragt
-		// womoeglich, bevor die Antwort da ist, und bekaeme in beiden Faellen
-		// „nein". Der Test liefe an einer noetigen Bestaetigung vorbei und
-		// scheiterte spaeter mit einem Bild, das nicht auf die Ursache zeigt.
-		// `or()` wartet, bis die Oberflaeche *eine* der beiden Stufen erreicht
-		// hat — die Rueckfrage oder den vollzogenen Wechsel.
-		const rueckfrage = seite.getByRole('button', { name: 'Sichtbarkeit ändern' })
-		const vollzogen = seite.locator('.pw-viscontrol input[type="radio"]:checked[value="public"]')
-		await expect(rueckfrage.or(vollzogen).first()).toBeVisible()
-
-		if (await rueckfrage.isVisible()) {
-			await rueckfrage.click()
-		}
-
-		// Die Markierung wandert erst, wenn der Wechsel wirklich gilt — daran
-		// haengt, dass eine offene Rueckfrage nicht wie erledigt aussieht.
-		await expect(vollzogen).toBeVisible()
+		// Die Markierung wandert erst, wenn der Wechsel wirklich gilt; sie haengt
+		// am Ticket und nicht am Klick. Diese Zeile ist damit zugleich die Probe
+		// darauf, dass gespeichert wurde.
+		await expect(seite.locator('.pw-viscontrol input[type="radio"]:checked')).toHaveValue('public')
 	} finally {
 		await innen.close()
 	}
@@ -95,11 +81,13 @@ test('ein freigegebener Vorgang kommt bei der Kundenseite an', async ({ browser 
 	}
 })
 
-test('das Herunterstufen nennt die Betroffenen und entzieht den Zugriff', async ({ browser }) => {
-	// Die andere Richtung — und die einzige, in der die Rueckfrage ueberhaupt
-	// erscheint: Erst beim Herunterstufen verliert jemand Zugriff. Ohne diesen
-	// Test bliebe der Bestaetigungszweig der Oberflaeche ungeprueft, und §9
-	// verlangt dort ausdruecklich **Namen statt einer allgemeinen Warnung**.
+test('das Herunterstufen entzieht den Zugriff — ohne Rueckfrage', async ({ browser }) => {
+	// Die andere Richtung, und seit #103 mit **derselben** Handlung: ein Klick.
+	// Bis dahin stand hier eine Rueckfrage mit Namen; sie ist abgeschafft (Axel,
+	// 2026-08-13), weil die Beschriftung dieselbe Auskunft schon gibt.
+	//
+	// Der Test bleibt trotzdem stehen, und zwar wegen seines zweiten Teils: Dass
+	// der Zugriff wirklich weg ist, prueft niemand sonst von aussen.
 	const innen = await browser.newContext({ storageState: INTERN.sitzung })
 	try {
 		const seite = await innen.newPage()
@@ -112,29 +100,20 @@ test('das Herunterstufen nennt die Betroffenen und entzieht den Zugriff', async 
 		// der Test darueber den einzigen internen Vorgang vorher hochstuft.
 		await stufeWaehlen(seite, 'Intern')
 
-		// Hier muss die Rueckfrage kommen — und sie muss die Kundenseite beim
-		// Namen nennen. Eine Warnung ohne Namen liest man zweimal und danach nie
-		// wieder; genau deshalb steht die Forderung in §9.
-		const rueckfrage = seite.getByRole('button', { name: 'Sichtbarkeit ändern' })
-		await expect(rueckfrage).toBeVisible()
-		await expect(seite.locator('.pw-viscontrol__losing')).toContainText(KUNDE.name)
+		// **Kein Warnblock, kein zweiter Knopf.** Die Zeile ist die Gegenprobe
+		// zur Abschaffung: Kaeme die Rueckfrage zurueck, faellt sie hier.
+		await expect(seite.locator('.pw-viscontrol__warn')).toHaveCount(0)
+		await expect(seite.getByRole('button', { name: 'Sichtbarkeit ändern' })).toHaveCount(0)
 
-		// Sie nennt auch, wohin es ginge. Seit ein Klick die ganze Handlung ist,
-		// faengt allein diese Zeile einen Fehlgriff auf.
-		await expect(seite.locator('.pw-viscontrol__target')).toContainText('Intern')
-
-		// Waehrend die Rueckfrage steht, markiert die Auswahl weiter die
-		// **geltende** Stufe. Spraenge sie schon auf „Intern", saehe eine
-		// Aenderung erledigt aus, die noch niemand bestaetigt hat.
-		await expect(seite.locator('.pw-viscontrol input[type="radio"]:checked')).toHaveValue('public')
-
-		await rueckfrage.click()
-
-		// Erst jetzt wandert sie. Das ist zugleich die Probe darauf, dass
-		// tatsaechlich gespeichert wurde — bliebe die Rueckfrage wegen eines
-		// Fehlers stehen, bliebe auch die Markierung, wo sie war, und die Zeile
-		// faellt hier statt erst unten an der Kundenprobe.
+		// Die Markierung wandert, sobald der Wechsel gilt — zugleich die Probe
+		// darauf, dass gespeichert wurde.
 		await expect(seite.locator('.pw-viscontrol input[type="radio"]:checked')).toHaveValue('internal')
+
+		// **Und der Widerruf steht auch hier** (#103). Vorher gab es ihn genau
+		// beim folgenlosen Wechsel — also dort, wo ohnehin nichts passieren
+		// konnte. Jetzt ist er das einzige Netz, und dies ist der Fall, fuer den
+		// er gebraucht wird.
+		await expect(seite.getByRole('button', { name: 'Rückgängig' })).toBeVisible()
 	} finally {
 		await innen.close()
 	}

@@ -36,7 +36,6 @@ return [
 		// Abfrage nimmt. Kein Papierkorb in der App — Wiederherstellen per occ.
 		['name' => 'ticket#destroy', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}', 'verb' => 'DELETE'],
 		['name' => 'ticket#move', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/move', 'verb' => 'POST'],
-		['name' => 'ticket#visibilityImpact', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/visibility-impact', 'verb' => 'GET'],
 		['name' => 'ticket#visibility', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/visibility', 'verb' => 'PUT'],
 
 		// Arbeitsschritte. Gelesen werden sie ueber ticket#index und

@@ -5,9 +5,13 @@
 		zusammen 110 px fuer eine Angabe, die §9 als Chip in der Kopfzeile fuehrt.
 
 		`--offen` bricht die Zeile auf: Solange nur der Schalter dasteht, ist er
-		ein rechtsbuendiges Element neben Nummer und Spaltenname. Sobald eine
-		Rueckfrage oder ein Widerruf dazukommt, nimmt der Block die volle Breite
-		— eine Warnung mit Namen passt nicht neben `#0001`.
+		ein rechtsbuendiges Element neben Nummer und Spaltenname. Sobald der
+		Widerruf oder die Anhaenge-Absage dazukommt, nimmt der Block die volle
+		Breite — ein ganzer Satz passt nicht neben `#0001`.
+
+		Seit #103 ist das **nur noch** diesen beiden vorbehalten: Die Rueckfrage
+		beim Herunterstufen, fuer die der Zustand urspruenglich gebaut wurde, ist
+		weg (Axel, 2026-08-13).
 
 		**Der Nur-Lese-Chip haengt mit hier drin** und nicht im Elternteil: Wer
 		aendern darf, folgt aus `mayChange`, und diese Frage soll an genau einer
@@ -20,21 +24,20 @@
 		class="pw-viscontrol"
 		:class="{ 'pw-viscontrol--offen': stage !== 'idle' || undoTo !== null }">
 		<!--
-			Die Auswahl steht **offen und immer da**, ein Klick ist die
-			Entscheidung. Kein vorgeschaltetes „Ändern" und kein „Übernehmen"
-			mehr — der Server weiss ueber `visibility-impact` laengst, ob ueberhaupt
-			zurueckzufragen ist, und im haeufigen Fall drueckte man vorher einen
-			Knopf, dessen einziger Zweck es war herauszufinden, dass man ihn nicht
-			gebraucht haette.
+			Die Auswahl steht **offen und immer da**, ein Klick ist die ganze
+			Entscheidung: kein vorgeschaltetes „Ändern", kein „Übernehmen" (#75)
+			und seit #103 auch keine Rueckfrage mehr.
 
-			**`:modelValue` haengt am Ticket, nicht an `chosen`.** Die Markierung
-			zeigt damit, was gilt — nie, was geklickt wurde. Zwischen Klick und
-			Antwort liegt ein Netzaufruf; spraenge die Markierung sofort, saehe
-			eine Aenderung erledigt aus, die noch eine Rueckfrage vor sich hat.
+			**`:modelValue` haengt am Ticket, nicht an einer eigenen Merkgroesse.**
+			Die Markierung zeigt damit, was gilt — nie, was geklickt wurde.
+			Zwischen Klick und Antwort liegt ein Netzaufruf; spraenge die
+			Markierung sofort, saehe eine Aenderung erledigt aus, die noch
+			unterwegs ist, und scheiterte sie, bliebe eine Markierung zurueck, die
+			luegt.
 
-			**Sie bleibt auch waehrend der Rueckfrage stehen**, nur gesperrt. Sonst
-			stuende dort „Neue Sichtbarkeit: Intern" ohne das Gegenstueck — was
-			sich aendert, liest man erst aus beidem zusammen.
+			**Waehrend des Aufrufs ist die Auswahl gesperrt** (`busy`). Ohne die
+			Sperre liefen zwei Wechsel mit derselben `version` los, und der zweite
+			scheiterte am Versionskonflikt — an einem Konflikt mit sich selbst.
 		-->
 		<div class="pw-viscontrol__edit">
 			<VisibilityChoice
@@ -50,8 +53,14 @@
 				„kurz widerrufbar", und `OCP.Toast` kennt kein `showUndo` — es
 				hat nur success/warning/error/info/message. Eine Meldung mit
 				verstecktem Klickziel wäre ein Widerruf, den niemand findet.
+
+				**Seit #103 nach JEDEM Wechsel, nicht nur nach dem folgenlosen.**
+				Vorher stand er genau dort, wo ohnehin nichts passieren konnte,
+				und fehlte beim Herunterstufen — dort fing die Rückfrage den
+				Fehlgriff auf. Die ist weg; damit ist der Widerruf das einzige
+				Netz, und er wird gerade für den folgenreichen Fall gebraucht.
 			-->
-			<div v-if="stage === 'idle' && undoTo !== null" class="pw-viscontrol__actions">
+			<div v-if="undoTo !== null" class="pw-viscontrol__actions">
 				<NcButton variant="tertiary" @click="undo">
 					<template #icon>
 						<UndoIcon :size="20" />
@@ -62,15 +71,25 @@
 		</div>
 
 		<!--
-			**Anhänge sperren den Wechsel** (§3.10 Stufe 1) — und das steht hier
-			statt hinter einer Bestätigung, die ohnehin abgewiesen würde.
+			**Anhänge sperren den Wechsel** (§3.10 Stufe 1).
 
-			Kein „Trotzdem"-Knopf: Es gibt nichts, was die App an dieser Stelle
-			tun könnte. Der Ablageort IST die Sichtbarkeit, und die Dateien
-			umzuziehen ist nicht transaktional zur Datenbank — ein halb
-			gelungener Umzug wäre ein Leck, das keine spätere Codekorrektur
-			heilt. Der Satz sagt deshalb, was zu tun ist, statt eine Wahl
-			vorzutäuschen.
+			Das ist **keine Rückfrage**, sondern eine Unmöglichkeit — deshalb hat
+			es den Wegfall der Rückfrage (#103) überlebt. Kein „Trotzdem"-Knopf:
+			Es gibt nichts, was die App an dieser Stelle tun könnte. Der
+			Ablageort IST die Sichtbarkeit, und die Dateien umzuziehen ist nicht
+			transaktional zur Datenbank — ein halb gelungener Umzug wäre ein
+			Leck, das keine spätere Codekorrektur heilt. Der Satz sagt deshalb,
+			was zu tun ist, statt eine Wahl vorzutäuschen.
+
+			**Der Fall kommt jetzt vom Server**, nicht mehr aus einer
+			Vorabprüfung: `visibility-impact` ist mit #103 aufgegeben. Der
+			Wechsel wird versucht, der Server weist ihn mit 409 ab und legt die
+			Zahl bei — dieselbe Ordnung wie beim Anhängen selbst („Knopf zeigen,
+			Servermeldung sprechen lassen").
+
+			Gesprochen wird trotzdem der Text von hier und nicht der des Servers:
+			`AttachmentsPresentException` baut seinen Satz ohne `t()`, und die
+			Zahl beugt `n()` hier ohnehin richtig.
 		-->
 		<div v-if="stage === 'blocked'" class="pw-viscontrol__warn">
 			<p class="pw-viscontrol__lead">
@@ -83,55 +102,6 @@
 			<div class="pw-viscontrol__actions">
 				<NcButton @click="reset">
 					{{ t('projektwerk', 'Verstanden') }}
-				</NcButton>
-			</div>
-		</div>
-
-		<!--
-			Die Rückfrage. §9 verlangt konkrete Zahlen und Namen statt einer
-			allgemeinen Warnung — eine Warnung ohne Namen liest man zweimal und
-			danach nie wieder.
-		-->
-		<div v-if="stage === 'confirming'" class="pw-viscontrol__warn">
-			<!--
-				Drei Zeilen statt fuenf Bloecken. Was §9 verlangt, bleibt
-				vollstaendig drin — konkrete Zahlen und Namen statt einer
-				allgemeinen Warnung —, nur gedraengter:
-
-				- Das Ziel steht in der Warnzeile selbst statt darueber. Seit
-				  „Übernehmen" weg ist, muss es dastehen: Ein Klick ist die ganze
-				  Handlung, und bei einem Fehlgriff faengt allein diese Zeile ihn
-				  auf.
-				- Die Namen stehen **in der Zeile**, nicht als Liste untereinander.
-				  Bei vier Betroffenen waren das vier Zeilen fuer vier Woerter.
-				- Der Hinweis auf die ausbleibende Benachrichtigung steht neben
-				  den Knoepfen; er ist eine Fussnote, keine Aussage fuer sich.
-
-				Getrennte Zeichenketten statt einer mit Platzhalter: Ein
-				uebersetztes Wort in einen uebersetzten Satz einzusetzen geht in
-				Sprachen mit Fallformen schief.
-			-->
-			<p class="pw-viscontrol__lead">
-				<AlertIcon :size="20" />
-				<span class="pw-viscontrol__target">
-					{{ t('projektwerk', 'Neue Sichtbarkeit:') }}
-					<strong>{{ labelFor(chosen) }}</strong>
-				</span>
-			</p>
-
-			<p class="pw-viscontrol__losing">
-				{{ losingLead }} {{ losingNames }}
-			</p>
-
-			<div class="pw-viscontrol__actions">
-				<span class="pw-viscontrol__note">
-					{{ t('projektwerk', 'Die Beteiligten werden nicht benachrichtigt.') }}
-				</span>
-				<NcButton @click="reset">
-					{{ t('projektwerk', 'Abbrechen') }}
-				</NcButton>
-				<NcButton variant="error" :disabled="busy" @click="save">
-					{{ t('projektwerk', 'Sichtbarkeit ändern') }}
 				</NcButton>
 			</div>
 		</div>
@@ -158,7 +128,8 @@
 
 <script lang="ts">
 import type { PropType } from 'vue'
-import type { Member, ViewerInfo, Visibility } from '@/types/board'
+import type { ApiError } from '@/services/api'
+import type { ViewerInfo, Visibility } from '@/types/board'
 import type { Ticket } from '@/types/ticket'
 
 import { n, t } from '@nextcloud/l10n'
@@ -170,37 +141,40 @@ import OfficeBuildingIcon from 'vue-material-design-icons/OfficeBuilding.vue'
 import PencilIcon from 'vue-material-design-icons/Pencil.vue'
 import UndoIcon from 'vue-material-design-icons/UndoVariant.vue'
 import VisibilityChoice from '@/components/VisibilityChoice.vue'
-import { changeVisibility, fetchVisibilityImpact } from '@/services/tickets'
+import { changeVisibility } from '@/services/tickets'
 import { reportWriteError } from '@/services/writeError'
 
-interface Impact {
-	losing: string[]
-	comments: number
-	attachments: number
-}
-
-/** Wie lange der Widerruf nach einem folgenlosen Wechsel stehen bleibt. */
-const UNDO_WINDOW_MS = 15000
+/**
+ * Wie lange der Widerruf nach einem Wechsel stehen bleibt.
+ *
+ * **30 s statt 15** (#103). Fünfzehn Sekunden reichten, um einen Fehlklick zu
+ * bemerken, den man schon beim Klicken bemerkt — nicht aber, um zu merken, dass
+ * man die falsche von drei Stufen erwischt hat. Dafür liest man erst die Karte
+ * zu Ende. Solange die Rückfrage das Netz war, fiel das nicht ins Gewicht.
+ */
+const UNDO_WINDOW_MS = 30000
 
 /**
  * Die Sichtbarkeit eines bestehenden Vorgangs ändern.
  *
- * **Ein Klick auf eine Stufe ist die Entscheidung** (#75). Die Auswahl steht
- * offen, es gibt kein vorgeschaltetes „Ändern" und kein „Übernehmen": Wo
- * niemand Zugriff verliert, wirkt der Klick sofort und bleibt 15 s widerrufbar;
- * wo jemand verliert, folgt die Rückfrage mit Namen. Der Handgriff, der nichts
- * entschied, faellt damit weg.
+ * **Ein Klick auf eine Stufe ist die Entscheidung** (#75, #103). Die Auswahl
+ * steht offen, es gibt kein vorgeschaltetes „Ändern", kein „Übernehmen" und —
+ * seit #103 — keine Rückfrage beim Herunterstufen mehr.
  *
- * Kein zweiter Dialog: Das Ticket-Detail ist bereits ein `NcModal`, und ein
- * `NcDialog` darin legte zwei Fokusfallen übereinander. Die Rückfrage ersetzt
- * deshalb die Auswahl an Ort und Stelle.
+ * Die Rückfrage fiel mit dem Argument, das sie zugleich entkräftet: **Die
+ * Beschriftung sagt es schon.** „Alle Beteiligten", „Intern" und „Nur ich" sind
+ * nach dem Publikum benannt und nicht nach der Technik (§7). Wer „Intern"
+ * wählt, hat gelesen, dass die Kundenseite es dann nicht mehr sieht; eine
+ * Rückfrage, die dieselbe Auskunft ein zweites Mal gibt, erzieht dazu, sie
+ * wegzuklicken (Axel, 2026-08-13).
  *
- * **Ob überhaupt zurückgefragt wird, entscheidet der Server.** Das Frontend
- * fragt vor jedem Wechsel `visibility-impact` und richtet sich nach `losing`:
- * leer heißt, niemand verliert etwas (§10: „Hochstufen ohne Rückfrage"), nicht
- * leer heißt Rückfrage. Damit muss hier niemand wissen, welche Stufe „unter"
- * welcher liegt — sonst stünde die Sichtbarkeitsregel ein zweites Mal im Code,
- * und die zweite Fassung wäre die, die niemand prüft.
+ * **Damit ist der Widerruf das einzige Netz** — und steht deshalb nach jedem
+ * Wechsel, nicht mehr nur nach dem folgenlosen.
+ *
+ * Das Frontend kennt die Rangfolge der drei Stufen weiterhin nicht und braucht
+ * sie nicht: Es wechselt, und der Server weist ab, was nicht geht. Die
+ * Sichtbarkeitsregel steht damit an genau einer Stelle — mit dem Wegfall von
+ * `visibility-impact` sogar an einer weniger als zuvor.
  */
 export default defineComponent({
 	name: 'VisibilityControl',
@@ -210,8 +184,6 @@ export default defineComponent({
 	props: {
 		ticket: { type: Object as PropType<Ticket>, required: true },
 		viewer: { type: Object as PropType<ViewerInfo | null>, default: null },
-		/** Nur zur Anzeige der Namen — die Rechnung selbst macht der Server. */
-		members: { type: Array as PropType<Member[]>, default: () => [] },
 		/**
 		 * Ob die Kennzeichnung fuer diesen Betrachter ueberhaupt gilt (§9).
 		 *
@@ -227,12 +199,11 @@ export default defineComponent({
 
 	data() {
 		return {
-			stage: 'idle' as 'idle' | 'confirming' | 'blocked',
-			/** Die angeklickte Stufe, solange die Rückfrage offen ist. */
-			chosen: 'public' as Visibility,
-			impact: { losing: [], comments: 0, attachments: 0 } as Impact,
+			stage: 'idle' as 'idle' | 'blocked',
+			/** Wie viele Anhänge den Wechsel sperren — aus der Absage des Servers. */
+			blockedCount: 0,
 			busy: false,
-			/** Der Stand vor dem letzten folgenlosen Wechsel, solange widerrufbar. */
+			/** Der Stand vor dem letzten Wechsel, solange widerrufbar. */
 			undoTo: null as Visibility | null,
 			undoTimer: null as ReturnType<typeof setTimeout> | null,
 		}
@@ -275,17 +246,6 @@ export default defineComponent({
 		},
 
 		/**
-		 * Die Betroffenen als Aufzählung in einer Zeile.
-		 *
-		 * Vorher stand jeder Name in einer eigenen Listenzeile — bei vier
-		 * Betroffenen vier Zeilen für vier Wörter. Die Namen selbst bleiben
-		 * vollständig; §9 verlangt sie, und der Server hat sie ausgerechnet.
-		 */
-		losingNames(): string {
-			return this.impact.losing.map((userId) => this.nameOf(userId)).join(', ')
-		},
-
-		/**
 		 * Der Satz, der die Sperre erklärt — mit der Zahl, weil sie die
 		 * Handlung bestimmt.
 		 *
@@ -297,46 +257,7 @@ export default defineComponent({
 				'projektwerk',
 				'Dieser Vorgang hat %n Anhang. Bitte ihn zuerst vom Vorgang lösen — die Datei selbst bleibt dabei liegen.',
 				'Dieser Vorgang hat %n Anhänge. Bitte sie zuerst vom Vorgang lösen — die Dateien selbst bleiben dabei liegen.',
-				this.impact.attachments,
-			)
-		},
-
-		/**
-		 * Was am Vorgang mit verloren geht — „3 Kommentare".
-		 *
-		 * `n()` und kein Platzhalter in einem festen Text: Bei genau einem
-		 * Kommentar stand dort bis zum 2026-08-10 „seine 1 Kommentare".
-		 *
-		 * **Anhänge stehen hier nicht mehr**, seit ein Vorgang mit Anhängen gar
-		 * nicht mehr umgestellt werden kann (§3.10 Stufe 1): Die Rückfrage wird
-		 * dann nie erreicht, und ein Satzteil, der nie erscheinen kann, ist
-		 * keine Vorsorge, sondern eine Behauptung über die Oberfläche, die nicht
-		 * stimmt. Mit dem Auto-Move aus Phase 7b kommt er zurück — dann wieder
-		 * je Zahl einzeln gebeugt und mit Komma verbunden, weil `n()` nach genau
-		 * einer Zahl beugt.
-		 */
-		affectedParts(): string {
-			return this.impact.comments > 0
-				? n('projektwerk', '%n Kommentar', '%n Kommentare', this.impact.comments)
-				: ''
-		},
-
-		/**
-		 * Der Satz aus §9 — konkrete Zahlen und Namen statt einer allgemeinen
-		 * Warnung.
-		 *
-		 * Zwei Fassungen statt vier: mit Anhängseln und ohne. Was genau
-		 * mitbetroffen ist, steht gebeugt in `affectedParts`.
-		 */
-		losingLead(): string {
-			if (this.affectedParts === '') {
-				return t('projektwerk', 'Folgende Personen verlieren den Zugriff auf diesen Vorgang:')
-			}
-
-			return t(
-				'projektwerk',
-				'Folgende Personen verlieren den Zugriff auf diesen Vorgang und {betroffen}:',
-				{ betroffen: this.affectedParts },
+				this.blockedCount,
 			)
 		},
 	},
@@ -374,20 +295,9 @@ export default defineComponent({
 			return t('projektwerk', 'Nur ich')
 		},
 
-		/**
-		 * Der Name für dieses Board, sonst die Kennung.
-		 *
-		 * Reine Anzeige: Wer den Zugriff verliert, hat der Server entschieden.
-		 *
-		 * @param userId Kennung der Person.
-		 */
-		nameOf(userId: string): string {
-			return this.members.find((m) => m.userId === userId)?.resolvedName ?? userId
-		},
-
 		reset(): void {
 			this.stage = 'idle'
-			this.impact = { losing: [], comments: 0, attachments: 0 }
+			this.blockedCount = 0
 		},
 
 		clearUndo(): void {
@@ -399,12 +309,12 @@ export default defineComponent({
 		},
 
 		/**
-		 * Eine Stufe wurde angeklickt — das ist die Entscheidung.
+		 * Eine Stufe wurde angeklickt — das ist die ganze Handlung.
 		 *
-		 * Erst nachfragen, was der Wechsel kostet, und **danach** entscheiden, ob
-		 * überhaupt zurückgefragt wird. Die Reihenfolge ist der ganze Punkt: Ob
-		 * jemand Zugriff verliert, weiß der Server; das Frontend kennt die
-		 * Rangfolge der drei Stufen absichtlich nicht.
+		 * **Ein Aufruf statt zwei** (#103). Vorher wurde erst gefragt, was der
+		 * Wechsel kostet, und danach entschieden, ob zurückgefragt wird. Ohne
+		 * Rückfrage hat die Antwort keinen Abnehmer mehr: Der Wechsel wird
+		 * versucht, und was nicht geht, weist der Server ab.
 		 *
 		 * Ein Klick auf die geltende Stufe tut nichts — er ist keine Änderung,
 		 * und ein Netzaufruf dafür wäre Lärm.
@@ -415,45 +325,8 @@ export default defineComponent({
 			if (this.busy || target === this.ticket.visibility) {
 				return
 			}
-			this.chosen = target
 
-			this.busy = true
-			try {
-				this.impact = await fetchVisibilityImpact(this.ticket.boardId, this.ticket.id, this.chosen)
-			} catch (e) {
-				this.fail(e, t('projektwerk', 'Sichtbarkeit konnte nicht geprüft werden'))
-				this.busy = false
-
-				return
-			}
-			this.busy = false
-
-			// **Anhänge sperren den Wechsel** (§3.10 Stufe 1).
-			//
-			// Das ist **keine zweite Regel im Browser**: Der Server weist den
-			// Wechsel ohnehin ab, und genau das prüft ein Test. Hier wird nur
-			// vorweggenommen, was `visibility-impact` bereits mitgeliefert hat —
-			// sonst erführe man die Absage erst nach dem Bestätigen einer
-			// Warnung, die ohnehin nichts bewirkt hätte.
-			if (this.impact.attachments > 0) {
-				this.stage = 'blocked'
-
-				return
-			}
-
-			if (this.impact.losing.length === 0) {
-				// Niemand verliert etwas: durchführen und kurz widerrufbar halten.
-				await this.save()
-
-				return
-			}
-
-			this.stage = 'confirming'
-		},
-
-		async save(): Promise<void> {
 			const previous = this.ticket.visibility
-			const undoable = this.impact.losing.length === 0
 
 			this.busy = true
 			try {
@@ -461,17 +334,28 @@ export default defineComponent({
 					this.ticket.boardId,
 					this.ticket.id,
 					this.ticket.version,
-					this.chosen,
+					target,
 				)
 				this.$emit('changed', updated)
 				this.reset()
-
-				if (undoable) {
-					this.armUndo(previous)
-				} else {
-					this.clearUndo()
-				}
+				this.armUndo(previous)
 			} catch (e) {
+				// **Anhänge sperren den Wechsel** (§3.10 Stufe 1) — und das ist
+				// nicht derselbe Fall wie ein Versionskonflikt, obwohl der Server
+				// beide mit 409 beantwortet. Wer nur den Status liest, meldet der
+				// Person mit Anhängen „bitte neu laden", und Neuladen hilft nichts.
+				//
+				// Unterschieden wird an der Zahl, die der Controller eigens
+				// beilegt. Ohne sie gäbe es kein Merkmal: Der Status ist gleich,
+				// und die Meldung ist Text.
+				const anhaenge = Number((e as ApiError)?.data?.attachments ?? 0)
+				if (anhaenge > 0) {
+					this.blockedCount = anhaenge
+					this.stage = 'blocked'
+
+					return
+				}
+
 				this.fail(e, t('projektwerk', 'Sichtbarkeit konnte nicht geändert werden'))
 			} finally {
 				this.busy = false

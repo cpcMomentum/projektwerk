@@ -199,28 +199,18 @@ class TicketController extends Controller {
 	}
 
 	/**
-	 * Was ein Sichtbarkeitswechsel kosten würde — für den Rückfragedialog.
-	 *
-	 * Ein Lese-Endpunkt, obwohl er zu einem Schreibvorgang gehört: Er ändert
-	 * nichts und beantwortet nur eine Frage. Deshalb steht er in der
-	 * Leak-Matrix wie jeder andere Lesepfad.
-	 */
-	#[NoAdminRequired]
-	public function visibilityImpact(int $boardId, int $ticketId, string $visibility): JSONResponse {
-		return $this->withViewer($boardId, function (ViewerContext $viewer) use ($ticketId, $visibility): JSONResponse {
-			try {
-				return new JSONResponse($this->service->visibilityImpact($viewer, $ticketId, $visibility));
-			} catch (DoesNotExistException) {
-				return new JSONResponse([], Http::STATUS_NOT_FOUND);
-			} catch (\InvalidArgumentException $e) {
-				return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
-			}
-		});
-	}
-
-	/**
 	 * Die Sichtbarkeit ändern — eigener Weg, weil sie als einziges Feld eine
 	 * Schreibregel hat.
+	 *
+	 * **`visibilityImpact()` stand hier bis #103** und beantwortete vorab, wer
+	 * durch einen Wechsel den Zugriff verliert — für die Rückfrage aus §9. Mit
+	 * dem Wegfall der Rückfrage (Axel, 2026-08-13) hat die Antwort keinen
+	 * Abnehmer mehr, und der Endpunkt ist aufgegeben statt verwaist gelassen:
+	 * Ein Lesepfad ist eine Stelle, an der die Sichtbarkeitsregel stimmen muss,
+	 * und die Leak-Matrix musste ihn mitfahren.
+	 *
+	 * Die Anhänge-Sperre (§3.10 Stufe 1) braucht ihn nicht — sie kommt aus der
+	 * Absage dieses Schreibwegs, mit der Zahl im Rumpf.
 	 */
 	#[NoAdminRequired]
 	public function visibility(int $boardId, int $ticketId, int $version, string $visibility): JSONResponse {

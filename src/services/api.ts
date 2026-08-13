@@ -32,6 +32,20 @@ export interface ApiError {
 	message: string
 	/** Die Antwort war HTML statt JSON — fast immer die Guests-Freigabeliste. */
 	notJson: boolean
+	/**
+	 * Der geparste Fehlerrumpf, soweit es einen gab.
+	 *
+	 * **Weil ein Statuscode nicht immer den Fall benennt.** Der Server
+	 * beantwortet zwei verschiedene Absagen mit 409: den Versionskonflikt
+	 * (`current`) und die Anhänge-Sperre (`attachments`, §3.10 Stufe 1). Wer
+	 * beide am Status unterscheiden will, kann es nicht — und meldet dem
+	 * Nutzer mit Anhängen „bitte neu laden", was nichts hilft.
+	 *
+	 * Bis #103 fiel das nicht auf: `visibility-impact` fragte die Anhänge
+	 * vorab ab, sodass die Oberfläche den Fall nie vom Server erfuhr. Mit dem
+	 * Wegfall dieses Lesepfads ist die Antwort die einzige Quelle.
+	 */
+	data?: Record<string, unknown>
 }
 
 /**
@@ -135,6 +149,9 @@ function wrapError(error: unknown): ApiError {
 		// Fall kennt. Erst wenn sie fehlt, greift die des Aufrufers.
 		message: response.data?.error ?? axiosError.message ?? 'Unbekannter Fehler',
 		notJson: false,
+		data: typeof response.data === 'object' && response.data !== null
+			? response.data as Record<string, unknown>
+			: undefined,
 	}
 }
 

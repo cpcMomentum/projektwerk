@@ -556,8 +556,21 @@
 	max-width: 100%;
 }
 
+/*
+ * Im Vorgang stehen die Segmente allein — der Erklaersatz entfaellt dort, also
+ * gibt es nichts abzusetzen.
+ *
+ * Ausnahme ist der Grund einer gesperrten Stufe: Der steht seit #103 auch hier
+ * und braucht seinen Abstand. `gap: 0` galt vorher fuer alles, weil ausser den
+ * Segmenten ohnehin nichts da war.
+ */
 .app-projektwerk .pw-vischoice--knapp {
 	gap: 0;
+}
+
+.app-projektwerk .pw-vischoice--knapp .pw-vishint--blocked {
+	margin-block-start: 4px;
+	font-size: 13px;
 }
 
 /*
@@ -582,9 +595,18 @@
 	min-height: var(--default-clickable-area, 34px);
 }
 
+/*
+ * `nowrap` (#103): „Alle Beteiligten" brach bei knappem Platz auf zwei Zeilen
+ * um. Das Segment wurde dadurch hoeher als seine beiden Nachbarn, und die ganze
+ * Gruppe rutschte unter die Nummer statt rechtsbuendig zu stehen — aus einer
+ * Zeile wurden drei. Ein Segmentschalter mit drei festen Beschriftungen hat
+ * nichts umzubrechen; wird der Platz zu knapp, schiebt sich die Gruppe lieber
+ * als Ganzes.
+ */
 .app-projektwerk .pw-vischoice--knapp [class*='_radioGroupButton__label'] {
 	font-size: 13px;
 	min-height: 0;
+	white-space: nowrap;
 }
 
 /*
@@ -618,9 +640,14 @@
 }
 
 /*
- * Im Vorgang sitzt der Schalter rechts in der Kopfzeile. Sobald eine Rueckfrage
- * oder ein Widerruf dazukommt, nimmt der Block die volle Zeilenbreite: Eine
- * Warnung mit Namen passt nicht neben `#0001`.
+ * Im Vorgang sitzt der Schalter rechts in der Kopfzeile. Sobald der Widerruf
+ * oder die Anhaenge-Absage dazukommt, nimmt der Block die volle Zeilenbreite:
+ * Ein ganzer Satz passt nicht neben `#0001`.
+ *
+ * **Nur noch diese beiden** (#103). Der Zustand wurde fuer die Rueckfrage beim
+ * Herunterstufen gebaut — die ist weg, und mit ihr der Fall, der die volle
+ * Breite wirklich brauchte. Er bleibt, weil die Anhaenge-Absage ein ganzer Satz
+ * ist und der Widerruf ein Knopf mit Beschriftung.
  */
 .app-projektwerk .pw-viscontrol {
 	margin-inline-start: auto;
@@ -960,9 +987,11 @@
 /*
  * Der Warnblock trägt Farbe UND Symbol UND Text (§9, „nie allein über Farbe").
  * Der Rand steht links, weil der Blick beim Lesen dort ankommt.
+ *
+ * Er traegt seit #103 nur noch die Anhaenge-Absage; die Rueckfrage beim
+ * Herunterstufen ist weg.
  */
 .app-projektwerk .pw-viscontrol__warn {
-	/* Enger als zuvor (12/14): Der Block hat nur noch drei Zeilen zu tragen. */
 	padding: 10px 12px;
 	gap: 6px;
 	border-inline-start: 4px solid var(--color-warning, var(--color-error));
@@ -970,10 +999,7 @@
 	background: var(--color-background-hover);
 }
 
-/*
- * Das Ziel des Wechsels, seit ein Klick die ganze Handlung ist. Keine eigene
- * Optik — der Wert steht fett neben dem Warnsymbol, mehr braucht es nicht.
- */
+/* Der Satz neben dem Warnsymbol — keine eigene Optik, nur kein Ueberlauf. */
 .app-projektwerk .pw-viscontrol__target {
 	min-width: 0;
 }
@@ -985,29 +1011,6 @@
 	margin: 0;
 	font-weight: 600;
 	line-height: 1.45;
-}
-
-/*
- * Kein `ul` mehr, sondern ein Satz: Bei vier Betroffenen standen vier Zeilen
- * fuer vier Woerter. Der Einzug bleibt, damit die Zeile unter dem Warnsymbol
- * beginnt und nicht darunter wegrutscht.
- */
-.app-projektwerk .pw-viscontrol__losing {
-	margin: 0;
-	padding-inline-start: 28px;
-	line-height: 1.5;
-	overflow-wrap: anywhere;
-}
-
-/*
- * Fussnote neben den Knoepfen, nicht als eigene Aussage darueber. `auto`
- * schiebt die Knoepfe nach rechts; bricht die Zeile um, steht sie eben oben.
- */
-.app-projektwerk .pw-viscontrol__note {
-	margin: 0;
-	margin-inline-end: auto;
-	font-size: 12px;
-	color: var(--color-text-maxcontrast);
 }
 
 /* ---- Projekteinstellungen ------------------------------------------------ */
@@ -1149,11 +1152,6 @@
 .app-projektwerk .pw-wait--compact {
 	padding: 2px 7px;
 	font-size: 11.5px;
-}
-
-.app-projektwerk .pw-wait__sentence {
-	margin: 0;
-	line-height: 1.5;
 }
 
 /* ---- Arbeitsschritte ----------------------------------------------------- */
