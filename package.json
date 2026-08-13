@@ -15,6 +15,8 @@
   "scripts": {
     "build": "vite build && mkdir -p js css && cp -r dist/js/* js/ && cp -r dist/css/* css/",
     "dev": "vite",
+    "l10n:check": "nc-l10n-check",
+    "l10n:fix": "nc-l10n-check --fix",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "prepare": "git config core.hooksPath .githooks || true",
@@ -46,6 +48,7 @@
     "@vue/tsconfig": "^0.7.0",
     "eslint": "^10.8.0",
     "happy-dom": "^20.9.0",
+    "nc-app-tooling": "github:cpcMomentum/nc-app-tooling#v1.3.0",
     "sass": "^1.70.0",
     "typescript": "^5.7.2",
     "vite": "^8.2.0",
