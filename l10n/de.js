@@ -234,8 +234,12 @@ OC.L10N.register(
     "Wartet auf die Kundenseite" : "Wartet auf die Kundenseite",
     "Projekte mit Bewegung" : "Projekte mit Bewegung",
     "seit heute" : "seit heute",
-    "_seit %n Tag_::_seit %n Tagen_" : ["seit %n Tag", "seit %n Tagen"],
-    "_%n offen_::_%n offen_" : ["%n offen", "%n offen"],
-    "_%n wartet_::_%n warten_" : ["%n wartet", "%n warten"]
+    "_seit %n Tag_::_seit %n Tagen_" : ["seit %n Tag","seit %n Tagen"],
+    "_%n offen_::_%n offen_" : ["%n offen","%n offen"],
+    "_%n wartet_::_%n warten_" : ["%n wartet","%n warten"],
+    "Angepinnt" : "Angepinnt",
+    "Anpinnen fehlgeschlagen" : "Anpinnen fehlgeschlagen",
+    "Von der Seitenleiste lösen" : "Von der Seitenleiste lösen",
+    "An die Seitenleiste anpinnen" : "An die Seitenleiste anpinnen"
 },
 "nplurals=2; plural=(n != 1);");

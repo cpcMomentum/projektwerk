@@ -37,6 +37,13 @@ export interface Board {
 	chatUrl: string | null
 	githubEnabled: boolean
 	archived: boolean
+	/**
+	 * Ob **dieser** Nutzer das Projekt in die Seitenleiste gepinnt hat (#115).
+	 *
+	 * Optional, weil nur die Projektliste (`board#index`) es mitliefert; die
+	 * Detailansicht (`board#show`) kennt es nicht — sie braucht es auch nicht.
+	 */
+	pinned?: boolean
 	createdAt: string | null
 	updatedAt: string | null
 }
