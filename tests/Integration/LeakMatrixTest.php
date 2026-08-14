@@ -32,6 +32,7 @@ use OCA\Projektwerk\Db\StepMapper;
 use OCA\Projektwerk\Db\TaskFilter;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Db\TicketUserMapper;
+use OCA\Projektwerk\Service\BoardPinService;
 use OCA\Projektwerk\Service\MemberService;
 use OCA\Projektwerk\Service\NotifyPrefService;
 use OCA\Projektwerk\Service\StepService;
@@ -1169,7 +1170,9 @@ class LeakMatrixTest extends IntegrationTestCase {
 			$this->assertSame(Http::STATUS_OK, $response->getStatus(), $userId);
 			$this->assertSame(
 				$titles,
-				array_map(static fn ($b): string => (string)$b->getTitle(), $response->getData()),
+				// Seit #115 liefert index() Arrays (jsonSerialize + pinned), keine
+				// Entities — die HTTP-Ausgabe ist dieselbe, die Rohform hier nicht.
+				array_map(static fn (array $b): string => (string)$b['title'], $response->getData()),
 				$userId . ' bekommt eine andere Boardliste als erwartet.',
 			);
 		}
@@ -1727,6 +1730,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 			Server::get(MemberService::class),
 			Server::get(ColumnMapper::class),
 			Server::get(BoardAccess::class),
+			Server::get(BoardPinService::class),
 			$userId,
 		);
 	}

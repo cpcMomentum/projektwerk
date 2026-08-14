@@ -259,7 +259,11 @@
 		"_%n wartet_::_%n warten_": [
 			"%n waiting",
 			"%n waiting"
-		]
+		],
+		"Angepinnt": "Pinned",
+		"Anpinnen fehlgeschlagen": "Could not pin",
+		"Von der Seitenleiste lösen": "Unpin from sidebar",
+		"An die Seitenleiste anpinnen": "Pin to sidebar"
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }

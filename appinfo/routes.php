@@ -17,6 +17,7 @@ return [
 		// Vollstaendigkeitstest laesst jede nicht registrierte Route fallen.
 		['name' => 'board#index', 'url' => '/api/v1/boards', 'verb' => 'GET'],
 		['name' => 'board#show', 'url' => '/api/v1/boards/{boardId}', 'verb' => 'GET'],
+		['name' => 'board#setPin', 'url' => '/api/v1/boards/{boardId}/pin', 'verb' => 'PUT'],
 
 		// „Meine Aufgaben" — die einzige GET-Route ohne Board im Pfad. Sie
 		// gehoert zu allen Projekten, und die Rolle bildet `TicketScope` je

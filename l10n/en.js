@@ -234,8 +234,12 @@ OC.L10N.register(
     "Wartet auf die Kundenseite" : "Waiting on the client side",
     "Projekte mit Bewegung" : "Projects with activity",
     "seit heute" : "since today",
-    "_seit %n Tag_::_seit %n Tagen_" : ["for %n day", "for %n days"],
-    "_%n offen_::_%n offen_" : ["%n open", "%n open"],
-    "_%n wartet_::_%n warten_" : ["%n waiting", "%n waiting"]
+    "_seit %n Tag_::_seit %n Tagen_" : ["for %n day","for %n days"],
+    "_%n offen_::_%n offen_" : ["%n open","%n open"],
+    "_%n wartet_::_%n warten_" : ["%n waiting","%n waiting"],
+    "Angepinnt" : "Pinned",
+    "Anpinnen fehlgeschlagen" : "Could not pin",
+    "Von der Seitenleiste lösen" : "Unpin from sidebar",
+    "An die Seitenleiste anpinnen" : "Pin to sidebar"
 },
 "nplurals=2; plural=(n != 1);");

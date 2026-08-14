@@ -13,8 +13,9 @@
 import type { Board, BoardDetail, Column, Member, ViewerInfo } from '@/types/board'
 import type { Ticket, TicketList, WaitState } from '@/types/ticket'
 
+import { t } from '@nextcloud/l10n'
 import { defineStore } from 'pinia'
-import { fetchBoard, fetchBoards } from '@/services/boards'
+import { fetchBoard, fetchBoards, setBoardPin } from '@/services/boards'
 import { fetchTickets, moveTicket as moveTicketRequest } from '@/services/tickets'
 import { showError } from '@/services/toast'
 
@@ -102,6 +103,17 @@ export const useBoardStore = defineStore('board', {
 		orgLine: () => (board: Pick<Board, 'orgInternal' | 'orgExternal'>): string => [board.orgInternal, board.orgExternal].filter(Boolean).join(' · '),
 
 		/**
+		 * Die angepinnten Projekte für die Seitenleiste (#115).
+		 *
+		 * Kein eigener Abruf: Es ist die Teilmenge der ohnehin geladenen Liste,
+		 * und die ist bereits die Schnittmenge aus „gepinnt" und „sichtbar" — der
+		 * Server liefert `pinned` nur an den Boards mit, die er auch ausliefert.
+		 *
+		 * @param state Der Speicher.
+		 */
+		pinnedBoards: (state): Board[] => state.boards.filter((board) => board.pinned === true),
+
+		/**
 		 * Wie viele sichtbare Vorgänge gerade warten.
 		 *
 		 * Für die Zählanzeige am Filterschalter. Aus derselben Menge wie die
@@ -154,6 +166,31 @@ export const useBoardStore = defineStore('board', {
 				showError(this.error)
 			} finally {
 				this.loading = false
+			}
+		},
+
+		/**
+		 * Ein Projekt an- oder abpinnen und den neuen Stand sofort zeigen (#115).
+		 *
+		 * Optimistisch mit Rückabwicklung: Der Stern kippt sofort, und nur wenn
+		 * der Server ablehnt, springt er zurück — sonst hinge die Seitenleiste
+		 * eine Netzrunde hinterher.
+		 *
+		 * @param boardId Kennung des Projekts.
+		 */
+		async togglePin(boardId: number): Promise<void> {
+			const board = this.boards.find((b) => b.id === boardId)
+			if (board === undefined) {
+				return
+			}
+
+			const vorher = board.pinned === true
+			board.pinned = !vorher
+			try {
+				await setBoardPin(boardId, !vorher)
+			} catch (e) {
+				board.pinned = vorher
+				showError((e as { message?: string }).message ?? t('projektwerk', 'Anpinnen fehlgeschlagen'))
 			}
 		},
 

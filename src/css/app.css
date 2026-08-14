@@ -474,25 +474,51 @@
 	gap: 12px;
 }
 
+/*
+ * Die Karte ist der Rahmen, der Knopf darin oeffnet — getrennt seit #115, weil
+ * der Stern ein zweites Bedienelement ist und ein Knopf nicht in einem Knopf
+ * stehen darf.
+ */
 .app-projektwerk .pw-boardcard {
+	position: relative;
 	display: flex;
-	flex-direction: column;
-	gap: 4px;
-	padding: 18px 20px;
-	min-height: var(--default-clickable-area, 44px);
 	background: var(--color-main-background);
 	border: 1px solid transparent;
 	border-radius: var(--border-radius-large);
 	box-shadow: 0 1px 2px rgba(0, 0, 0, .06), 0 1px 1px rgba(0, 0, 0, .04);
-	cursor: pointer;
-	text-align: left;
-	font: inherit;
-	color: inherit;
 	transition: box-shadow .12s ease;
 }
 
 .app-projektwerk .pw-boardcard:hover {
 	box-shadow: 0 2px 4px rgba(0, 0, 0, .1), 0 4px 12px rgba(0, 0, 0, .06);
+}
+
+.app-projektwerk .pw-boardcard__open {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	/* Rechts Platz fuer den Stern. */
+	padding: 18px 52px 18px 20px;
+	min-height: var(--default-clickable-area, 44px);
+	background: none;
+	border: none;
+	border-radius: var(--border-radius-large);
+	cursor: pointer;
+	text-align: left;
+	font: inherit;
+	color: inherit;
+}
+
+.app-projektwerk .pw-boardcard__pin {
+	position: absolute;
+	top: 8px;
+	inset-inline-end: 8px;
+}
+
+/* Der angepinnte Stern traegt die Signalfarbe, der leere bleibt ruhig. */
+.app-projektwerk .pw-boardcard__pin--on {
+	color: var(--color-favorite, var(--color-warning));
 }
 
 .app-projektwerk .pw-boardcard__title {

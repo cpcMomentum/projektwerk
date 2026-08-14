@@ -14,6 +14,7 @@ use OCA\Projektwerk\Access\NotAMemberException;
 use OCA\Projektwerk\AppInfo\Application;
 use OCA\Projektwerk\Db\BoardMapper;
 use OCA\Projektwerk\Db\ColumnMapper;
+use OCA\Projektwerk\Service\BoardPinService;
 use OCA\Projektwerk\Service\MemberService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Db\DoesNotExistException;
@@ -50,6 +51,7 @@ class BoardController extends Controller {
 		private MemberService $members,
 		private ColumnMapper $columns,
 		private BoardAccess $access,
+		private BoardPinService $pins,
 		// Nextcloud reicht die Benutzerkennung der Sitzung unter genau diesem
 		// Namen herein. Als Konstruktorwert statt ueber IUserSession, weil der
 		// Controller damit ohne Sitzung baubar und in der Leak-Matrix je
@@ -73,9 +75,39 @@ class BoardController extends Controller {
 			return new JSONResponse([], Http::STATUS_UNAUTHORIZED);
 		}
 
-		return new JSONResponse(
-			$this->boards->findAllForUser($this->userId, $includeArchived),
+		$boards = $this->boards->findAllForUser($this->userId, $includeArchived);
+
+		// Die Pin-Markierung reitet auf **dieser** Liste mit, nicht als eigener
+		// Abruf: Die Seitenleiste zeigt nur die Schnittmenge aus „gepinnt" und
+		// „sichtbar", und sichtbar ist genau, was hier drinsteht. Ein gepinntes
+		// Board, das der Filter nicht hergibt, kommt gar nicht erst vor.
+		$pinned = $this->pins->pinnedIds($this->userId);
+		$data = array_map(
+			static fn ($board): array => $board->jsonSerialize() + ['pinned' => in_array((int)$board->getId(), $pinned, true)],
+			$boards,
 		);
+
+		return new JSONResponse($data);
+	}
+
+	/**
+	 * Ein Projekt an- oder abpinnen (#115) — eine rein persönliche Einstellung.
+	 *
+	 * **Keine Sichtbarkeitsprüfung nötig.** Der Pin lebt im eigenen User-Value
+	 * und wird nur dort angezeigt, wo {@see index()} das Board ohnehin ausliefert
+	 * — die Schnittmenge fällt am Anzeigeort. Wer eine fremde ID pinnt, pinnt in
+	 * sein eigenes Nichts: Sie taucht nie auf und räumt sich beim nächsten Laden
+	 * von selbst nicht einmal auf, weil sie nie stört.
+	 */
+	#[NoAdminRequired]
+	public function setPin(int $boardId, bool $pinned): JSONResponse {
+		if ($this->userId === null) {
+			return new JSONResponse([], Http::STATUS_UNAUTHORIZED);
+		}
+
+		$this->pins->setPin($this->userId, $boardId, $pinned);
+
+		return new JSONResponse(['pinned' => $pinned]);
 	}
 
 	/**

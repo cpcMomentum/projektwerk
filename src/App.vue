@@ -8,9 +8,13 @@
 			**Die Projekte bleiben EIN Eintrag.** Der Entwurf sah vor, jedes
 			Projekt einzeln einzuhaengen; bei ueber zwanzig gleichzeitigen
 			Projekten waere das die Liste in der Liste, nur schmaler. Damit
-			entfaellt auch die Frage, wie man an archivierte kaeme — und die
-			Boardliste muss weiterhin erst beim Oeffnen der Projektliste geladen
-			werden, nicht bei jedem Seitenaufruf.
+			entfaellt auch die Frage, wie man an archivierte kaeme.
+
+			**Seit #115 laedt der Rahmen die Boardliste dennoch einmal** — fuer
+			den Pin-Abschnitt darunter. Das ist kein Widerspruch zum Satz oben:
+			Geladen wird beim **Mounten der App**, also einmal je Seitenaufruf im
+			Browser, nicht bei jedem Wechsel der Ansicht (der Rahmen bleibt
+			stehen). Die volle Projektliste bleibt der Projekte-Seite.
 		-->
 		<NcAppNavigation>
 			<NcAppNavigationItem
@@ -37,6 +41,28 @@
 					<FolderMultipleIcon :size="20" />
 				</template>
 			</NcAppNavigationItem>
+
+			<!--
+				**Die angepinnten Projekte** (#115) — die persönliche Auswahl unter
+				den drei festen Punkten. Nichts angepinnt, kein Abschnitt: Die
+				Leiste sieht dann aus wie zuvor. Die Liste ist die Teilmenge der
+				ohnehin geladenen Boards, also die Schnittmenge aus „gepinnt" und
+				„sichtbar" — ein Projekt, aus dem man herausfällt, verschwindet von
+				selbst.
+			-->
+			<template v-if="store.pinnedBoards.length > 0">
+				<NcAppNavigationCaption :name="t('projektwerk', 'Angepinnt')" />
+				<NcAppNavigationItem
+					v-for="board in store.pinnedBoards"
+					:key="board.id"
+					:name="board.title"
+					:to="{ name: 'board', params: { boardId: board.id } }"
+					@click="closeNavigationOnMobile">
+					<template #icon>
+						<StarIcon :size="20" />
+					</template>
+				</NcAppNavigationItem>
+			</template>
 
 			<!--
 				Unten im Seitenmenue, wie in WorkTime. **Eine volle Seite, kein
@@ -70,19 +96,28 @@ import { t } from '@nextcloud/l10n'
 import { useIsMobile } from '@nextcloud/vue/composables/useIsMobile'
 import NcAppContent from '@nextcloud/vue/components/NcAppContent'
 import NcAppNavigation from '@nextcloud/vue/components/NcAppNavigation'
+import NcAppNavigationCaption from '@nextcloud/vue/components/NcAppNavigationCaption'
 import NcAppNavigationItem from '@nextcloud/vue/components/NcAppNavigationItem'
 import NcContent from '@nextcloud/vue/components/NcContent'
 import CogIcon from 'vue-material-design-icons/Cog.vue'
 import FolderMultipleIcon from 'vue-material-design-icons/FolderMultiple.vue'
 import FormatListChecksIcon from 'vue-material-design-icons/FormatListChecks.vue'
+import StarIcon from 'vue-material-design-icons/Star.vue'
 import ViewDashboardIcon from 'vue-material-design-icons/ViewDashboardOutline.vue'
+import { useBoardStore } from '@/stores/boardStore'
 
 export default {
 	name: 'App',
-	components: { NcContent, NcAppNavigation, NcAppNavigationItem, NcAppContent, FolderMultipleIcon, FormatListChecksIcon, ViewDashboardIcon, CogIcon },
+	components: { NcContent, NcAppNavigation, NcAppNavigationCaption, NcAppNavigationItem, NcAppContent, FolderMultipleIcon, FormatListChecksIcon, StarIcon, ViewDashboardIcon, CogIcon },
 
 	setup() {
-		return { isMobile: useIsMobile() }
+		return { isMobile: useIsMobile(), store: useBoardStore() }
+	},
+
+	created() {
+		// Einmal beim Mounten der App, fuer den Pin-Abschnitt (#115). Nicht bei
+		// jedem Ansichtswechsel — der Rahmen bleibt stehen.
+		this.store.loadBoards()
 	},
 
 	methods: {
