@@ -67,4 +67,12 @@ export interface ProjectRow {
 	org: string
 	open: number
 	waiting: number
+	/**
+	 * Tage seit der letzten Bewegung im Projekt (#116) — aus dem jüngsten
+	 * `updatedAt` seiner offenen Vorgänge, oder `null`, wenn keiner eins trägt.
+	 *
+	 * Trägt den „steht still"-Hinweis: Ein Projekt, das nicht auf den Kunden
+	 * wartet und trotzdem lange ruht, ist das, was man übersieht.
+	 */
+	lastMovementDays: number | null
 }

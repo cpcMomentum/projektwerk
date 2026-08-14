@@ -152,13 +152,24 @@ export const useOverviewStore = defineStore('overview', {
 		 * @param state Der Speicher.
 		 */
 		projectRows: (state): ProjectRow[] => {
-			const proBoard = new Map<number, { open: number, waiting: number }>()
+			const proBoard = new Map<number, { open: number, waiting: number, movedDays: number }>()
 
 			for (const ticket of state.tickets) {
-				const zahlen = proBoard.get(ticket.boardId) ?? { open: 0, waiting: 0 }
+				const zahlen = proBoard.get(ticket.boardId) ?? { open: 0, waiting: 0, movedDays: Number.POSITIVE_INFINITY }
 				zahlen.open += 1
 				if (state.waiting[ticket.id] !== undefined) {
 					zahlen.waiting += 1
+				}
+				// Die letzte Bewegung des Projekts ist die jüngste seiner Vorgänge
+				// — also die **kleinste** Zahl an Tagen. `tageZwischen` schneidet
+				// die Uhrzeit ab und rechnet auf Tagesgrenzen, wie beim Warten.
+				// Truthy-Prüfung statt `!== null`: fehlt der Wert (ältere Antwort,
+				// Testdaten), zählt der Vorgang nicht zur Bewegung, statt zu werfen.
+				if (ticket.updatedAt) {
+					const tage = tageZwischen(ticket.updatedAt, state.today)
+					if (tage < zahlen.movedDays) {
+						zahlen.movedDays = tage
+					}
 				}
 				proBoard.set(ticket.boardId, zahlen)
 			}
@@ -174,6 +185,7 @@ export const useOverviewStore = defineStore('overview', {
 					org: [board?.orgInternal, board?.orgExternal].filter(Boolean).join(' · '),
 					open: zahlen.open,
 					waiting: zahlen.waiting,
+					lastMovementDays: Number.isFinite(zahlen.movedDays) ? zahlen.movedDays : null,
 				}
 			})
 
