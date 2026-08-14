@@ -1886,7 +1886,7 @@
  * ruhig.
  */
 .app-projektwerk .pw-due--overdue {
-	color: var(--color-error);
+	color: var(--color-error-text, var(--color-error));
 	font-weight: 600;
 }
 
@@ -1909,11 +1909,11 @@
 }
 
 .app-projektwerk .pw-frist--overdue .pw-frist__label {
-	color: var(--color-error);
+	color: var(--color-error-text, var(--color-error));
 }
 
 .app-projektwerk .pw-frist__marke {
-	color: var(--color-error);
+	color: var(--color-error-text, var(--color-error));
 	font-weight: 600;
 }
 
