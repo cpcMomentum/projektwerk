@@ -727,6 +727,28 @@ class TicketWritePathTest extends IntegrationTestCase {
 		$this->assertSame(LeakMatrixFixture::BERT, $ticket->getResponsibleUserId());
 	}
 
+	/**
+	 * Dieselbe Einfrierung wie beim Aendern ({@see
+	 * testAnExternalResponsibleMakesASteplessTicketWaitOnTheCustomer}), nur
+	 * beim Anlegen (#114): Ein frisch erzeugter Vorgang mit externem
+	 * Verantwortlichen wartet sofort auf die Kundenseite, ganz ohne Schritt.
+	 */
+	public function testANewTicketWithAnExternalResponsibleWaitsOnTheCustomer(): void {
+		$ticket = $this->service->create(
+			$this->viewer(LeakMatrixFixture::ANNA),
+			'Oeffentlich, an die Kundenseite',
+			null,
+			TicketScope::VISIBILITY_PUBLIC,
+			$this->fixture->columnIds[LeakMatrixFixture::COLUMN_A],
+			LeakMatrixFixture::CARLA,
+		);
+
+		$this->assertSame(LeakMatrixFixture::CARLA, $ticket->getResponsibleUserId());
+		$this->assertSame(ViewerContext::ROLE_EXTERNAL, $ticket->getResponsibleRole());
+		$this->assertNotNull($ticket->getResponsibleSince());
+		$this->assertTrue($ticket->waitsOnExternal());
+	}
+
 	private function viewer(string $userId): ViewerContext {
 		return $this->fixture->contextFor($userId);
 	}
