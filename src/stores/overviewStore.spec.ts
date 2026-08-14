@@ -37,8 +37,8 @@ const HEUTE = new Date('2026-08-13T09:00:00Z')
  * @param boardId Projekt.
  * @param title Titel.
  */
-function ticket(id: number, boardId: number, title = 'Vorgang ' + id, updatedAt: string | null = null): Ticket {
-	return { id, boardId, number: id, title, updatedAt } as unknown as Ticket
+function ticket(id: number, boardId: number, title = 'Vorgang ' + id, updatedAt: string | null = null, responsibleUserId: string | null = null): Ticket {
+	return { id, boardId, number: id, title, updatedAt, responsibleUserId } as unknown as Ticket
 }
 
 /**
@@ -50,6 +50,8 @@ function daten(teile: Partial<OverviewData> = {}): OverviewData {
 		waiting: {},
 		boards: { 1: { title: 'Relaunch', orgInternal: 'Wir', orgExternal: 'Kunde' } },
 		names: {},
+		me: '',
+		withOpenSteps: [],
 		...teile,
 	}
 }
@@ -195,5 +197,45 @@ describe('Überblick', () => {
 		store.today = '2026-08-13'
 
 		expect(store.projectRows[0].lastMovementDays).toBeNull()
+	})
+
+	/**
+	 * „Meine Vorgänge" (#120): verantwortlich und **nicht** wartend — sonst
+	 * stünde derselbe Vorgang doppelt (er ist dann schon im Warte-Abschnitt).
+	 */
+	it('zeigt meine Vorgänge, aber nicht die wartenden', () => {
+		const store = useOverviewStore()
+		store.apply(daten({
+			tickets: [
+				ticket(1, 1, 'A', null, 'ich'),
+				ticket(2, 1, 'B', null, 'ich'), // wartet → gehört in den Warte-Abschnitt
+				ticket(3, 1, 'C', null, 'wer-anders'),
+			],
+			waiting: { 2: { since: '2026-08-10', userIds: ['kunde'] } },
+			me: 'ich',
+		}))
+
+		expect(store.myTicketRows.map((r) => r.ticket.id)).toEqual([1])
+	})
+
+	/**
+	 * „Liegt bei niemandem" (#119): ohne Verantwortlichen, ohne offenen Schritt,
+	 * und es wartet auch nicht. Alles andere fällt raus.
+	 */
+	it('zeigt nur die unbearbeiteten Vorgänge als „liegt bei niemandem"', () => {
+		const store = useOverviewStore()
+		store.apply(daten({
+			tickets: [
+				ticket(1, 1, 'A'), // niemand — der einzige Treffer
+				ticket(2, 1, 'B', null, 'ich'), // hat einen Verantwortlichen
+				ticket(3, 1, 'C'), // hat einen offenen Schritt
+				ticket(4, 1, 'D'), // wartet auf den Kunden
+			],
+			withOpenSteps: [3],
+			waiting: { 4: { since: '2026-08-10', userIds: ['kunde'] } },
+			me: 'ich',
+		}))
+
+		expect(store.nobodyRows.map((r) => r.ticket.id)).toEqual([1])
 	})
 })

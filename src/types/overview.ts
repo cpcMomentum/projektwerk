@@ -34,6 +34,24 @@ export interface OverviewData {
 	 * eindeutig — flach wäre sie es nicht.
 	 */
 	names: Record<number, Record<string, string>>
+	/** Die eigene Kennung — für „Meine Vorgänge" (#120). */
+	me: string
+	/**
+	 * Kennungen der Vorgänge mit mindestens einem offenen Schritt (#119).
+	 *
+	 * Grundlage für „liegt bei niemandem": ohne Verantwortlichen und ohne
+	 * offenen Schritt.
+	 */
+	withOpenSteps: number[]
+}
+
+/**
+ * Eine Zeile in den Ballbesitz-Abschnitten „Meine Vorgänge" (#120) und „Liegt
+ * bei niemandem" (#119) — der Vorgang und sein Projekt, mehr braucht es nicht.
+ */
+export interface OverviewTicketRow {
+	ticket: Ticket
+	board: TaskBoard | null
 }
 
 /**
