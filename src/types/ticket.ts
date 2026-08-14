@@ -25,6 +25,8 @@ export interface Ticket {
 	/** Am Ticket eingefroren, nicht zur Laufzeit ermittelt. */
 	creatorRole: MemberRole
 	responsibleUserId: string | null
+	/** „Bis wann ist die Sache fertig" (#72). `JJJJ-MM-TT` ohne Uhrzeit, oder `null`. */
+	dueDate: string | null
 	closedAt: string | null
 	/** Für die Konflikterkennung; unverändert zurückschicken. */
 	version: number

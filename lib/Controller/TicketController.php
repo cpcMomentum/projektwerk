@@ -143,11 +143,12 @@ class TicketController extends Controller {
 		string $visibility,
 		?string $description = null,
 		?string $responsibleUserId = null,
+		?string $dueDate = null,
 	): JSONResponse {
-		return $this->withViewer($boardId, function (ViewerContext $viewer) use ($title, $columnId, $visibility, $description, $responsibleUserId): JSONResponse {
+		return $this->withViewer($boardId, function (ViewerContext $viewer) use ($title, $columnId, $visibility, $description, $responsibleUserId, $dueDate): JSONResponse {
 			try {
 				return new JSONResponse(
-					$this->service->create($viewer, $title, $description, $visibility, $columnId, $responsibleUserId),
+					$this->service->create($viewer, $title, $description, $visibility, $columnId, $responsibleUserId, $dueDate),
 					Http::STATUS_CREATED,
 				);
 			} catch (\InvalidArgumentException $e) {
@@ -164,15 +165,19 @@ class TicketController extends Controller {
 		?string $title = null,
 		?string $description = null,
 		?string $responsibleUserId = null,
+		?string $dueDate = null,
 		?bool $closed = null,
 	): JSONResponse {
 		// Nur das übernehmen, was tatsächlich geschickt wurde: Ein
-		// nicht genanntes Feld darf nicht auf null zurückfallen.
+		// nicht genanntes Feld darf nicht auf null zurückfallen. Das Loeschen
+		// einer Faelligkeit reist deshalb als Leerstring, nicht als `null` — der
+		// waere hier nicht von „nicht geschickt" zu unterscheiden.
 		$changes = array_filter(
 			[
 				'title' => $title,
 				'description' => $description,
 				'responsibleUserId' => $responsibleUserId,
+				'dueDate' => $dueDate,
 				'closed' => $closed,
 			],
 			static fn ($value): bool => $value !== null,

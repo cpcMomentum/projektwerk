@@ -70,6 +70,7 @@ class TicketService {
 		string $visibility,
 		int $columnId,
 		?string $responsibleUserId = null,
+		?string $dueDate = null,
 	): Ticket {
 		$this->assertKnownVisibility($visibility);
 
@@ -78,7 +79,7 @@ class TicketService {
 		// Zähler — und den soll man sehen statt in einer Schleife zu verdecken.
 		for ($attempt = 1; $attempt <= 2; $attempt++) {
 			try {
-				return $this->insertWithNumber($viewer, $title, $description, $visibility, $columnId, $responsibleUserId);
+				return $this->insertWithNumber($viewer, $title, $description, $visibility, $columnId, $responsibleUserId, $dueDate);
 			} catch (DbException $e) {
 				if ($attempt === 2 || $e->getReason() !== DbException::REASON_UNIQUE_CONSTRAINT_VIOLATION) {
 					throw $e;
@@ -190,7 +191,7 @@ class TicketService {
 	 * Update, das ein Feld anders behandelt als die übrigen, wäre die Stelle,
 	 * an der die Regel beim nächsten Feld vergessen wird.
 	 *
-	 * @param array{title?: string, description?: ?string, responsibleUserId?: ?string, closed?: bool} $changes
+	 * @param array{title?: string, description?: ?string, responsibleUserId?: ?string, dueDate?: ?string, closed?: bool} $changes
 	 * @throws DoesNotExistException Ticket nicht sichtbar
 	 * @throws ConflictException     zwischenzeitlich geändert
 	 */
@@ -249,6 +250,12 @@ class TicketService {
 				$ticket->setResponsibleRole(null);
 				$ticket->setResponsibleSince(null);
 			}
+		}
+		// Die Faelligkeit: ein Datum setzt, der Leerstring loescht. `null` heisst
+		// „nicht geschickt" und faellt schon im Controller heraus — deshalb kann
+		// `array_key_exists` hier nicht das Loeschen tragen, der Leerstring tut es.
+		if (array_key_exists('dueDate', $changes)) {
+			$ticket->setDueDate($this->parseDueDate($changes['dueDate']));
 		}
 		// **Nur der Uebergang zaehlt**, nicht der Zustand: Ein zweites
 		// `closed: true` an einem bereits geschlossenen Vorgang darf nicht noch
@@ -332,6 +339,29 @@ class TicketService {
 		}
 
 		return null;
+	}
+
+	/**
+	 * Ein `JJJJ-MM-TT` in ein Datum, oder `null` fuer „leer".
+	 *
+	 * Dieselbe Regel wie am Schritt ({@see StepService::parseDueDate()}): ein
+	 * Datum ohne Uhrzeit, damit „ueberfaellig" ein Tagvergleich bleibt. Der
+	 * Leerstring loescht — das ist der Weg, eine Faelligkeit wieder abzunehmen,
+	 * weil der Controller `null` als „nicht geschickt" herausfiltert.
+	 *
+	 * @throws \InvalidArgumentException kein Datum im Format JJJJ-MM-TT
+	 */
+	private function parseDueDate(?string $value): ?\DateTime {
+		if ($value === null || trim($value) === '') {
+			return null;
+		}
+
+		$date = \DateTime::createFromFormat('!Y-m-d', trim($value));
+		if ($date === false) {
+			throw new \InvalidArgumentException('Die Fälligkeit braucht das Format JJJJ-MM-TT.');
+		}
+
+		return $date;
 	}
 
 	/**
@@ -426,6 +456,7 @@ class TicketService {
 		string $visibility,
 		int $columnId,
 		?string $responsibleUserId,
+		?string $dueDate = null,
 	): Ticket {
 		$this->db->beginTransaction();
 
@@ -468,6 +499,7 @@ class TicketService {
 				$ticket->setResponsibleRole($this->roleOnBoard($viewer, $responsibleUserId));
 				$ticket->setResponsibleSince($now);
 			}
+			$ticket->setDueDate($this->parseDueDate($dueDate));
 			$ticket->setPosition($this->positions->between($last, null));
 			$ticket->setVersion(1);
 			$ticket->setCreatedAt($now);
