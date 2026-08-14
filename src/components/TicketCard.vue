@@ -92,6 +92,21 @@
 						{{ stepsDone }}/{{ stepCount }}
 					</span>
 				</span>
+				<!--
+					Die Fälligkeit des Vorgangs (#72), überfällig kräftig markiert
+					— dasselbe Muster wie am Schritt. „Bis wann ist die Sache
+					fertig", die Zusage an die Gegenseite; wirklich in Verzug ist
+					sie erst, wenn das Datum gerissen ist.
+				-->
+				<span
+					v-if="ticket.dueDate"
+					class="pw-due"
+					:class="{ 'pw-due--overdue': overdue }"
+					:title="dueTitle">
+					<CalendarAlertIcon v-if="overdue" :size="13" />
+					<CalendarIcon v-else :size="13" />
+					{{ germanDate(ticket.dueDate) }}
+				</span>
 			</span>
 		</button>
 
@@ -141,11 +156,14 @@ import NcActionCaption from '@nextcloud/vue/components/NcActionCaption'
 import NcActions from '@nextcloud/vue/components/NcActions'
 import NcAvatar from '@nextcloud/vue/components/NcAvatar'
 import ArrowRightIcon from 'vue-material-design-icons/ArrowRight.vue'
+import CalendarAlertIcon from 'vue-material-design-icons/CalendarAlert.vue'
+import CalendarIcon from 'vue-material-design-icons/CalendarOutline.vue'
 import CommentOutlineIcon from 'vue-material-design-icons/CommentOutline.vue'
 import FormatListChecksIcon from 'vue-material-design-icons/FormatListChecks.vue'
 import OfficeBuildingIcon from 'vue-material-design-icons/OfficeBuilding.vue'
 import PencilIcon from 'vue-material-design-icons/Pencil.vue'
 import WaitBadge from '@/components/WaitBadge.vue'
+import { germanDate, isOverdue } from '@/utils/date'
 
 export default defineComponent({
 	name: 'TicketCard',
@@ -153,6 +171,8 @@ export default defineComponent({
 	components: {
 		WaitBadge,
 		ArrowRightIcon,
+		CalendarIcon,
+		CalendarAlertIcon,
 		CommentOutlineIcon,
 		FormatListChecksIcon,
 		NcActionButton,
@@ -255,8 +275,21 @@ export default defineComponent({
 				count: this.stepCount,
 			})
 		},
+
+		/** Ist die Fälligkeit gerissen? Ein fehlendes Datum nie (#72). */
+		overdue(): boolean {
+			return isOverdue(this.ticket.dueDate)
+		},
+
+		dueTitle(): string {
+			const date = germanDate(this.ticket.dueDate)
+
+			return this.overdue
+				? t('projektwerk', 'überfällig seit {date}', { date })
+				: t('projektwerk', 'fällig {date}', { date })
+		},
 	},
 
-	methods: { t },
+	methods: { t, germanDate },
 })
 </script>

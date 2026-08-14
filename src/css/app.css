@@ -1862,6 +1862,61 @@
 	color: var(--color-text-maxcontrast);
 }
 
+/*
+ * Die Fälligkeit in der Fusszeile (#72). Derselbe Trenner wie vor den Zählern,
+ * wenn etwas davorsteht.
+ */
+.app-projektwerk .pw-due {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+.app-projektwerk .pw-card__foot > .pw-due:not(:first-child)::before {
+	content: "·";
+	margin-inline-end: 6px;
+	color: var(--color-text-maxcontrast);
+}
+
+/*
+ * „In Verzug" — das kräftige Signal, sparsam: NC-Fehlerfarbe und Fettung, nur
+ * wenn das Datum wirklich gerissen ist. Ein Vorgang, der noch Luft hat, bleibt
+ * ruhig.
+ */
+.app-projektwerk .pw-due--overdue {
+	color: var(--color-error);
+	font-weight: 600;
+}
+
+/* ---- Fälligkeit im Ticket-Detail (#72) ---------------------------------- */
+
+.app-projektwerk .pw-frist {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-wrap: wrap;
+	padding: 8px 2px;
+	min-height: var(--default-clickable-area, 44px);
+}
+
+.app-projektwerk .pw-frist__label {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-frist--overdue .pw-frist__label {
+	color: var(--color-error);
+}
+
+.app-projektwerk .pw-frist__marke {
+	color: var(--color-error);
+	font-weight: 600;
+}
+
 /* ---- Tabelle in „Meine Einstellungen" ------------------------------------ */
 
 /*

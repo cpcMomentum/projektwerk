@@ -45,3 +45,17 @@ export interface StepRow {
 	/** Fälligkeit liegt in der Vergangenheit. */
 	overdue: boolean
 }
+
+/**
+ * Ein Vorgang im Abschnitt „Meine Vorgänge" mit seiner Überfällig-Marke.
+ *
+ * Erst mit der Ticket-Fälligkeit (#72) kann dieser Abschnitt §9s Regel „nach
+ * Fälligkeit, dann Alter, Überfälliges oben" erfüllen — vorher trug nur der
+ * Schritt ein Datum, und ein Vorgang ohne Schritte hatte keins.
+ */
+export interface TicketRow {
+	ticket: Ticket
+	board: TaskBoard | null
+	/** Fälligkeit liegt in der Vergangenheit. */
+	overdue: boolean
+}

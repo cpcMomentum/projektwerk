@@ -270,6 +270,34 @@
 					</div>
 				</div>
 
+				<!--
+					Die Fälligkeit des Vorgangs (#72) — „bis wann ist die Sache
+					fertig", verschieden von der Frist eines einzelnen Schritts.
+					Immer sichtbar und leer löschbar, wie der Datumswähler am
+					Schritt; überfällig wird kräftig markiert, aber nur wenn das
+					Datum wirklich gerissen ist.
+				-->
+				<div class="pw-frist" :class="{ 'pw-frist--overdue': dueOverdue }">
+					<span class="pw-frist__label">
+						<CalendarAlertIcon v-if="dueOverdue" :size="18" />
+						<CalendarIcon v-else :size="18" />
+						{{ t('projektwerk', 'Fällig bis') }}
+					</span>
+					<NcDateTimePicker
+						:modelValue="dueValue"
+						type="date"
+						class="pw-frist__picker"
+						:clearable="true"
+						:appendToBody="true"
+						:disabled="busy"
+						:ariaLabel="t('projektwerk', 'Fällig bis')"
+						:placeholder="t('projektwerk', 'Keine Frist')"
+						@update:modelValue="setDue" />
+					<span v-if="dueOverdue" class="pw-frist__marke">
+						{{ t('projektwerk', 'überfällig') }}
+					</span>
+				</div>
+
 				<StepList
 					:boardId="ticket.boardId"
 					:ticketId="ticket.id"
@@ -313,11 +341,14 @@ import { t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
 import NcAvatar from '@nextcloud/vue/components/NcAvatar'
 import NcButton from '@nextcloud/vue/components/NcButton'
+import NcDateTimePicker from '@nextcloud/vue/components/NcDateTimePicker'
 import NcModal from '@nextcloud/vue/components/NcModal'
 import NcRichText from '@nextcloud/vue/components/NcRichText'
 import NcSelectUsers from '@nextcloud/vue/components/NcSelectUsers'
 import NcTextArea from '@nextcloud/vue/components/NcTextArea'
 import AccountPlusIcon from 'vue-material-design-icons/AccountPlusOutline.vue'
+import CalendarAlertIcon from 'vue-material-design-icons/CalendarAlert.vue'
+import CalendarIcon from 'vue-material-design-icons/CalendarOutline.vue'
 import ChevronDownIcon from 'vue-material-design-icons/ChevronDown.vue'
 import ChevronUpIcon from 'vue-material-design-icons/ChevronUp.vue'
 import CloseIcon from 'vue-material-design-icons/Close.vue'
@@ -331,6 +362,7 @@ import WaitBadge from '@/components/WaitBadge.vue'
 import { fetchAssignable } from '@/services/steps'
 import { updateTicket } from '@/services/tickets'
 import { reportWriteError } from '@/services/writeError'
+import { asDate, isOverdue, toIsoDay } from '@/utils/date'
 
 /** Ab welcher Hoehe die Beschreibung gedeckelt wird. Deckt sich mit der CSS. */
 const TEXT_DECKEL_PX = 150
@@ -345,7 +377,7 @@ interface PersonOption {
 export default defineComponent({
 	name: 'TicketDetail',
 
-	components: { AccountPlusIcon, AttachmentList, ChevronDownIcon, ChevronUpIcon, CloseIcon, CommentList, NcAvatar, NcButton, NcModal, NcRichText, NcSelectUsers, NcTextArea, PencilOutlineIcon, PlusIcon, StepList, VisibilityControl, WaitBadge },
+	components: { AccountPlusIcon, AttachmentList, CalendarIcon, CalendarAlertIcon, ChevronDownIcon, ChevronUpIcon, CloseIcon, CommentList, NcAvatar, NcButton, NcDateTimePicker, NcModal, NcRichText, NcSelectUsers, NcTextArea, PencilOutlineIcon, PlusIcon, StepList, VisibilityControl, WaitBadge },
 
 	props: {
 		ticket: { type: Object as PropType<Ticket | null>, default: null },
@@ -397,6 +429,16 @@ export default defineComponent({
 	computed: {
 		paddedNumber(): string {
 			return String(this.ticket?.number ?? 0).padStart(4, '0')
+		},
+
+		/** Die Fälligkeit als `Date` für den Datumswähler, oder null. */
+		dueValue(): Date | null {
+			return asDate(this.ticket?.dueDate ?? null)
+		},
+
+		/** Ist die Fälligkeit gerissen? Ein fehlendes Datum nie (#72). */
+		dueOverdue(): boolean {
+			return isOverdue(this.ticket?.dueDate ?? null)
 		},
 
 		/** Benennt den Dialog ueber die Ueberschrift, die ohnehin dasteht. */
@@ -604,6 +646,40 @@ export default defineComponent({
 				this.editingResponsible = false
 			} catch (e) {
 				reportWriteError(e, t('projektwerk', 'Zuständigkeit konnte nicht gesetzt werden'))
+			} finally {
+				this.busy = false
+			}
+		},
+
+		/**
+		 * Die Fälligkeit des Vorgangs setzen oder löschen (#72).
+		 *
+		 * Der Leerstring löscht: `null` filtert der Controller als „nicht
+		 * geschickt" heraus, also trägt der Leerstring das Abnehmen einer Frist.
+		 *
+		 * @param value Das gewählte Datum, oder null zum Löschen.
+		 */
+		async setDue(value: Date | null): Promise<void> {
+			if (this.ticket === null || this.busy) {
+				return
+			}
+
+			const iso = toIsoDay(value)
+			if ((iso ?? null) === (this.ticket.dueDate ?? null)) {
+				return
+			}
+
+			this.busy = true
+			try {
+				const updated = await updateTicket(
+					this.ticket.boardId,
+					this.ticket.id,
+					this.ticket.version,
+					{ dueDate: iso ?? '' },
+				)
+				this.$emit('changed', updated)
+			} catch (e) {
+				reportWriteError(e, t('projektwerk', 'Fälligkeit konnte nicht gesetzt werden'))
 			} finally {
 				this.busy = false
 			}
