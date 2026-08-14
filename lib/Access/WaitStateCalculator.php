@@ -21,16 +21,30 @@ use OCA\Projektwerk\Db\Ticket;
  * und die erste vergessene Stelle erzeugt eine Marke, die niemand mehr erklaeren
  * kann. Hier folgt der Zustand aus den Schritten, immer.
  *
- * Die Bedingung steht in §5 und ist bewusst eng: **mindestens ein offener
- * Schritt mit gesetzter Zuweisung und `assigned_role = 'external'`.** Das Datum
- * ist das kleinste `assigned_at` unter genau diesen Schritten — nicht das des
- * Tickets und nicht das juengste, sonst spraenge die Marke bei jeder weiteren
- * Zuweisung auf ein neueres Datum und verloere ihren Sinn als Wartezeit.
+ * **Zwei Quellen, dieselbe Aussage.** Ein Vorgang wartet auf die Kundenseite,
+ * wenn eines von beiden zutrifft:
  *
- * `assigned_role` wird bei der Zuweisung **kopiert** und nicht zur Laufzeit
- * ermittelt. Sonst kippte der Wartezustand rueckwirkend, sobald jemand die Rolle
- * wechselt oder das Board verlaesst — an Vorgaengen, die seit Wochen
- * unveraendert sind.
+ * - **mindestens ein offener Schritt** mit gesetzter Zuweisung und
+ *   `assigned_role = 'external'`, oder
+ * - **ein Verantwortlicher mit eingefrorener externer Rolle** (#114). Nicht
+ *   jeder Vorgang wird in Schritte zerlegt; einer, der jemandem auf der
+ *   Gegenseite gehoert, liegt trotzdem dort.
+ *
+ * Das Datum ist das kleinste unter `assigned_at` der wartenden Schritte und
+ * `responsible_since` — nicht das juengste, sonst spraenge die Marke bei jeder
+ * weiteren Zuweisung auf ein neueres Datum und verloere ihren Sinn als
+ * Wartezeit. Die Kennungen sind die der externen Schritt-Bearbeiter und, falls
+ * er wartet, des Verantwortlichen.
+ *
+ * `assigned_role` **und** `responsible_role` werden beim Zuweisen **kopiert**
+ * und nicht zur Laufzeit ermittelt. Sonst kippte der Wartezustand rueckwirkend,
+ * sobald jemand die Rolle wechselt oder das Board verlaesst — an Vorgaengen, die
+ * seit Wochen unveraendert sind.
+ *
+ * **Was hier (noch) NICHT steht:** „in Verzug". Warten ist ein Zustand des
+ * Ballbesitzes; wirklich zu spaet ist ein Vorgang erst, wenn eine Faelligkeit
+ * gerissen ist. Die Ticket-Faelligkeit kommt mit #72; bis dahin traegt nur der
+ * Schritt ein Datum.
  */
 class WaitStateCalculator {
 
@@ -63,7 +77,12 @@ class WaitStateCalculator {
 			static fn (Step $step): bool => $step->waitsOnExternal() && $step->getAssignedUserId() !== null,
 		);
 
-		if ($waiting === []) {
+		// Die zweite Quelle: der Verantwortliche selbst (#114). `waitsOnExternal()`
+		// an der Entitaet prueft Rolle **und** Kennung — dieselbe Zusicherung wie
+		// beim Schritt.
+		$ticketWaits = $ticket->waitsOnExternal();
+
+		if ($waiting === [] && !$ticketWaits) {
 			return null;
 		}
 
@@ -76,6 +95,18 @@ class WaitStateCalculator {
 			}
 
 			$userId = (string)$step->getAssignedUserId();
+			if (!in_array($userId, $userIds, true)) {
+				$userIds[] = $userId;
+			}
+		}
+
+		if ($ticketWaits) {
+			$responsibleSince = $ticket->getResponsibleSince();
+			if ($responsibleSince !== null && ($since === null || $responsibleSince < $since)) {
+				$since = $responsibleSince;
+			}
+
+			$userId = (string)$ticket->getResponsibleUserId();
 			if (!in_array($userId, $userIds, true)) {
 				$userIds[] = $userId;
 			}
