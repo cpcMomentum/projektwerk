@@ -12,6 +12,7 @@ namespace OCA\Projektwerk\Controller;
 use OCA\Projektwerk\Access\WaitStateCalculator;
 use OCA\Projektwerk\AppInfo\Application;
 use OCA\Projektwerk\Db\BoardMapper;
+use OCA\Projektwerk\Db\Step;
 use OCA\Projektwerk\Db\StepMapper;
 use OCA\Projektwerk\Db\TaskFilter;
 use OCA\Projektwerk\Db\Ticket;
@@ -107,17 +108,36 @@ class OverviewController extends Controller {
 		));
 		$ids = array_map(static fn (Ticket $ticket): int => (int)$ticket->getId(), $tickets);
 
+		// Einmal geladen, zweifach gebraucht: der Wartezustand und die Frage,
+		// welche Vorgänge überhaupt einen offenen Schritt tragen (#119). Kinder
+		// werden nie eigenständig abgefragt — beides kommt aus dieser Menge.
+		$steps = $this->steps->findForTickets($ids);
+
+		// Vorgänge mit mindestens einem offenen Schritt. Grundlage für „liegt
+		// bei niemandem" (#119): ohne Verantwortlichen **und** ohne offenen
+		// Schritt liegt ein Vorgang bei niemandem, er ist unbearbeitet.
+		$withOpenSteps = array_values(array_unique(array_map(
+			static fn (Step $step): int => (int)$step->getTicketId(),
+			array_filter($steps, static fn (Step $step): bool => !$step->isDone()),
+		)));
+
 		return new JSONResponse([
 			'tickets' => $tickets,
 			// Kennung => {since, userIds}. Nur für Vorgänge, die wirklich
 			// warten — der Rechner lässt die übrigen weg, und eine Zuordnung
 			// mit lauter `null` wäre Ballast auf einer Startseite.
-			'waiting' => $this->waitState->forTickets($tickets, $this->steps->findForTickets($ids)),
+			'waiting' => $this->waitState->forTickets($tickets, $steps),
 			'boards' => $aktiv,
 			// Projekt => Kennung => Name. Ohne sie stünde auf der Startseite
 			// „wartet auf pw-carla" — der Fehler aus #104, hier von vornherein
 			// vermieden.
 			'names' => $this->memberService->namesForUserBoards($this->userId),
+			// Die eigene Kennung — für „Meine Vorgänge" (#120): die Vorgänge, für
+			// die ich verantwortlich bin. Vom Server, damit der Browser nicht
+			// raten muss, wer „ich" ist.
+			'me' => $this->userId,
+			// Vorgänge mit offenem Schritt (#119).
+			'withOpenSteps' => $withOpenSteps,
 		]);
 	}
 

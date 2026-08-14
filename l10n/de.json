@@ -267,7 +267,8 @@
 		"_steht still seit %n Tag_::_steht still seit %n Tagen_": [
 			"steht still seit %n Tag",
 			"steht still seit %n Tagen"
-		]
+		],
+		"Liegt bei niemandem": "Liegt bei niemandem"
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }

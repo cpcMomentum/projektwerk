@@ -15,7 +15,7 @@
  * im Server wäre dieselbe Regel an zwei Orten.
  */
 
-import type { OverviewData, ProjectRow, WaitingRow } from '@/types/overview'
+import type { OverviewData, OverviewTicketRow, ProjectRow, WaitingRow } from '@/types/overview'
 import type { TaskBoard } from '@/types/task'
 import type { Ticket } from '@/types/ticket'
 
@@ -28,6 +28,10 @@ interface State {
 	waiting: OverviewData['waiting']
 	boards: Record<number, TaskBoard>
 	names: OverviewData['names']
+	/** Die eigene Kennung — für „Meine Vorgänge" (#120). */
+	me: string
+	/** Vorgänge mit offenem Schritt — für „liegt bei niemandem" (#119). */
+	withOpenSteps: Set<number>
 	loading: boolean
 	/**
 	 * Der heutige Tag, beim Laden festgehalten.
@@ -91,6 +95,8 @@ export const useOverviewStore = defineStore('overview', {
 		waiting: {},
 		boards: {},
 		names: {},
+		me: '',
+		withOpenSteps: new Set(),
 		loading: false,
 		today: heute(),
 		error: null,
@@ -192,6 +198,65 @@ export const useOverviewStore = defineStore('overview', {
 			return rows.sort((a, b) => b.waiting - a.waiting || b.open - a.open || a.boardId - b.boardId)
 		},
 
+		/**
+		 * **Meine Vorgänge** (#120) — die, für die ich verantwortlich bin und die
+		 * gerade **nicht** auf die Kundenseite warten.
+		 *
+		 * Die Ausgrenzung der wartenden ist die Antwort auf „nicht verdoppeln":
+		 * Liegt der Ball beim Kunden, steht der Vorgang schon im Warte-Abschnitt;
+		 * hier gehört, was bei **mir** liegt. Zwei-Achsen-Modell aus #114: bei mir
+		 * gegen beim Kunden.
+		 *
+		 * Sortiert nach Fälligkeit, Überfälliges oben, dann Alter — dieselbe
+		 * §9-Regel wie im gleichnamigen Abschnitt von „Meine Aufgaben".
+		 *
+		 * @param state Der Speicher.
+		 */
+		myTicketRows: (state): OverviewTicketRow[] => {
+			const rows = state.tickets
+				.filter((ticket) => ticket.responsibleUserId === state.me && state.waiting[ticket.id] === undefined)
+				.map((ticket): OverviewTicketRow => ({ ticket, board: state.boards[ticket.boardId] ?? null }))
+
+			return rows.sort((a, b) => {
+				const dueA = a.ticket.dueDate
+				const dueB = b.ticket.dueDate
+
+				if (dueA !== dueB) {
+					if (dueA === null) {
+						return 1
+					}
+					if (dueB === null) {
+						return -1
+					}
+					return dueA < dueB ? -1 : 1
+				}
+
+				return (a.ticket.createdAt ?? '').localeCompare(b.ticket.createdAt ?? '') || a.ticket.id - b.ticket.id
+			})
+		},
+
+		/**
+		 * **Liegt bei niemandem** (#119) — der dritte Ballbesitz-Zustand.
+		 *
+		 * Kein Verantwortlicher, kein offener Schritt, und es wartet auch nicht:
+		 * Der Vorgang ist unbearbeitet, er liegt bei niemandem. Das ist eine
+		 * eigene Auskunft, nicht „wartet" — der Wartebegriff hängt an einer
+		 * externen Rolle, hier fehlt jede Zuweisung.
+		 *
+		 * Das am längsten Unbearbeitete zuerst: Es liegt am längsten brach.
+		 *
+		 * @param state Der Speicher.
+		 */
+		nobodyRows: (state): OverviewTicketRow[] => {
+			const rows = state.tickets
+				.filter((ticket) => (ticket.responsibleUserId === null || ticket.responsibleUserId === '')
+					&& state.waiting[ticket.id] === undefined
+					&& !state.withOpenSteps.has(ticket.id))
+				.map((ticket): OverviewTicketRow => ({ ticket, board: state.boards[ticket.boardId] ?? null }))
+
+			return rows.sort((a, b) => (a.ticket.createdAt ?? '').localeCompare(b.ticket.createdAt ?? '') || a.ticket.id - b.ticket.id)
+		},
+
 		/** Nichts offen, nirgends — der Leerzustand der ganzen Seite. */
 		nothingOpen(): boolean {
 			return (this.projectRows as ProjectRow[]).length === 0
@@ -223,6 +288,8 @@ export const useOverviewStore = defineStore('overview', {
 			this.waiting = data.waiting
 			this.boards = data.boards
 			this.names = data.names
+			this.me = data.me
+			this.withOpenSteps = new Set(data.withOpenSteps)
 		},
 	},
 })

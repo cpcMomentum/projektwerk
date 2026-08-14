@@ -241,6 +241,7 @@ OC.L10N.register(
     "Anpinnen fehlgeschlagen" : "Anpinnen fehlgeschlagen",
     "Von der Seitenleiste lösen" : "Von der Seitenleiste lösen",
     "An die Seitenleiste anpinnen" : "An die Seitenleiste anpinnen",
-    "_steht still seit %n Tag_::_steht still seit %n Tagen_" : ["steht still seit %n Tag","steht still seit %n Tagen"]
+    "_steht still seit %n Tag_::_steht still seit %n Tagen_" : ["steht still seit %n Tag","steht still seit %n Tagen"],
+    "Liegt bei niemandem" : "Liegt bei niemandem"
 },
 "nplurals=2; plural=(n != 1);");

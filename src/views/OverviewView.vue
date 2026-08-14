@@ -76,6 +76,60 @@
 				</button>
 			</section>
 
+			<!--
+				**Meine Vorgänge** (#120): was bei mir liegt und gerade nicht auf
+				den Kunden wartet. Der zweite der drei Ballbesitz-Zustände aus #114.
+			-->
+			<section v-if="store.myTicketRows.length > 0" class="pw-ov__block">
+				<h3 class="pw-col__head">
+					{{ t('projektwerk', 'Meine Vorgänge') }}
+					<span class="pw-n">{{ store.myTicketRows.length }}</span>
+				</h3>
+
+				<button
+					v-for="row in store.myTicketRows"
+					:key="row.ticket.id"
+					type="button"
+					class="pw-ov__row"
+					@click="openTicket(row.ticket)">
+					<span class="pw-num">#{{ padded(row.ticket.number) }}</span>
+					<span class="pw-ov__body">
+						<span class="pw-ov__title">{{ row.ticket.title }}</span>
+						<span v-if="row.board" class="pw-ov__meta">{{ row.board.title }}</span>
+					</span>
+					<span
+						v-if="row.ticket.dueDate"
+						class="pw-marke"
+						:class="{ 'pw-marke--lang': isOverdue(row.ticket.dueDate) }">
+						{{ dueLabel(row.ticket) }}
+					</span>
+				</button>
+			</section>
+
+			<!--
+				**Liegt bei niemandem** (#119): kein Verantwortlicher, kein offener
+				Schritt, wartet auch nicht — unbearbeitet. Der dritte Zustand.
+			-->
+			<section v-if="store.nobodyRows.length > 0" class="pw-ov__block">
+				<h3 class="pw-col__head">
+					{{ t('projektwerk', 'Liegt bei niemandem') }}
+					<span class="pw-n">{{ store.nobodyRows.length }}</span>
+				</h3>
+
+				<button
+					v-for="row in store.nobodyRows"
+					:key="row.ticket.id"
+					type="button"
+					class="pw-ov__row"
+					@click="openTicket(row.ticket)">
+					<span class="pw-num">#{{ padded(row.ticket.number) }}</span>
+					<span class="pw-ov__body">
+						<span class="pw-ov__title">{{ row.ticket.title }}</span>
+						<span v-if="row.board" class="pw-ov__meta">{{ row.board.title }}</span>
+					</span>
+				</button>
+			</section>
+
 			<section v-if="store.projectRows.length > 0" class="pw-ov__block">
 				<h3 class="pw-col__head">
 					{{ t('projektwerk', 'Projekte mit Bewegung') }}
@@ -126,6 +180,7 @@ import StarIcon from 'vue-material-design-icons/Star.vue'
 import ViewDashboardIcon from 'vue-material-design-icons/ViewDashboardOutline.vue'
 import { useBoardStore } from '@/stores/boardStore'
 import { useOverviewStore } from '@/stores/overviewStore'
+import { germanDate, isOverdue } from '@/utils/date'
 
 /**
  * Ab wann eine Wartezeit hervorgehoben wird.
@@ -208,6 +263,21 @@ export default defineComponent({
 
 	methods: {
 		t,
+		isOverdue,
+
+		/**
+		 * „fällig {Datum}" oder „überfällig seit {Datum}" für einen Vorgang mit
+		 * Ticket-Fälligkeit (#72) im Abschnitt „Meine Vorgänge".
+		 *
+		 * @param ticket Der Vorgang.
+		 */
+		dueLabel(ticket: Ticket): string {
+			const date = germanDate(ticket.dueDate)
+
+			return isOverdue(ticket.dueDate)
+				? t('projektwerk', 'überfällig seit {date}', { date })
+				: t('projektwerk', 'fällig {date}', { date })
+		},
 
 		/**
 		 * @param boardId Kennung des Projekts.
