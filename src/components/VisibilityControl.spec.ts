@@ -67,6 +67,7 @@ function ticketOf(overrides: Partial<Ticket> = {}): Ticket {
 		creatorUserId: 'anna',
 		creatorRole: 'internal',
 		responsibleUserId: null,
+		dueDate: null,
 		closedAt: null,
 		version: 5,
 		lastEditorUserId: null,

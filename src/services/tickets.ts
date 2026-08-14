@@ -47,6 +47,7 @@ export async function fetchTicket(boardId: number, ticketId: number): Promise<Ti
  * @param data.visibility
  * @param data.description
  * @param data.responsibleUserId
+ * @param data.dueDate
  */
 export async function createTicket(boardId: number, data: {
 	title: string
@@ -54,6 +55,7 @@ export async function createTicket(boardId: number, data: {
 	visibility: Visibility
 	description?: string | null
 	responsibleUserId?: string | null
+	dueDate?: string | null
 }): Promise<Ticket> {
 	return apiPost<Ticket, typeof data>(`/boards/${boardId}/tickets`, data)
 }
@@ -71,13 +73,14 @@ export async function createTicket(boardId: number, data: {
  * @param changes.title
  * @param changes.description
  * @param changes.responsibleUserId
+ * @param changes.dueDate Ein `JJJJ-MM-TT` setzt, der Leerstring löscht, Weglassen lässt unverändert.
  * @param changes.closed
  */
 export async function updateTicket(
 	boardId: number,
 	ticketId: number,
 	version: number,
-	changes: { title?: string, description?: string | null, responsibleUserId?: string | null, closed?: boolean },
+	changes: { title?: string, description?: string | null, responsibleUserId?: string | null, dueDate?: string | null, closed?: boolean },
 ): Promise<Ticket> {
 	return apiPatch<Ticket, typeof changes & { version: number }>(
 		`/boards/${boardId}/tickets/${ticketId}`,

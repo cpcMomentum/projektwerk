@@ -61,6 +61,8 @@ use OCP\DB\Types;
  * @method void setResponsibleRole(?string $responsibleRole)
  * @method ?DateTime getResponsibleSince()
  * @method void setResponsibleSince(?DateTime $responsibleSince)
+ * @method ?DateTime getDueDate()
+ * @method void setDueDate(?DateTime $dueDate)
  * @method int getPosition()
  * @method void setPosition(int $position)
  * @method ?DateTime getClosedAt()
@@ -100,6 +102,14 @@ class Ticket extends Entity implements JsonSerializable {
 	protected ?string $responsibleRole = null;
 	/** Seit wann der aktuelle Verantwortliche eingetragen ist — die Wartezeit. */
 	protected ?DateTime $responsibleSince = null;
+	/**
+	 * „Bis wann ist die Sache fertig" — die Zusage an die Gegenseite (#72).
+	 *
+	 * Ein Datum ohne Uhrzeit (`Types::DATE`) wie am Schritt. Verschieden von der
+	 * Schritt-Faelligkeit („bis wann ist mein Teil fertig") und deshalb keine
+	 * Verdopplung.
+	 */
+	protected ?DateTime $dueDate = null;
 	protected ?int $position = null;
 	protected ?DateTime $closedAt = null;
 	/**
@@ -128,6 +138,7 @@ class Ticket extends Entity implements JsonSerializable {
 		$this->addType('responsibleUserId', Types::STRING);
 		$this->addType('responsibleRole', Types::STRING);
 		$this->addType('responsibleSince', Types::DATETIME);
+		$this->addType('dueDate', Types::DATE);
 		$this->addType('position', Types::INTEGER);
 		$this->addType('closedAt', Types::DATETIME);
 		$this->addType('deletedAt', Types::DATETIME);
@@ -188,6 +199,8 @@ class Ticket extends Entity implements JsonSerializable {
 			'creatorUserId' => $this->getCreatorUserId(),
 			'creatorRole' => $this->getCreatorRole(),
 			'responsibleUserId' => $this->getResponsibleUserId(),
+			// Datum ohne Uhrzeit, wie am Schritt. `null` heisst: keine Faelligkeit.
+			'dueDate' => $this->getDueDate()?->format('Y-m-d'),
 			// `position` fehlt hier absichtlich — siehe Methodenkommentar.
 			'closedAt' => $this->getClosedAt()?->format(DateTime::ATOM),
 			'version' => $this->getVersion(),

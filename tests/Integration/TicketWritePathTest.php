@@ -749,6 +749,56 @@ class TicketWritePathTest extends IntegrationTestCase {
 		$this->assertTrue($ticket->waitsOnExternal());
 	}
 
+	/**
+	 * Die Ticket-Faelligkeit (#72): beim Anlegen gesetzt, als Datum ohne Uhrzeit
+	 * gespeichert.
+	 */
+	public function testANewTicketCanCarryADueDate(): void {
+		$ticket = $this->service->create(
+			$this->viewer(LeakMatrixFixture::ANNA),
+			'Mit Frist',
+			null,
+			TicketScope::VISIBILITY_PUBLIC,
+			$this->fixture->columnIds[LeakMatrixFixture::COLUMN_A],
+			null,
+			'2026-09-30',
+		);
+
+		$reloaded = $this->tickets->findVisible($this->viewer(LeakMatrixFixture::ANNA), (int)$ticket->getId());
+		$this->assertSame('2026-09-30', $reloaded->getDueDate()?->format('Y-m-d'));
+	}
+
+	/**
+	 * Ein Datum setzt, der Leerstring loescht — der Weg, eine Frist wieder
+	 * abzunehmen, weil `null` im Controller als „nicht geschickt" herausfaellt.
+	 */
+	public function testTheDueDateCanBeSetAndCleared(): void {
+		$anna = $this->viewer(LeakMatrixFixture::ANNA);
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+
+		$this->service->update($anna, $ticketId, 1, ['dueDate' => '2026-10-15']);
+		$gesetzt = $this->tickets->findVisible($anna, $ticketId);
+		$this->assertSame('2026-10-15', $gesetzt->getDueDate()?->format('Y-m-d'));
+
+		$this->service->update($anna, $ticketId, $gesetzt->getVersion(), ['dueDate' => '']);
+		$geleert = $this->tickets->findVisible($anna, $ticketId);
+		$this->assertNull($geleert->getDueDate());
+	}
+
+	/**
+	 * Ein unbrauchbares Datum wird abgewiesen, nicht stillschweigend verschluckt.
+	 */
+	public function testAMalformedDueDateIsRejected(): void {
+		$this->expectException(\InvalidArgumentException::class);
+
+		$this->service->update(
+			$this->viewer(LeakMatrixFixture::ANNA),
+			$this->fixture->ticketIds['public/anna'],
+			1,
+			['dueDate' => '30.09.2026'],
+		);
+	}
+
 	private function viewer(string $userId): ViewerContext {
 		return $this->fixture->contextFor($userId);
 	}
