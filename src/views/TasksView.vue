@@ -121,8 +121,8 @@
 							<span class="pw-num">#{{ padded(row.ticket.number) }}</span>
 							{{ row.ticket.title }}
 						</span>
-						<span v-if="store.boardOf(row.ticket)" class="pw-task__meta">
-							{{ store.boardOf(row.ticket).title }}
+						<span v-if="row.board" class="pw-task__meta">
+							{{ row.board.title }}
 							<span v-if="orgLine(row.ticket)" class="pw-task__board">· {{ orgLine(row.ticket) }}</span>
 						</span>
 					</button>
