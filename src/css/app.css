@@ -1665,6 +1665,129 @@
 }
 
 /*
+ * Der Ueberblick — der Einstieg (#76).
+ *
+ * **Eine Zeilenform fuer beide Abschnitte, und das ist der ganze Punkt.** Der
+ * Entwurf stellte drei verschiedene Formen nebeneinander: Listenzeilen mit
+ * Marken, Zaehler-Pillen und eine Kachelreihe. Axels Befund war „zu
+ * unstrukturiert" (2026-08-13), und er hatte recht — die Seite hatte drei
+ * Rhythmen auf einmal.
+ *
+ * Beide Abschnitte tragen deshalb dieselbe Zeile: links eine feste Spalte
+ * (Vorgangsnummer oder leer), in der Mitte Titel und Herkunft, rechts eine
+ * Marke. Was sich unterscheidet, ist der Inhalt, nicht die Gestalt.
+ *
+ * Nah an `.pw-task` und trotzdem eigene Klassen: Dort traegt die Zeile ein
+ * Kaestchen und eine Faelligkeit, hier eine Nummer und eine Standdauer. Sie
+ * zusammenzulegen hiesse, eine Klasse mit zwei Bedeutungen zu haben — und die
+ * naechste Aenderung an der einen Seite braeche die andere.
+ */
+.app-projektwerk .pw-ov__block {
+	margin-bottom: 24px;
+}
+
+/*
+ * Die ganze Zeile ist die Klickflaeche, nicht nur der Titel: Auf dem Handy ist
+ * ein Wort als Ziel zu wenig, und §9 setzt 34 px als Untergrenze.
+ */
+.app-projektwerk .pw-ov__row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	width: 100%;
+	min-height: var(--default-clickable-area, 34px);
+	padding: 6px 8px;
+	border: none;
+	border-bottom: 1px solid var(--color-border);
+	background: none;
+	text-align: start;
+	cursor: pointer;
+}
+
+.app-projektwerk .pw-ov__row:last-child {
+	border-bottom: none;
+}
+
+.app-projektwerk .pw-ov__row:hover {
+	background: var(--color-background-hover);
+}
+
+.app-projektwerk .pw-ov__row:hover .pw-ov__title {
+	text-decoration: underline;
+}
+
+.app-projektwerk .pw-ov__body {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 2px;
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.app-projektwerk .pw-ov__title {
+	font-weight: 600;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	max-width: 100%;
+}
+
+.app-projektwerk .pw-ov__meta {
+	color: var(--color-text-maxcontrast);
+	font-size: 0.85em;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	max-width: 100%;
+}
+
+.app-projektwerk .pw-ov__who {
+	white-space: nowrap;
+}
+
+/*
+ * Die leere Nummernspalte im Projektabschnitt: Ein Projekt hat keine Nummer,
+ * aber die Zeilen beider Abschnitte sollen auf derselben Kante beginnen. Ohne
+ * sie saessen sie um die Breite einer Nummer versetzt — genau die Unruhe, die
+ * hier weg soll.
+ *
+ * Die Breite haengt an `ch` und nicht an einem Pixelwert: `#0000` sind fuenf
+ * Zeichen in einer Ziffernbreite, und `font-variant-numeric: tabular-nums` an
+ * `.pw-num` macht sie alle gleich breit.
+ */
+.app-projektwerk .pw-ov__row .pw-num {
+	flex: 0 0 auto;
+	min-width: 5ch;
+}
+
+.app-projektwerk .pw-num--leer {
+	visibility: hidden;
+}
+
+/*
+ * Die Marke rechts. Farbe UND Schriftschnitt bei langer Wartezeit, nie Farbe
+ * allein (§9 Querschnitt) — und `--color-warning-text`, nicht
+ * `--color-warning`: Letzteres ist in Nextcloud eine Flaechenfarbe.
+ *
+ * **Kein Rot.** Rot hiesse „zu spaet", und das weiss hier niemand: Ohne
+ * Faelligkeit am Vorgang (#72) ist eine lange Wartezeit auffaellig, aber nicht
+ * ueberfaellig. Die Marke sagt deshalb „lange", nicht „falsch".
+ */
+.app-projektwerk .pw-marke {
+	flex: 0 0 auto;
+	color: var(--color-text-maxcontrast);
+	font-size: 0.85em;
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+}
+
+.app-projektwerk .pw-marke--lang {
+	color: var(--color-warning-text, var(--color-main-text));
+	font-weight: 600;
+}
+
+/*
  * Mehrzeilige Felder so breit wie die einzeiligen daneben.
  *
  * `textarea` bringt eine eigene Vorgabebreite (`cols`) mit und ignoriert die

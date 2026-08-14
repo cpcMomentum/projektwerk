@@ -42,6 +42,11 @@ final class ReadPathRegistry {
 		'TicketMapper::findVisibleInBoard',
 		'TicketMapper::findVisible',
 		'TicketMapper::findVisibleAcrossBoards',
+		// Der Ueberblick (#76) — **alles Sichtbare** ueber alle Boards, nicht
+		// nur das eigene. Die breiteste Menge der Matrix: Jeder andere Pfad
+		// engt zusaetzlich ein, dieser allein ueber die Sichtbarkeitsregel.
+		// Die Erwartung dazu ist `testOverviewEndpointMatchesTheVisibleSetAcrossBoards`.
+		'TicketMapper::findVisibleAcrossBoardsAll',
 		// „Meine Arbeitsschritte" — dieselbe Regel, andere Menge als
 		// `findVisibleAcrossBoards`: Ein Schritt kann mir an einem Vorgang
 		// gehoeren, an dem ich weder verantwortlich noch mitarbeitend bin.
@@ -61,6 +66,13 @@ final class ReadPathRegistry {
 		'BoardMapper::findForViewer',
 		'BoardMapper::findAllForUser',
 		'MemberMapper::findForBoard',
+		// Dieselbe Frage ueber alle Projekte des Betrachters (#76). Der
+		// Ueberblick loest Anzeigenamen auf, und bei ueber zwanzig Projekten
+		// waere ein Aufruf je Board keine Loesung. Die Erwartung ist dieselbe
+		// wie bei `findForBoard`, nur breiter: **nur die eigenen Projekte** —
+		// eine Namensliste, die ein fremdes mitbringt, verriete dessen
+		// Mitglieder namentlich.
+		'MemberMapper::findForUserBoards',
 		'ColumnMapper::findForBoard',
 
 		// Die Kinder — je Mapper Liste und Zaehler. Der Zaehler steht hier
@@ -136,6 +148,11 @@ final class ReadPathRegistry {
 		// allein — und ein Nichtmitglied bekommt kein 404, sondern zwei leere
 		// Listen. Der Unterschied gehoert belegt.
 		'task#index',
+		// Der zweite Lesepfad ohne Board im Pfad, und der breiteste ueberhaupt:
+		// Der Ueberblick liefert **alles Sichtbare** ueber alle Projekte, nicht
+		// nur das eigene. Gerade deshalb gehoert er in die Matrix — was hier
+		// durchscheint, scheint auf der Startseite durch.
+		'overview#index',
 		'ticket#index',
 		'ticket#show',
 		// Liefert zwar nur die Vue-Huelle, aber der Initial State darin

@@ -122,6 +122,31 @@ class MemberService {
 	}
 
 	/**
+	 * Die Anzeigenamen aller Projekte dieser Person — je Projekt eine Zuordnung
+	 * von Kennung auf Namen (#76).
+	 *
+	 * **Nach Projekt geschachtelt und nicht flach.** `display_name` an der
+	 * Mitgliedschaft ist ein Übersteuern **je Projekt**: Dieselbe Person kann in
+	 * einem Projekt unter ihrem Firmennamen stehen und in einem anderen unter
+	 * ihrem eigenen. Eine flache Zuordnung müsste eines der beiden gewinnen
+	 * lassen — und welches, wäre Zufall der Reihenfolge.
+	 *
+	 * Ein Vorgang gehört zu genau einem Projekt, die Ansicht schlägt also
+	 * `namen[boardId][userId]` nach und bekommt den Namen, der dort gilt.
+	 *
+	 * @return array<int, array<string, string>> Projekt => Kennung => Name
+	 */
+	public function namesForUserBoards(string $userId): array {
+		$namen = [];
+
+		foreach ($this->members->findForUserBoards($userId) as $member) {
+			$namen[(int)$member->getBoardId()][(string)$member->getUserId()] = $this->nameFor($member);
+		}
+
+		return $namen;
+	}
+
+	/**
 	 * Rolle, Verwaltungsrecht und Name einer Mitgliedschaft ändern.
 	 *
 	 * **Zum Rollenwechsel gibt es keine Datenbewegung.** §8 friert

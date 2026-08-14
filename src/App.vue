@@ -1,12 +1,24 @@
 <template>
 	<NcContent appName="projektwerk">
+		<!--
+			**Drei feste Eintraege, und die Reihenfolge ist die Entscheidung**
+			(#76, Axel am 2026-08-13): erst wo es hakt, dann was bei mir liegt,
+			dann der Bestand.
+
+			**Die Projekte bleiben EIN Eintrag.** Der Entwurf sah vor, jedes
+			Projekt einzeln einzuhaengen; bei ueber zwanzig gleichzeitigen
+			Projekten waere das die Liste in der Liste, nur schmaler. Damit
+			entfaellt auch die Frage, wie man an archivierte kaeme — und die
+			Boardliste muss weiterhin erst beim Oeffnen der Projektliste geladen
+			werden, nicht bei jedem Seitenaufruf.
+		-->
 		<NcAppNavigation>
 			<NcAppNavigationItem
-				:name="t('projektwerk', 'Projekte')"
-				:to="{ name: 'boards' }"
+				:name="t('projektwerk', 'Überblick')"
+				:to="{ name: 'overview' }"
 				@click="closeNavigationOnMobile">
 				<template #icon>
-					<FolderMultipleIcon :size="20" />
+					<ViewDashboardIcon :size="20" />
 				</template>
 			</NcAppNavigationItem>
 			<NcAppNavigationItem
@@ -15,6 +27,14 @@
 				@click="closeNavigationOnMobile">
 				<template #icon>
 					<FormatListChecksIcon :size="20" />
+				</template>
+			</NcAppNavigationItem>
+			<NcAppNavigationItem
+				:name="t('projektwerk', 'Projekte')"
+				:to="{ name: 'boards' }"
+				@click="closeNavigationOnMobile">
+				<template #icon>
+					<FolderMultipleIcon :size="20" />
 				</template>
 			</NcAppNavigationItem>
 
@@ -55,10 +75,11 @@ import NcContent from '@nextcloud/vue/components/NcContent'
 import CogIcon from 'vue-material-design-icons/Cog.vue'
 import FolderMultipleIcon from 'vue-material-design-icons/FolderMultiple.vue'
 import FormatListChecksIcon from 'vue-material-design-icons/FormatListChecks.vue'
+import ViewDashboardIcon from 'vue-material-design-icons/ViewDashboardOutline.vue'
 
 export default {
 	name: 'App',
-	components: { NcContent, NcAppNavigation, NcAppNavigationItem, NcAppContent, FolderMultipleIcon, FormatListChecksIcon, CogIcon },
+	components: { NcContent, NcAppNavigation, NcAppNavigationItem, NcAppContent, FolderMultipleIcon, FormatListChecksIcon, ViewDashboardIcon, CogIcon },
 
 	setup() {
 		return { isMobile: useIsMobile() }

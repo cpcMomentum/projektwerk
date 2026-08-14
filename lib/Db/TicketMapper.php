@@ -174,6 +174,43 @@ class TicketMapper extends QBMapper {
 	}
 
 	/**
+	 * **Alles Sichtbare ueber alle Boards** — die Menge fuer den Ueberblick (#76).
+	 *
+	 * **Warum das nicht {@see findVisibleAcrossBoards()} sein kann.** Jene
+	 * Methode engt auf „verantwortlich **oder** mitarbeitend" ein und
+	 * beantwortet damit „Meine Vorgaenge". Der Ueberblick fragt etwas anderes:
+	 * **wo hakt es**, ueber alle Projekte — auch dort, wo gerade nichts bei mir
+	 * liegt. Ein Vorgang, der bei der Kundenseite liegt und mir nicht gehoert,
+	 * ist genau der Fall, den die Seite zeigen soll, und faellt bei jener
+	 * Methode heraus.
+	 *
+	 * **Es ist trotzdem kein zweiter Zugang zu den Daten.** Der Einstieg ist
+	 * {@see scopedQuery()} wie ueberall, und diese Methode fuegt **nichts**
+	 * hinzu ausser der Sortierung und dem Offen-Filter — sie laesst nur die
+	 * Einschraenkung weg. Wer hier eine Bedingung ergaenzt, die es anderswo
+	 * nicht gibt, hat die Sichtbarkeitsregel ein zweites Mal geschrieben.
+	 *
+	 * @return Ticket[]
+	 */
+	public function findVisibleAcrossBoardsAll(string $userId, TaskFilter $filter): array {
+		$qb = $this->scopedQuery($userId, null);
+		$qb->select(self::T . '.*');
+
+		if (!$filter->includeClosed) {
+			$qb->andWhere($qb->expr()->isNull(self::T . '.closed_at'));
+		}
+
+		// Nach Alter, aeltestes zuerst — dieselbe Grundordnung wie bei
+		// „Meine Vorgaenge". Wonach der Ueberblick am Ende sortiert (Standdauer),
+		// entsteht aus Ticket und Wartezustand zusammen und gehoert deshalb
+		// nicht in den Mapper.
+		$qb->orderBy(self::T . '.created_at', 'ASC')
+			->addOrderBy(self::T . '.id', 'ASC');
+
+		return $this->findEntities($qb);
+	}
+
+	/**
 	 * Die Vorgaenge, an denen mir ein **offener Arbeitsschritt** zugewiesen ist
 	 * — ueber alle Boards hinweg (§ Meine Aufgaben, Abschnitt „Meine
 	 * Arbeitsschritte").
