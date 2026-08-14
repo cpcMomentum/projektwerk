@@ -37,8 +37,8 @@ const HEUTE = new Date('2026-08-13T09:00:00Z')
  * @param boardId Projekt.
  * @param title Titel.
  */
-function ticket(id: number, boardId: number, title = 'Vorgang ' + id): Ticket {
-	return { id, boardId, number: id, title } as unknown as Ticket
+function ticket(id: number, boardId: number, title = 'Vorgang ' + id, updatedAt: string | null = null): Ticket {
+	return { id, boardId, number: id, title, updatedAt } as unknown as Ticket
 }
 
 /**
@@ -169,5 +169,31 @@ describe('Überblick', () => {
 
 		store.apply(daten({ tickets: [], waiting: {} }))
 		expect(store.nothingOpen).toBe(true)
+	})
+
+	/**
+	 * Die letzte Bewegung je Projekt ist die **jüngste** seiner Vorgänge — die
+	 * Grundlage der „steht still"-Marke (#116).
+	 */
+	it('nimmt die jüngste Bewegung je Projekt als lastMovementDays', () => {
+		const store = useOverviewStore()
+		store.apply(daten({
+			tickets: [
+				ticket(1, 1, 'A', '2026-08-01T10:00:00+00:00'), // älter
+				ticket(2, 1, 'B', '2026-08-10T23:00:00+00:00'), // jünger
+			],
+		}))
+		store.today = '2026-08-13'
+
+		// Der 10.08. ist drei Tage her, nicht der 01.08.
+		expect(store.projectRows.find((r) => r.boardId === 1)?.lastMovementDays).toBe(3)
+	})
+
+	it('lässt lastMovementDays null, wenn kein Vorgang einen Zeitpunkt trägt', () => {
+		const store = useOverviewStore()
+		store.apply(daten({ tickets: [ticket(1, 1)] }))
+		store.today = '2026-08-13'
+
+		expect(store.projectRows[0].lastMovementDays).toBeNull()
 	})
 })

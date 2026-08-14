@@ -1814,6 +1814,25 @@
 }
 
 /*
+ * Der Stern der angepinnten Projekte (#116) sitzt in der Nummernspalte, damit
+ * die Zeilen auf derselben Kante beginnen. Favoritenfarbe wie in der Projektliste.
+ */
+.app-projektwerk .pw-ov__pin {
+	flex: 0 0 auto;
+	min-width: 5ch;
+	color: var(--color-favorite, var(--color-warning-text));
+}
+
+/*
+ * „Steht still" — derselbe warnende, nicht rote Ton wie die lange Wartezeit:
+ * auffaellig, aber keine Behauptung „zu spaet".
+ */
+.app-projektwerk .pw-ov__still {
+	font-size: 12px;
+	color: var(--color-warning-text, var(--color-main-text));
+}
+
+/*
  * Mehrzeilige Felder so breit wie die einzeiligen daneben.
  *
  * `textarea` bringt eine eigene Vorgabebreite (`cols`) mit und ignoriert die

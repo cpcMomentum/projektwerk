@@ -240,6 +240,7 @@ OC.L10N.register(
     "Angepinnt" : "Pinned",
     "Anpinnen fehlgeschlagen" : "Could not pin",
     "Von der Seitenleiste lösen" : "Unpin from sidebar",
-    "An die Seitenleiste anpinnen" : "Pin to sidebar"
+    "An die Seitenleiste anpinnen" : "Pin to sidebar",
+    "_steht still seit %n Tag_::_steht still seit %n Tagen_" : ["idle for %n day","idle for %n days"]
 },
 "nplurals=2; plural=(n != 1);");

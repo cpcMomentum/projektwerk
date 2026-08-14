@@ -83,21 +83,29 @@
 				</h3>
 
 				<button
-					v-for="row in store.projectRows"
+					v-for="row in sortedProjectRows"
 					:key="row.boardId"
 					type="button"
 					class="pw-ov__row"
 					@click="openBoard(row.boardId)">
 					<!--
-						An der Stelle der Vorgangsnummer steht hier nichts: Ein
-						Projekt hat keine. Die Spalte bleibt trotzdem stehen,
-						damit die Zeilen beider Abschnitte auf derselben Kante
-						beginnen — genau das war vorher nicht so.
+						An der Stelle der Vorgangsnummer steht der Stern der
+						angepinnten Projekte (#116) — sonst nichts: Ein Projekt hat
+						keine Nummer. Die Spalte bleibt stehen, damit die Zeilen
+						beider Abschnitte auf derselben Kante beginnen.
 					-->
-					<span class="pw-num pw-num--leer" aria-hidden="true" />
+					<StarIcon v-if="isPinned(row.boardId)" class="pw-ov__pin" :size="16" />
+					<span v-else class="pw-num pw-num--leer" aria-hidden="true" />
 					<span class="pw-ov__body">
 						<span class="pw-ov__title">{{ row.title }}</span>
 						<span v-if="row.org" class="pw-ov__meta">{{ row.org }}</span>
+						<!--
+							Der Stillstand-Hinweis (#116) steht nur, wo er etwas sagt:
+							Das Projekt wartet auf niemanden und ruht trotzdem lange.
+							Ein wartendes Projekt ruht mit gutem Grund und bekommt
+							ihn nicht.
+						-->
+						<span v-if="isStalled(row)" class="pw-ov__still">{{ stallLabel(row) }}</span>
 					</span>
 					<span class="pw-marke">{{ offenLabel(row) }}</span>
 				</button>
@@ -114,7 +122,9 @@ import { n, t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
 import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
 import AlertIcon from 'vue-material-design-icons/AlertOutline.vue'
+import StarIcon from 'vue-material-design-icons/Star.vue'
 import ViewDashboardIcon from 'vue-material-design-icons/ViewDashboardOutline.vue'
+import { useBoardStore } from '@/stores/boardStore'
 import { useOverviewStore } from '@/stores/overviewStore'
 
 /**
@@ -126,6 +136,16 @@ import { useOverviewStore } from '@/stores/overviewStore'
  * und diese Grenze kann weg.
  */
 const LANGE_WARTEZEIT = 7
+
+/**
+ * Ab wann ein Projekt als „steht still" markiert wird (#116).
+ *
+ * Vierzehn Tage ohne Bewegung, und **nur wenn nichts auf den Kunden wartet**:
+ * Ein Projekt, das beim Kunden liegt, ruht mit gutem Grund — das ist Warten,
+ * kein Stillstand. Gemeint ist die eigene Arbeit, die niemand angefasst hat.
+ * Grob wie die Wartegrenze und aus demselben Grund: ein Hinweis, keine Frist.
+ */
+const STILLSTAND_TAGE = 14
 
 /**
  * Der Überblick — der Einstieg in die App (#76, entschieden am 2026-08-13).
@@ -146,10 +166,40 @@ const LANGE_WARTEZEIT = 7
 export default defineComponent({
 	name: 'OverviewView',
 
-	components: { AlertIcon, NcEmptyContent, ViewDashboardIcon },
+	components: { AlertIcon, NcEmptyContent, StarIcon, ViewDashboardIcon },
 
 	setup() {
-		return { store: useOverviewStore(), LANGE_WARTEZEIT }
+		return { store: useOverviewStore(), boardStore: useBoardStore(), LANGE_WARTEZEIT }
+	},
+
+	computed: {
+		/**
+		 * Die Kennungen der angepinnten Projekte (#115), als Menge für den
+		 * schnellen Test je Zeile.
+		 *
+		 * Aus dem Board-Speicher, den der App-Rahmen ohnehin beim Start lädt —
+		 * kein zweiter Abruf.
+		 */
+		pinnedIds(): Set<number> {
+			return new Set(this.boardStore.pinnedBoards.map((board) => board.id))
+		},
+
+		/**
+		 * „Projekte mit Bewegung", angepinnte zuerst (#116).
+		 *
+		 * Die Reihenfolge des Speichers bleibt innerhalb beider Gruppen erhalten
+		 * (stabile Teilung): Wer ein Projekt anpinnt, will es oben sehen, ohne
+		 * dass sich darunter die gewohnte Ordnung nach Wartendem verdreht.
+		 */
+		sortedProjectRows(): ProjectRow[] {
+			const rows = this.store.projectRows as ProjectRow[]
+			const pinned = this.pinnedIds
+
+			return [
+				...rows.filter((row) => pinned.has(row.boardId)),
+				...rows.filter((row) => !pinned.has(row.boardId)),
+			]
+		},
 	},
 
 	created() {
@@ -158,6 +208,34 @@ export default defineComponent({
 
 	methods: {
 		t,
+
+		/**
+		 * @param boardId Kennung des Projekts.
+		 */
+		isPinned(boardId: number): boolean {
+			return this.pinnedIds.has(boardId)
+		},
+
+		/**
+		 * Steht dieses Projekt still? — nichts wartet auf den Kunden und seit
+		 * mindestens `STILLSTAND_TAGE` Tagen keine Bewegung (#116).
+		 *
+		 * @param row Die Zeile.
+		 */
+		isStalled(row: ProjectRow): boolean {
+			return row.waiting === 0
+				&& row.lastMovementDays !== null
+				&& row.lastMovementDays >= STILLSTAND_TAGE
+		},
+
+		/**
+		 * Die „steht still"-Marke.
+		 *
+		 * @param row Die Zeile.
+		 */
+		stallLabel(row: ProjectRow): string {
+			return n('projektwerk', 'steht still seit %n Tag', 'steht still seit %n Tagen', row.lastMovementDays ?? 0)
+		},
 
 		/**
 		 * @param number Die Ticketnummer.
