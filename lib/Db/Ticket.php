@@ -12,6 +12,7 @@ namespace OCA\Projektwerk\Db;
 use DateTime;
 use JsonSerializable;
 use OCA\Projektwerk\Access\TicketScope;
+use OCA\Projektwerk\Access\ViewerContext;
 use OCP\AppFramework\Db\Entity;
 use OCP\DB\Types;
 
@@ -56,6 +57,10 @@ use OCP\DB\Types;
  * @method void setCreatorRole(string $creatorRole)
  * @method ?string getResponsibleUserId()
  * @method void setResponsibleUserId(?string $responsibleUserId)
+ * @method ?string getResponsibleRole()
+ * @method void setResponsibleRole(?string $responsibleRole)
+ * @method ?DateTime getResponsibleSince()
+ * @method void setResponsibleSince(?DateTime $responsibleSince)
  * @method int getPosition()
  * @method void setPosition(int $position)
  * @method ?DateTime getClosedAt()
@@ -86,6 +91,15 @@ class Ticket extends Entity implements JsonSerializable {
 	protected ?string $creatorUserId = null;
 	protected ?string $creatorRole = null;
 	protected ?string $responsibleUserId = null;
+	/**
+	 * Die Rolle des Verantwortlichen, **eingefroren** beim Eintragen wie
+	 * `assigned_role` am Schritt und `creator_role` oben. Traegt den Zustand
+	 * „wartet auf Kunde" fuer Vorgaenge ohne Schritte (#114). Zur Laufzeit
+	 * ermittelt kippte er rueckwirkend, sobald jemand die Rolle wechselt.
+	 */
+	protected ?string $responsibleRole = null;
+	/** Seit wann der aktuelle Verantwortliche eingetragen ist — die Wartezeit. */
+	protected ?DateTime $responsibleSince = null;
 	protected ?int $position = null;
 	protected ?DateTime $closedAt = null;
 	/**
@@ -112,6 +126,8 @@ class Ticket extends Entity implements JsonSerializable {
 		$this->addType('creatorUserId', Types::STRING);
 		$this->addType('creatorRole', Types::STRING);
 		$this->addType('responsibleUserId', Types::STRING);
+		$this->addType('responsibleRole', Types::STRING);
+		$this->addType('responsibleSince', Types::DATETIME);
 		$this->addType('position', Types::INTEGER);
 		$this->addType('closedAt', Types::DATETIME);
 		$this->addType('deletedAt', Types::DATETIME);
@@ -121,6 +137,21 @@ class Ticket extends Entity implements JsonSerializable {
 		$this->addType('githubIssueUrl', Types::STRING);
 		$this->addType('createdAt', Types::DATETIME);
 		$this->addType('updatedAt', Types::DATETIME);
+	}
+
+	/**
+	 * Wartet dieser Vorgang über seinen Verantwortlichen auf die Kundenseite?
+	 *
+	 * Die zweite Quelle des Wartezustands neben den Schritten (#114): eine
+	 * eingefrorene externe Rolle mit einer Person dahinter. Symmetrisch zu
+	 * {@see Step::waitsOnExternal()} — dort der offene Schritt, hier die
+	 * Zuständigkeit. Die Prüfung auf die Kennung ist keine zweite Fassung der
+	 * Regel, sondern die Zusicherung, dass die Marke einen Namen nennen kann.
+	 */
+	public function waitsOnExternal(): bool {
+		return $this->getResponsibleRole() === ViewerContext::ROLE_EXTERNAL
+			&& $this->getResponsibleUserId() !== null
+			&& $this->getResponsibleUserId() !== '';
 	}
 
 	/**

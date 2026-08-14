@@ -217,16 +217,38 @@ class TicketService {
 				// ({@see StepService::applyAssignment()}): Zustaendig darf nur
 				// werden, wer das Ticket auch sehen wuerde. Sonst liesse sich per
 				// API eine Mail an jemanden ausserhalb des Boards ausloesen.
-				if (!$this->mayBecomeResponsible($ticket, $viewer, (string)$nachher)) {
+				$rolle = $this->roleOnBoard($viewer, (string)$nachher);
+				if ($rolle === null || !$this->scope->wouldSee(
+					(string)$ticket->getVisibility(),
+					(string)$ticket->getCreatorUserId(),
+					(string)$ticket->getCreatorRole(),
+					(string)$nachher,
+					$rolle,
+				)) {
 					throw new \InvalidArgumentException('Diese Person kann diesen Vorgang nicht sehen.');
 				}
 
+				$ticket->setResponsibleUserId($nachher);
+
 				if ($nachher !== $vorher) {
+					// **Nur beim echten Wechsel** Rolle einfrieren und die Uhr
+					// stellen (#114), wie `assigned_role`/`assigned_at` am Schritt.
+					// Bei gleicher Person bleibt beides stehen: sonst spraenge das
+					// Wartedatum bei jedem Neu-Speichern, und die eingefrorene
+					// Rolle taute auf, sobald sich anderswo die Mitgliedschaft
+					// aendert.
+					$ticket->setResponsibleRole($rolle);
+					$ticket->setResponsibleSince(new \DateTime());
 					$neuZugewiesen = (string)$nachher;
 				}
+			} else {
+				$ticket->setResponsibleUserId($nachher);
+				// Verantwortlicher entfernt: die eingefrorene Rolle und der
+				// Zeitpunkt gehen mit — ein Vorgang ohne Verantwortlichen wartet
+				// ueber diese Quelle auf niemanden.
+				$ticket->setResponsibleRole(null);
+				$ticket->setResponsibleSince(null);
 			}
-
-			$ticket->setResponsibleUserId($nachher);
 		}
 		// **Nur der Uebergang zaehlt**, nicht der Zustand: Ein zweites
 		// `closed: true` an einem bereits geschlossenen Vorgang darf nicht noch
@@ -279,14 +301,7 @@ class TicketService {
 	 * {@see StepService::maySee()}.
 	 */
 	private function mayBecomeResponsible(Ticket $ticket, ViewerContext $viewer, string $userId): bool {
-		$role = null;
-		foreach ($this->members->findForBoard($viewer) as $member) {
-			if ((string)$member->getUserId() === $userId) {
-				$role = (string)$member->getRole();
-				break;
-			}
-		}
-
+		$role = $this->roleOnBoard($viewer, $userId);
 		if ($role === null) {
 			return false;
 		}
@@ -298,6 +313,25 @@ class TicketService {
 			$userId,
 			$role,
 		);
+	}
+
+	/**
+	 * Die Rolle einer Person auf dem Board des Betrachters, oder `null`, wenn
+	 * kein Mitglied.
+	 *
+	 * Diese Rolle wird beim Eintragen des Verantwortlichen **eingefroren**
+	 * (`responsible_role`), damit der Wartezustand nicht rueckwirkend kippt, wenn
+	 * sich die Mitgliedschaft spaeter aendert — dieselbe Begruendung wie bei
+	 * `assigned_role` am Schritt.
+	 */
+	private function roleOnBoard(ViewerContext $viewer, string $userId): ?string {
+		foreach ($this->members->findForBoard($viewer) as $member) {
+			if ((string)$member->getUserId() === $userId) {
+				return (string)$member->getRole();
+			}
+		}
+
+		return null;
 	}
 
 	/**
@@ -427,6 +461,13 @@ class TicketService {
 			}
 
 			$ticket->setResponsibleUserId($responsibleUserId);
+			if ($responsibleUserId !== null && $responsibleUserId !== '') {
+				// Rolle einfrieren und die Uhr stellen (#114), wie am Schritt. Die
+				// Rolle steht fest, weil die Pruefung oben die Mitgliedschaft schon
+				// bestaetigt hat.
+				$ticket->setResponsibleRole($this->roleOnBoard($viewer, $responsibleUserId));
+				$ticket->setResponsibleSince($now);
+			}
 			$ticket->setPosition($this->positions->between($last, null));
 			$ticket->setVersion(1);
 			$ticket->setCreatedAt($now);
