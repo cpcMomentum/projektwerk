@@ -10,7 +10,7 @@
  * mit dem anderen zu verwechseln.
  */
 
-import type { StepRow, TaskBoard, TaskList } from '@/types/task'
+import type { StepRow, TaskBoard, TaskList, TicketRow } from '@/types/task'
 import type { Step, Ticket } from '@/types/ticket'
 
 import { t } from '@nextcloud/l10n'
@@ -153,6 +153,46 @@ export const useTaskStore = defineStore('tasks', {
 		 */
 		overdueCount(): number {
 			return (this.stepRows as StepRow[]).filter((row) => row.overdue).length
+		},
+
+		/**
+		 * „Meine Vorgänge", sortiert — jetzt nach **derselben** §9-Regel wie die
+		 * Schritte: nach Fälligkeit, dann Alter, Überfälliges oben.
+		 *
+		 * Möglich erst mit der Ticket-Fälligkeit (#72). Aufsteigend nach Datum
+		 * bringt Überfälliges von selbst nach oben (sein Datum liegt am weitesten
+		 * zurück); ohne Fälligkeit ans Ende, dann nach Alter. Ein fehlendes Datum
+		 * als „sofort" zu lesen wäre falsch.
+		 *
+		 * @param state Der Speicher.
+		 */
+		ticketRows: (state): TicketRow[] => {
+			const grenze = state.today
+
+			const rows = state.tickets.map((ticket): TicketRow => ({
+				ticket,
+				board: state.boards[ticket.boardId] ?? null,
+				overdue: ticket.dueDate !== null && ticket.dueDate < grenze,
+			}))
+
+			return rows.sort((a, b) => {
+				const dueA = a.ticket.dueDate
+				const dueB = b.ticket.dueDate
+
+				if (dueA !== dueB) {
+					if (dueA === null) {
+						return 1
+					}
+					if (dueB === null) {
+						return -1
+					}
+					return dueA < dueB ? -1 : 1
+				}
+
+				// Gleiche Fälligkeit (oder beide ohne): das Ältere zuerst.
+				return (a.ticket.createdAt ?? '').localeCompare(b.ticket.createdAt ?? '')
+					|| a.ticket.id - b.ticket.id
+			})
 		},
 
 		/**

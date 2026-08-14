@@ -105,23 +105,31 @@
 				</div>
 			</section>
 
-			<section v-if="store.tickets.length > 0" class="pw-tasks__block">
+			<section v-if="store.ticketRows.length > 0" class="pw-tasks__block">
 				<h3 class="pw-col__head">
 					{{ t('projektwerk', 'Meine Vorgänge') }}
-					<span class="pw-n">{{ store.tickets.length }}</span>
+					<span class="pw-n">{{ store.ticketRows.length }}</span>
 				</h3>
 
-				<div v-for="ticket in store.tickets" :key="ticket.id" class="pw-task">
-					<button type="button" class="pw-task__body" @click="open(ticket)">
+				<div
+					v-for="row in store.ticketRows"
+					:key="row.ticket.id"
+					class="pw-task"
+					:class="{ 'pw-task--overdue': row.overdue }">
+					<button type="button" class="pw-task__body" @click="open(row.ticket)">
 						<span class="pw-task__title">
-							<span class="pw-num">#{{ padded(ticket.number) }}</span>
-							{{ ticket.title }}
+							<span class="pw-num">#{{ padded(row.ticket.number) }}</span>
+							{{ row.ticket.title }}
 						</span>
-						<span v-if="store.boardOf(ticket)" class="pw-task__meta">
-							{{ store.boardOf(ticket).title }}
-							<span v-if="orgLine(ticket)" class="pw-task__board">· {{ orgLine(ticket) }}</span>
+						<span v-if="row.board" class="pw-task__meta">
+							{{ row.board.title }}
+							<span v-if="orgLine(row.ticket)" class="pw-task__board">· {{ orgLine(row.ticket) }}</span>
 						</span>
 					</button>
+
+					<span v-if="row.ticket.dueDate" class="pw-task__due">
+						{{ ticketDueLabel(row) }}
+					</span>
 				</div>
 			</section>
 		</template>
@@ -129,7 +137,7 @@
 </template>
 
 <script lang="ts">
-import type { StepRow } from '@/types/task'
+import type { StepRow, TicketRow } from '@/types/task'
 import type { Ticket } from '@/types/ticket'
 
 import { n, t } from '@nextcloud/l10n'
@@ -251,6 +259,19 @@ export default defineComponent({
 		 */
 		dueLabel(row: StepRow): string {
 			const date = this.germanDate(row.step.dueDate)
+
+			return row.overdue
+				? t('projektwerk', 'überfällig seit {date}', { date })
+				: t('projektwerk', 'fällig {date}', { date })
+		},
+
+		/**
+		 * Dieselbe Beschriftung für einen Vorgang statt einen Schritt (#72).
+		 *
+		 * @param row Die Zeile.
+		 */
+		ticketDueLabel(row: TicketRow): string {
+			const date = this.germanDate(row.ticket.dueDate)
 
 			return row.overdue
 				? t('projektwerk', 'überfällig seit {date}', { date })

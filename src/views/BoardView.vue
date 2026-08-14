@@ -428,7 +428,7 @@ export default defineComponent({
 			this.openTicketData = ticket
 		},
 
-		async create(data: { title: string, description: string | null, visibility: Visibility, columnId: number }) {
+		async create(data: { title: string, description: string | null, visibility: Visibility, columnId: number, dueDate: string | null }) {
 			try {
 				await createTicket(this.boardId, data)
 				this.creating = false

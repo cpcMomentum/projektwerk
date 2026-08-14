@@ -42,6 +42,24 @@
 					</option>
 				</select>
 			</div>
+
+			<!--
+				Die Fälligkeit gleich beim Anlegen, nicht erst danach (#72) — wie
+				Bearbeiter und Frist am Schritt (#86). „Bis wann ist die Sache
+				fertig", die Zusage an die Gegenseite. Optional: leer heißt keine
+				Frist.
+			-->
+			<div class="pw-field">
+				<label for="pw-new-due">{{ t('projektwerk', 'Fällig bis') }}</label>
+				<NcDateTimePicker
+					id="pw-new-due"
+					v-model="dueDate"
+					type="date"
+					:clearable="true"
+					:appendToBody="true"
+					:ariaLabel="t('projektwerk', 'Fällig bis')"
+					:placeholder="t('projektwerk', 'Keine Frist')" />
+			</div>
 		</div>
 
 		<template #actions>
@@ -62,14 +80,16 @@ import type { Column, Visibility } from '@/types/board'
 import { t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
+import NcDateTimePicker from '@nextcloud/vue/components/NcDateTimePicker'
 import NcDialog from '@nextcloud/vue/components/NcDialog'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
 import VisibilityChoice from '@/components/VisibilityChoice.vue'
+import { toIsoDay } from '@/utils/date'
 
 export default defineComponent({
 	name: 'CreateTicketDialog',
 
-	components: { NcButton, NcDialog, NcTextField, VisibilityChoice },
+	components: { NcButton, NcDateTimePicker, NcDialog, NcTextField, VisibilityChoice },
 
 	props: {
 		open: { type: Boolean, default: false },
@@ -85,6 +105,7 @@ export default defineComponent({
 			// „Alle Beteiligten" ist die Voreinstellung, fuer alle Rollen gleich (§9).
 			visibility: 'public' as Visibility,
 			columnId: null as number | null,
+			dueDate: null as Date | null,
 		}
 	},
 
@@ -101,6 +122,7 @@ export default defineComponent({
 				this.description = ''
 				this.visibility = 'public'
 				this.columnId = this.columns[0]?.id ?? null
+				this.dueDate = null
 			}
 		},
 	},
@@ -117,6 +139,7 @@ export default defineComponent({
 				description: this.description.trim() === '' ? null : this.description.trim(),
 				visibility: this.visibility,
 				columnId: this.columnId as number,
+				dueDate: toIsoDay(this.dueDate),
 			})
 		},
 	},

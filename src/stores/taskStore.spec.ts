@@ -44,9 +44,10 @@ function step(id: number, dueDate: string | null, ticketId = 1): Step {
 /**
  * @param id Kennung.
  * @param createdAt Anlegezeitpunkt.
+ * @param dueDate Fälligkeit des Vorgangs als JJJJ-MM-TT, oder null.
  */
-function ticket(id: number, createdAt: string): Ticket {
-	return { id, boardId: 1, number: id, title: 'Vorgang ' + id, createdAt } as unknown as Ticket
+function ticket(id: number, createdAt: string, dueDate: string | null = null): Ticket {
+	return { id, boardId: 1, number: id, title: 'Vorgang ' + id, createdAt, dueDate } as unknown as Ticket
 }
 
 describe('Meine Aufgaben — Sortierung', () => {
@@ -192,5 +193,71 @@ describe('Meine Aufgaben — Sortierung', () => {
 		})
 
 		expect(store.stepRows[0].board?.title).toBe('Relaunch Website')
+	})
+})
+
+describe('Meine Vorgänge — Sortierung nach Fälligkeit (#72)', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia())
+		vi.useFakeTimers()
+		vi.setSystemTime(HEUTE)
+	})
+
+	afterEach(() => {
+		vi.useRealTimers()
+	})
+
+	it('sortiert Vorgänge nach Fälligkeit — Überfälliges oben, dieselbe Regel wie bei den Schritten', () => {
+		const store = useTaskStore()
+		store.apply({
+			stepTickets: [],
+			steps: [],
+			tickets: [
+				ticket(1, '2026-01-01T00:00:00+00:00', '2026-09-01'), // künftig
+				ticket(2, '2026-01-01T00:00:00+00:00', '2026-07-01'), // überfällig, älter
+				ticket(3, '2026-01-01T00:00:00+00:00', '2026-08-20'), // künftig, näher
+				ticket(4, '2026-01-01T00:00:00+00:00', '2026-08-01'), // überfällig, jünger
+			],
+			boards: {},
+		})
+
+		expect(store.ticketRows.map((r) => r.ticket.id)).toEqual([2, 4, 3, 1])
+		expect(store.ticketRows.map((r) => r.overdue)).toEqual([true, true, false, false])
+	})
+
+	it('stellt Vorgänge ohne Fälligkeit ans Ende', () => {
+		const store = useTaskStore()
+		store.apply({
+			stepTickets: [],
+			steps: [],
+			tickets: [
+				ticket(1, '2026-05-01T00:00:00+00:00', null),
+				ticket(2, '2026-05-01T00:00:00+00:00', '2026-09-01'),
+				ticket(3, '2026-02-01T00:00:00+00:00', null),
+			],
+			boards: {},
+		})
+
+		// Datiert zuerst; unter den undatierten das ältere Anliegen zuerst.
+		expect(store.ticketRows.map((r) => r.ticket.id)).toEqual([2, 3, 1])
+	})
+
+	it('zählt den Fälligkeitstag selbst noch nicht als überfällig', () => {
+		const store = useTaskStore()
+		store.apply({
+			stepTickets: [],
+			steps: [],
+			tickets: [
+				ticket(1, '2026-01-01T00:00:00+00:00', '2026-08-09'), // heute
+				ticket(2, '2026-01-01T00:00:00+00:00', '2026-08-08'), // gestern
+			],
+			boards: {},
+		})
+
+		// Sortiert nach Datum: der 08.08. (id 2) vor dem 09.08. (id 1).
+		// Heute ist der 09.08.: Wer heute fällig ist, hat noch den Tag — nur
+		// der 08.08. ist überfällig.
+		expect(store.ticketRows.map((r) => r.ticket.id)).toEqual([2, 1])
+		expect(store.ticketRows.map((r) => r.overdue)).toEqual([true, false])
 	})
 })
