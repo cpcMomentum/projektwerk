@@ -147,6 +147,10 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Fixed
 
+- **Verwaiste Anhänge (#9).** Eine Datei, die jemand im Dateibaum gelöscht oder weggeschoben
+  hatte, stand in der Anhangliste weiter mit ihrem Namen und einem toten Link. Ein Anhang, dessen
+  Datei nicht mehr auffindbar ist, zeigt jetzt „Datei nicht mehr vorhanden" statt eines Links; die
+  übrigen Dateioperationen — allen voran das Lösen zum Aufräumen — bleiben unberührt
 - **Eine Fälligkeit ließ sich setzen, aber nie wieder löschen.** `StepController::update` baute
   seine Änderungsliste aus allem, was `!== null` war — und verwarf damit genau das ausdrückliche
   „Frist entfernen". Dieselbe Falle war für die Zuweisung schon einmal behoben worden; für die
