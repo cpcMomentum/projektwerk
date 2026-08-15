@@ -52,7 +52,9 @@ abstract class TicketChildMapper extends QBMapper {
 	 * Fehlerklasse wie die zu langen Tabellennamen, und dieselbe Antwort:
 	 * vorher begrenzen statt hinterher suchen.
 	 */
-	private const CHUNK_SIZE = 1000;
+	// Protected, damit ein Kind-Mapper eine eigene Aggregatabfrage über
+	// dieselbe Chunk-Grenze legen kann (CommentMapper::findNewestForTickets, #79).
+	protected const CHUNK_SIZE = 1000;
 
 	/**
 	 * @param class-string<T> $entityClass
@@ -170,7 +172,7 @@ abstract class TicketChildMapper extends QBMapper {
 	 * @param int[] $ticketIds
 	 * @return int[] eindeutig, lueckenlos indiziert
 	 */
-	private function normalizeIds(array $ticketIds): array {
+	protected function normalizeIds(array $ticketIds): array {
 		return array_values(array_unique(array_map('intval', $ticketIds)));
 	}
 }

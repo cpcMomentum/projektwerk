@@ -18,6 +18,7 @@ use OCA\Projektwerk\Db\MailOutbox;
 use OCA\Projektwerk\Db\MemberMapper;
 use OCA\Projektwerk\Db\Ticket;
 use OCA\Projektwerk\Db\TicketMapper;
+use OCA\Projektwerk\Db\TicketReadMapper;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\DB\Exception as DbException;
 use OCP\IDBConnection;
@@ -47,6 +48,7 @@ class TicketService {
 		private ColumnMapper $columns,
 		private MemberMapper $members,
 		private AttachmentMapper $attachments,
+		private TicketReadMapper $reads,
 		private TicketScope $scope,
 		private PositionService $positions,
 		private NotificationService $notifications,
@@ -445,8 +447,14 @@ class TicketService {
 
 		$ticket->setDeletedAt(new \DateTime());
 		$this->touch($ticket, $viewer);
+		$saved = $this->tickets->update($ticket);
 
-		return $this->tickets->update($ticket);
+		// Die Lesestände zu diesem Vorgang wegräumen (#79): ohne ihren Vorgang
+		// sind sie Karteileichen, die niemand mehr liest. Nach dem Schreiben,
+		// damit ein Fehler hier den Löschvorgang nicht mitreisst.
+		$this->reads->deleteForTicket($ticketId);
+
+		return $saved;
 	}
 
 	private function insertWithNumber(

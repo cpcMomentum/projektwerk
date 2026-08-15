@@ -243,6 +243,7 @@ OC.L10N.register(
     "An die Seitenleiste anpinnen" : "Pin to sidebar",
     "_steht still seit %n Tag_::_steht still seit %n Tagen_" : ["idle for %n day","idle for %n days"],
     "Liegt bei niemandem" : "Unassigned",
-    "Datei nicht mehr vorhanden" : "File no longer available"
+    "Datei nicht mehr vorhanden" : "File no longer available",
+    "Seit Ihrem letzten Blick geändert" : "Changed since you last looked"
 },
 "nplurals=2; plural=(n != 1);");

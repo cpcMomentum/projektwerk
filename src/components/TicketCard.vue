@@ -14,6 +14,19 @@
 					kommt mit dem eigenen Issue. Bis dahin lieber kein Signal
 					als ein falsches.
 				-->
+				<!--
+					**Der Punkt „seit deinem Blick geändert" (#79).** Er ersetzt den
+					früheren blauen Punkt, der an `lastEditorUserId` hing und nie
+					ausging. Dieser hängt am Lesestand je Person: nur wenn sich seit
+					dem letzten Öffnen etwas getan hat, und er geht beim Öffnen aus.
+					Neutrale Farbe, nicht die Warnfarbe der Uhr unten — keine zwei
+					konkurrierenden Signale auf einer Karte.
+				-->
+				<span
+					v-if="changed"
+					class="pw-changed"
+					:title="t('projektwerk', 'Seit Ihrem letzten Blick geändert')"
+					aria-hidden="true" />
 				<span class="pw-num">#{{ paddedNumber }}</span>
 				<!--
 					Die Kennzeichnung gibt es nur für die interne Seite und nur,
@@ -202,6 +215,8 @@ export default defineComponent({
 		stepsDone: { type: Number, default: 0 },
 		/** Der gerechnete Wartezustand, oder null. */
 		waitState: { type: Object as PropType<WaitState | null>, default: null },
+		/** „Seit deinem Blick geändert" (#79) — der neutrale Punkt oben. */
+		changed: { type: Boolean, default: false },
 		/** Aus Sicht der Kundenseite formuliert. */
 		fromClientSide: { type: Boolean, default: false },
 	},
