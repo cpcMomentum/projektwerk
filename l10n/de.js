@@ -246,6 +246,17 @@ OC.L10N.register(
     "Datei nicht mehr vorhanden" : "Datei nicht mehr vorhanden",
     "Seit Ihrem letzten Blick geändert" : "Seit Ihrem letzten Blick geändert",
     "Neues Projekt" : "Neues Projekt",
-    "Legen Sie Ihr erstes Projekt an, oder warten Sie, bis Sie zu einem hinzugefügt werden." : "Legen Sie Ihr erstes Projekt an, oder warten Sie, bis Sie zu einem hinzugefügt werden."
+    "Legen Sie Ihr erstes Projekt an, oder warten Sie, bis Sie zu einem hinzugefügt werden." : "Legen Sie Ihr erstes Projekt an, oder warten Sie, bis Sie zu einem hinzugefügt werden.",
+    "Ordner wählen" : "Ordner wählen",
+    "Eine Ebene höher" : "Eine Ebene höher",
+    "Meine Dateien" : "Meine Dateien",
+    "Wird geladen…" : "Wird geladen…",
+    "Hier gibt es keine Unterordner." : "Hier gibt es keine Unterordner.",
+    "Name des neuen Ordners" : "Name des neuen Ordners",
+    "Neuer Ordner" : "Neuer Ordner",
+    "Ordner anlegen" : "Ordner anlegen",
+    "Diesen Ordner wählen" : "Diesen Ordner wählen",
+    "Die Ordner konnten nicht geladen werden." : "Die Ordner konnten nicht geladen werden.",
+    "Der Ordner konnte nicht angelegt werden." : "Der Ordner konnte nicht angelegt werden."
 },
 "nplurals=2; plural=(n != 1);");
