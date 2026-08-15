@@ -45,6 +45,7 @@ class MemberService {
 		private MemberMapper $members,
 		private BoardMapper $boards,
 		private IUserManager $users,
+		private MemberLifecycleService $lifecycle,
 	) {
 	}
 
@@ -188,6 +189,60 @@ class MemberService {
 		}
 
 		return $this->members->update($member);
+	}
+
+	/**
+	 * Wie viele private Vorgänge das Entfernen dieser Person löschen würde (§5.29).
+	 *
+	 * Grundlage der bezifferten Rückfrage. Das ist **kein** Leck wie die bewusst
+	 * fehlende Zählung beim Rollenwechsel weiter unten: Gezählt werden nur die
+	 * `private`-Vorgänge **dieser** Person — die sieht ohnehin niemand sonst, und
+	 * dass sie mit ihr verschwinden, ist genau die Zusage. Interne Vorgänge der
+	 * Person zählt die Methode nicht.
+	 *
+	 * @throws NotManagerException
+	 * @throws DoesNotExistException das Mitglied gehört nicht zu diesem Board
+	 * @throws \InvalidArgumentException der Eigentümer lässt sich nicht entfernen
+	 */
+	public function removalImpact(ViewerContext $viewer, string $userId): int {
+		$this->assertManager($viewer);
+		$this->findInBoard($viewer, $userId);
+		$this->assertNotOwner($viewer, $userId);
+
+		return $this->lifecycle->countPrivateOnBoard($userId, $viewer->boardId);
+	}
+
+	/**
+	 * Eine Person aus dem Projekt entfernen (§5.29).
+	 *
+	 * Ihre `private`-Vorgänge in diesem Projekt werden gelöscht, ihre offenen
+	 * Zuweisungen aufgehoben, ihre Mitgliedschaft entfernt — die eigentliche
+	 * Arbeit macht {@see MemberLifecycleService::removeFromBoard()}, an genau der
+	 * Stelle, die als einzige ohne Betrachter aufräumen darf. Die bezifferte
+	 * Rückfrage steht vorher im Frontend über {@see removalImpact()}.
+	 *
+	 * Der Eigentümer lässt sich nicht entfernen — es gäbe niemanden, der das
+	 * Verwaltungsrecht sicher behält (§8).
+	 *
+	 * @throws NotManagerException
+	 * @throws DoesNotExistException das Mitglied gehört nicht zu diesem Board
+	 * @throws \InvalidArgumentException der Eigentümer lässt sich nicht entfernen
+	 */
+	public function remove(ViewerContext $viewer, string $userId): void {
+		$this->assertManager($viewer);
+		$this->findInBoard($viewer, $userId);
+		$this->assertNotOwner($viewer, $userId);
+
+		$this->lifecycle->removeFromBoard($userId, $viewer->boardId);
+	}
+
+	/**
+	 * @throws \InvalidArgumentException
+	 */
+	private function assertNotOwner(ViewerContext $viewer, string $userId): void {
+		if ($this->isOwner($viewer, $userId)) {
+			throw new \InvalidArgumentException('Der Eigentümer des Projekts kann nicht entfernt werden.');
+		}
 	}
 
 	/*

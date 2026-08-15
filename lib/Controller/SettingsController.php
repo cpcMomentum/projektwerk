@@ -187,6 +187,31 @@ class SettingsController extends Controller {
 	}
 
 	/**
+	 * Wie viele private Vorgänge das Entfernen dieses Mitglieds löschen würde
+	 * (§5.29) — für die bezifferte Rückfrage vor dem Entfernen.
+	 */
+	#[NoAdminRequired]
+	public function memberRemovalImpact(int $boardId, string $userId): JSONResponse {
+		return $this->write($boardId, fn (ViewerContext $viewer): mixed
+			=> ['privateTickets' => $this->memberService->removalImpact($viewer, $userId)]);
+	}
+
+	/**
+	 * Ein Mitglied aus dem Projekt entfernen (§5.29). Antwortet mit 204.
+	 *
+	 * Die Kennung steht in der Adresse, kein Rumpf nötig. Der Eigentümer lässt
+	 * sich nicht entfernen — der Dienst weist das mit 400 ab.
+	 */
+	#[NoAdminRequired]
+	public function removeMember(int $boardId, string $userId): JSONResponse {
+		return $this->write($boardId, function (ViewerContext $viewer) use ($userId): mixed {
+			$this->memberService->remove($viewer, $userId);
+
+			return null;
+		}, Http::STATUS_NO_CONTENT);
+	}
+
+	/**
 	 * Nur das übernehmen, was tatsächlich geschickt wurde — ein nicht genanntes
 	 * Feld darf nicht auf null zurückfallen.
 	 *

@@ -88,6 +88,172 @@ class MemberLifecycleService {
 	}
 
 	/**
+	 * Wie viele private Vorgänge das Entfernen aus **einem** Projekt löschen würde.
+	 *
+	 * Grundlage der bezifferten Rückfrage vor dem Entfernen eines Mitglieds
+	 * (§5.29). Zählt nur, was auch {@see removeFromBoard()} löscht: die privaten
+	 * Vorgänge dieser Person in genau diesem Projekt. Interne und öffentliche
+	 * bleiben stehen und werden nicht gezählt — sie gehören dem Projekt.
+	 *
+	 * @param string $userId Kennung der Person.
+	 * @param int $boardId Kennung des Projekts.
+	 */
+	public function countPrivateOnBoard(string $userId, int $boardId): int {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select($qb->func()->count('*', 'anzahl'))
+			->from('pwerk_tickets')
+			->where($qb->expr()->eq('board_id', $qb->createNamedParameter($boardId, IQueryBuilder::PARAM_INT)))
+			->andWhere($qb->expr()->eq('creator_user_id', $qb->createNamedParameter($userId)))
+			->andWhere($qb->expr()->eq('visibility', $qb->createNamedParameter(TicketScope::VISIBILITY_PRIVATE)));
+
+		return (int)$qb->executeQuery()->fetchOne();
+	}
+
+	/**
+	 * Eine Person aus **einem** Projekt entfernen — dieselbe Aufräumlogik wie
+	 * {@see forget()}, aber board-begrenzt (§5.29, manuelles Entfernen).
+	 *
+	 * Der Unterschied zum Kontolöschen: Die Person bleibt bestehen und in anderen
+	 * Projekten Mitglied. Angefasst wird ausschließlich, was zu **diesem** Projekt
+	 * gehört — die privaten Vorgänge dieser Person hier, ihre Zuweisungen hier,
+	 * ihre Mitgliedschaft hier. Kanalschalter und Vorgemerktes bleiben, sie gelten
+	 * projektübergreifend.
+	 *
+	 * Reihenfolge wie bei `forget`: erst Zuweisungen lösen, dann private Vorgänge
+	 * löschen, dann die Mitgliedschaft. Alles in einer Transaktion.
+	 *
+	 * @param string $userId Kennung der Person.
+	 * @param int $boardId Kennung des Projekts.
+	 */
+	public function removeFromBoard(string $userId, int $boardId): void {
+		$this->db->beginTransaction();
+
+		try {
+			$geloest = $this->loeseZuweisungenAufBoard($userId, $boardId);
+			$geloescht = $this->loeschePrivateTicketsAufBoard($userId, $boardId);
+			$this->entferneMitgliedschaftAufBoard($userId, $boardId);
+
+			$this->db->commit();
+
+			$this->logger->info(sprintf(
+				'ProjektWerk: %s aus Projekt %d entfernt — %d Zuweisungen geloest, %d private Vorgaenge entfernt.',
+				$userId,
+				$boardId,
+				$geloest,
+				$geloescht,
+			));
+		} catch (\Throwable $e) {
+			$this->db->rollBack();
+			throw $e;
+		}
+	}
+
+	/**
+	 * Die IDs aller Vorgänge eines Projekts — als Unterabfrage für die
+	 * board-begrenzten Aufräumschritte, die selbst kein `board_id` tragen
+	 * (Schritte, Mitarbeitende hängen am Vorgang, nicht am Projekt).
+	 *
+	 * @param IQueryBuilder $outer Der Query, in dessen Kontext die Unterabfrage steht.
+	 * @param int $boardId Kennung des Projekts.
+	 */
+	private function ticketIdsOnBoard(IQueryBuilder $outer, int $boardId): IQueryBuilder {
+		$sub = $this->db->getQueryBuilder();
+		$sub->select('id')
+			->from('pwerk_tickets')
+			->where($sub->expr()->eq('board_id', $outer->createNamedParameter($boardId, IQueryBuilder::PARAM_INT)));
+
+		return $sub;
+	}
+
+	/**
+	 * Offene Zuweisungen dieser Person in **diesem** Projekt aufheben.
+	 *
+	 * @param string $userId Kennung der Person.
+	 * @param int $boardId Kennung des Projekts.
+	 */
+	private function loeseZuweisungenAufBoard(string $userId, int $boardId): int {
+		$anzahl = 0;
+
+		$qb = $this->db->getQueryBuilder();
+		$qb->update('pwerk_tickets')
+			->set('responsible_user_id', $qb->createNamedParameter(null, IQueryBuilder::PARAM_NULL))
+			->where($qb->expr()->eq('board_id', $qb->createNamedParameter($boardId, IQueryBuilder::PARAM_INT)))
+			->andWhere($qb->expr()->eq('responsible_user_id', $qb->createNamedParameter($userId)));
+		$anzahl += $qb->executeStatement();
+
+		$qb = $this->db->getQueryBuilder();
+		$qb->update('pwerk_steps')
+			->set('assigned_user_id', $qb->createNamedParameter(null, IQueryBuilder::PARAM_NULL))
+			->set('assigned_role', $qb->createNamedParameter(null, IQueryBuilder::PARAM_NULL))
+			->set('assigned_at', $qb->createNamedParameter(null, IQueryBuilder::PARAM_NULL))
+			->where($qb->expr()->eq('assigned_user_id', $qb->createNamedParameter($userId)))
+			->andWhere($qb->expr()->in('ticket_id', $qb->createFunction($this->ticketIdsOnBoard($qb, $boardId)->getSQL())));
+		$anzahl += $qb->executeStatement();
+
+		return $anzahl;
+	}
+
+	/**
+	 * Die privaten Vorgänge dieser Person in **diesem** Projekt löschen, samt
+	 * Kindern. Interne und öffentliche bleiben stehen — sie gehören dem Projekt.
+	 *
+	 * @param string $userId Kennung der Person.
+	 * @param int $boardId Kennung des Projekts.
+	 */
+	private function loeschePrivateTicketsAufBoard(string $userId, int $boardId): int {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('id')
+			->from('pwerk_tickets')
+			->where($qb->expr()->eq('board_id', $qb->createNamedParameter($boardId, IQueryBuilder::PARAM_INT)))
+			->andWhere($qb->expr()->eq('creator_user_id', $qb->createNamedParameter($userId)))
+			->andWhere($qb->expr()->eq('visibility', $qb->createNamedParameter(TicketScope::VISIBILITY_PRIVATE)));
+
+		$ids = array_map(
+			static fn (array $zeile): int => (int)$zeile['id'],
+			$qb->executeQuery()->fetchAll(),
+		);
+
+		if ($ids === []) {
+			return 0;
+		}
+
+		foreach (['pwerk_comments', 'pwerk_steps', 'pwerk_attachments', 'pwerk_ticket_users', 'pwerk_reads'] as $tabelle) {
+			$qb = $this->db->getQueryBuilder();
+			$qb->delete($tabelle)
+				->where($qb->expr()->in('ticket_id', $qb->createNamedParameter($ids, IQueryBuilder::PARAM_INT_ARRAY)));
+			$qb->executeStatement();
+		}
+
+		$qb = $this->db->getQueryBuilder();
+		$qb->delete('pwerk_tickets')
+			->where($qb->expr()->in('id', $qb->createNamedParameter($ids, IQueryBuilder::PARAM_INT_ARRAY)));
+
+		return $qb->executeStatement();
+	}
+
+	/**
+	 * Die Mitgliedschaft dieser Person in **diesem** Projekt entfernen — und ihre
+	 * Mitarbeit an den verbleibenden (internen/öffentlichen) Vorgängen des
+	 * Projekts, damit keine tote Zuordnung stehen bleibt.
+	 *
+	 * @param string $userId Kennung der Person.
+	 * @param int $boardId Kennung des Projekts.
+	 */
+	private function entferneMitgliedschaftAufBoard(string $userId, int $boardId): void {
+		$qb = $this->db->getQueryBuilder();
+		$qb->delete('pwerk_ticket_users')
+			->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+			->andWhere($qb->expr()->in('ticket_id', $qb->createFunction($this->ticketIdsOnBoard($qb, $boardId)->getSQL())));
+		$qb->executeStatement();
+
+		$qb = $this->db->getQueryBuilder();
+		$qb->delete('pwerk_members')
+			->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+			->andWhere($qb->expr()->eq('board_id', $qb->createNamedParameter($boardId, IQueryBuilder::PARAM_INT)));
+		$qb->executeStatement();
+	}
+
+	/**
 	 * Offene Zuweisungen aufheben — an Vorgängen **und** an Arbeitsschritten.
 	 *
 	 * Ohne das bliebe der Wartezustand „wartet auf Kunde" ewig stehen: Er wird

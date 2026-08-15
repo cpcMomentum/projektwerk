@@ -177,6 +177,27 @@ export async function updateMember(boardId: number, userId: string, changes: {
 	return apiPatch<Member, typeof changes>(`/boards/${boardId}/members/${encodeURIComponent(userId)}`, changes)
 }
 
+/**
+ * Wie viele private Vorgänge das Entfernen dieses Mitglieds löschen würde (§5.29)
+ * — für die bezifferte Rückfrage.
+ *
+ * @param boardId Kennung des Projekts.
+ * @param userId Kennung der Person.
+ */
+export async function memberRemovalImpact(boardId: number, userId: string): Promise<{ privateTickets: number }> {
+	return apiGet<{ privateTickets: number }>(`/boards/${boardId}/members/${encodeURIComponent(userId)}/removal-impact`)
+}
+
+/**
+ * Ein Mitglied aus dem Projekt entfernen (§5.29).
+ *
+ * @param boardId Kennung des Projekts.
+ * @param userId Kennung der Person.
+ */
+export async function removeMember(boardId: number, userId: string): Promise<void> {
+	await apiDelete<void>(`/boards/${boardId}/members/${encodeURIComponent(userId)}`)
+}
+
 /** Ein Nextcloud-Konto, das noch nicht Mitglied ist. */
 export interface Candidate {
 	userId: string
