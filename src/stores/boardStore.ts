@@ -265,21 +265,24 @@ export const useBoardStore = defineStore('board', {
 		 * Einen Vorgang als gelesen vermerken (#79) — der Punkt geht sofort aus.
 		 *
 		 * Optimistisch: Der Punkt verschwindet vor der Netzrunde; scheitert der
-		 * Server, liefert das nächste `open()` den wahren Stand. Nur senden, wenn
-		 * überhaupt ein Punkt da war — sonst wäre jeder Klick auf eine Karte ein
-		 * überflüssiger Schreibvorgang.
+		 * Server, liefert das nächste `open()` den wahren Stand. Immer senden,
+		 * auch ohne sichtbaren Punkt — sonst entstünde beim allerersten Öffnen
+		 * nie ein Lesestand, und „seit deinem Blick geändert" bliebe für diesen
+		 * Vorgang für immer aus (der Server erwartet ohnehin einen Upsert).
 		 *
 		 * @param ticketId Kennung des Vorgangs.
 		 */
 		async markRead(ticketId: number): Promise<void> {
-			if (this.board === null || this.changed[ticketId] !== true) {
+			if (this.board === null) {
 				return
 			}
 
-			// Neues Objekt für die Reaktivität, wie bei den Maps.
-			const next = { ...this.changed }
-			delete next[ticketId]
-			this.changed = next
+			if (this.changed[ticketId] === true) {
+				// Neues Objekt für die Reaktivität, wie bei den Maps.
+				const next = { ...this.changed }
+				delete next[ticketId]
+				this.changed = next
+			}
 
 			try {
 				await markTicketRead(this.board.id, ticketId)
