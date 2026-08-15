@@ -244,6 +244,8 @@ OC.L10N.register(
     "_steht still seit %n Tag_::_steht still seit %n Tagen_" : ["idle for %n day","idle for %n days"],
     "Liegt bei niemandem" : "Unassigned",
     "Datei nicht mehr vorhanden" : "File no longer available",
-    "Seit Ihrem letzten Blick geändert" : "Changed since you last looked"
+    "Seit Ihrem letzten Blick geändert" : "Changed since you last looked",
+    "Neues Projekt": "New project",
+    "Legen Sie Ihr erstes Projekt an, oder warten Sie, bis Sie zu einem hinzugefügt werden.": "Create your first project, or wait until you are added to one."
 },
 "nplurals=2; plural=(n != 1);");

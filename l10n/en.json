@@ -270,7 +270,9 @@
 		],
 		"Liegt bei niemandem": "Unassigned",
 		"Datei nicht mehr vorhanden": "File no longer available",
-		"Seit Ihrem letzten Blick geändert": "Changed since you last looked"
+		"Seit Ihrem letzten Blick geändert": "Changed since you last looked",
+		"Neues Projekt": "New project",
+		"Legen Sie Ihr erstes Projekt an, oder warten Sie, bis Sie zu einem hinzugefügt werden.": "Create your first project, or wait until you are added to one."
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }
