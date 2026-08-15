@@ -6,6 +6,23 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-08-15
+
+### Added
+
+- **Mitglied aus einem Projekt entfernen** (#143) — in den Projekteinstellungen mit einem
+  Entfernen-Knopf je Person; der Eigentümer lässt sich nicht entfernen. Eine bezifferte Rückfrage
+  nennt vorab, wie viele **private** Vorgänge dieser Person dabei gelöscht werden (§5.29); interne
+  und öffentliche Vorgänge bleiben dem Projekt erhalten, offene Zuweisungen werden aufgehoben. Der
+  Aufräumweg ist board-begrenzt und lässt andere Projekte der Person unangetastet.
+
+### Fixed
+
+- **Gast-Konten zeigten in der Mitgliederliste ihren rohen 64-Zeichen-Hash** als Unterzeile (#143).
+  Die technische Kennung wird für Gäste jetzt ausgeblendet; der aufgelöste Name trägt die Zeile.
+- **Der „Ordner anlegen"-Knopf im Ordner-Wähler war abgeschnitten** („Ordner an…", #145). Das
+  Eingabefeld schrumpft jetzt, der Knopf behält seine volle Beschriftung.
+
 ## [0.4.2] - 2026-08-15
 
 ### Added

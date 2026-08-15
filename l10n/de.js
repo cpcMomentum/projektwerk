@@ -257,6 +257,14 @@ OC.L10N.register(
     "Ordner anlegen" : "Ordner anlegen",
     "Diesen Ordner wählen" : "Diesen Ordner wählen",
     "Die Ordner konnten nicht geladen werden." : "Die Ordner konnten nicht geladen werden.",
-    "Der Ordner konnte nicht angelegt werden." : "Der Ordner konnte nicht angelegt werden."
+    "Der Ordner konnte nicht angelegt werden." : "Der Ordner konnte nicht angelegt werden.",
+    "Mitglied entfernen" : "Mitglied entfernen",
+    "Wird geprüft…" : "Wird geprüft…",
+    "Keine privaten Vorgänge dieser Person werden gelöscht. Interne und öffentliche Vorgänge bleiben dem Projekt erhalten." : "Keine privaten Vorgänge dieser Person werden gelöscht. Interne und öffentliche Vorgänge bleiben dem Projekt erhalten.",
+    "Entfernen" : "Entfernen",
+    "{name} aus dem Projekt entfernen? Offene Zuweisungen dieser Person werden aufgehoben." : "{name} aus dem Projekt entfernen? Offene Zuweisungen dieser Person werden aufgehoben.",
+    "Die Vorschau konnte nicht geladen werden" : "Die Vorschau konnte nicht geladen werden",
+    "Mitglied konnte nicht entfernt werden" : "Mitglied konnte nicht entfernt werden",
+    "_Dabei wird %n privater Vorgang dieser Person unwiederbringlich gelöscht._::_Dabei werden %n private Vorgänge dieser Person unwiederbringlich gelöscht._" : ["Dabei wird %n privater Vorgang dieser Person unwiederbringlich gelöscht.","Dabei werden %n private Vorgänge dieser Person unwiederbringlich gelöscht."]
 },
 "nplurals=2; plural=(n != 1);");

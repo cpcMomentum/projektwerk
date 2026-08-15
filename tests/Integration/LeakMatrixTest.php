@@ -16,6 +16,7 @@ use OCA\Projektwerk\Access\WaitStateCalculator;
 use OCA\Projektwerk\Controller\BoardController;
 use OCA\Projektwerk\Controller\DeepLinkController;
 use OCA\Projektwerk\Controller\MemberSearchController;
+use OCA\Projektwerk\Controller\SettingsController;
 use OCA\Projektwerk\Controller\OverviewController;
 use OCA\Projektwerk\Controller\TaskController;
 use OCA\Projektwerk\Controller\TicketController;
@@ -35,6 +36,8 @@ use OCA\Projektwerk\Db\TicketReadMapper;
 use OCA\Projektwerk\Db\TicketUserMapper;
 use OCA\Projektwerk\Service\AttachmentService;
 use OCA\Projektwerk\Service\BoardPinService;
+use OCA\Projektwerk\Service\BoardService;
+use OCA\Projektwerk\Service\ColumnService;
 use OCA\Projektwerk\Service\MemberService;
 use OCA\Projektwerk\Service\NotifyPrefService;
 use OCA\Projektwerk\Service\StepService;
@@ -249,6 +252,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'deepLink#ticket' => 'testDeepLinkTellsOnlyWhatTheViewerMaySee',
 		'step#assignable' => 'testAssignableNeverOffersSomeoneWhoCannotSeeTheTicket',
 		'memberSearch#search' => 'testMemberSearchRefusesEveryoneWithoutManagementRights',
+		'settings#memberRemovalImpact' => 'testRemovalImpactRefusesEveryoneWithoutManagementRights',
 		'notifyPref#index' => 'testEveryViewerSeesOnlyTheirOwnChannelSwitches',
 		'task#index' => 'testTaskEndpointMatchesTheVisibleSetAcrossBoards',
 		'overview#index' => 'testOverviewEndpointMatchesTheVisibleSetAcrossBoards',
@@ -1489,6 +1493,34 @@ class LeakMatrixTest extends IntegrationTestCase {
 	}
 
 	/**
+	 * Die bezifferte Vorschau vorm Entfernen (§5.29) steht nur internen
+	 * Verwaltern offen — wie das Entfernen selbst.
+	 *
+	 * Gezählt werden nur die privaten Vorgänge der **Zielperson**; die Zahl an
+	 * sich verriete einem Fremden nichts über andere Vorgänge, aber der Weg
+	 * dorthin ist eine Verwaltungshandlung, und nur die trägt sie. Deshalb 403
+	 * für jeden ohne Verwaltungsrecht und 404 für das Nichtmitglied — dieselbe
+	 * Grenze wie bei der Kontensuche. Zielperson ist Bert (ein Mitglied, nicht
+	 * der Eigentümer), damit die Rechteprüfung greift und nicht der
+	 * Eigentümerschutz.
+	 */
+	public function testRemovalImpactRefusesEveryoneWithoutManagementRights(): void {
+		$erwartet = [
+			self::ANNA => Http::STATUS_OK,
+			self::BERT => Http::STATUS_FORBIDDEN,
+			self::CARLA => Http::STATUS_FORBIDDEN,
+			self::DIRK => Http::STATUS_FORBIDDEN,
+			self::FREMD => Http::STATUS_NOT_FOUND,
+		];
+
+		foreach ($erwartet as $userId => $status) {
+			$response = $this->settingsController($userId)->memberRemovalImpact($this->fixture->boardId, self::BERT);
+
+			$this->assertSame($status, $response->getStatus(), $userId . ' bei der Entfernen-Vorschau');
+		}
+	}
+
+	/**
 	 * **Wem ein Schritt gegeben werden darf, deckt sich mit „wer das Ticket
 	 * sieht".**
 	 *
@@ -1754,6 +1786,17 @@ class LeakMatrixTest extends IntegrationTestCase {
 			Server::get(IUserManager::class),
 			Server::get(IConfig::class),
 			Server::get(MemberMapper::class),
+			Server::get(BoardAccess::class),
+			$userId,
+		);
+	}
+
+	private function settingsController(string $userId): SettingsController {
+		return new SettingsController(
+			$this->createStub(IRequest::class),
+			Server::get(BoardService::class),
+			Server::get(ColumnService::class),
+			Server::get(MemberService::class),
 			Server::get(BoardAccess::class),
 			$userId,
 		);

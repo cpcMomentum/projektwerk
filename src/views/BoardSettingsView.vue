@@ -219,7 +219,14 @@
 
 					<span class="pw-person__body">
 						<span class="pw-person__name">{{ member.resolvedName }}</span>
-						<span class="pw-person__org">{{ member.userId }}</span>
+						<!--
+							Die Kennung als Zweitzeile hilft, gleichnamige Personen
+							zu unterscheiden — aber nur, wenn sie lesbar ist. Ein
+							Gast-Konto trägt als Kennung einen 64-stelligen Hash;
+							der sagt niemandem etwas und wird deshalb weggelassen.
+							Der Anzeigename oben steht ohnehin (resolvedName).
+						-->
+						<span v-if="handleFor(member) !== ''" class="pw-person__org">{{ handleFor(member) }}</span>
 					</span>
 
 					<select
@@ -248,6 +255,22 @@
 							@change="changeManager(member, $event)">
 						{{ t('projektwerk', 'Verwaltung') }}
 					</label>
+
+					<!--
+						Entfernen (§5.29): Der Eigentuemer laesst sich nicht
+						entfernen (er behaelt das Verwaltungsrecht). Die
+						Rueckfrage nennt die Zahl der privaten Vorgaenge, die
+						dabei geloescht werden.
+					-->
+					<NcButton
+						variant="tertiary"
+						:disabled="busy || isOwner(member)"
+						:aria-label="t('projektwerk', 'Mitglied entfernen')"
+						@click="askRemoveMember(member)">
+						<template #icon>
+							<DeleteIcon :size="20" />
+						</template>
+					</NcButton>
 				</div>
 
 				<div class="pw-settings__row">
@@ -383,6 +406,42 @@
 			</template>
 		</NcDialog>
 
+		<!--
+			Mitglied entfernen (§5.29) — mit bezifferter Rückfrage. Die Zahl der
+			privaten Vorgänge kommt vom Server (`removal-impact`); sie ist hier
+			kein Leck, weil sie nur die Vorgänge **dieser** Person zählt, die
+			ohnehin niemand sonst sieht.
+		-->
+		<NcDialog
+			:open="removingMember !== null"
+			:name="t('projektwerk', 'Mitglied entfernen')"
+			size="normal"
+			@update:open="onRemoveMemberToggle">
+			<div v-if="removingMember !== null" class="app-projektwerk">
+				<p class="pw-settings__hint">
+					{{ removeMemberLead }}
+				</p>
+				<p v-if="removeMemberImpact === null" class="pw-settings__hint">
+					{{ t('projektwerk', 'Wird geprüft…') }}
+				</p>
+				<p v-else-if="removeMemberImpact > 0" class="pw-settings__hint pw-settings__hint--warn">
+					{{ removeMemberImpactText }}
+				</p>
+				<p v-else class="pw-settings__hint">
+					{{ t('projektwerk', 'Keine privaten Vorgänge dieser Person werden gelöscht. Interne und öffentliche Vorgänge bleiben dem Projekt erhalten.') }}
+				</p>
+			</div>
+
+			<template #actions>
+				<NcButton @click="cancelRemoveMember">
+					{{ t('projektwerk', 'Abbrechen') }}
+				</NcButton>
+				<NcButton variant="error" :disabled="busy || removeMemberImpact === null" @click="confirmRemoveMember">
+					{{ t('projektwerk', 'Entfernen') }}
+				</NcButton>
+			</template>
+		</NcDialog>
+
 		<FolderPicker
 			:open="picker.open"
 			:startPath="picker.start"
@@ -412,6 +471,8 @@ import {
 	addMember,
 	createColumn,
 	deleteColumn,
+	memberRemovalImpact,
+	removeMember,
 	renameColumn,
 	reorderColumns,
 	searchCandidates,
@@ -456,6 +517,10 @@ export default defineComponent({
 			removing: null as Column | null,
 			/** Pflichtangabe, deshalb ohne Vorbelegung. */
 			removeTarget: null as number | null,
+			/** Das Mitglied, über dessen Entfernen gerade zurückgefragt wird (§5.29). */
+			removingMember: null as Member | null,
+			/** Zahl der privaten Vorgänge, die das Entfernen löscht; null = wird noch geprüft. */
+			removeMemberImpact: null as number | null,
 			// Ein eigener Entwurf statt direkter Bindung an den Speicher: Sonst
 			// stuenden Tippfehler sofort in der Kopfzeile des Boards, und ein
 			// Abbruch waere nicht mehr moeglich.
@@ -569,6 +634,22 @@ export default defineComponent({
 				anzahl,
 			)
 		},
+
+		/** Der einleitende Satz der Mitglied-Entfernen-Rückfrage. */
+		removeMemberLead(): string {
+			const name = this.removingMember?.resolvedName ?? ''
+			return t('projektwerk', '{name} aus dem Projekt entfernen? Offene Zuweisungen dieser Person werden aufgehoben.', { name })
+		},
+
+		/** Die bezifferte Warnung über die zu löschenden privaten Vorgänge. */
+		removeMemberImpactText(): string {
+			return n(
+				'projektwerk',
+				'Dabei wird %n privater Vorgang dieser Person unwiederbringlich gelöscht.',
+				'Dabei werden %n private Vorgänge dieser Person unwiederbringlich gelöscht.',
+				this.removeMemberImpact ?? 0,
+			)
+		},
 	},
 
 	watch: {
@@ -611,6 +692,21 @@ export default defineComponent({
 		 */
 		isOwner(member: Member): boolean {
 			return this.store.board?.ownerUserId === member.userId
+		},
+
+		/**
+		 * Die Kennung als lesbare Zweitzeile — oder leer.
+		 *
+		 * Ein Gast-Konto trägt als Kennung einen 64-stelligen Hex-Hash (Gast-UIDs
+		 * sind genau so gebaut). Der gehört nicht in die Oberfläche: Er sagt
+		 * niemandem etwas und stünde als Zeichensalat unter dem Namen. In dem
+		 * Fall bleibt die Zeile leer, der aufgelöste Name oben trägt sie.
+		 *
+		 * @param member Die Mitgliedschaft.
+		 */
+		handleFor(member: Member): string {
+			const uid = member.userId
+			return /^[a-f0-9]{64}$/i.test(uid) ? '' : uid
 		},
 
 		/**
@@ -810,6 +906,61 @@ export default defineComponent({
 					this.cancelRemove()
 				},
 				t('projektwerk', 'Spalte konnte nicht entfernt werden'),
+			)
+		},
+
+		/**
+		 * Die Rückfrage zum Entfernen eines Mitglieds öffnen und die Zahl der
+		 * betroffenen privaten Vorgänge vom Server holen (§5.29).
+		 *
+		 * @param member Das Mitglied.
+		 */
+		async askRemoveMember(member: Member) {
+			this.removingMember = member
+			this.removeMemberImpact = null
+			try {
+				const impact = await memberRemovalImpact(this.boardId, member.userId)
+				// Nur übernehmen, wenn der Dialog noch demselben Mitglied gilt —
+				// ein schneller Wechsel darf keine fremde Zahl einblenden.
+				if (this.removingMember?.userId === member.userId) {
+					this.removeMemberImpact = impact.privateTickets
+				}
+			} catch (e) {
+				showError((e as { message?: string }).message ?? t('projektwerk', 'Die Vorschau konnte nicht geladen werden'))
+				this.cancelRemoveMember()
+			}
+		},
+
+		cancelRemoveMember() {
+			this.removingMember = null
+			this.removeMemberImpact = null
+		},
+
+		/**
+		 * @param open Der neue Zustand des Dialogs.
+		 */
+		onRemoveMemberToggle(open: boolean) {
+			if (!open) {
+				this.cancelRemoveMember()
+			}
+		},
+
+		/**
+		 * Das Mitglied entfernen — private Vorgänge löschen, Zuweisungen lösen,
+		 * Mitgliedschaft entfernen, alles serverseitig in einer Transaktion.
+		 */
+		confirmRemoveMember() {
+			const member = this.removingMember
+			if (member === null) {
+				return
+			}
+
+			return this.write(
+				async () => {
+					await removeMember(this.boardId, member.userId)
+					this.cancelRemoveMember()
+				},
+				t('projektwerk', 'Mitglied konnte nicht entfernt werden'),
 			)
 		},
 

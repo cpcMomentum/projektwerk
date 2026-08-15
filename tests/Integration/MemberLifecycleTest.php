@@ -149,4 +149,104 @@ class MemberLifecycleTest extends IntegrationTestCase {
 
 		$this->assertSame(0, (int)$qb->executeQuery()->fetchOne());
 	}
+
+	/**
+	 * **Das board-begrenzte Entfernen (§5.29, manuell) räumt dieselben Spuren
+	 * auf wie das Kontolöschen** — nur eben auf genau diesem Projekt.
+	 *
+	 * Geprüft an demselben Aufbau: Annas privater Vorgang verschwindet, ihr
+	 * öffentlicher bleibt dem Projekt, ihre Zuweisungen sind gelöst, ihre
+	 * Mitgliedschaft ist weg.
+	 */
+	public function testRemoveFromBoardClearsThePersonOnThatBoard(): void {
+		$privat = $this->fixture->ticketIds['private/anna'];
+		$oeffentlich = $this->fixture->ticketIds['public/anna'];
+
+		$this->lifecycle->removeFromBoard(LeakMatrixFixture::ANNA, $this->fixture->boardId);
+
+		$this->assertSame(0, $this->zeilenMitId('pwerk_tickets', $privat), 'Der private Vorgang muss weg sein.');
+		$this->assertSame(1, $this->zeilenMitId('pwerk_tickets', $oeffentlich), 'Der öffentliche gehört dem Projekt und bleibt.');
+		$this->assertSame(0, $this->kinderVon('pwerk_steps', $privat));
+		$this->assertSame(0, $this->kinderVon('pwerk_comments', $privat));
+
+		$qb = $this->db->getQueryBuilder();
+		$qb->select($qb->func()->count('*', 'anzahl'))
+			->from('pwerk_members')
+			->where($qb->expr()->eq('user_id', $qb->createNamedParameter(LeakMatrixFixture::ANNA)))
+			->andWhere($qb->expr()->eq('board_id', $qb->createNamedParameter($this->fixture->boardId)));
+		$this->assertSame(0, (int)$qb->executeQuery()->fetchOne(), 'Die Mitgliedschaft auf diesem Projekt muss weg sein.');
+
+		$qb = $this->db->getQueryBuilder();
+		$qb->select($qb->func()->count('*', 'anzahl'))
+			->from('pwerk_tickets')
+			->where($qb->expr()->eq('responsible_user_id', $qb->createNamedParameter(LeakMatrixFixture::ANNA)))
+			->andWhere($qb->expr()->eq('board_id', $qb->createNamedParameter($this->fixture->boardId)));
+		$this->assertSame(0, (int)$qb->executeQuery()->fetchOne(), 'Keine Zuständigkeit dieser Person darf bleiben.');
+	}
+
+	/**
+	 * Die bezifferte Vorschau zählt nur die privaten Vorgänge **dieser** Person
+	 * auf **diesem** Projekt — je Person und board-begrenzt.
+	 *
+	 * Anna hat auf dem anderen Projekt keinen privaten Vorgang: Dort zählt für
+	 * sie null, obwohl sie auf dem ersten einen hat. Das ist die Gegenprobe auf
+	 * den `board_id`-Filter.
+	 */
+	public function testCountPrivateOnBoardIsScopedToTheBoard(): void {
+		$this->assertSame(
+			1,
+			$this->lifecycle->countPrivateOnBoard(LeakMatrixFixture::ANNA, $this->fixture->boardId),
+			'Anna hat genau einen privaten Vorgang auf diesem Projekt.',
+		);
+
+		$this->assertSame(
+			0,
+			$this->lifecycle->countPrivateOnBoard(LeakMatrixFixture::ANNA, $this->fixture->otherBoardId),
+			'Auf dem anderen Projekt hat Anna keinen privaten Vorgang.',
+		);
+
+		// Bert hat seinen eigenen privaten Vorgang auf diesem Projekt — die
+		// Zählung ist je Person, Annas Zahl schließt ihn nicht ein und umgekehrt.
+		$this->assertSame(
+			1,
+			$this->lifecycle->countPrivateOnBoard(LeakMatrixFixture::BERT, $this->fixture->boardId),
+			'Bert hat seinen eigenen privaten Vorgang.',
+		);
+	}
+
+	/**
+	 * **Board-begrenzt heißt board-begrenzt.** Bert aus dem ersten Projekt zu
+	 * entfernen lässt seine Spuren im zweiten unangetastet — Mitgliedschaft und
+	 * Vorgänge dort bleiben.
+	 *
+	 * Ohne den `board_id`-Filter wäre `removeFromBoard` still ein `forget`: Es
+	 * risse einer Person überall den Boden weg, obwohl sie nur aus einem Projekt
+	 * gehen soll.
+	 */
+	public function testRemoveFromBoardDoesNotTouchOtherBoards(): void {
+		$privatHier = $this->fixture->ticketIds['private/bert'];
+		$vorgangDort = $this->fixture->ticketIds['b:internal/bert'];
+
+		$this->lifecycle->removeFromBoard(LeakMatrixFixture::BERT, $this->fixture->boardId);
+
+		// Hier weg …
+		$this->assertSame(0, $this->zeilenMitId('pwerk_tickets', $privatHier), 'Berts privater Vorgang hier muss weg sein.');
+
+		// … dort unangetastet.
+		$this->assertSame(1, $this->zeilenMitId('pwerk_tickets', $vorgangDort), 'Berts Vorgang im anderen Projekt bleibt.');
+
+		$qb = $this->db->getQueryBuilder();
+		$qb->select($qb->func()->count('*', 'anzahl'))
+			->from('pwerk_members')
+			->where($qb->expr()->eq('user_id', $qb->createNamedParameter(LeakMatrixFixture::BERT)))
+			->andWhere($qb->expr()->eq('board_id', $qb->createNamedParameter($this->fixture->otherBoardId)));
+		$this->assertSame(1, (int)$qb->executeQuery()->fetchOne(), 'Berts Mitgliedschaft im anderen Projekt bleibt.');
+
+		$qb = $this->db->getQueryBuilder();
+		$qb->select($qb->func()->count('*', 'anzahl'))
+			->from('pwerk_members')
+			->where($qb->expr()->eq('user_id', $qb->createNamedParameter(LeakMatrixFixture::BERT)))
+			->andWhere($qb->expr()->eq('board_id', $qb->createNamedParameter($this->fixture->boardId)));
+		$this->assertSame(0, (int)$qb->executeQuery()->fetchOne(), 'Hier ist Bert kein Mitglied mehr.');
+	}
 }
