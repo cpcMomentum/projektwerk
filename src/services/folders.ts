@@ -61,10 +61,15 @@ function toUrl(path: string): string {
  * @param href Die `href` aus der WebDAV-Antwort.
  */
 function pathFromHref(href: string): string {
+	// Erst dekodieren, dann die Kennung suchen: Die `href` kodiert jedes
+	// Segment einzeln (auch die Kennung selbst, etwa bei Umlauten), die
+	// Kennung aus currentUid() aber nicht — ein Vergleich vor dem Dekodieren
+	// schlüge für solche Kennungen immer fehl.
+	const decoded = decodeURIComponent(href)
 	const marker = '/dav/files/' + currentUid() + '/'
-	const at = href.indexOf(marker)
-	const rest = at === -1 ? href : href.slice(at + marker.length)
-	return decodeURIComponent(rest).replace(/\/+$/, '').replace(/^\/+/, '')
+	const at = decoded.indexOf(marker)
+	const rest = at === -1 ? decoded : decoded.slice(at + marker.length)
+	return rest.replace(/\/+$/, '').replace(/^\/+/, '')
 }
 
 /**

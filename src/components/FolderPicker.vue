@@ -53,7 +53,7 @@
 						:placeholder="t('projektwerk', 'Neuer Ordner')"
 						:disabled="loading || creating"
 						@keydown.enter="create" />
-					<NcButton :disabled="loading || creating || newName.trim() === ''" @click="create">
+					<NcButton :disabled="loading || creating || !isValidFolderName(newName.trim())" @click="create">
 						{{ t('projektwerk', 'Ordner anlegen') }}
 					</NcButton>
 				</div>
@@ -91,6 +91,47 @@ import ArrowUpIcon from 'vue-material-design-icons/ArrowUp.vue'
 import ChevronRightIcon from 'vue-material-design-icons/ChevronRight.vue'
 import FolderIcon from 'vue-material-design-icons/Folder.vue'
 import { createFolder, folderChildren } from '@/services/folders'
+
+/**
+ * Ist das ein Axios-Fehler?
+ *
+ * Duck-Typing statt Import: Axios setzt dieses Feld auf jedem Fehler, den es
+ * wirft, unabhängig von der importierten Instanz.
+ *
+ * @param e Der gefangene Fehler, ungeprüft.
+ */
+function isAxiosError(e: unknown): boolean {
+	return typeof e === 'object' && e !== null && (e as { isAxiosError?: boolean }).isAxiosError === true
+}
+
+/**
+ * Eine Fehlermeldung fürs Publikum.
+ *
+ * Ein Axios-Fehler trägt in `message` nur den technischen, englischen Grund
+ * ("Request failed with status code 404") — nie die übersetzte
+ * Ausweichmeldung, weil `message` bei Axios-Fehlern immer gesetzt ist. Sie
+ * wird deshalb verworfen und durch die übersetzte Meldung ersetzt.
+ *
+ * @param e Der gefangene Fehler, ungeprüft.
+ * @param fallback Die übersetzte Ausweichmeldung.
+ */
+function friendlyError(e: unknown, fallback: string): string {
+	if (!isAxiosError(e) && e instanceof Error && e.message !== '') {
+		return e.message
+	}
+	return fallback
+}
+
+/**
+ * Ein gültiger Ordnername: kein Schrägstrich, kein „.“ oder „..“ — sonst
+ * liesse sich der Wähler über den WebDAV-Pfad aus dem aktuellen Ordner heraus
+ * manövrieren.
+ *
+ * @param name Der getrimmte Name aus dem Eingabefeld.
+ */
+function isValidFolderName(name: string): boolean {
+	return name !== '' && name !== '.' && name !== '..' && !name.includes('/')
+}
 
 export default defineComponent({
 	name: 'FolderPicker',
@@ -130,6 +171,7 @@ export default defineComponent({
 
 	methods: {
 		t,
+		isValidFolderName,
 
 		/**
 		 * Ein Verzeichnis laden und anzeigen.
@@ -151,7 +193,7 @@ export default defineComponent({
 					await this.load('')
 					return
 				}
-				this.error = (e as { message?: string }).message ?? t('projektwerk', 'Die Ordner konnten nicht geladen werden.')
+				this.error = friendlyError(e, t('projektwerk', 'Die Ordner konnten nicht geladen werden.'))
 			} finally {
 				this.loading = false
 			}
@@ -173,7 +215,7 @@ export default defineComponent({
 
 		async create(): Promise<void> {
 			const name = this.newName.trim()
-			if (name === '' || this.creating) {
+			if (name === '' || this.creating || !isValidFolderName(name)) {
 				return
 			}
 			this.creating = true
@@ -184,7 +226,7 @@ export default defineComponent({
 				this.newName = ''
 				await this.load(target)
 			} catch (e) {
-				this.error = (e as { message?: string }).message ?? t('projektwerk', 'Der Ordner konnte nicht angelegt werden.')
+				this.error = friendlyError(e, t('projektwerk', 'Der Ordner konnte nicht angelegt werden.'))
 			} finally {
 				this.creating = false
 			}
