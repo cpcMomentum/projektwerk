@@ -19,6 +19,7 @@ use OCA\Projektwerk\Db\CommentMapper;
 use OCA\Projektwerk\Db\StepMapper;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Db\TicketUserMapper;
+use OCA\Projektwerk\Service\AttachmentService;
 use OCA\Projektwerk\Service\AttachmentsPresentException;
 use OCA\Projektwerk\Service\ConflictException;
 use OCA\Projektwerk\Service\NotOwningSideException;
@@ -52,6 +53,7 @@ class TicketController extends Controller {
 		private AttachmentMapper $attachments,
 		private TicketUserMapper $ticketUsers,
 		private TicketService $service,
+		private AttachmentService $attachmentService,
 		private WaitStateCalculator $waitState,
 		private BoardAccess $access,
 		private ?string $userId,
@@ -119,7 +121,10 @@ class TicketController extends Controller {
 				'waiting' => $this->waitState->forTicket($ticket, $steps),
 				'comments' => $this->comments->findForTickets($ids),
 				'steps' => $steps,
-				'attachments' => $this->attachments->findForTickets($ids),
+				// Mit `missing`-Angabe je Anhang (#9): verwaiste Dateien werden
+				// gezeigt, nicht verschwiegen. Die Menge kommt weiter über den
+				// gefilterten `findForTickets()`-Weg.
+				'attachments' => $this->attachmentService->withPresence($viewer, $this->attachments->findForTickets($ids)),
 				'collaborators' => $this->ticketUsers->findForTickets($ids),
 			]);
 		});

@@ -1372,6 +1372,15 @@
 	overflow-wrap: anywhere;
 }
 
+/*
+ * Verwaiste Datei (#9): durchgestrichen und gedämpft — kein Link, keine Farbe,
+ * die zum Klicken einlädt. Die Ansage steht in der Meta-Zeile daneben.
+ */
+.app-projektwerk .pw-attach__name--weg {
+	text-decoration: line-through;
+	color: var(--color-text-maxcontrast);
+}
+
 .app-projektwerk .pw-attach__meta {
 	font-size: 13px;
 	color: var(--color-text-maxcontrast);

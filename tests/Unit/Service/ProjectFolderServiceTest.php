@@ -193,6 +193,45 @@ class ProjectFolderServiceTest extends TestCase {
 	}
 
 	/**
+	 * Die Datei ist noch da: `exists()` sagt `true`.
+	 */
+	public function testExistsIsTrueWhenTheFileIsStillInTheTree(): void {
+		$home = $this->createStub(Folder::class);
+		$home->method('getFirstNodeById')->willReturn($this->createStub(File::class));
+
+		$root = $this->createStub(IRootFolder::class);
+		$root->method('getUserFolder')->willReturn($home);
+
+		$this->assertTrue((new ProjectFolderService($root))->exists('lm-intern', 42));
+	}
+
+	/**
+	 * Die Datei ist aus dem Baum verschwunden — gelöscht oder weggeschoben
+	 * (#9): `exists()` sagt `false`, statt zu werfen.
+	 */
+	public function testExistsIsFalseWhenTheFileIsGoneFromTheTree(): void {
+		$home = $this->createStub(Folder::class);
+		$home->method('getFirstNodeById')->willReturn(null);
+
+		$root = $this->createStub(IRootFolder::class);
+		$root->method('getUserFolder')->willReturn($home);
+
+		$this->assertFalse((new ProjectFolderService($root))->exists('lm-intern', 42));
+	}
+
+	/**
+	 * Lässt sich der Dateibaum selbst gerade nicht auflösen, ist das kein
+	 * Beleg für ein Fehlen (#9): `exists()` sagt dann `true`, die
+	 * unangenehmere der beiden möglichen Falschaussagen.
+	 */
+	public function testExistsDefaultsToTrueWhenTheTreeItselfIsUnreachable(): void {
+		$root = $this->createStub(IRootFolder::class);
+		$root->method('getUserFolder')->willThrowException(new NotFoundException());
+
+		$this->assertTrue((new ProjectFolderService($root))->exists('lm-intern', 42));
+	}
+
+	/**
 	 * Der Anzeigepfad ist der Pfad **ohne** den Kopf des Dateibaums.
 	 *
 	 * `/lm-intern/files/Projekte/90_Austausch` ist die interne Adresse; in den
