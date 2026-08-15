@@ -6,6 +6,18 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-08-15
+
+### Fixed
+
+- **Ein Projekt liess sich über die Oberfläche gar nicht anlegen** (#135). Der
+  `createBoard`-Endpunkt war im Frontend nie verdrahtet — kein Knopf, keine Route, kein
+  Aufrufer; Boards entstanden bis dahin nur über den Test-API-Helfer. Auf der frisch
+  ausgelieferten Produktivinstanz (erster echter Nutzer, null Boards) war die App damit ohne
+  Weg nach vorn. Jetzt trägt die Projekte-Ansicht einen „Neues Projekt"-Knopf in der Kopfzeile
+  und im Leerzustand; nach dem Anlegen wird gleich ins neue Board gewechselt. Ein E2E-Test legt
+  ein Projekt aus dem Leerzustand über die UI an — der Weg, den bisher kein Test ging.
+
 ## [0.4.0] - 2026-08-15
 
 Erste Auslieferung auf die Produktivinstanz. MVP-Stand: mit dieser Version lassen sich
