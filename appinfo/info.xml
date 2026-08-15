@@ -37,7 +37,7 @@ Der eigentliche Zweck ist nicht das Board, sondern die **sichtbare Zustaendigkei
     <repository type="git">https://github.com/cpcMomentum/projektwerk.git</repository>
 
     <dependencies>
-        <php min-version="8.4"/>
+        <php min-version="8.3"/>
         <database>sqlite</database>
         <database>mysql</database>
         <database>pgsql</database>

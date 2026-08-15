@@ -43,17 +43,18 @@ jobs:
       fail-fast: false
       matrix:
         # PHP-Raender des unterstuetzten Bereichs; NC/ocp kommt aus info.xml.
-        # 8.4 ist die deklarierte Untergrenze (info.xml <php min-version>) und
-        # zugleich das, was das offizielle nextcloud:33-Image liefert; 8.5 ist
-        # die Basis des nextcloud:34-Images. Die Matrix deckt damit genau die
-        # beiden real ausgelieferten Kombinationen ab.
+        # 8.3 ist die deklarierte Untergrenze (info.xml <php min-version>) und
+        # zugleich das, was das AIO-Image auf NC 34 liefert — die
+        # Produktivinstanz laeuft darauf. 8.5 ist die Basis des offiziellen
+        # nextcloud:34-Images. Die Matrix deckt damit den realen Bereich ab,
+        # in dem die App ausgeliefert wird; 8.4 liegt als Zwischenstufe dazwischen.
         # Beim Verschieben dieser Werte MUESSEN die Required-Status-Checks des
         # develop-Rulesets mitgezogen werden — die Kontexte heissen "PHP <ver>".
         # Ein Kontext, der nie mehr meldet, blockiert jeden PR dauerhaft, ohne
         # dass etwas rot wird. Reihenfolge: Checks loesen -> Workflow landen ->
         # neue Namen live beobachten -> Ruleset per PUT auf die beobachteten
         # Namen setzen (PATCH ist keine gueltige Route und liefert 404).
-        php-version: ['8.4', '8.5']
+        php-version: ['8.3', '8.4', '8.5']
     name: PHP ${{ matrix.php-version }}
     steps:
       - uses: actions/checkout@v4
