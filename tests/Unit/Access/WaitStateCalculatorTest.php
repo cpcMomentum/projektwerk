@@ -94,6 +94,70 @@ class WaitStateCalculatorTest extends TestCase {
 		$this->assertNull($this->calculator->forTicket($this->ticket(), [$step]));
 	}
 
+	public function testAnExternalResponsibleWithoutStepsMakesTheTicketWait(): void {
+		// Der Kern von #114: Nicht jeder Vorgang wird in Schritte zerlegt. Einer,
+		// der jemandem auf der Gegenseite gehoert, liegt trotzdem dort.
+		$state = $this->calculator->forTicket(
+			$this->responsibleTicket('external', '2026-06-12', 'kunde'),
+			[],
+		);
+
+		$this->assertNotNull($state);
+		$this->assertStringStartsWith('2026-06-12', $state['since']);
+		$this->assertSame(['kunde'], $state['userIds']);
+	}
+
+	public function testAnInternalResponsibleNeverWaits(): void {
+		// „Wartet auf Kunde", nicht „wartet auf jemanden": Ein intern
+		// Verantwortlicher ist die eigene Arbeit.
+		$this->assertNull($this->calculator->forTicket(
+			$this->responsibleTicket('internal', '2026-06-12', 'kollege'),
+			[],
+		));
+	}
+
+	public function testAResponsibleRoleWithoutAPersonIsNoMark(): void {
+		// Wie beim Schritt: Eine Rolle ohne Kennung waere ein Datenfehler, und der
+		// Satz im Detail koennte keinen Namen nennen.
+		$ticket = $this->responsibleTicket('external', '2026-06-12', 'kunde');
+		$ticket->setResponsibleUserId(null);
+
+		$this->assertNull($this->calculator->forTicket($ticket, []));
+	}
+
+	public function testResponsibleSinceCountsTowardTheOldestDate(): void {
+		// Das Datum ist das kleinste ueber beide Quellen — nicht das juengste,
+		// sonst verloere die Marke ihren Sinn als Wartezeit.
+		$state = $this->calculator->forTicket(
+			$this->responsibleTicket('external', '2026-06-01', 'chef'),
+			[$this->step('external', false, '2026-07-01', 'kunde')],
+		);
+
+		$this->assertStringStartsWith('2026-06-01', $state['since']);
+		$this->assertSame(['kunde', 'chef'], $state['userIds']);
+	}
+
+	public function testAnExternalResponsibleWithoutSinceShowsNoDate(): void {
+		// Bestandszeilen tragen keine `responsible_since` — die Marke steht dann
+		// ohne Datum da, wie ein Schritt ohne `assigned_at`. Ehrlicher als ein
+		// erfundenes Datum.
+		$state = $this->calculator->forTicket(
+			$this->responsibleTicket('external', null, 'kunde'),
+			[],
+		);
+
+		$this->assertNotNull($state);
+		$this->assertSame('', $state['since']);
+		$this->assertSame(['kunde'], $state['userIds']);
+	}
+
+	public function testAClosedTicketWithAnExternalResponsibleWaitsForNobody(): void {
+		$ticket = $this->responsibleTicket('external', '2026-06-12', 'kunde');
+		$ticket->setClosedAt(new \DateTime('2026-07-05'));
+
+		$this->assertNull($this->calculator->forTicket($ticket, []));
+	}
+
 	public function testTheListVariantAnswersOnlyForWaitingTickets(): void {
 		$wartend = $this->ticket(1);
 		$ruhig = $this->ticket(2);
@@ -114,6 +178,23 @@ class WaitStateCalculatorTest extends TestCase {
 		$ticket = new Ticket();
 		$ticket->setId($id);
 		$ticket->setVisibility('public');
+
+		return $ticket;
+	}
+
+	/**
+	 * Ein Ticket mit eingetragenem Verantwortlichen — die zweite Quelle (#114).
+	 *
+	 * @param string $role Rolle, die beim Eintragen eingefroren wurde.
+	 * @param ?string $since Zeitpunkt des Eintragens, oder `null` (Bestandszeile).
+	 * @param string $userId Kennung des Verantwortlichen.
+	 * @param int $id Kennung des Tickets.
+	 */
+	private function responsibleTicket(string $role, ?string $since, string $userId = 'kunde', int $id = 1): Ticket {
+		$ticket = $this->ticket($id);
+		$ticket->setResponsibleUserId($userId);
+		$ticket->setResponsibleRole($role);
+		$ticket->setResponsibleSince($since === null ? null : new \DateTime($since));
 
 		return $ticket;
 	}

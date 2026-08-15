@@ -17,11 +17,13 @@ use OCA\Projektwerk\Service\BoardService;
 use OCA\Projektwerk\Service\ColumnService;
 use OCA\Projektwerk\Service\MemberService;
 use OCA\Projektwerk\Service\NotManagerException;
+use OCA\Projektwerk\Service\NotOwnerException;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\JSONResponse;
+use OCP\Files\NotPermittedException;
 use OCP\IRequest;
 
 /**
@@ -82,13 +84,23 @@ class SettingsController extends Controller {
 		?string $orgInternal = null,
 		?string $orgExternal = null,
 		?string $chatUrl = null,
+		?string $folderPublicPath = null,
+		?string $folderInternalPath = null,
 	): JSONResponse {
+		// **Die beiden Ordner kommen als Pfad, gespeichert wird die Datei-ID.**
+		// Der Pfad benennt den Ordner nur; was in der Datenbank landet, loest
+		// {@see BoardService::update()} daraus auf (§5.18). Der leere String
+		// entfernt die Zuordnung — `onlyGiven` unterscheidet „nicht
+		// mitgeschickt" allein am `null`, ein ausdrueckliches „auf nichts
+		// setzen" waere damit sonst nicht ausdrueckbar.
 		$changes = $this->onlyGiven([
 			'title' => $title,
 			'description' => $description,
 			'orgInternal' => $orgInternal,
 			'orgExternal' => $orgExternal,
 			'chatUrl' => $chatUrl,
+			'folderPublicPath' => $folderPublicPath,
+			'folderInternalPath' => $folderInternalPath,
 		]);
 
 		return $this->write($boardId, fn (ViewerContext $viewer): mixed
@@ -120,6 +132,28 @@ class SettingsController extends Controller {
 	public function reorderColumns(int $boardId, array $columnIds): JSONResponse {
 		return $this->write($boardId, fn (ViewerContext $viewer): mixed
 			=> $this->columnService->reorder($viewer, $columnIds));
+	}
+
+	/**
+	 * Eine Spalte entfernen — die Zielspalte ist **Pflicht**, nicht optional.
+	 *
+	 * Ohne Vorbelegung und ohne stillen Rückfall auf „irgendeine andere": Wohin
+	 * die Vorgänge wandern, ist eine Entscheidung, und eine geratene Antwort
+	 * verschöbe fremde Arbeit an einen Ort, den niemand gewählt hat.
+	 *
+	 * Der Parameter steht im Rumpf, nicht in der Adresse — Nextclouds Request
+	 * decodiert einen JSON-Rumpf auch bei DELETE.
+	 *
+	 * Antwortet mit 204: Eine Anzahl zurückzugeben wäre eine Auskunft über die
+	 * ungefilterte Menge.
+	 */
+	#[NoAdminRequired]
+	public function deleteColumn(int $boardId, int $columnId, int $targetColumnId): JSONResponse {
+		return $this->write($boardId, function (ViewerContext $viewer) use ($columnId, $targetColumnId): mixed {
+			$this->columnService->delete($viewer, $columnId, $targetColumnId);
+
+			return null;
+		}, Http::STATUS_NO_CONTENT);
 	}
 
 	#[NoAdminRequired]
@@ -180,13 +214,21 @@ class SettingsController extends Controller {
 
 		try {
 			return new JSONResponse($write($viewer), $status);
-		} catch (NotManagerException $e) {
+		} catch (NotManagerException | NotOwnerException $e) {
 			// 403, nicht 404: Der Betrachter ist Mitglied und sieht das Board.
-			// Zu verbergen gibt es nichts mehr — nur zu erklären.
+			// Zu verbergen gibt es nichts mehr — nur zu erklären. Zwei
+			// Ausnahmen mit einer Antwort, aber getrennten Sätzen: Wer eine
+			// Spalte entfernen will, hat das Verwaltungsrecht womöglich.
 			return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_FORBIDDEN);
 		} catch (DoesNotExistException) {
 			return new JSONResponse([], Http::STATUS_NOT_FOUND);
-		} catch (\InvalidArgumentException $e) {
+		} catch (\InvalidArgumentException | NotPermittedException $e) {
+			// **`NotPermittedException` ist hier 400 und nicht 403.** Sie sagt
+			// nichts über die Rechte am Board — die stehen längst fest, sonst
+			// wäre oben schon Schluss gewesen —, sondern über den *Wert*: Der
+			// eingetragene Ordner ist keiner, ist unerreichbar oder nicht
+			// beschreibbar. Ein 403 läse sich als „Sie dürfen die Einstellungen
+			// nicht ändern", und genau das stimmt nicht.
 			return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
 		}
 	}

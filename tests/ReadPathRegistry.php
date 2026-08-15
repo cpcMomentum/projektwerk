@@ -42,6 +42,16 @@ final class ReadPathRegistry {
 		'TicketMapper::findVisibleInBoard',
 		'TicketMapper::findVisible',
 		'TicketMapper::findVisibleAcrossBoards',
+		// Der Ueberblick (#76) — **alles Sichtbare** ueber alle Boards, nicht
+		// nur das eigene. Die breiteste Menge der Matrix: Jeder andere Pfad
+		// engt zusaetzlich ein, dieser allein ueber die Sichtbarkeitsregel.
+		// Die Erwartung dazu ist `testOverviewEndpointMatchesTheVisibleSetAcrossBoards`.
+		'TicketMapper::findVisibleAcrossBoardsAll',
+		// „Meine Arbeitsschritte" — dieselbe Regel, andere Menge als
+		// `findVisibleAcrossBoards`: Ein Schritt kann mir an einem Vorgang
+		// gehoeren, an dem ich weder verantwortlich noch mitarbeitend bin.
+		// Die Erwartung dazu ist `testMyStepsNeverWidensBeyondTheVisibleSet`.
+		'TicketMapper::findVisibleWithMyOpenSteps',
 		// Der Deep-Link kennt nur die Ticketnummer, kein Board — deshalb ohne
 		// Board-Einschraenkung, aber ueber dieselbe Regel.
 		'TicketMapper::findVisibleAnywhere',
@@ -56,6 +66,13 @@ final class ReadPathRegistry {
 		'BoardMapper::findForViewer',
 		'BoardMapper::findAllForUser',
 		'MemberMapper::findForBoard',
+		// Dieselbe Frage ueber alle Projekte des Betrachters (#76). Der
+		// Ueberblick loest Anzeigenamen auf, und bei ueber zwanzig Projekten
+		// waere ein Aufruf je Board keine Loesung. Die Erwartung ist dieselbe
+		// wie bei `findForBoard`, nur breiter: **nur die eigenen Projekte** —
+		// eine Namensliste, die ein fremdes mitbringt, verriete dessen
+		// Mitglieder namentlich.
+		'MemberMapper::findForUserBoards',
 		'ColumnMapper::findForBoard',
 
 		// Die Kinder — je Mapper Liste und Zaehler. Der Zaehler steht hier
@@ -64,12 +81,62 @@ final class ReadPathRegistry {
 		// Existenz genauso wie eine Zeile.
 		'CommentMapper::findForTickets',
 		'CommentMapper::countForTickets',
+		// Der jüngste Kommentar je Vorgang (#79) — Grundlage für „geändert seit
+		// deinem Blick". Wie die beiden darüber über die gefilterte Menge, und
+		// mit derselben Erwartung: keine Zeile zu einem verborgenen Vorgang.
+		'CommentMapper::findNewestForTickets',
 		'StepMapper::findForTickets',
 		'StepMapper::countForTickets',
 		'AttachmentMapper::findForTickets',
 		'AttachmentMapper::countForTickets',
 		'TicketUserMapper::findForTickets',
 		'TicketUserMapper::countForTickets',
+
+		// **Zwei Lesepfade ohne Betrachter — und das ist die Erwartung.**
+		//
+		// Sie stehen hier wie jeder andere, aber die Matrix beantwortet fuer sie
+		// eine andere Frage. „Was sieht die Kundenseite hier?" hat keinen Sinn:
+		// Am Ende des Ausgangskorbs steht ein Hintergrundjob, am Ende der
+		// Kanalschalter die Person selbst. Kein Board, keine Rolle, keine
+		// Sichtbarkeit.
+		//
+		// Statt sie freizustellen, traegt die Matrix eine **Behauptung**:
+		// `testTheseMappersNeverTakeAViewer` prueft, dass keine ihrer Methoden
+		// einen ViewerContext annimmt. Wer spaeter eine betrachterabhaengige
+		// Abfrage nachtraegt, macht den Test rot — und muss dann eine echte
+		// Erwartung formulieren.
+		//
+		// Der Unterschied zu einer Ausnahmeliste: Eine Ausnahme sagt „hier gilt
+		// die Regel nicht". Das hier sagt „hier gilt sie, und zwar so".
+		'MailOutboxMapper::findRetryable',
+		// `NotifyPrefMapper::isEnabled()` steht hier bewusst **nicht**: Es fragt
+		// die Datenbank nicht selbst, sondern ruft `findForUser()` auf. Der
+		// Lesepfad ist der eine darunter; ein zweiter Eintrag waere eine
+		// Erwartung an eine Abfrage, die es nicht gibt.
+		'NotifyPrefMapper::findForUser',
+		// Der Lesestand je Person (#79) — dieselbe Art Pfad wie die Kanalschalter:
+		// Der erste Parameter ist eine Benutzerkennung, und die ist die Grenze.
+		// Eine Person liest nur ihre eigenen Stände. Deshalb ebenfalls in
+		// VIEWERLESS_MAPPERS; die Erwartung ist `testReadStateIsScopedToItsOwner`.
+		'TicketReadMapper::findSeenForTickets',
+	];
+
+	/**
+	 * Die Mapper aus {@see MAPPER_PATHS}, deren Erwartung strukturell ist statt
+	 * datenbezogen.
+	 *
+	 * Siehe die Begruendung bei den Eintraegen selbst. Diese Liste ist der
+	 * Eingang fuer `testTheseMappersNeverTakeAViewer`.
+	 *
+	 * @var string[] Kurze Klassennamen aus `lib/Db/`
+	 */
+	public const VIEWERLESS_MAPPERS = [
+		'MailOutboxMapper',
+		'NotifyPrefMapper',
+		// Der Lesestand (#79): Seine Methoden nehmen eine Benutzerkennung, nie
+		// einen ViewerContext — genau das ist die Grenze. `findSeenForTickets`
+		// liefert nur die eigenen Stände.
+		'TicketReadMapper',
 	];
 
 	/**
@@ -89,9 +156,18 @@ final class ReadPathRegistry {
 	public const ROUTE_PATHS = [
 		'board#index',
 		'board#show',
+		// Die einzige Leseroute ohne Board im Pfad. Gerade deshalb steht sie
+		// hier: Wo kein `BoardAccess` davor haengt, traegt die Regel im JOIN
+		// allein — und ein Nichtmitglied bekommt kein 404, sondern zwei leere
+		// Listen. Der Unterschied gehoert belegt.
+		'task#index',
+		// Der zweite Lesepfad ohne Board im Pfad, und der breiteste ueberhaupt:
+		// Der Ueberblick liefert **alles Sichtbare** ueber alle Projekte, nicht
+		// nur das eigene. Gerade deshalb gehoert er in die Matrix — was hier
+		// durchscheint, scheint auf der Startseite durch.
+		'overview#index',
 		'ticket#index',
 		'ticket#show',
-		'ticket#visibilityImpact',
 		// Liefert zwar nur die Vue-Huelle, aber der Initial State darin
 		// beantwortet die Frage „darfst du diesen Vorgang sehen" — und damit
 		// gehoert die Route in die Matrix und nicht unter ROUTES_WITHOUT_DATA.
@@ -102,6 +178,13 @@ final class ReadPathRegistry {
 		// Liefert Nextcloud-Konten, keine Projektdaten — aber es ist ein
 		// Lesepfad mit Rechtepruefung, und die gehoert in die Matrix.
 		'memberSearch#search',
+		// **Kein Board im Pfad — und trotzdem in der Matrix.** Die Route
+		// liefert keine Projektdaten, sondern die eigenen Kanalschalter. Die
+		// Erwartung ist deshalb eine andere als sonst und trotzdem eine echte:
+		// Jeder Betrachter sieht **nur seine eigenen** Schalter, nie fremde.
+		// Sie hier wegzulassen hiesse, eine Leseroute ohne Erwartung zu haben —
+		// genau das, was der Vollstaendigkeitstest verhindert.
+		'notifyPref#index',
 	];
 
 	/**

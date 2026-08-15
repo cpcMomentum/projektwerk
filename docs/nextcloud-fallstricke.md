@@ -81,6 +81,13 @@ ersten Kundeneinsatz derselbe Durchlauf mit einem **echten Gastkonto**.
 - Gespeicherte Enum-Werte **ASCII und englisch** (`public`/`internal`/`private`). Umlaute in
   Enum-Werten sind eine Fehlerquelle bei Collation und Migration; die deutschen Bezeichnungen sind
   reine Anzeigetexte aus der Übersetzungsdatei.
+- **`set()` quotiert sein zweites Argument als Spaltennamen.** `->set('position', 'position + '
+  . $qb->createNamedParameter($x))` erzeugt deshalb keine Rechnung, sondern die Suche nach einer
+  Spalte namens `"position + :dcValue2"` — auf PostgreSQL ein harter Fehler. Der scheinbare
+  Ausweg `createFunction()` schreibt `position` unquotiert, und `position` ist in PostgreSQL ein
+  Schlüsselwort. Wer eine Spalte relativ fortschreiben will, rechnet in PHP und schreibt je Zeile
+  einen Wert (so macht es `TicketMapper::rebalanceColumn()` und `moveColumnContents()`).
+  Am 2026-08-09 in #60 gemessen.
 
 ## Controller und Rechte
 
@@ -91,6 +98,17 @@ ersten Kundeneinsatz derselbe Durchlauf mit einem **echten Gastkonto**.
   verschickt sofort Mail, das ist ein Versandhebel in Kundenhand.
 - Kein Attribut-Routing: Alle fünf bestehenden Haus-Apps nutzen `appinfo/routes.php`, Mischbetrieb
   kostet mehr als er bringt.
+- **Ein JSON-Rumpf an einem DELETE kommt an.** `Request::decodeContent()` decodiert für **jede**
+  Methode außer GET und legt die Werte in dieselben Parameter, aus denen der Controller liest
+  (`getParam` → `__get('parameters')` → `getContent()`). Ein Pflichtparameter, der zum Vorgang
+  gehört und nicht zum Ort, darf deshalb in den Rumpf — `settings#deleteColumn` macht das mit der
+  Zielspalte. Voraussetzung ist `Content-Type: application/json`.
+- **`JSONResponse(null, 204)` sendet keinen Rumpf.** `App.php` erkennt 204 und 304 und unterdrückt
+  Rumpf **und** `Content-Length`. Ein 204 ist damit die richtige Antwort für einen Schreibvorgang,
+  dessen Ergebnis nichts verraten darf.
+- **Für `curl`-Proben gegen die API: `OCS-APIRequest: true` mitschicken.** Ohne den Kopf antwortet
+  Nextcloud auch bei gültiger Basic-Auth mit `412 CSRF check failed` — was wie ein Rechtefehler
+  aussieht und keiner ist.
 
 ## App-Abhängigkeiten gibt es nicht
 
@@ -133,8 +151,10 @@ App nicht auf dessen Freigabeliste.
 - Nextclouds Kontakt-Autovervollständigung liefert Gästen **belegt eine leere Liste**. Jede
   Komponente, die still darauf zurückfällt (Personenauswahl, Erwähnungen in Kommentaren,
   Freigabe-Seitenleiste), ist beim Kunden funktionslos. Deshalb der App-eigene Personen-Endpunkt.
-- Gäste brauchen ein **Speicherkontingent größer als 0**, sonst sehen sie geteilte Ordner unter
-  Umständen leer.
+- ~~Gäste brauchen ein **Speicherkontingent größer als 0**, sonst sehen sie geteilte Ordner unter
+  Umständen leer.~~ **Am 2026-08-11 widerlegt** (NC 34, Guests 4.9.0): Ein Gast mit `0 B` sieht den
+  geteilten Ordner, öffnet Dateien darin und lädt sogar selbst hoch — das Kontingent des
+  Speichereigentümers zählt, nicht seines. Ausführlich unten unter „S1 abgeschlossen".
 - **Gast-Anzeigenamen:** Ohne gepflegten Namen steht die E-Mail-Adresse des Kunden als Klartext auf
   jeder Ticketkarte — auch für andere Mitarbeiter der Kundenseite sichtbar. Gehört in den
   Einführungsprozess. Im UI grundsätzlich den Anzeigenamen verwenden, nie die Benutzerkennung.
@@ -187,7 +207,7 @@ Fehlstand.
 | 1 | Freigabeliste lesen und ergänzt zurückschreiben | **geht**, aber nur über die App-Konfiguration mit Lexikon-Vorgabe; `occ`-Sicht ist irreführend |
 | 2 | `#[NoAdminRequired]`-JSON-Endpunkt in echter Gast-Sitzung | **geht** (nachgeholt am 2026-08-08). 200 mit `application/json`, Rolle kommt als `external` zurück. Voraussetzung ist `projektwerk` auf der Freigabeliste; ohne sie 500 mit HTML |
 | 5 | Gast-UID-Länge | **exakt 64 Zeichen.** Bei aktivem Datenschutzschalter ist die Kennung ein Hex-Hash der Adresse, nicht die Adresse. `varchar(64)` passt — mit **null** Spielraum |
-| 5 | Quota > 0 | **Nein: `0 B` im Auslieferungszustand.** Die Vorgabe hängt am Instanz-Preset, und der Standardzweig liefert `0 B`. Gehört als eigener Punkt in den Setup-Check und in die Betriebsanleitung |
+| 5 | Quota > 0 | **Nein: `0 B` im Auslieferungszustand** — aber **folgenlos** für unseren Ablauf (am 2026-08-11 nachgemessen, siehe unten). Belastet wird der Speichereigentümer, und unsere Anhänge liegen immer beim Dienstleister |
 | 6 | Auffindbarkeit von Gästen beim Hinzufügen | **Gäste sind auffindbar.** Ein interner Nutzer findet den Gast über Anzeigename und Adresse (OCS `sharees`), zurück kommt die Hash-Kennung |
 | 6 | Personensuche **durch** einen Gast | **Nur exakte Treffer.** Die Suche eines Gasts nach `admin` liefert `users: []` und ausschließlich `exact`. Kein Durchblättern, keine Teiltreffer — die Begründung für den App-eigenen Personen-Endpunkt bleibt gültig, ist aber genauer: nicht „leer", sondern „nur wer exakt benannt wird" |
 
@@ -213,6 +233,54 @@ Admin-Ausnahme" ist damit über HTTP belegt, nicht nur im Test.
   nicht gibt.
 - §11.2 Punkt 4: fragmentfreier Deep-Link aus abgemeldetem Zustand. Braucht die Deep-Link-Route
   `/t/{id}` aus Phase 2 und einen Browser für den Anmeldeumweg.
+
+> **Beide beantwortet am 2026-08-11** — siehe den Abschnitt direkt darunter. S1 ist damit
+> vollständig.
+
+### S1 abgeschlossen — gemessen am 2026-08-11 (NC 34.0.0.12, Guests 4.9.0, PHP 8.4)
+
+Gemessen mit einem **echten Gastkonto** (`occ guests:add`) in einem echten Browser, gegen ein
+Projekt, in dem der Gast Kundenseite ist. Der Spike liegt als `spike/S1-gast-durchstich.spec.ts` bei
+und wird nicht mitausgeliefert.
+
+**§11.2 Punkt 3 — die Datei erreicht der Gast, über die Datei-ID.** `/index.php/f/{fileId}`
+antwortet mit **303** auf `/apps/files/files/{id}?dir=/<Ordner>&openfile=true`; im Browser baut sich
+die Dateiliste auf und der Anhang steht mit Namen da. Nextcloud löst die ID **im Baum des Gastes**
+auf — der Verweis funktioniert also, ohne dass die App einen Pfad kennt oder einen eigenen
+Auslieferungsweg baut. Voraussetzung bleibt `viewer` auf der Freigabeliste und eine Freigabe
+**direkt an die Person**.
+
+**§11.2 Punkt 4 — der fragmentfreie Deep-Link trägt.** `/apps/projektwerk/t/{id}` aus abgemeldetem
+Zustand landet auf `/login`, und das Rücksprungziel enthält **kein `@`** — also genau die Bedingung,
+an der Nextclouds Login-Controller solche Ziele sonst stillschweigend verwirft. Die Entscheidung
+gegen ein `#`-Fragment ist damit belegt richtig und nicht mehr nur begründet.
+
+**Korrektur zum Quota — die Sorge war unbegründet, und zwar aus einem Grund, der es bleibt.**
+Ein frisch angelegtes Gastkonto hat weiterhin `quota: 0 B` (die Vorgabe hängt am Instanz-Preset).
+Die bisher hier stehende Folgerung war trotzdem falsch. Gemessen mit genau diesem Konto:
+
+| Was | Ergebnis |
+|---|---|
+| Geteilten Projektordner sehen | geht |
+| Anhang darin öffnen | geht |
+| **Selbst einen Anhang hochladen** | **geht** — HTTP 201 über `attachment#create` |
+
+Der Grund: Nextcloud belastet das Kontingent des **Speichereigentümers**, nicht des Hochladenden.
+Die Datei landete in `pw-e2e-intern/files/…`, der Speicher des Gastes blieb bei `used: 0`. Weil
+unsere Anhänge **grundsätzlich im Projektordner des Dienstleisters** liegen (§5.18, „der Ablageort
+IST die Sichtbarkeit") und nie im Heimatordner des Gastes, greift das Gastquota an keiner Stelle des
+Ablaufs.
+
+Das ist kein Zufall, sondern eine Folge der Bauform: Eine Entscheidung, die aus Vertraulichkeits-
+gründen fiel, entschärft nebenbei ein Plattformproblem. **Sie bleibt nur so lange richtig, wie kein
+Projektordner dem Gast selbst gehört** — mit `0 B` kann er ohnehin keinen anlegen. Der Setup-Check
+darf das Quota deshalb allenfalls als Hinweis melden, nicht als Fehler.
+
+**Auffindbarkeit, genauer als bisher.** Der App-eigene Personen-Endpunkt findet Gäste über
+Anzeigename **und** Kennung (`Spike` → `pw-spike-gast`, `Kunde Müller` → Hash-Kennung). Wer bereits
+Mitglied des Boards ist, wird ausgeschlossen — das sieht in einem Test wie „Gäste sind nicht
+auffindbar" aus und ist es nicht. Wer das nachmisst, braucht ein **zweites Board ohne diese
+Mitgliedschaft** als Gegenprobe.
 
 **Zur Methode:** Das Anmeldeformular ließ sich per `curl` nicht bedienen (die Anmeldung fällt auf
 `/login?direct=1` zurück, auch mit gültigen Zugangsdaten und frischem `requesttoken`) — die
@@ -266,6 +334,87 @@ Konten antworten dort mit `207` auf WebDAV, die Sitzung ist also echt. Für die 
 - **Cache-Buster:** Nextcloud leitet den Asset-Cache-Buster aus der App-Version ab. Ein neues
   JS-Bundle bei unveränderter Version liefert im Browser weiter das alte JavaScript — jeder Test
   lügt dann. Version beim Deployen immer nach oben bumpen.
+
+## S4 — Mail und Deep-Link, gemessen am 2026-08-11 (NC 34.0.0.12, PHP 8.4)
+
+Spike: `spike/S4-mail-und-link.php` mit `spike/S4-lauf.sh`. Je Messung ein eigener Prozess — der
+Mailer baut seinen Transport genau **einmal** je Prozess, im selben Prozess misst man sonst immer
+den ersten Versuch (beim ersten Anlauf genau so passiert: vier Messungen, viermal 0,04 s, alle
+gingen an MailHog).
+
+### `IMailer::send()` wirft bei Transportfehlern **nichts**
+
+Das ist der Befund, an dem der ganze Versandweg hängt. `Mailer::send()` fängt
+`TransportExceptionInterface` selbst, schreibt eine `error`-Zeile ins Log und **gibt die
+fehlgeschlagenen Empfänger zurück**. Leeres Array heißt Erfolg.
+
+```php
+$gescheitert = $mailer->send($nachricht);   // [] = zugestellt
+if ($gescheitert !== []) { /* status = failed */ }
+```
+
+→ **Ein `try/catch` allein hält jeden Fehlschlag für einen Erfolg.** Wer die Outbox aus §5.24 baut,
+wertet den Rückgabewert aus, nicht eine Ausnahme.
+
+### Die Zeit, die ein toter Port kostet
+
+| Fall | Dauer | Rückgabe |
+|---|---|---|
+| Erreichbarer Server | 0,05 s | `[]` |
+| **Port abgelehnt** (niemand lauscht) | **0,01 s** | Empfänger |
+| **Verbindung verschluckt** (Pakete verworfen), NC-Vorgabe | **10,02 s** | Empfänger |
+| dasselbe mit `mail_smtptimeout = 5` | 5,01 s | Empfänger |
+| dasselbe mit `mail_smtptimeout = 2` | 2,01 s | Empfänger |
+
+Zwei Dinge daran:
+
+- **Der harmlose Fall ist harmlos.** Ein abgelehnter Port kostet 10 ms — eine falsch
+  konfigurierte Instanz bremst nichts.
+- **Der gefährliche Fall ist die Firewall, die verwirft statt abzulehnen.** Dort wartet der Aufruf
+  bis zur Zeitgrenze, und die steht ohne eigene Angabe bei **10 Sekunden**. Ein Ticket anzulegen
+  würde dann 10 s dauern — der Nutzer hält das für einen Fehler und klickt erneut.
+
+→ **Zeitbudget für den synchronen Versuch: `mail_smtptimeout = 2`.** Die Grenze wirkt exakt
+(2,01 s gemessen). Zwei Sekunden bleiben unter der Schwelle, ab der jemand nachdrückt, und was
+nicht durchgeht, holt der `MailRetryJob` nach — dafür ist die Outbox da. Der Wert gehört in die
+Betriebsanleitung, nicht in den Code: Es ist eine Instanz-Einstellung.
+
+### `overwrite.cli.url` schlägt voll durch
+
+`getBaseUrl()` liefert im CLI-Kontext `http://localhost` — der Wert steht auf dieser Instanz so, und
+`trusted_domains` ändert daran **nichts**. Ein Deep-Link aus einem Hintergrundjob trüge damit
+`http://localhost/index.php/apps/projektwerk/t/42`: für den Kunden wertlos, und niemandem fällt es
+auf, der die Mail selbst nie bekommt.
+
+→ Setup-Check-Schwelle: `overwrite.cli.url` fehlt, ist leer, oder enthält `localhost` bzw.
+`127.0.0.1` → **Warnung**.
+
+### Ein unbekannter Routenname wird still zu einem leeren Link
+
+`Router::generate()` fängt `RouteNotFoundException`, loggt auf **`info`** und gibt `''` zurück
+(`lib/private/Route/Router.php`). Aus `linkToRouteAbsolute()` wird dann die blanke Basisadresse —
+`http://localhost/`. Kein Fehler, keine Ausnahme, nur eine Zeile im Log, die auf `info` niemand
+sieht.
+
+Aufgetreten ist genau das im Spike, und die Ursache ist lehrreich: **In einem nackten CLI-Skript
+ist die App nicht geladen**, also existieren ihre Routen nicht.
+
+```
+App vor loadApp registriert? nein   → 0 projektwerk-Routen, linkToRoute = ''
+App nach loadApp registriert? ja    → 31 Routen, linkToRoute = /index.php/apps/projektwerk/t/42
+```
+
+Ein `TimedJob` läuft im vollen App-Kontext, dort tritt das nicht auf. Die Lehre gilt trotzdem:
+
+→ **Das Ergebnis von `linkToRoute*()` prüfen, bevor es in eine Mail geht.** Ein leerer oder auf der
+Basisadresse endender Link ist ein Fehler und keine Adresse.
+
+**Zur Schreibweise des Routennamens — beide stimmen, aber an verschiedenen Stellen.** Im Code
+schreibt man ihn wie in `appinfo/routes.php`: `projektwerk.deepLink.ticket`. **Registriert ist er
+komplett kleingeschrieben** (`projektwerk.deeplink.ticket`, im Spike aus der Routensammlung
+ausgelesen) — `Router::generate()` senkt sowohl bei der Registrierung als auch beim Aufruf, deshalb
+funktionieren beide Schreibweisen als Eingabe. Wichtig wird der Unterschied nur beim Suchen: Wer
+einen „Route not found"-Fall debuggt und die Sammlung durchsieht, findet `deepLink` dort nicht.
 
 ## Benachrichtigungen im Detail
 
@@ -348,6 +497,88 @@ enthält `http://localhost/`, weil der Versand aus einem CLI-Kontext lief. Für 
 ein toter Link, und es fällt niemandem auf, der die Mail nicht liest: Versand und Zustellung sind
 erfolgreich. Der `InstanceConfigCheck` muss den Wert deshalb nicht nur auf „gesetzt" prüfen, sondern
 auf „von außen erreichbar" — mindestens auf „nicht `localhost`".
+
+## Team-Ordner und der Datei-Umzug (S2, gemessen am 2026-08-11)
+
+Gemessen an einem echten Team-Ordner (`occ groupfolders:create`, Groupfolders 22.0.6, NC 34) mit
+den beiden Unterordnern `90_Austausch` und `91_Tickets_intern`. Spike:
+`spike/S2-datei-umzug.spec.ts` und `spike/S2b-rechte.spec.ts`.
+
+### §11.3 ist beantwortet: **Ja, der Umzug ist verlustfrei**
+
+| Was | Vor dem Umzug | Nach dem Umzug |
+|---|---|---|
+| Datei-ID | 1567 | **1567 — unverändert** |
+| Versionen | 2 | **2** |
+| Einzelfreigabe an den Gast | 1 | **1, am neuen Ort** |
+| Freigaben am alten Ort | — | 0 |
+
+`MOVE` zwischen zwei Unterordnern desselben Team-Ordners antwortet mit 201 und erhält alle drei
+Eigenschaften. **Die technische Voraussetzung für den Auto-Move aus Phase 7b ist damit gegeben** —
+die Rückfallebene „kleiner Team-Ordner je Projekt" wird nicht gebraucht.
+
+### Der Befund, der mehr zählt als die Frage
+
+Die Gegenprobe hat etwas Wichtigeres gezeigt: **Der Gast erreichte die Datei im internen Ordner
+auch dann, als gar keine Freigabe mehr auf ihr lag.** Grund ist nicht der Umzug, sondern der
+Team-Ordner selbst — er zeigt allen Mitgliedern seiner Gruppe **alles** darin, Unterordner
+eingeschlossen.
+
+**Betrifft ausschließlich den Team-Ordner-Aufbau — nicht die Struktur, die die Produktbeschreibung
+vorsieht.** Wer `90_Austausch` und `91_Tickets_intern` als zwei Unterordner **eines Team-Ordners**
+anlegt und die Kundenseite in dessen Gruppe aufnimmt, hat keine Trennung: Jeder interne Anhang liegt
+offen, ohne dass irgendwo ein Fehler auftaucht. Die Sichtbarkeitsregel der App stimmt dabei
+weiterhin — sie regelt Vorgänge, nicht Dateien. Der Ablageort ist die Sichtbarkeit (§5.18), und
+genau deshalb muss der **Ablageort** die Trennung tragen.
+
+**Es lässt sich sauber trennen, aber nur ausdrücklich.** Mit erweiterten Rechten:
+
+```bash
+occ groupfolders:permissions <id> --enable
+occ groupfolders:permissions <id> 91_Tickets_intern -u <kundenkonto> -- -read
+```
+
+Danach gemessen: `90_Austausch` → HTTP 207, `91_Tickets_intern` → **HTTP 404**. Der Ordner ist für
+das Kundenkonto nicht mehr vorhanden, nicht bloß leer.
+
+### Die vorgesehene Struktur hat das Problem nicht
+
+**Die Produktbeschreibung beschreibt bereits den sicheren Aufbau**, und zwar aus einem anderen
+Grund als diesem hier — er fällt als Nebenwirkung ab:
+
+- **§16:** Ein Projektordner je Projekt mit fester Struktur (`00_Angebot_Abrechnung`, `10_Input`,
+  `20_Inhalte`, …, `90_Austausch`, `99_Archiv`). `91_Tickets_intern` kommt als **Geschwisterordner**
+  dazu, „nur von der App gefüllt".
+- **§19:** „Freigabe von `90_Austausch` legt CPC von Hand an." Geteilt wird **genau dieser eine
+  Unterordner** — der Projektordner als Ganzes nie. Er enthält schließlich auch
+  `00_Angebot_Abrechnung`, das der Kunde laut §16 „nie" sehen darf.
+
+Damit ist `91_Tickets_intern` für die Kundenseite nicht verschlossen, sondern **nicht vorhanden**:
+Es wurde ihr nie gegeben. Es gibt keinen Einrichtungsschritt, den jemand vergessen könnte.
+
+Und daraus folgt auch: **Voller Zugriff auf `90_Austausch` ist unbedenklich.** Alles darin gehört
+per Konstruktion zu Vorgängen für „Alle Beteiligten" — die App legt dort nichts anderes ab.
+
+| Aufbau | Trennung | Zusatzschritt |
+|---|---|---|
+| **Projektordner, nur `90_Austausch` freigegeben** (§16/§19) | von selbst | keiner |
+| Team-Ordner mit beiden Unterordnern | nur mit erweiterten Rechten | ein Befehl je Projekt |
+
+→ Ein Setup-Check bleibt sinnvoll — die App kennt beide Ordner-IDs und könnte prüfen, ob ein
+externes Mitglied den internen Ordner erreicht. **Dringlich ist er nicht:** Er sichert einen Aufbau
+ab, den die Produktbeschreibung gar nicht vorsieht, und zahlt sich erst auf fremden Installationen
+aus.
+
+> **Zur Entstehung dieser Notiz:** Der Team-Ordner war der Aufbau des Spikes, weil §11.3 wörtlich
+> nach „zwei Unterordnern desselben Team-Ordners" fragt. Der Befund wurde daraufhin zunächst
+> behandelt, als wäre das die Struktur bei CPC. Ist er nicht — richtiggestellt am 2026-08-11.
+
+### Und warum §5.18 „keine von der App angelegten Freigaben" jetzt doppelt richtig ist
+
+Die Einzelfreigabe **wandert mit der Datei**. Hätte die App beim Anhängen eine Freigabe erzeugt,
+trüge ein späterer Auto-Move sie in den internen Ordner mit — und der Kunde behielte Zugriff auf
+eine Datei, die gerade intern geworden ist. Die Regel war als Vereinfachung gedacht; sie ist
+zugleich die Bedingung, unter der der Auto-Move überhaupt sicher sein kann.
 
 ## Noch nicht belegt
 

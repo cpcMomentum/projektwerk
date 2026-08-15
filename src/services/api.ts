@@ -32,6 +32,20 @@ export interface ApiError {
 	message: string
 	/** Die Antwort war HTML statt JSON — fast immer die Guests-Freigabeliste. */
 	notJson: boolean
+	/**
+	 * Der geparste Fehlerrumpf, soweit es einen gab.
+	 *
+	 * **Weil ein Statuscode nicht immer den Fall benennt.** Der Server
+	 * beantwortet zwei verschiedene Absagen mit 409: den Versionskonflikt
+	 * (`current`) und die Anhänge-Sperre (`attachments`, §3.10 Stufe 1). Wer
+	 * beide am Status unterscheiden will, kann es nicht — und meldet dem
+	 * Nutzer mit Anhängen „bitte neu laden", was nichts hilft.
+	 *
+	 * Bis #103 fiel das nicht auf: `visibility-impact` fragte die Anhänge
+	 * vorab ab, sodass die Oberfläche den Fall nie vom Server erfuhr. Mit dem
+	 * Wegfall dieses Lesepfads ist die Antwort die einzige Quelle.
+	 */
+	data?: Record<string, unknown>
 }
 
 /**
@@ -115,10 +129,29 @@ function wrapError(error: unknown): ApiError {
 		}
 	}
 
+	if (response === undefined) {
+		// **Gar keine Antwort** — Verbindungsabbruch, Zeitüberschreitung,
+		// schlafendes Handy. Axios legt hier `message: 'Network Error'` bei,
+		// und das stand bis 2026-08-10 wörtlich als Meldung vor einem deutschen
+		// Nutzer: englischer Fachbegriff für den häufigsten aller Fehler.
+		//
+		// Gemessen an der Aufgabenansicht, gilt aber für jeden Aufruf der App.
+		return {
+			status,
+			message: t(APP_ID, 'Keine Verbindung zum Server. Bitte später erneut versuchen.'),
+			notJson: false,
+		}
+	}
+
 	return {
 		status,
-		message: response?.data?.error ?? axiosError.message ?? 'Unbekannter Fehler',
+		// Die Meldung des Servers hat Vorrang: Sie ist die einzige, die den
+		// Fall kennt. Erst wenn sie fehlt, greift die des Aufrufers.
+		message: response.data?.error ?? axiosError.message ?? 'Unbekannter Fehler',
 		notJson: false,
+		data: typeof response.data === 'object' && response.data !== null
+			? response.data as Record<string, unknown>
+			: undefined,
 	}
 }
 
@@ -172,6 +205,31 @@ export async function apiPost<T, B = unknown>(path: string, body: B): Promise<T>
 }
 
 /**
+ * POST mit einer Datei, als `multipart/form-data`.
+ *
+ * **Nicht als Base64 im JSON-Rumpf.** Das wären ein Drittel mehr Daten, und sie
+ * lägen auf beiden Seiten vollständig im Arbeitsspeicher — beim Browser als
+ * Zeichenkette, beim Server beim Dekodieren. Als Formularteil bleibt die Datei
+ * ein Datenstrom.
+ *
+ * Der `Content-Type` wird **nicht** gesetzt: Der Browser muss ihn selbst
+ * bilden, weil nur er die Trennmarke des Formulars kennt.
+ *
+ * @param path Pfad relativ zu `/apps/projektwerk/api/v1`.
+ * @param file Die Datei aus dem Auswahlfeld.
+ */
+export async function apiUpload<T>(path: string, file: File): Promise<T> {
+	const form = new FormData()
+	form.append('file', file, file.name)
+
+	try {
+		return unwrap(await axios.post<T>(apiUrl(path), form))
+	} catch (e) {
+		throw isApiError(e) ? e : wrapError(e)
+	}
+}
+
+/**
  * PUT gegen die App-API, durch den Nicht-JSON-Wächter geprüft.
  *
  * @param path Pfad relativ zu `/apps/projektwerk/api/v1`.
@@ -202,11 +260,19 @@ export async function apiPatch<T, B = unknown>(path: string, body: B): Promise<T
 /**
  * DELETE gegen die App-API, durch den Nicht-JSON-Wächter geprüft.
  *
+ * **Mit Rumpf, wenn einer mitgegeben wird.** Das ist kein Kunstgriff:
+ * Nextclouds `Request` decodiert einen JSON-Rumpf für jede Methode außer GET
+ * und legt ihn in dieselben Parameter, aus denen der Controller liest. Ein
+ * Pflichtparameter wie die Zielspalte beim Entfernen einer Spalte gehört
+ * dorthin und nicht in die Adresse — er ist Teil des Vorgangs, nicht Teil des
+ * Ortes.
+ *
  * @param path Pfad relativ zu `/apps/projektwerk/api/v1`.
+ * @param body Nutzlast, wird als JSON gesendet. Ohne sie ein Aufruf wie bisher.
  */
-export async function apiDelete<T = void>(path: string): Promise<T> {
+export async function apiDelete<T = void, B = unknown>(path: string, body?: B): Promise<T> {
 	try {
-		return unwrap(await axios.delete<T>(apiUrl(path)))
+		return unwrap(await axios.delete<T>(apiUrl(path), body === undefined ? undefined : { data: body }))
 	} catch (e) {
 		throw isApiError(e) ? e : wrapError(e)
 	}

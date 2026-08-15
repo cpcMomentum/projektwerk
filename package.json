@@ -1,6 +1,6 @@
 {
   "name": "projektwerk",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "description": "Projekte gemeinsam mit dem Kunden fuehren — Kanban fuer Nextcloud",
   "bugs": {
     "url": "https://github.com/cpcMomentum/projektwerk/issues"
@@ -15,10 +15,13 @@
   "scripts": {
     "build": "vite build && mkdir -p js css && cp -r dist/js/* js/ && cp -r dist/css/* css/",
     "dev": "vite",
+    "l10n:check": "nc-l10n-check",
+    "l10n:fix": "nc-l10n-check --fix",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "prepare": "git config core.hooksPath .githooks || true",
     "test": "vitest run",
+    "test:e2e": "playwright test",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
   },
@@ -37,6 +40,7 @@
   },
   "devDependencies": {
     "@nextcloud/eslint-config": "^9.0.1",
+    "@playwright/test": "^1.62.1",
     "@types/sortablejs": "^1.15.9",
     "@vitejs/plugin-vue": "^6.0.0",
     "@vue/devtools-api": "^8.2.1",
@@ -44,6 +48,7 @@
     "@vue/tsconfig": "^0.7.0",
     "eslint": "^10.8.0",
     "happy-dom": "^20.9.0",
+    "nc-app-tooling": "github:cpcMomentum/nc-app-tooling#v1.11.0",
     "sass": "^1.70.0",
     "typescript": "^5.7.2",
     "vite": "^8.2.0",

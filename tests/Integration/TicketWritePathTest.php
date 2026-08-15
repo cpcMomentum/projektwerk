@@ -11,7 +11,9 @@ namespace OCA\Projektwerk\Tests\Integration;
 
 use OCA\Projektwerk\Access\TicketScope;
 use OCA\Projektwerk\Access\ViewerContext;
+use OCA\Projektwerk\Db\AttachmentMapper;
 use OCA\Projektwerk\Db\TicketMapper;
+use OCA\Projektwerk\Service\AttachmentsPresentException;
 use OCA\Projektwerk\Service\ConflictException;
 use OCA\Projektwerk\Service\NotOwningSideException;
 use OCA\Projektwerk\Service\PositionService;
@@ -115,6 +117,9 @@ class TicketWritePathTest extends IntegrationTestCase {
 			$moved->getLastEditorUserId(),
 			'Verschieben erhöht die Version, vermerkt aber niemanden.',
 		);
+
+		// Vorbedingung seit §3.10 Stufe 1 — siehe `ohneAnhaenge()`.
+		$this->ohneAnhaenge($ticketId);
 
 		$hidden = $this->service->changeVisibility(
 			$bert,
@@ -307,6 +312,70 @@ class TicketWritePathTest extends IntegrationTestCase {
 	}
 
 	/**
+	 * **In eine Spalte, die es nicht gibt, wandert nichts** — weder beim
+	 * Verschieben noch beim Anlegen.
+	 *
+	 * Ohne diese Sperre wäre der Vorgang danach für **niemanden** mehr
+	 * erreichbar, auch nicht für den, der ihn sehen darf: Die Board-Ansicht
+	 * ordnet Tickets ihren Spalten zu und verwirft stillschweigend, was zu
+	 * keiner passt.
+	 *
+	 * Der Weg dorthin ist keine Bosheit, sondern der Normalfall zweier
+	 * geöffneter Browser: Wird eine Spalte entfernt (#60), bietet jeder andere
+	 * Client sie weiter an. Die optimistische Sperre fängt das **nicht** — das
+	 * Verschieben ganzer Spalten ist keine inhaltliche Änderung am Vorgang und
+	 * zählt die Version bewusst nicht hoch. Deshalb muss die Zielspalte selbst
+	 * geprüft werden.
+	 */
+	public function testATicketNeverLandsInAColumnThatDoesNotExist(): void {
+		$viewer = $this->viewer(LeakMatrixFixture::ANNA);
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+		$version = (int)$this->tickets->findVisible($viewer, $ticketId)->getVersion();
+		$gone = 999999;
+
+		try {
+			$this->service->move($viewer, $ticketId, $version, $gone, null, null);
+			$this->fail('Ein Vorgang liess sich in eine Spalte verschieben, die es nicht gibt.');
+		} catch (DoesNotExistException) {
+			$this->addToAssertionCount(1);
+		}
+
+		try {
+			$this->service->create($viewer, 'Ins Nichts', null, TicketScope::VISIBILITY_PUBLIC, $gone);
+			$this->fail('Ein Vorgang liess sich in einer Spalte anlegen, die es nicht gibt.');
+		} catch (DoesNotExistException) {
+			$this->addToAssertionCount(1);
+		}
+
+		$this->assertSame(
+			$this->fixture->columnIds[LeakMatrixFixture::COLUMN_A],
+			(int)$this->tickets->findVisible($viewer, $ticketId)->getColumnId(),
+			'Der fehlgeschlagene Versuch hat den Vorgang trotzdem bewegt.',
+		);
+	}
+
+	/**
+	 * Und ebenso wenig in eine Spalte eines **fremden** Projekts.
+	 *
+	 * Das wäre der schwerste Ausgang: Der Vorgang landete in einem Board,
+	 * dessen Mitglieder ihn nie sehen durften.
+	 */
+	public function testATicketNeverLandsInAnotherBoardsColumn(): void {
+		$viewer = $this->viewer(LeakMatrixFixture::ANNA);
+		$other = Server::get(\OCA\Projektwerk\Service\BoardService::class)->create('lm-neu', 'Fremdes Projekt');
+		$otherViewer = Server::get(\OCA\Projektwerk\Access\BoardAccess::class)
+			->contextFor('lm-neu', (int)$other->getId());
+		$foreign = (int)Server::get(\OCA\Projektwerk\Db\ColumnMapper::class)->findForBoard($otherViewer)[0]->getId();
+
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+		$version = (int)$this->tickets->findVisible($viewer, $ticketId)->getVersion();
+
+		$this->expectException(DoesNotExistException::class);
+
+		$this->service->move($viewer, $ticketId, $version, $foreign, null, null);
+	}
+
+	/**
 	 * Ist die Lücke aufgebraucht, nummeriert der Dienst die Spalte neu — und
 	 * das Ticket landet trotzdem dort, wo es hin soll.
 	 */
@@ -394,6 +463,7 @@ class TicketWritePathTest extends IntegrationTestCase {
 	public function testOnlyTheOwningSideChangesVisibility(): void {
 		$anna = $this->viewer(LeakMatrixFixture::ANNA);
 		$ticketId = $this->fixture->ticketIds['public/anna'];
+		$this->ohneAnhaenge($ticketId);
 
 		// Bert ist intern wie Anna — dieselbe Seite, also erlaubt.
 		$bert = $this->viewer(LeakMatrixFixture::BERT);
@@ -403,6 +473,67 @@ class TicketWritePathTest extends IntegrationTestCase {
 		// Und Anna selbst natuerlich auch.
 		$changed = $this->service->changeVisibility($anna, $ticketId, 2, TicketScope::VISIBILITY_PUBLIC);
 		$this->assertSame(TicketScope::VISIBILITY_PUBLIC, $changed->getVisibility());
+	}
+
+	/**
+	 * **Ein Vorgang mit Anhängen lässt sich nicht umstellen** (§3.10 Stufe 1).
+	 *
+	 * Das ist der einzige Punkt, an dem ein Leck physisch würde: Läge die Datei
+	 * erst in `90_Austausch`, hätte die Kundenseite sie gesehen, und keine
+	 * spätere Codekorrektur nähme das zurück. Solange der Umzug nicht
+	 * transaktional zur Datenbank ist (§11.3, Spike S2 offen), wird deshalb gar
+	 * nicht erst verschoben.
+	 */
+	public function testATicketWithAttachmentsKeepsItsVisibility(): void {
+		$anna = $this->viewer(LeakMatrixFixture::ANNA);
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+
+		// Die Fixture hat einen Anhang daran — hier ausdrücklich **nicht**
+		// gelöst.
+		try {
+			$this->service->changeVisibility($anna, $ticketId, 1, TicketScope::VISIBILITY_INTERNAL);
+			$this->fail('Die Sichtbarkeit ließ sich trotz Anhang ändern.');
+		} catch (AttachmentsPresentException $e) {
+			$this->assertSame(1, $e->count, 'Die Meldung nennt die Zahl, weil sie die Handlung bestimmt.');
+		}
+
+		// Und der Vorgang steht unverändert da: Ein abgewiesener Versuch darf
+		// nichts halb erledigt hinterlassen.
+		$ticket = $this->tickets->findVisible($anna, $ticketId);
+		$this->assertSame(TicketScope::VISIBILITY_PUBLIC, $ticket->getVisibility());
+		$this->assertSame(1, (int)$ticket->getVersion());
+	}
+
+	/**
+	 * **Dieselbe Stufe noch einmal zu wählen geht auch mit Anhängen.**
+	 *
+	 * Es bewegt keine Datei, also gibt es nichts zu verweigern. Ohne diese
+	 * Unterscheidung wäre ein Vorgang mit Anhang gegen einen Klick gesperrt,
+	 * der gar nichts tut — und die Meldung dazu wäre schlicht unverständlich.
+	 */
+	public function testChoosingTheSameVisibilityAgainIsNotBlocked(): void {
+		$anna = $this->viewer(LeakMatrixFixture::ANNA);
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+
+		$unchanged = $this->service->changeVisibility($anna, $ticketId, 1, TicketScope::VISIBILITY_PUBLIC);
+
+		$this->assertSame(TicketScope::VISIBILITY_PUBLIC, $unchanged->getVisibility());
+	}
+
+	/**
+	 * **„Darf ich" steht vor „geht es".**
+	 *
+	 * Die andere Seite bekommt die Eigentumsmeldung und **nicht** die Zahl der
+	 * Anhänge. Andersherum wäre der Riegel ein Zählwerk für Leute, die den
+	 * Vorgang ohnehin nicht umstellen dürfen.
+	 */
+	public function testTheOwnershipRuleAnswersBeforeTheAttachmentRule(): void {
+		$carla = $this->viewer(LeakMatrixFixture::CARLA);
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+
+		$this->expectException(NotOwningSideException::class);
+
+		$this->service->changeVisibility($carla, $ticketId, 1, TicketScope::VISIBILITY_INTERNAL);
 	}
 
 	/**
@@ -439,6 +570,7 @@ class TicketWritePathTest extends IntegrationTestCase {
 	public function testTheCreatorMayDowngradeToPrivate(): void {
 		$anna = $this->viewer(LeakMatrixFixture::ANNA);
 		$ticketId = $this->fixture->ticketIds['public/anna'];
+		$this->ohneAnhaenge($ticketId);
 
 		$changed = $this->service->changeVisibility($anna, $ticketId, 1, TicketScope::VISIBILITY_PRIVATE);
 
@@ -461,7 +593,293 @@ class TicketWritePathTest extends IntegrationTestCase {
 		);
 	}
 
+	/**
+	 * §7 gilt auch fuer die Zustaendigkeit: An einem internen Ticket der
+	 * eigenen Seite hat die Kundenseite nichts zu suchen — sonst bekaeme sie
+	 * per Mail Kenntnis von einem Vorgang, den sie nicht sehen darf.
+	 */
+	public function testResponsibleUserMustBeAbleToSeeTheTicket(): void {
+		$anna = $this->viewer(LeakMatrixFixture::ANNA);
+
+		$this->expectException(\InvalidArgumentException::class);
+
+		$this->service->update(
+			$anna,
+			$this->fixture->ticketIds['internal/anna'],
+			1,
+			['responsibleUserId' => LeakMatrixFixture::CARLA],
+		);
+	}
+
+	/**
+	 * Ein Nichtmitglied darf nicht zustaendig werden — es koennte den Vorgang,
+	 * ueber den es dann per Mail informiert wuerde, gar nicht sehen.
+	 */
+	public function testResponsibleUserMustBeABoardMember(): void {
+		$anna = $this->viewer(LeakMatrixFixture::ANNA);
+
+		$this->expectException(\InvalidArgumentException::class);
+
+		$this->service->update(
+			$anna,
+			$this->fixture->ticketIds['public/anna'],
+			1,
+			['responsibleUserId' => LeakMatrixFixture::FREMD],
+		);
+	}
+
+	/**
+	 * Die Gegenprobe: Wer das Ticket sehen wuerde, darf auch zustaendig
+	 * werden.
+	 */
+	public function testAVisibleMemberCanBecomeResponsible(): void {
+		$anna = $this->viewer(LeakMatrixFixture::ANNA);
+
+		$updated = $this->service->update(
+			$anna,
+			$this->fixture->ticketIds['internal/anna'],
+			1,
+			['responsibleUserId' => LeakMatrixFixture::BERT],
+		);
+
+		$this->assertSame(LeakMatrixFixture::BERT, $updated->getResponsibleUserId());
+	}
+
+	/**
+	 * Der Kern von #114 am Schreibpfad: Wer einen Verantwortlichen der
+	 * Kundenseite eintraegt, friert dessen Rolle ein und stellt die Uhr — und
+	 * der Vorgang wartet danach auf die Kundenseite, **ganz ohne einen
+	 * Arbeitsschritt**.
+	 */
+	public function testAnExternalResponsibleMakesASteplessTicketWaitOnTheCustomer(): void {
+		$anna = $this->viewer(LeakMatrixFixture::ANNA);
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+
+		$this->service->update($anna, $ticketId, 1, ['responsibleUserId' => LeakMatrixFixture::CARLA]);
+
+		// Frisch aus der Datenbank, nicht die Rueckgabe: geprueft wird, was
+		// tatsaechlich geschrieben wurde.
+		$reloaded = $this->tickets->findVisible($anna, $ticketId);
+
+		$this->assertSame(LeakMatrixFixture::CARLA, $reloaded->getResponsibleUserId());
+		$this->assertSame(ViewerContext::ROLE_EXTERNAL, $reloaded->getResponsibleRole());
+		$this->assertNotNull($reloaded->getResponsibleSince());
+		$this->assertTrue($reloaded->waitsOnExternal());
+	}
+
+	/**
+	 * Die Gegenprobe: Wird der Verantwortliche entfernt, gehen die eingefrorene
+	 * Rolle und der Zeitpunkt mit — ueber diese Quelle wartet der Vorgang dann
+	 * auf niemanden mehr.
+	 */
+	public function testRemovingTheResponsibleClearsTheFrozenRoleAndClock(): void {
+		$anna = $this->viewer(LeakMatrixFixture::ANNA);
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+
+		$this->service->update($anna, $ticketId, 1, ['responsibleUserId' => LeakMatrixFixture::CARLA]);
+		$mitVerantwortlichem = $this->tickets->findVisible($anna, $ticketId);
+
+		$this->service->update($anna, $ticketId, $mitVerantwortlichem->getVersion(), ['responsibleUserId' => null]);
+		$reloaded = $this->tickets->findVisible($anna, $ticketId);
+
+		$this->assertNull($reloaded->getResponsibleUserId());
+		$this->assertNull($reloaded->getResponsibleRole());
+		$this->assertNull($reloaded->getResponsibleSince());
+		$this->assertFalse($reloaded->waitsOnExternal());
+	}
+
+	/**
+	 * **Dieselbe Regel beim Anlegen** — die zweite Haelfte des Befunds vom
+	 * 2026-08-11.
+	 *
+	 * `create()` benachrichtigt heute nicht, hier kann also keine Mail lecken.
+	 * Ohne die Pruefung entstuende aber eine zustaendige Person, die ihren
+	 * eigenen Vorgang nicht sehen kann — und sobald das Anlegen spaeter
+	 * ebenfalls benachrichtigt, waere es genau die Luecke, die im Aendern
+	 * gerade geschlossen wurde.
+	 */
+	public function testANewTicketCannotBeAssignedToSomeoneWhoCannotSeeIt(): void {
+		$this->expectException(\InvalidArgumentException::class);
+
+		$this->service->create(
+			$this->viewer(LeakMatrixFixture::ANNA),
+			'Intern, aber der Kundenseite zugewiesen',
+			null,
+			TicketScope::VISIBILITY_INTERNAL,
+			$this->fixture->columnIds[LeakMatrixFixture::COLUMN_A],
+			LeakMatrixFixture::CARLA,
+		);
+	}
+
+	/**
+	 * Gegenprobe: Wer den neuen Vorgang sehen wuerde, darf zustaendig sein.
+	 */
+	public function testANewTicketCanBeAssignedToSomeoneWhoSeesIt(): void {
+		$ticket = $this->service->create(
+			$this->viewer(LeakMatrixFixture::ANNA),
+			'Intern, an die eigene Seite',
+			null,
+			TicketScope::VISIBILITY_INTERNAL,
+			$this->fixture->columnIds[LeakMatrixFixture::COLUMN_A],
+			LeakMatrixFixture::BERT,
+		);
+
+		$this->assertSame(LeakMatrixFixture::BERT, $ticket->getResponsibleUserId());
+	}
+
+	/**
+	 * Dieselbe Einfrierung wie beim Aendern ({@see
+	 * testAnExternalResponsibleMakesASteplessTicketWaitOnTheCustomer}), nur
+	 * beim Anlegen (#114): Ein frisch erzeugter Vorgang mit externem
+	 * Verantwortlichen wartet sofort auf die Kundenseite, ganz ohne Schritt.
+	 */
+	public function testANewTicketWithAnExternalResponsibleWaitsOnTheCustomer(): void {
+		$ticket = $this->service->create(
+			$this->viewer(LeakMatrixFixture::ANNA),
+			'Oeffentlich, an die Kundenseite',
+			null,
+			TicketScope::VISIBILITY_PUBLIC,
+			$this->fixture->columnIds[LeakMatrixFixture::COLUMN_A],
+			LeakMatrixFixture::CARLA,
+		);
+
+		$this->assertSame(LeakMatrixFixture::CARLA, $ticket->getResponsibleUserId());
+		$this->assertSame(ViewerContext::ROLE_EXTERNAL, $ticket->getResponsibleRole());
+		$this->assertNotNull($ticket->getResponsibleSince());
+		$this->assertTrue($ticket->waitsOnExternal());
+	}
+
+	/**
+	 * Die Ticket-Faelligkeit (#72): beim Anlegen gesetzt, als Datum ohne Uhrzeit
+	 * gespeichert.
+	 */
+	public function testANewTicketCanCarryADueDate(): void {
+		$ticket = $this->service->create(
+			$this->viewer(LeakMatrixFixture::ANNA),
+			'Mit Frist',
+			null,
+			TicketScope::VISIBILITY_PUBLIC,
+			$this->fixture->columnIds[LeakMatrixFixture::COLUMN_A],
+			null,
+			'2026-09-30',
+		);
+
+		$reloaded = $this->tickets->findVisible($this->viewer(LeakMatrixFixture::ANNA), (int)$ticket->getId());
+		$this->assertSame('2026-09-30', $reloaded->getDueDate()?->format('Y-m-d'));
+	}
+
+	/**
+	 * Ein Datum setzt, der Leerstring loescht — der Weg, eine Frist wieder
+	 * abzunehmen, weil `null` im Controller als „nicht geschickt" herausfaellt.
+	 */
+	public function testTheDueDateCanBeSetAndCleared(): void {
+		$anna = $this->viewer(LeakMatrixFixture::ANNA);
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+
+		$this->service->update($anna, $ticketId, 1, ['dueDate' => '2026-10-15']);
+		$gesetzt = $this->tickets->findVisible($anna, $ticketId);
+		$this->assertSame('2026-10-15', $gesetzt->getDueDate()?->format('Y-m-d'));
+
+		$this->service->update($anna, $ticketId, $gesetzt->getVersion(), ['dueDate' => '']);
+		$geleert = $this->tickets->findVisible($anna, $ticketId);
+		$this->assertNull($geleert->getDueDate());
+	}
+
+	/**
+	 * Ein unbrauchbares Datum wird abgewiesen, nicht stillschweigend verschluckt.
+	 */
+	public function testAMalformedDueDateIsRejected(): void {
+		$this->expectException(\InvalidArgumentException::class);
+
+		$this->service->update(
+			$this->viewer(LeakMatrixFixture::ANNA),
+			$this->fixture->ticketIds['public/anna'],
+			1,
+			['dueDate' => '30.09.2026'],
+		);
+	}
+
 	private function viewer(string $userId): ViewerContext {
 		return $this->fixture->contextFor($userId);
+	}
+
+	/**
+	 * Die Anhänge eines Vorgangs lösen — die **Vorbedingung** jeder
+	 * Sichtbarkeitsänderung (§3.10 Stufe 1).
+	 *
+	 * Die Fixture hängt an jeden ihrer Vorgänge genau einen Anhang, damit die
+	 * Leak-Matrix auch diesen Lesepfad abdeckt. Seit der Riegel steht, heißt
+	 * das: Wer hier umstellen will, muss vorher lösen — genau wie die Person
+	 * vor dem Bildschirm.
+	 *
+	 * Direkt über den Mapper und nicht über den Dienst: Der greift auf den
+	 * Dateibaum zu, und diese Tests haben keinen. Was hier geprüft wird, ist
+	 * die Sichtbarkeitsregel, nicht das Anhängen.
+	 *
+	 * @param int $ticketId Der Vorgang.
+	 */
+	private function ohneAnhaenge(int $ticketId): void {
+		$attachments = Server::get(AttachmentMapper::class);
+
+		foreach ($attachments->findForTickets([$ticketId]) as $attachment) {
+			$attachments->delete($attachment);
+		}
+	}
+
+	/**
+	 * **Nur der Uebergang benachrichtigt, nicht der Zustand** (#98).
+	 *
+	 * Ein zweites `closed: true` an einem bereits geschlossenen Vorgang darf
+	 * keine zweite Runde ausloesen. Der naheliegende Fehler waere gewesen, auf
+	 * `$changes['closed']` zu schauen statt auf den Stand davor — dann schickte
+	 * jeder Speichervorgang an einem geschlossenen Vorgang erneut „Eure Sache
+	 * ist durch" an alle Beteiligten.
+	 *
+	 * Gezaehlt wird im Ausgangskorb und nicht an der Glocke: Die Mail ist der
+	 * Weg, auf den sich ein Gast verlaesst, und sie ist nachzaehlbar.
+	 */
+	public function testClosingNotifiesOnceNotOnEverySave(): void {
+		$bert = $this->viewer(LeakMatrixFixture::BERT);
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+
+		$vorher = $this->geschlossenZeilen($ticketId);
+
+		$zu = $this->service->update($bert, $ticketId, 1, ['closed' => true]);
+		$einmal = $this->geschlossenZeilen($ticketId);
+		$this->assertGreaterThan($vorher, $einmal, 'Das Schliessen muss ankuendigen.');
+
+		// Noch einmal dasselbe — der Vorgang ist bereits geschlossen.
+		$this->service->update($bert, $ticketId, (int)$zu->getVersion(), ['closed' => true]);
+
+		$this->assertSame(
+			$einmal,
+			$this->geschlossenZeilen($ticketId),
+			'Ein zweites „closed: true" ist kein Uebergang und darf nicht erneut ausloesen.',
+		);
+	}
+
+	/**
+	 * Zeilen im Ausgangskorb, die zum Schliessen dieses Vorgangs gehoeren.
+	 *
+	 * **Direkt auf der Tabelle und nicht ueber den Mapper.** Der Mapper hat
+	 * keine Methode „alle Zeilen" — und er bekommt hier auch keine: Eine
+	 * Produktionsmethode, die es nur gibt, weil ein Test sie braucht, ist eine
+	 * Lesemoeglichkeit mehr, als das Produkt kennt.
+	 *
+	 * @param int $ticketId Der Vorgang.
+	 */
+	private function geschlossenZeilen(int $ticketId): int {
+		$db = Server::get(\OCP\IDBConnection::class);
+		$qb = $db->getQueryBuilder();
+		$qb->select($qb->func()->count('*', 'anzahl'))
+			->from('pwerk_mail_outbox')
+			->where($qb->expr()->eq('ticket_id', $qb->createNamedParameter($ticketId, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)))
+			->andWhere($qb->expr()->eq('event', $qb->createNamedParameter(\OCA\Projektwerk\Db\MailOutbox::EVENT_TICKET_CLOSED)));
+
+		$ergebnis = $qb->executeQuery();
+		$anzahl = (int)$ergebnis->fetchOne();
+		$ergebnis->closeCursor();
+
+		return $anzahl;
 	}
 }

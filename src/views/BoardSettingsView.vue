@@ -70,6 +70,49 @@
 				</div>
 			</section>
 
+			<!--
+				Dateiablage.
+
+				**Der Ablageort IST die Sichtbarkeit** (§5.18) — deshalb zwei
+				Ordner und nicht einer mit Unterordnern. Was in „Austausch"
+				liegt, sieht die Kundenseite; was im internen Ordner liegt,
+				nicht. Dass Nextcloud diese Trennung durchsetzt und nicht die
+				App, ist der Grund, warum sie trägt.
+
+				Anders als die Felder darüber wird hier **sofort** geschrieben:
+				Einen Ordner auszuwählen ist bereits die Bestätigung, ein
+				„Speichern" danach wäre eine zweite für dieselbe Entscheidung.
+			-->
+			<section class="pw-settings__block">
+				<h3 class="pw-col__head">
+					{{ t('projektwerk', 'Dateiablage') }}
+				</h3>
+
+				<p class="pw-settings__hint">
+					{{ t('projektwerk', 'Anhänge an Vorgängen landen in diesen Ordnern. Ohne Ordner sind an den betreffenden Vorgängen keine Anhänge möglich.') }}
+				</p>
+
+				<div v-for="slot in folderSlots" :key="slot.key" class="pw-settings__row">
+					<div class="pw-field pw-field--grow">
+						<label :for="`pw-set-${slot.key}`">{{ slot.label }}</label>
+						<NcTextField
+							:id="`pw-set-${slot.key}`"
+							v-model="folderDrafts[slot.key]"
+							:label="slot.label"
+							:placeholder="slot.placeholder"
+							:disabled="busy || !mayManage"
+							@keydown.enter="saveFolder(slot.key)" />
+						<span class="pw-settings__hint">{{ slot.hint }}</span>
+					</div>
+
+					<NcButton
+						:disabled="busy || !mayManage || folderDrafts[slot.key] === slot.path"
+						@click="saveFolder(slot.key)">
+						{{ t('projektwerk', 'Übernehmen') }}
+					</NcButton>
+				</div>
+			</section>
+
 			<section class="pw-settings__block">
 				<h3 class="pw-col__head">
 					{{ t('projektwerk', 'Spalten') }}
@@ -111,6 +154,28 @@
 							<ArrowDownIcon :size="20" />
 						</template>
 					</NcButton>
+					<!--
+						Nur der Eigentuemer, nicht jeder mit Verwaltungsrecht:
+						Der Vorgang fasst Daten aller Beteiligten an, auch die
+						hier unsichtbaren. Die letzte Spalte bleibt stehen — es
+						gaebe kein Ziel.
+					-->
+					<!--
+						Der Name gehoert in die Beschriftung: Ohne ihn stehen
+						sechs Knoepfe „Spalte entfernen" untereinander, und wer
+						die Seite hoert statt sieht, kann sie nicht
+						auseinanderhalten — bei einem Knopf, der eine Spalte
+						abraeumt, ist das keine Feinheit.
+					-->
+					<NcButton
+						v-if="mayRemoveColumns"
+						:disabled="busy || store.columns.length < 2"
+						:aria-label="removeLabelFor(column)"
+						@click="askRemoveColumn(column)">
+						<template #icon>
+							<DeleteIcon :size="20" />
+						</template>
+					</NcButton>
 				</div>
 
 				<div class="pw-settings__row">
@@ -134,7 +199,8 @@
 						:user="member.userId"
 						:displayName="member.resolvedName"
 						:size="32"
-						:disableMenu="true" />
+						:disableMenu="true"
+						:hideStatus="true" />
 
 					<span class="pw-person__body">
 						<span class="pw-person__name">{{ member.resolvedName }}</span>
@@ -215,6 +281,17 @@
 				<span class="pw-settings__hint">
 					{{ t('projektwerk', 'Personenweise, keine Gruppen — die Rolle hängt an der Mitgliedschaft, nicht am Nextcloud-Konto.') }}
 				</span>
+				<!--
+					Die Suche findet nur bestehende Konten. Ohne diesen Satz
+					sucht jemand eine Kundin, die es in Nextcloud noch gar nicht
+					gibt, bekommt „Keine passenden Konten gefunden." und raet,
+					woran es liegt. Die App legt bewusst keine Konten an — sie
+					haengt an keiner anderen App —, aber sie kann sagen, wo sie
+					herkommen (#74).
+				-->
+				<span class="pw-settings__hint">
+					{{ t('projektwerk', 'Gefunden werden nur bestehende Nextcloud-Konten. Wer noch keines hat — etwa auf Kundenseite — braucht zuerst eines: Die Administration legt es an, als Gastzugang oder als Vollkonto.') }}
+				</span>
 			</section>
 
 			<section class="pw-settings__block">
@@ -231,6 +308,65 @@
 				</div>
 			</section>
 		</div>
+
+		<!--
+			Die Rueckfrage zum Entfernen einer Spalte. Ein Dialog und kein
+			zweistufiger Bereich wie bei der Sichtbarkeit: Diese Seite ist kein
+			Modal, hier legen sich also keine zwei Fokusfallen uebereinander.
+		-->
+		<NcDialog
+			:open="removing !== null"
+			:name="t('projektwerk', 'Spalte entfernen')"
+			size="normal"
+			@update:open="onRemoveDialogToggle">
+			<!--
+				Die App-Klasse MUSS hier drin stehen: NcDialog teleportiert
+				seinen Inhalt an den `body`, wo `.app-projektwerk` kein Vorfahr
+				mehr ist.
+			-->
+			<div v-if="removing !== null" class="app-projektwerk">
+				<div class="pw-field">
+					<label for="pw-del-target">{{ t('projektwerk', 'Wohin wandern die Vorgänge?') }}</label>
+					<!--
+						Ohne Vorbelegung: Wohin die Arbeit anderer wandert, ist
+						eine Entscheidung. Eine geratene Antwort verschoebe sie
+						an einen Ort, den niemand gewaehlt hat.
+					-->
+					<select id="pw-del-target" v-model="removeTarget">
+						<option :value="null" disabled>
+							{{ t('projektwerk', 'Zielspalte wählen') }}
+						</option>
+						<option v-for="column in removeTargets" :key="column.id" :value="column.id">
+							{{ column.title }}
+						</option>
+					</select>
+				</div>
+
+				<p class="pw-settings__hint">
+					{{ removeLead }}
+				</p>
+				<!--
+					Die Zahl stammt aus der eigenen Ticketliste dieses Betrachters
+					und weiss damit nie mehr als er. Der Satz danach sagt, dass
+					sie nicht alles ist — sonst laese sie sich als Vollstaendigkeit.
+				-->
+				<p class="pw-settings__hint">
+					{{ removeVisibleCount }}
+				</p>
+				<p class="pw-settings__hint">
+					{{ t('projektwerk', 'Verborgene Vorgänge wandern mit, ohne hier aufzutauchen. Es geht nichts verloren.') }}
+				</p>
+			</div>
+
+			<template #actions>
+				<NcButton @click="cancelRemove">
+					{{ t('projektwerk', 'Abbrechen') }}
+				</NcButton>
+				<NcButton variant="error" :disabled="busy || removeTarget === null" @click="confirmRemove">
+					{{ t('projektwerk', 'Verschieben und entfernen') }}
+				</NcButton>
+			</template>
+		</NcDialog>
 	</div>
 </template>
 
@@ -238,18 +374,21 @@
 import type { Candidate } from '@/services/settings'
 import type { Column, Member, MemberRole } from '@/types/board'
 
-import { t } from '@nextcloud/l10n'
+import { n, t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
 import NcAvatar from '@nextcloud/vue/components/NcAvatar'
 import NcButton from '@nextcloud/vue/components/NcButton'
+import NcDialog from '@nextcloud/vue/components/NcDialog'
 import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
 import ArrowDownIcon from 'vue-material-design-icons/ArrowDown.vue'
 import ArrowUpIcon from 'vue-material-design-icons/ArrowUp.vue'
+import DeleteIcon from 'vue-material-design-icons/DeleteOutline.vue'
 import LockIcon from 'vue-material-design-icons/Lock.vue'
 import {
 	addMember,
 	createColumn,
+	deleteColumn,
 	renameColumn,
 	reorderColumns,
 	searchCandidates,
@@ -271,7 +410,7 @@ import { useBoardStore } from '@/stores/boardStore'
 export default defineComponent({
 	name: 'BoardSettingsView',
 
-	components: { ArrowDownIcon, ArrowUpIcon, LockIcon, NcAvatar, NcButton, NcEmptyContent, NcTextField },
+	components: { ArrowDownIcon, ArrowUpIcon, DeleteIcon, LockIcon, NcAvatar, NcButton, NcDialog, NcEmptyContent, NcTextField },
 
 	setup() {
 		return { store: useBoardStore() }
@@ -290,10 +429,18 @@ export default defineComponent({
 			searchTimer: null as ReturnType<typeof setTimeout> | null,
 			searchToken: 0,
 			newMemberRole: 'external' as MemberRole,
+			/** Die Spalte, über deren Entfernen gerade zurückgefragt wird. */
+			removing: null as Column | null,
+			/** Pflichtangabe, deshalb ohne Vorbelegung. */
+			removeTarget: null as number | null,
 			// Ein eigener Entwurf statt direkter Bindung an den Speicher: Sonst
 			// stuenden Tippfehler sofort in der Kopfzeile des Boards, und ein
 			// Abbruch waere nicht mehr moeglich.
 			board: { title: '', description: '', orgInternal: '', orgExternal: '', chatUrl: '' },
+			// Eigene Entwuerfe wie beim Board oben, aus demselben Grund: Der
+			// Pfad muss erst geprueft werden, und bis dahin darf er nirgends
+			// als der gespeicherte gelten.
+			folderDrafts: { public: '', internal: '' } as Record<'public' | 'internal', string>,
 		}
 	},
 
@@ -305,6 +452,97 @@ export default defineComponent({
 		/** §8: Pflegen darf nur ein internes Mitglied mit Verwaltungsrecht. */
 		mayManage(): boolean {
 			return this.store.viewer?.isManager === true
+		},
+
+		/**
+		 * Die beiden Ablageorte als Zeilen, damit die Vorlage sie nicht doppelt
+		 * ausschreibt.
+		 *
+		 * Die Reihenfolge ist nicht beliebig: „Austausch" steht oben, weil er
+		 * der Ordner ist, den **beide** Seiten sehen — und weil ein Projekt ohne
+		 * internen Ordner arbeitsfähig ist, eines ohne Austauschordner aber
+		 * seinen Zweck verfehlt.
+		 */
+		folderSlots(): { key: 'public' | 'internal', label: string, hint: string, placeholder: string, path: string }[] {
+			const board = this.store.board
+
+			return [
+				{
+					key: 'public',
+					label: t('projektwerk', 'Ordner für Vorgänge, die alle Beteiligten sehen'),
+					hint: t('projektwerk', 'Die Kundenseite hat Zugriff. Leer lassen heißt: an diesen Vorgängen sind keine Anhänge möglich.'),
+					placeholder: 'Projekte/Kunde A/90_Austausch',
+					path: board?.folderPublicPath ?? '',
+				},
+				{
+					key: 'internal',
+					label: t('projektwerk', 'Ordner für interne Vorgänge'),
+					hint: t('projektwerk', 'Nur die eigene Seite hat Zugriff. Leer lassen heißt: an internen Vorgängen sind keine Anhänge möglich.'),
+					placeholder: 'Projekte/Kunde A/91_Tickets_intern',
+					path: board?.folderInternalPath ?? '',
+				},
+			]
+		},
+
+		/**
+		 * Spalten entfernen darf **nur der Eigentümer** — nicht jeder mit
+		 * Verwaltungsrecht (#60).
+		 *
+		 * Der Server weist jeden anderen mit 403 ab; hier fällt nur der Knopf
+		 * weg, damit niemand eine Zielspalte wählt, die er nicht abschicken
+		 * darf.
+		 */
+		mayRemoveColumns(): boolean {
+			const owner = this.store.board?.ownerUserId
+			return owner !== undefined && owner === this.store.viewer?.userId
+		},
+
+		/** Jede Spalte außer der, die wegfällt. */
+		removeTargets(): Column[] {
+			return this.store.columns.filter((column) => column.id !== this.removing?.id)
+		},
+
+		/**
+		 * Was passiert, in einem Satz — als Verschiebung, nicht als Verlust.
+		 *
+		 * Steht im Skript und nicht in der Vorlage, weil der Text
+		 * Anführungszeichen trägt; im Attribut beendeten sie die Zeichenkette.
+		 */
+		removeLead(): string {
+			const target = this.store.columns.find((column) => column.id === this.removeTarget)
+
+			if (this.removing === null || target === undefined) {
+				return t('projektwerk', 'Alle Vorgänge wandern in die gewählte Spalte, danach fällt „{from}“ weg.', {
+					from: this.removing?.title ?? '',
+				})
+			}
+
+			return t('projektwerk', 'Alle Vorgänge wandern nach „{to}“, danach fällt „{from}“ weg.', {
+				from: this.removing.title,
+				to: target.title,
+			})
+		},
+
+		/**
+		 * Wie viele Vorgänge **dieser Betrachter** in der Spalte sieht.
+		 *
+		 * Aus der bereits geladenen Ticketliste, nicht aus einer eigenen
+		 * Abfrage: Ein Zähler-Endpunkt wäre ein zweiter Ort, an dem die
+		 * Sichtbarkeitsregel stimmen müsste, und die Zahl darf ohnehin nie mehr
+		 * wissen als der Betrachter. Der Filter „Nur wartend" bleibt hier außen
+		 * vor — deshalb `columnOrder` und nicht `ticketsIn()`.
+		 */
+		removeVisibleCount(): string {
+			const anzahl = this.removing === null
+				? 0
+				: (this.store.columnOrder.get(this.removing.id)?.length ?? 0)
+
+			return n(
+				'projektwerk',
+				'Für dich sichtbar ist davon %n Vorgang.',
+				'Für dich sichtbar sind davon %n Vorgänge.',
+				anzahl,
+			)
 		},
 	},
 
@@ -332,6 +570,10 @@ export default defineComponent({
 				orgInternal: board.orgInternal ?? '',
 				orgExternal: board.orgExternal ?? '',
 				chatUrl: board.chatUrl ?? '',
+			}
+			this.folderDrafts = {
+				public: board.folderPublicPath ?? '',
+				internal: board.folderInternalPath ?? '',
 			}
 		},
 
@@ -389,6 +631,32 @@ export default defineComponent({
 			)
 		},
 
+		/**
+		 * Einen Projektordner über seinen Pfad festlegen — oder leeren.
+		 *
+		 * **Der Pfad geht hin, die ID bleibt hier.** Der Server löst auf und
+		 * speichert die Datei-ID; zurück kommt der kanonische Pfad, und
+		 * `fillDraft` schreibt ihn ins Feld. Wer sich vertippt hat, sieht das
+		 * daran, dass die Meldung des Servers kommt und das Feld unverändert
+		 * bleibt.
+		 *
+		 * Ein leeres Feld entfernt die Zuordnung. Der Ordner selbst bleibt
+		 * unangetastet — die App löscht nicht (§5.18); danach sind an den
+		 * betroffenen Vorgängen nur keine Anhänge mehr möglich.
+		 *
+		 * @param slot Welcher der beiden Ordner.
+		 */
+		saveFolder(slot: 'public' | 'internal'): Promise<void> {
+			const path = this.folderDrafts[slot].trim()
+
+			return this.write(
+				() => updateBoard(this.boardId, slot === 'internal'
+					? { folderInternalPath: path }
+					: { folderPublicPath: path }),
+				t('projektwerk', 'Ordner konnte nicht gespeichert werden'),
+			)
+		},
+
 		addColumn() {
 			const title = this.newColumn.trim()
 			if (title === '') {
@@ -437,6 +705,65 @@ export default defineComponent({
 			return this.write(
 				() => renameColumn(this.boardId, column.id, title),
 				t('projektwerk', 'Umbenennen fehlgeschlagen'),
+			)
+		},
+
+		/**
+		 * Die Beschriftung des Löschknopfs — mit Namen, nicht ohne.
+		 *
+		 * @param column Die Spalte.
+		 */
+		removeLabelFor(column: Column): string {
+			return t('projektwerk', 'Spalte „{title}“ entfernen', { title: column.title })
+		},
+
+		/**
+		 * Die Rückfrage öffnen.
+		 *
+		 * @param column Die Spalte, die wegfallen soll.
+		 */
+		askRemoveColumn(column: Column) {
+			this.removing = column
+			this.removeTarget = null
+		},
+
+		cancelRemove() {
+			this.removing = null
+			this.removeTarget = null
+		},
+
+		/**
+		 * Nur das Schließen zurücknehmen, nicht jede Meldung.
+		 *
+		 * `NcDialog` meldet beide Richtungen über dasselbe Ereignis. Würde hier
+		 * blind geschlossen, verschwände der Dialog im selben Zug, in dem er
+		 * aufgeht.
+		 *
+		 * @param open Der neue Zustand.
+		 */
+		onRemoveDialogToggle(open: boolean) {
+			if (!open) {
+				this.cancelRemove()
+			}
+		},
+
+		/**
+		 * Entfernen heißt verschieben: erst wandern die Vorgänge, dann fällt
+		 * die Spalte weg — beides in einer Transaktion auf dem Server.
+		 */
+		confirmRemove() {
+			const column = this.removing
+			const target = this.removeTarget
+			if (column === null || target === null) {
+				return
+			}
+
+			return this.write(
+				async () => {
+					await deleteColumn(this.boardId, column.id, target)
+					this.cancelRemove()
+				},
+				t('projektwerk', 'Spalte konnte nicht entfernt werden'),
 			)
 		},
 

@@ -9,7 +9,7 @@
 
 import type { Board, BoardDetail } from '@/types/board'
 
-import { apiGet } from '@/services/api'
+import { apiGet, apiPut } from '@/services/api'
 
 /**
  * Alle Projekte, in denen die angemeldete Person Mitglied ist.
@@ -21,6 +21,16 @@ import { apiGet } from '@/services/api'
  */
 export async function fetchBoards(includeArchived = false): Promise<Board[]> {
 	return apiGet<Board[]>(`/boards${includeArchived ? '?includeArchived=1' : ''}`)
+}
+
+/**
+ * Ein Projekt an- oder abpinnen (#115) — eine rein persönliche Einstellung.
+ *
+ * @param boardId Kennung des Projekts.
+ * @param pinned Angepinnt ja/nein.
+ */
+export async function setBoardPin(boardId: number, pinned: boolean): Promise<{ pinned: boolean }> {
+	return apiPut<{ pinned: boolean }, { pinned: boolean }>(`/boards/${boardId}/pin`, { pinned })
 }
 
 /**

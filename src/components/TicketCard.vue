@@ -3,45 +3,123 @@
 		<button type="button" class="pw-card__open" @click="$emit('open', ticket)">
 			<span class="pw-card__top">
 				<!--
-					Das optische Zeichen für „geändert": kein Text auf der Karte.
-					Wer draufzeigt oder das Ticket öffnet, erfährt wer und wann.
+					**Hier stand ein blauer Punkt für „geändert".** Er erschien,
+					sobald `lastEditorUserId` gesetzt war — und ging nie wieder
+					aus. Nach ein paar Wochen trug ihn jedes Ticket, und ein
+					Zeichen, das alle tragen, unterscheidet nichts mehr. Dafür
+					belegte er die erste Stelle der Karte.
+
+					Was er sagen *sollte*, ist „seit deinem letzten Blick
+					geändert" — das braucht einen Lesestand pro Benutzer und
+					kommt mit dem eigenen Issue. Bis dahin lieber kein Signal
+					als ein falsches.
 				-->
-				<span v-if="wasEdited" class="pw-changed" :title="changedTitle" />
+				<!--
+					**Der Punkt „seit deinem Blick geändert" (#79).** Er ersetzt den
+					früheren blauen Punkt, der an `lastEditorUserId` hing und nie
+					ausging. Dieser hängt am Lesestand je Person: nur wenn sich seit
+					dem letzten Öffnen etwas getan hat, und er geht beim Öffnen aus.
+					Neutrale Farbe, nicht die Warnfarbe der Uhr unten — keine zwei
+					konkurrierenden Signale auf einer Karte.
+				-->
+				<span
+					v-if="changed"
+					class="pw-changed"
+					role="img"
+					:title="t('projektwerk', 'Seit Ihrem letzten Blick geändert')"
+					:aria-label="t('projektwerk', 'Seit Ihrem letzten Blick geändert')" />
 				<span class="pw-num">#{{ paddedNumber }}</span>
 				<!--
 					Die Kennzeichnung gibt es nur für die interne Seite und nur,
 					wenn es überhaupt eine Gegenseite gibt (§9).
+
+					**Und nur für Abweichungen vom Normalfall.** „Alle
+					Beteiligten" stand doppelt da: als farbiger Balken oben UND
+					als Wort. Der Balken sagt es bereits. Jetzt gilt: Keine
+					Kennzeichnung heisst „sehen alle" — markiert wird, was davon
+					abweicht.
+
+					Dass ausgerechnet der Normalfall ohne Wort auskommt und die
+					anderen nicht, ist kein Zufall: Die sicherheitskritische
+					Frage lautet „ist das intern?", denn davon haengt ab, ob der
+					Kunde mitliest. Wer Farben nicht unterscheidet, findet
+					weiterhin Woerter dort, wo es zaehlt.
 				-->
-				<span v-if="showVisibility" class="pw-vis" :class="'pw-vis--' + ticket.visibility">
-					<AccountMultipleIcon v-if="ticket.visibility === 'public'" :size="13" />
-					<OfficeBuildingIcon v-else-if="ticket.visibility === 'internal'" :size="13" />
+				<span
+					v-if="showVisibility && ticket.visibility !== 'public'"
+					class="pw-vis"
+					:class="'pw-vis--' + ticket.visibility">
+					<OfficeBuildingIcon v-if="ticket.visibility === 'internal'" :size="13" />
 					<PencilIcon v-else :size="13" />
 					{{ visibilityLabel }}
 				</span>
-			</span>
 
-			<!--
-				Die Marke steht ueber dem Titel: Sie beantwortet, ob die Karte
-				einen gerade etwas angeht — das liest man vor dem Titel, nicht
-				danach.
-			-->
-			<WaitBadge :state="waitState" :fromClientSide="fromClientSide" :compact="true" />
+				<!--
+					**Wer den Vorgang traegt — leise, oben rechts.** Eine
+					Zuordnung, keine Handlungsaufforderung: Sie gilt dauerhaft
+					und aendert nichts daran, ob die Karte einen gerade angeht.
+					Deshalb klein und in der Kopfzeile, wo auch Nummer und
+					Sichtbarkeit stehen.
+				-->
+				<NcAvatar
+					v-if="ticket.responsibleUserId"
+					class="pw-card__owner"
+					:user="ticket.responsibleUserId"
+					:displayName="responsibleName"
+					:size="18"
+					:disableMenu="true"
+					:hideStatus="true" />
+			</span>
 
 			<span class="pw-card__title">{{ ticket.title }}</span>
 
+			<!--
+				**Die Zustandszeile — ein Satz, kein Formular.** Oben steht,
+				was dauerhaft gilt; hier, was gerade der Fall ist: auf wen es
+				wartet, seit wann, bei welchem Schritt.
+
+				Die Zaehler standen bis zum 2026-08-10 per `margin-left: auto`
+				am anderen Ende der Zeile und lasen sich als zweite, unabhaengige
+				Anzeige. Sie sind aber keine: „0/2" sagt, *wo* es haengt, und
+				gehoert damit zur selben Aussage wie das Warten. Jetzt stehen
+				sie direkt dahinter, durch einen Mittelpunkt getrennt.
+
+				Alles linksbuendig in einem Fluss — deshalb springt nichts, wenn
+				ein Teil fehlt. Die Zeile wird nur kuerzer.
+			-->
 			<span class="pw-card__foot">
-				<NcAvatar
-					v-if="ticket.responsibleUserId"
-					:user="ticket.responsibleUserId"
-					:displayName="responsibleName"
-					:size="22"
-					:disableMenu="true" />
-				<span class="pw-right">
+				<WaitBadge
+					:state="waitState"
+					:fromClientSide="fromClientSide"
+					:names="memberNames"
+					:compact="true" />
+				<span v-if="commentCount > 0 || stepCount > 1" class="pw-counts">
 					<CommentOutlineIcon v-if="commentCount > 0" :size="13" :title="commentTitle" />
-					<span v-if="stepCount > 0" class="pw-steps" :title="stepTitle">
+					<!--
+						**Erst ab zwei Schritten.** Bei einem einzigen sagt
+						„0/1" dasselbe wie die Wartemarke daneben — zwei
+						Anzeigen fuer denselben Sachverhalt. Ab zwei sagt der
+						Zaehler etwas Eigenes: wie weit es insgesamt ist.
+					-->
+					<span v-if="stepCount > 1" class="pw-steps" :title="stepTitle">
 						<FormatListChecksIcon :size="13" />
 						{{ stepsDone }}/{{ stepCount }}
 					</span>
+				</span>
+				<!--
+					Die Fälligkeit des Vorgangs (#72), überfällig kräftig markiert
+					— dasselbe Muster wie am Schritt. „Bis wann ist die Sache
+					fertig", die Zusage an die Gegenseite; wirklich in Verzug ist
+					sie erst, wenn das Datum gerissen ist.
+				-->
+				<span
+					v-if="ticket.dueDate"
+					class="pw-due"
+					:class="{ 'pw-due--overdue': overdue }"
+					:title="dueTitle">
+					<CalendarAlertIcon v-if="overdue" :size="13" />
+					<CalendarIcon v-else :size="13" />
+					{{ germanDate(ticket.dueDate) }}
 				</span>
 			</span>
 		</button>
@@ -57,7 +135,15 @@
 			class="pw-card__menu"
 			:forceMenu="true"
 			:ariaLabel="menuLabel">
-			<NcActionCaption :name="t('projektwerk', 'Verschieben nach …')" />
+			<!--
+				**Ein Hauptwort, kein Handlungssatz.** „Verschieben nach …" las
+				sich wie ein Knopf — und weil Ueberschriften in
+				Nextcloud-Menues grau sind, wie ein **gesperrter**. Axel hat
+				beim Geraetetest darauf getippt und daraus geschlossen, das
+				Verschieben ginge nicht. „Zielspalte" laesst sich nicht fuer
+				eine Handlung halten; die Handlung sind die Zeilen darunter.
+			-->
+			<NcActionCaption :name="t('projektwerk', 'Zielspalte')" />
 			<NcActionButton
 				v-for="column in otherColumns"
 				:key="column.id"
@@ -77,27 +163,30 @@ import type { PropType } from 'vue'
 import type { Column } from '@/types/board'
 import type { Ticket, WaitState } from '@/types/ticket'
 
-import { t } from '@nextcloud/l10n'
+import { n, t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
 import NcActionButton from '@nextcloud/vue/components/NcActionButton'
 import NcActionCaption from '@nextcloud/vue/components/NcActionCaption'
 import NcActions from '@nextcloud/vue/components/NcActions'
 import NcAvatar from '@nextcloud/vue/components/NcAvatar'
-import AccountMultipleIcon from 'vue-material-design-icons/AccountMultiple.vue'
 import ArrowRightIcon from 'vue-material-design-icons/ArrowRight.vue'
+import CalendarAlertIcon from 'vue-material-design-icons/CalendarAlert.vue'
+import CalendarIcon from 'vue-material-design-icons/CalendarOutline.vue'
 import CommentOutlineIcon from 'vue-material-design-icons/CommentOutline.vue'
 import FormatListChecksIcon from 'vue-material-design-icons/FormatListChecks.vue'
 import OfficeBuildingIcon from 'vue-material-design-icons/OfficeBuilding.vue'
 import PencilIcon from 'vue-material-design-icons/Pencil.vue'
 import WaitBadge from '@/components/WaitBadge.vue'
+import { germanDate, isOverdue } from '@/utils/date'
 
 export default defineComponent({
 	name: 'TicketCard',
 
 	components: {
 		WaitBadge,
-		AccountMultipleIcon,
 		ArrowRightIcon,
+		CalendarIcon,
+		CalendarAlertIcon,
 		CommentOutlineIcon,
 		FormatListChecksIcon,
 		NcActionButton,
@@ -113,7 +202,13 @@ export default defineComponent({
 		/** Nur die interne Seite sieht die Sichtbarkeitskennzeichnung (§9). */
 		showVisibility: { type: Boolean, default: false },
 		responsibleName: { type: String, default: '' },
-		lastEditorName: { type: String, default: '' },
+		/**
+		 * Anzeigename je Benutzerkennung — fuer die Kugeln der Wartemarke.
+		 *
+		 * Der Server loest die Namen auf (`resolvedName`); im Browser
+		 * nachzuschlagen bliebe ausgerechnet beim Gast stumm.
+		 */
+		memberNames: { type: Object as PropType<Record<string, string>>, default: () => ({}) },
 		/** Alle Spalten des Boards — für „Verschieben nach …". */
 		columns: { type: Array as PropType<Column[]>, default: () => [] },
 		commentCount: { type: Number, default: 0 },
@@ -121,6 +216,8 @@ export default defineComponent({
 		stepsDone: { type: Number, default: 0 },
 		/** Der gerechnete Wartezustand, oder null. */
 		waitState: { type: Object as PropType<WaitState | null>, default: null },
+		/** „Seit deinem Blick geändert" (#79) — der neutrale Punkt oben. */
+		changed: { type: Boolean, default: false },
 		/** Aus Sicht der Kundenseite formuliert. */
 		fromClientSide: { type: Boolean, default: false },
 	},
@@ -157,38 +254,58 @@ export default defineComponent({
 			return String(this.ticket.number).padStart(4, '0')
 		},
 
-		/** `lastEditorUserId` ist null, solange niemand etwas geändert hat. */
-		wasEdited(): boolean {
-			return this.ticket.lastEditorUserId !== null
-		},
-
-		changedTitle(): string {
-			return t('projektwerk', 'Geändert von {name}', { name: this.lastEditorName })
-		},
-
+		/**
+		 * Nur für „Intern" und „Privat" — der Normalfall bleibt unmarkiert.
+		 *
+		 * „Privat" statt „Nur ich": zwei Eigenschaftswoerter nebeneinander
+		 * lesen sich als ein Paar, ein Satzfragment daneben nicht. Im
+		 * Auswahlmenue heisst die Stufe weiterhin ausfuehrlicher — dort wird
+		 * gewaehlt, hier nur benannt.
+		 */
 		visibilityLabel(): string {
-			// Benannt nach dem Publikum, nicht nach der Technik (§7).
-			if (this.ticket.visibility === 'public') {
-				return t('projektwerk', 'Alle Beteiligten')
-			}
-			if (this.ticket.visibility === 'internal') {
-				return t('projektwerk', 'Intern')
-			}
-			return t('projektwerk', 'Nur ich')
+			return this.ticket.visibility === 'internal'
+				? t('projektwerk', 'Intern')
+				: t('projektwerk', 'Privat')
 		},
 
+		/**
+		 * Der Vorlesetext des Sprechblasensymbols — die Zahl steht nirgends
+		 * sichtbar, nur hier.
+		 *
+		 * `n()` und nicht `t()` mit Platzhalter: Bei genau einem Kommentar stand
+		 * „1 Kommentare".
+		 */
 		commentTitle(): string {
-			return t('projektwerk', '{count} Kommentare', { count: this.commentCount })
+			return n('projektwerk', '%n Kommentar', '%n Kommentare', this.commentCount)
 		},
 
+		/**
+		 * Kein `n()` nötig: Die Zeile erscheint erst **ab zwei** Schritten
+		 * (siehe die Bedingung in der Vorlage), und die Mehrzahl richtet sich
+		 * nach `count`, nicht nach `done`. „1 von 3 Arbeitsschritten erledigt"
+		 * ist richtig; „1 von 1" kommt gar nicht vor.
+		 */
 		stepTitle(): string {
 			return t('projektwerk', '{done} von {count} Arbeitsschritten erledigt', {
 				done: this.stepsDone,
 				count: this.stepCount,
 			})
 		},
+
+		/** Ist die Fälligkeit gerissen? Ein fehlendes Datum nie (#72). */
+		overdue(): boolean {
+			return isOverdue(this.ticket.dueDate)
+		},
+
+		dueTitle(): string {
+			const date = germanDate(this.ticket.dueDate)
+
+			return this.overdue
+				? t('projektwerk', 'überfällig seit {date}', { date })
+				: t('projektwerk', 'fällig {date}', { date })
+		},
 	},
 
-	methods: { t },
+	methods: { t, germanDate },
 })
 </script>

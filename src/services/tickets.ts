@@ -33,6 +33,19 @@ export async function fetchTicket(boardId: number, ticketId: number): Promise<Ti
 }
 
 /**
+ * Einen Vorgang als gelesen vermerken (#79) — der Punkt „seit deinem Blick
+ * geändert" verschwindet damit.
+ *
+ * `POST`, weil es ein Schreibvorgang ist; der Rumpf ist leer.
+ *
+ * @param boardId Kennung des Projekts.
+ * @param ticketId Kennung des Vorgangs.
+ */
+export async function markTicketRead(boardId: number, ticketId: number): Promise<void> {
+	await apiPost<void, Record<string, never>>(`/boards/${boardId}/tickets/${ticketId}/read`, {})
+}
+
+/**
  * Ein neues Ticket.
  *
  * `visibility` ist Pflicht und hat keine serverseitige Vorbelegung: §9 verlangt
@@ -47,6 +60,7 @@ export async function fetchTicket(boardId: number, ticketId: number): Promise<Ti
  * @param data.visibility
  * @param data.description
  * @param data.responsibleUserId
+ * @param data.dueDate
  */
 export async function createTicket(boardId: number, data: {
 	title: string
@@ -54,6 +68,7 @@ export async function createTicket(boardId: number, data: {
 	visibility: Visibility
 	description?: string | null
 	responsibleUserId?: string | null
+	dueDate?: string | null
 }): Promise<Ticket> {
 	return apiPost<Ticket, typeof data>(`/boards/${boardId}/tickets`, data)
 }
@@ -71,13 +86,14 @@ export async function createTicket(boardId: number, data: {
  * @param changes.title
  * @param changes.description
  * @param changes.responsibleUserId
+ * @param changes.dueDate Ein `JJJJ-MM-TT` setzt, der Leerstring löscht, Weglassen lässt unverändert.
  * @param changes.closed
  */
 export async function updateTicket(
 	boardId: number,
 	ticketId: number,
 	version: number,
-	changes: { title?: string, description?: string | null, responsibleUserId?: string | null, closed?: boolean },
+	changes: { title?: string, description?: string | null, responsibleUserId?: string | null, dueDate?: string | null, closed?: boolean },
 ): Promise<Ticket> {
 	return apiPatch<Ticket, typeof changes & { version: number }>(
 		`/boards/${boardId}/tickets/${ticketId}`,
@@ -113,33 +129,16 @@ export async function moveTicket(
 }
 
 /**
- * Was ein Sichtbarkeitswechsel kosten würde.
- *
- * Für den Rückfragedialog aus §9, der konkrete Zahlen und Namen nennen soll
- * statt einer allgemeinen Warnung.
- *
- * **Bewusst ein Serveraufruf**, obwohl das Frontend die Mitgliederliste schon
- * hat: Wer den Zugriff verliert, folgt aus der Sichtbarkeitsregel — und die
- * gehört an genau eine Stelle. Im Browser nachzurechnen wäre eine zweite
- * Umsetzung derselben Regel.
- *
- * @param boardId Kennung des Projekts.
- * @param ticketId Kennung des Tickets.
- * @param visibility Die angedachte neue Stufe.
- */
-export async function fetchVisibilityImpact(
-	boardId: number,
-	ticketId: number,
-	visibility: Visibility,
-): Promise<{ losing: string[], comments: number, attachments: number }> {
-	return apiGet(`/boards/${boardId}/tickets/${ticketId}/visibility-impact?visibility=${visibility}`)
-}
-
-/**
  * Die Sichtbarkeit ändern.
  *
  * Antwortet mit 403, wenn das Ticket der anderen Seite gehört — nicht mit 404:
  * Der Betrachter sieht es ja, zu verbergen gibt es nichts mehr.
+ *
+ * **Und mit 409, wenn Anhänge daranhängen** (§3.10 Stufe 1). Die Zahl steht als
+ * `attachments` im Rumpf. Bis #103 fragte die Oberfläche das über
+ * `visibility-impact` vorab ab; dieser Lesepfad ist mit dem Wegfall der
+ * Rückfrage aufgegeben, und die Absage kommt jetzt von dort, wo die Regel
+ * ohnehin steht.
  *
  * @param boardId Kennung des Projekts.
  * @param ticketId Kennung des Tickets.

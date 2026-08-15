@@ -9,8 +9,13 @@ declare(strict_types=1);
 
 namespace OCA\Projektwerk\Tests\Integration;
 
+use OCA\Projektwerk\Access\BoardAccess;
 use OCA\Projektwerk\Access\ViewerContext;
+use OCA\Projektwerk\Controller\StepController;
+use OCA\Projektwerk\Db\Step;
 use OCA\Projektwerk\Service\StepService;
+use OCP\AppFramework\Http;
+use OCP\IRequest;
 use OCP\Server;
 
 /**
@@ -58,6 +63,84 @@ class StepWritePathTest extends IntegrationTestCase {
 		$this->assertNull($geleert->getAssignedUserId());
 		$this->assertNull($geleert->getAssignedRole(), 'Die Rollenkopie muss mitgehen.');
 		$this->assertNull($geleert->getAssignedAt(), 'Sonst bliebe eine Wartezeit ohne Wartenden.');
+	}
+
+	/**
+	 * **Eine Fälligkeit muss sich löschen lassen.**
+	 *
+	 * Dieselbe Falle wie bei der Zuweisung, ein Feld weiter: Der Controller
+	 * übernahm nur, was `!== null` war, und verwarf damit genau das
+	 * ausdrückliche „Frist entfernen". Aufgefallen ist es erst am 2026-08-10 mit
+	 * #86 — vorher liess sich die Fälligkeit in der Oberfläche überhaupt nicht
+	 * setzen, es kam also nie jemand an die Stelle.
+	 *
+	 * Der Test sitzt am Dienst, weil dort die Bedeutung festgelegt ist: `null`
+	 * heisst löschen. Dass der Controller diesen Wert überhaupt bis hierher
+	 * durchreicht, hält der Test darunter fest — **dort** sass der Fehler.
+	 */
+	public function testADueDateCanBeCleared(): void {
+		$viewer = $this->owner();
+		$step = $this->steps->create(
+			$viewer,
+			$this->fixture->ticketIds['public/anna'],
+			'Mit Frist',
+			null,
+			'2026-09-01',
+		);
+		$this->assertSame('2026-09-01', $step->getDueDate()?->format('Y-m-d'));
+
+		$geleert = $this->steps->update($viewer, (int)$step->getId(), ['dueDate' => null]);
+
+		$this->assertNull($geleert->getDueDate());
+	}
+
+	/**
+	 * **Der Controller muss ein ausdrückliches `null` weiterreichen.**
+	 *
+	 * Hier sass der Fehler, nicht im Dienst: Der Controller baute seine
+	 * Änderungsliste aus allem, was `!== null` war — und verwarf damit genau
+	 * die beiden Werte, bei denen `null` etwas bedeutet. Ein Dienst-Test hätte
+	 * das nie gefunden, weil er die Liste selbst mitbringt.
+	 *
+	 * Geprüft werden beide Felder in einem Zug, weil sie dieselbe Bauform
+	 * teilen und beim nächsten dritten Feld dieselbe Falle wartet.
+	 */
+	public function testTheControllerForwardsAnExplicitNull(): void {
+		$viewer = $this->owner();
+		$step = $this->steps->create(
+			$viewer,
+			$this->fixture->ticketIds['public/anna'],
+			'Mit allem',
+			LeakMatrixFixture::CARLA,
+			'2026-09-01',
+		);
+
+		// Der rohe Parametersatz ist das Entscheidende: Beide Schluessel sind
+		// **genannt** und tragen `null`. Genau diesen Fall kann `getParam()`
+		// nicht von „nicht genannt" unterscheiden.
+		// `createStub` und nicht `createMock`: Der Test erwartet keinen Aufruf,
+		// er braucht nur eine Antwort. PHPUnit meldet den Unterschied als Notiz.
+		$request = $this->createStub(IRequest::class);
+		$request->method('getParams')->willReturn([
+			'assignedUserId' => null,
+			'dueDate' => null,
+		]);
+
+		$controller = new StepController(
+			$request,
+			Server::get(StepService::class),
+			Server::get(BoardAccess::class),
+			LeakMatrixFixture::ANNA,
+		);
+
+		$antwort = $controller->update($this->fixture->boardId, (int)$step->getId());
+
+		$this->assertSame(Http::STATUS_OK, $antwort->getStatus());
+
+		$geleert = $antwort->getData();
+		$this->assertInstanceOf(Step::class, $geleert);
+		$this->assertNull($geleert->getDueDate(), 'Die Frist muss sich ueber den Controller loeschen lassen.');
+		$this->assertNull($geleert->getAssignedUserId(), 'Die Zuweisung ebenso.');
 	}
 
 	/**

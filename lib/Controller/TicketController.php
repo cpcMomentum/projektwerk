@@ -18,7 +18,10 @@ use OCA\Projektwerk\Db\AttachmentMapper;
 use OCA\Projektwerk\Db\CommentMapper;
 use OCA\Projektwerk\Db\StepMapper;
 use OCA\Projektwerk\Db\TicketMapper;
+use OCA\Projektwerk\Db\TicketReadMapper;
 use OCA\Projektwerk\Db\TicketUserMapper;
+use OCA\Projektwerk\Service\AttachmentService;
+use OCA\Projektwerk\Service\AttachmentsPresentException;
 use OCA\Projektwerk\Service\ConflictException;
 use OCA\Projektwerk\Service\NotOwningSideException;
 use OCA\Projektwerk\Service\TicketService;
@@ -50,7 +53,9 @@ class TicketController extends Controller {
 		private StepMapper $steps,
 		private AttachmentMapper $attachments,
 		private TicketUserMapper $ticketUsers,
+		private TicketReadMapper $reads,
 		private TicketService $service,
+		private AttachmentService $attachmentService,
 		private WaitStateCalculator $waitState,
 		private BoardAccess $access,
 		private ?string $userId,
@@ -89,6 +94,11 @@ class TicketController extends Controller {
 					'attachments' => $this->attachments->countForTickets($ids),
 					'collaborators' => $this->ticketUsers->countForTickets($ids),
 				],
+				// „Seit deinem Blick geändert" (#79) — nur für Vorgänge, die
+				// dieser Betrachter schon einmal geöffnet hat. Aus **seinem**
+				// Lesestand und der Bewegung (Ticket-Änderung oder neuer
+				// Kommentar), beides über die bereits gefilterte Menge.
+				'changed' => $this->changedSince($viewer, $tickets, $ids),
 			]);
 		});
 	}
@@ -118,9 +128,38 @@ class TicketController extends Controller {
 				'waiting' => $this->waitState->forTicket($ticket, $steps),
 				'comments' => $this->comments->findForTickets($ids),
 				'steps' => $steps,
-				'attachments' => $this->attachments->findForTickets($ids),
+				// Mit `missing`-Angabe je Anhang (#9): verwaiste Dateien werden
+				// gezeigt, nicht verschwiegen. Die Menge kommt weiter über den
+				// gefilterten `findForTickets()`-Weg.
+				'attachments' => $this->attachmentService->withPresence($viewer, $this->attachments->findForTickets($ids)),
 				'collaborators' => $this->ticketUsers->findForTickets($ids),
 			]);
+		});
+	}
+
+	/**
+	 * Einen Vorgang als gelesen vermerken (#79).
+	 *
+	 * Setzt den Lesestand dieser Person auf jetzt — der Punkt „seit deinem
+	 * Blick geändert" verschwindet damit von der Karte. Nur für einen Vorgang,
+	 * den die Person auch sehen darf: `findVisible()` wirft sonst, und ein Stand
+	 * zu einem verborgenen Vorgang entstünde nie.
+	 *
+	 * `POST`, kein `GET`: Es ist ein Schreibvorgang, und er soll durch die
+	 * CSRF-Prüfung. Der Rumpf ist leer; die Antwort ist der Erfolg selbst.
+	 */
+	#[NoAdminRequired]
+	public function read(int $boardId, int $ticketId): JSONResponse {
+		return $this->withViewer($boardId, function (ViewerContext $viewer) use ($ticketId): JSONResponse {
+			try {
+				$ticket = $this->tickets->findVisible($viewer, $ticketId);
+			} catch (DoesNotExistException) {
+				return new JSONResponse([], Http::STATUS_NOT_FOUND);
+			}
+
+			$this->reads->markSeen($viewer->userId, (int)$ticket->getId());
+
+			return new JSONResponse([], Http::STATUS_NO_CONTENT);
 		});
 	}
 
@@ -142,11 +181,12 @@ class TicketController extends Controller {
 		string $visibility,
 		?string $description = null,
 		?string $responsibleUserId = null,
+		?string $dueDate = null,
 	): JSONResponse {
-		return $this->withViewer($boardId, function (ViewerContext $viewer) use ($title, $columnId, $visibility, $description, $responsibleUserId): JSONResponse {
+		return $this->withViewer($boardId, function (ViewerContext $viewer) use ($title, $columnId, $visibility, $description, $responsibleUserId, $dueDate): JSONResponse {
 			try {
 				return new JSONResponse(
-					$this->service->create($viewer, $title, $description, $visibility, $columnId, $responsibleUserId),
+					$this->service->create($viewer, $title, $description, $visibility, $columnId, $responsibleUserId, $dueDate),
 					Http::STATUS_CREATED,
 				);
 			} catch (\InvalidArgumentException $e) {
@@ -163,15 +203,19 @@ class TicketController extends Controller {
 		?string $title = null,
 		?string $description = null,
 		?string $responsibleUserId = null,
+		?string $dueDate = null,
 		?bool $closed = null,
 	): JSONResponse {
 		// Nur das übernehmen, was tatsächlich geschickt wurde: Ein
-		// nicht genanntes Feld darf nicht auf null zurückfallen.
+		// nicht genanntes Feld darf nicht auf null zurückfallen. Das Loeschen
+		// einer Faelligkeit reist deshalb als Leerstring, nicht als `null` — der
+		// waere hier nicht von „nicht geschickt" zu unterscheiden.
 		$changes = array_filter(
 			[
 				'title' => $title,
 				'description' => $description,
 				'responsibleUserId' => $responsibleUserId,
+				'dueDate' => $dueDate,
 				'closed' => $closed,
 			],
 			static fn ($value): bool => $value !== null,
@@ -198,28 +242,18 @@ class TicketController extends Controller {
 	}
 
 	/**
-	 * Was ein Sichtbarkeitswechsel kosten würde — für den Rückfragedialog.
-	 *
-	 * Ein Lese-Endpunkt, obwohl er zu einem Schreibvorgang gehört: Er ändert
-	 * nichts und beantwortet nur eine Frage. Deshalb steht er in der
-	 * Leak-Matrix wie jeder andere Lesepfad.
-	 */
-	#[NoAdminRequired]
-	public function visibilityImpact(int $boardId, int $ticketId, string $visibility): JSONResponse {
-		return $this->withViewer($boardId, function (ViewerContext $viewer) use ($ticketId, $visibility): JSONResponse {
-			try {
-				return new JSONResponse($this->service->visibilityImpact($viewer, $ticketId, $visibility));
-			} catch (DoesNotExistException) {
-				return new JSONResponse([], Http::STATUS_NOT_FOUND);
-			} catch (\InvalidArgumentException $e) {
-				return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
-			}
-		});
-	}
-
-	/**
 	 * Die Sichtbarkeit ändern — eigener Weg, weil sie als einziges Feld eine
 	 * Schreibregel hat.
+	 *
+	 * **`visibilityImpact()` stand hier bis #103** und beantwortete vorab, wer
+	 * durch einen Wechsel den Zugriff verliert — für die Rückfrage aus §9. Mit
+	 * dem Wegfall der Rückfrage (Axel, 2026-08-13) hat die Antwort keinen
+	 * Abnehmer mehr, und der Endpunkt ist aufgegeben statt verwaist gelassen:
+	 * Ein Lesepfad ist eine Stelle, an der die Sichtbarkeitsregel stimmen muss,
+	 * und die Leak-Matrix musste ihn mitfahren.
+	 *
+	 * Die Anhänge-Sperre (§3.10 Stufe 1) braucht ihn nicht — sie kommt aus der
+	 * Absage dieses Schreibwegs, mit der Zahl im Rumpf.
 	 */
 	#[NoAdminRequired]
 	public function visibility(int $boardId, int $ticketId, int $version, string $visibility): JSONResponse {
@@ -263,6 +297,52 @@ class TicketController extends Controller {
 	}
 
 	/**
+	 * „Seit deinem Blick geändert" je Vorgang (#79) — nur die geänderten stehen
+	 * drin, wie beim Wartezustand.
+	 *
+	 * **Nur für schon einmal geöffnete Vorgänge.** Ein nie geöffneter bekommt
+	 * keinen Punkt: „seit du zuletzt draufgeschaut hast" setzt ein Draufschauen
+	 * voraus, und am ersten Tag trüge sonst jede Karte einen. Neue Zuweisungen
+	 * fangen Glocke, Mail und „Meine Vorgänge" ab.
+	 *
+	 * **Bewegung heisst Ticket-Änderung oder neuer Kommentar.** Beide über die
+	 * bereits gefilterte Menge — der Lesestand nach `user_id`, der jüngste
+	 * Kommentar über dieselben sichtbaren IDs. Verglichen wird über Zeitstempel,
+	 * nicht über die ISO-Zeichenkette: Deren Reihenfolge stimmt nur bei gleichem
+	 * Zeitzonenversatz, und daran soll die Rechnung nicht hängen.
+	 *
+	 * @param \OCA\Projektwerk\Db\Ticket[] $tickets
+	 * @param int[] $ids
+	 * @return array<int, true> Nur die geänderten Vorgänge.
+	 */
+	private function changedSince(ViewerContext $viewer, array $tickets, array $ids): array {
+		$seen = $this->reads->findSeenForTickets($viewer->userId, $ids);
+		if ($seen === []) {
+			return [];
+		}
+
+		$newestComment = $this->comments->findNewestForTickets($ids);
+
+		$changed = [];
+		foreach ($tickets as $ticket) {
+			$id = (int)$ticket->getId();
+			if (!isset($seen[$id])) {
+				continue;
+			}
+
+			$seenTs = (int)strtotime($seen[$id]);
+			$activityTs = $ticket->getUpdatedAt()?->getTimestamp() ?? 0;
+			$commentTs = isset($newestComment[$id]) ? (int)strtotime($newestComment[$id]) : 0;
+
+			if (max($activityTs, $commentTs) > $seenTs) {
+				$changed[$id] = true;
+			}
+		}
+
+		return $changed;
+	}
+
+	/**
 	 * Der gemeinsame Rahmen der Schreibwege: Kontext, Dienst, Fehlerformen.
 	 *
 	 * @param callable(ViewerContext): mixed $write
@@ -277,6 +357,16 @@ class TicketController extends Controller {
 				// zu erfahren, was sich geändert hat.
 				return new JSONResponse(
 					['error' => $e->getMessage(), 'current' => $e->current],
+					Http::STATUS_CONFLICT,
+				);
+			} catch (AttachmentsPresentException $e) {
+				// **409 wie beim Versionskonflikt und aus demselben Grund:** Die
+				// Anfrage ist richtig gebaut und das Recht ist da — der Vorgang
+				// ist nur gerade in einem Zustand, in dem sie nicht geht. Die
+				// Zahl kommt mit, damit die Oberflaeche sie nicht aus der
+				// Meldung fischen muss.
+				return new JSONResponse(
+					['error' => $e->getMessage(), 'attachments' => $e->count],
 					Http::STATUS_CONFLICT,
 				);
 			} catch (NotOwningSideException $e) {

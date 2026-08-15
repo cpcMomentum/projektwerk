@@ -16,17 +16,27 @@ use OCA\Projektwerk\Access\WaitStateCalculator;
 use OCA\Projektwerk\Controller\BoardController;
 use OCA\Projektwerk\Controller\DeepLinkController;
 use OCA\Projektwerk\Controller\MemberSearchController;
+use OCA\Projektwerk\Controller\OverviewController;
+use OCA\Projektwerk\Controller\TaskController;
 use OCA\Projektwerk\Controller\TicketController;
 use OCA\Projektwerk\Db\AttachmentMapper;
 use OCA\Projektwerk\Db\BoardMapper;
 use OCA\Projektwerk\Db\ColumnMapper;
 use OCA\Projektwerk\Db\CommentMapper;
+use OCA\Projektwerk\Db\MailOutbox;
+use OCA\Projektwerk\Db\MailOutboxMapper;
 use OCA\Projektwerk\Db\MemberMapper;
+use OCA\Projektwerk\Db\NotifyPref;
+use OCA\Projektwerk\Db\NotifyPrefMapper;
 use OCA\Projektwerk\Db\StepMapper;
 use OCA\Projektwerk\Db\TaskFilter;
 use OCA\Projektwerk\Db\TicketMapper;
+use OCA\Projektwerk\Db\TicketReadMapper;
 use OCA\Projektwerk\Db\TicketUserMapper;
+use OCA\Projektwerk\Service\AttachmentService;
+use OCA\Projektwerk\Service\BoardPinService;
 use OCA\Projektwerk\Service\MemberService;
+use OCA\Projektwerk\Service\NotifyPrefService;
 use OCA\Projektwerk\Service\StepService;
 use OCA\Projektwerk\Service\TicketService;
 use OCA\Projektwerk\Tests\ReadPathRegistry;
@@ -116,7 +126,14 @@ class LeakMatrixTest extends IntegrationTestCase {
 	 */
 	private const MY_TASKS_OPEN = [
 		self::ANNA => ['public/anna', 'internal/anna', 'private/anna'],
-		self::BERT => ['public/bert', 'internal/bert', 'private/bert'],
+		// **Bert traegt den Kern des Akzeptanzkriteriums.** Er ist im ersten
+		// Board intern, im zweiten extern — und bekommt aus **einer** Abfrage
+		// je Board die dort geltende Menge. `b:internal/bert` ist dabei der
+		// Beleg fuer die zweite Rolle: Ein `internal`-Ticket mit
+		// Erzeugerrolle extern sieht er nur, weil er *in diesem Board* die
+		// Kundenseite ist. Wer seine Rolle einmal global aufloest, verliert es
+		// — oder bekommt stattdessen faelschlich `b:internal/erna`.
+		self::BERT => ['public/bert', 'internal/bert', 'private/bert', 'b:internal/bert'],
 		self::CARLA => ['internal/carla', 'private/carla'],
 		self::DIRK => ['public/anna', 'public/bert', 'internal/carla'],
 		self::FREMD => [],
@@ -130,9 +147,55 @@ class LeakMatrixTest extends IntegrationTestCase {
 	 */
 	private const MY_TASKS_WITH_CLOSED = [
 		self::ANNA => ['public/anna', 'internal/anna', 'private/anna'],
-		self::BERT => ['public/bert', 'internal/bert', 'private/bert'],
+		self::BERT => ['public/bert', 'internal/bert', 'private/bert', 'b:internal/bert'],
 		self::CARLA => ['public/carla', 'internal/carla', 'private/carla'],
 		self::DIRK => ['public/anna', 'public/bert', 'public/carla', 'internal/carla'],
+		self::FREMD => [],
+	];
+
+	/**
+	 * „Meine Arbeitsschritte" — die Vorgaenge, an denen mir ein **offener**
+	 * Schritt gehoert.
+	 *
+	 * Eine ausgeschriebene Menge und keine Teilmengenpruefung: Ohne sie liesse
+	 * sich `assigned_user_id = :uid` aus der Unterabfrage streichen, und jeder
+	 * Betrachter saehe unter „Meine Arbeitsschritte" **alles**, was er sehen
+	 * darf — die meisten davon ohne einen einzigen Schritt. Kein Test waere
+	 * dabei rot geworden.
+	 *
+	 * Zwei Zeilen tragen die Last:
+	 * - **Bert** bekommt `b:public/erna`, obwohl er dort weder verantwortlich
+	 *   noch mitarbeitend ist — der Grund, warum dieser Lesepfad existiert.
+	 * - **Bert bekommt `b:internal/bert` NICHT**, obwohl er das Ticket sieht
+	 *   und der Schritt ihm gehoert: Er ist erledigt. Das ist die einzige
+	 *   Stelle, an der `done = 0` ueberhaupt geprueft wird.
+	 *
+	 * @var array<string, string[]>
+	 */
+	private const MY_STEPS_OPEN = [
+		self::ANNA => ['public/anna', 'internal/anna', 'private/anna'],
+		self::BERT => ['public/bert', 'internal/bert', 'private/bert', 'b:public/erna'],
+		self::CARLA => ['internal/carla', 'private/carla'],
+		// Dirk arbeitet an allen neun Tickets mit, hat aber keinen Schritt.
+		// Genau der Unterschied zwischen den beiden Abschnitten.
+		self::DIRK => [],
+		self::FREMD => [],
+	];
+
+	/**
+	 * Die Boards in der Herkunftszeile — je Betrachter ausgeschrieben.
+	 *
+	 * Gegen das Universum aller Fixture-Boards zu pruefen faengt nichts: Wer
+	 * versehentlich fremde Boards mitliefert, bleibt gruen, solange es die
+	 * Fixture-Boards sind. Hier stehen sie einzeln, und dann faellt es auf.
+	 *
+	 * @var array<string, string[]>
+	 */
+	private const TASK_BOARDS = [
+		self::ANNA => ['Leak-Matrix'],
+		self::BERT => ['Leak-Matrix', 'Leak-Matrix Zweitboard'],
+		self::CARLA => ['Leak-Matrix'],
+		self::DIRK => ['Leak-Matrix'],
 		self::FREMD => [],
 	];
 
@@ -145,6 +208,9 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'TicketMapper::findVisibleInBoard' => 'testEveryViewerSeesExactlyTheirTickets',
 		'TicketMapper::findVisible' => 'testSingleTicketAccessMatchesTheSameSet',
 		'TicketMapper::findVisibleAcrossBoards' => 'testMyTasksNeverWidensBeyondTheVisibleSet',
+		'TicketMapper::findVisibleAcrossBoardsAll' => 'testTheOverviewMapperNeverWidensBeyondTheVisibleSet',
+		'MemberMapper::findForUserBoards' => 'testMemberNamesCoverOnlyMyOwnBoards',
+		'TicketMapper::findVisibleWithMyOpenSteps' => 'testMyStepsNeverWidensBeyondTheVisibleSet',
 		'TicketMapper::findVisibleAnywhere' => 'testDeepLinkLookupMatchesTheVisibleSet',
 		'TicketMapper::countVisibleInBoard' => 'testCountersNeverCountWhatIsHidden',
 		'TicketMapper::findLastPositionInColumn' => 'testLastPositionIsTheSameForEveryViewer',
@@ -155,12 +221,19 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'ColumnMapper::findForBoard' => 'testBoardMetadataPathsTrustTheContextAlone',
 		'CommentMapper::findForTickets' => 'testChildrenFollowTheFilteredTicketSet',
 		'CommentMapper::countForTickets' => 'testChildCountersFollowTheFilteredTicketSet',
+		'CommentMapper::findNewestForTickets' => 'testNewestCommentFollowsTheFilteredTicketSet',
 		'StepMapper::findForTickets' => 'testChildrenFollowTheFilteredTicketSet',
 		'StepMapper::countForTickets' => 'testChildCountersFollowTheFilteredTicketSet',
 		'AttachmentMapper::findForTickets' => 'testChildrenFollowTheFilteredTicketSet',
 		'AttachmentMapper::countForTickets' => 'testChildCountersFollowTheFilteredTicketSet',
 		'TicketUserMapper::findForTickets' => 'testChildrenFollowTheFilteredTicketSet',
 		'TicketUserMapper::countForTickets' => 'testChildCountersFollowTheFilteredTicketSet',
+		// **Zwei Pfade ohne Betrachter.** Ihre Erwartung ist eine andere Art von
+		// Zusage — die Begruendung steht bei den Eintraegen in der Registry und
+		// bei den beiden Tests selbst.
+		'MailOutboxMapper::findRetryable' => 'testTheOutboxIsNotAViewerPath',
+		'NotifyPrefMapper::findForUser' => 'testChannelPreferencesAreScopedToTheirOwner',
+		'TicketReadMapper::findSeenForTickets' => 'testReadStateIsScopedToItsOwner',
 	];
 
 	/**
@@ -173,10 +246,39 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'board#show' => 'testBoardShowEndpointRefusesNonMembers',
 		'ticket#index' => 'testTicketIndexEndpointMatchesTheVisibleSet',
 		'ticket#show' => 'testTicketShowEndpointMatchesTheVisibleSet',
-		'ticket#visibilityImpact' => 'testVisibilityImpactNamesWhoLosesAccess',
 		'deepLink#ticket' => 'testDeepLinkTellsOnlyWhatTheViewerMaySee',
 		'step#assignable' => 'testAssignableNeverOffersSomeoneWhoCannotSeeTheTicket',
 		'memberSearch#search' => 'testMemberSearchRefusesEveryoneWithoutManagementRights',
+		'notifyPref#index' => 'testEveryViewerSeesOnlyTheirOwnChannelSwitches',
+		'task#index' => 'testTaskEndpointMatchesTheVisibleSetAcrossBoards',
+		'overview#index' => 'testOverviewEndpointMatchesTheVisibleSetAcrossBoards',
+	];
+
+	/**
+	 * Der Ueberblick (#76) — **alles Sichtbare** ueber alle Boards, nur Offenes.
+	 *
+	 * Die breiteste Menge dieser Matrix und deshalb die wichtigste Zeile: Jede
+	 * andere Leseroute engt zusaetzlich ein (auf ein Board, auf meine Vorgaenge,
+	 * auf meine Schritte). Diese engt **nur** ueber die Sichtbarkeitsregel ein.
+	 * Faellt die Regel aus, faellt sie hier zuerst auf.
+	 *
+	 * Der Unterschied zu {@see VISIBLE} ist genau `public/carla` — geschlossen,
+	 * und der Ueberblick zeigt, wo etwas hakt, nicht was erledigt ist.
+	 *
+	 * **Bert traegt wieder den Kern.** Er ist im ersten Board intern, im zweiten
+	 * extern, und bekommt aus einer Abfrage je Board die dort geltende Menge:
+	 * `b:internal/bert` sieht er nur, weil er *dort* die Kundenseite ist;
+	 * `b:internal/erna` sieht er aus demselben Grund **nicht**. Wer die Rolle
+	 * einmal global aufloest, vertauscht die beiden.
+	 *
+	 * @var array<string, string[]>
+	 */
+	private const OVERVIEW_OPEN = [
+		self::ANNA => ['public/anna', 'public/bert', 'internal/anna', 'internal/bert', 'private/anna'],
+		self::BERT => ['public/anna', 'public/bert', 'internal/anna', 'internal/bert', 'private/bert', 'b:public/erna', 'b:internal/bert'],
+		self::CARLA => ['public/anna', 'public/bert', 'internal/carla', 'private/carla'],
+		self::DIRK => ['public/anna', 'public/bert', 'internal/carla'],
+		self::FREMD => [],
 	];
 
 	private LeakMatrixFixture $fixture;
@@ -185,6 +287,222 @@ class LeakMatrixTest extends IntegrationTestCase {
 		parent::setUp();
 
 		$this->fixture = new LeakMatrixFixture();
+	}
+
+	/**
+	 * **Der Ausgangskorb ist kein Betrachterpfad — und das ist die Erwartung.**
+	 *
+	 * Jeder andere Eintrag dieser Matrix beantwortet „was sieht wer". Hier gibt
+	 * es kein Wer: Am Ende steht der Nachlauf-Job, der eine Mail nachreicht. Er
+	 * hat kein Board, keine Rolle und keine Sichtbarkeit.
+	 *
+	 * Geprueft wird deshalb das Gegenteil des Ueblichen: Die Abfrage liefert
+	 * **absichtlich** die Zeilen aller Empfaenger. Wuerde sie filtern, waere das
+	 * ein Hinweis darauf, dass hier doch jemand mit Rechten mitliest — und dann
+	 * braeuchte es eine echte Erwartung je Betrachter statt dieser.
+	 *
+	 * Die strukturelle Haelfte der Zusage (kein `ViewerContext` in der Signatur)
+	 * prueft `ReadPathCompletenessTest::testTheseMappersNeverTakeAViewer`.
+	 */
+	public function testTheOutboxIsNotAViewerPath(): void {
+		$outbox = Server::get(MailOutboxMapper::class);
+		$now = new \DateTime();
+
+		foreach ([LeakMatrixFixture::ANNA, LeakMatrixFixture::CARLA] as $uid) {
+			$zeile = new MailOutbox();
+			$zeile->setRecipientUid($uid);
+			$zeile->setTicketId($this->fixture->ticketIds['public/anna']);
+			$zeile->setEvent(MailOutbox::EVENT_TICKET_ASSIGNED);
+			$zeile->setStatus(MailOutbox::STATUS_PENDING);
+			$zeile->setAttempts(0);
+			$zeile->setCreatedAt($now);
+			$outbox->insert($zeile);
+		}
+
+		$empfaenger = array_map(
+			static fn (MailOutbox $z): string => (string)$z->getRecipientUid(),
+			$outbox->findRetryable(),
+		);
+
+		$this->assertContains(LeakMatrixFixture::ANNA, $empfaenger);
+		$this->assertContains(
+			LeakMatrixFixture::CARLA,
+			$empfaenger,
+			'Der Nachlauf muss die Zeilen aller Empfaenger sehen — er ist niemandes Betrachter.',
+		);
+	}
+
+	/**
+	 * **Die Kanalschalter gehoeren ihrer Person.**
+	 *
+	 * Hier gibt es sehr wohl eine Grenze, sie verlaeuft nur nicht am Board,
+	 * sondern an der Benutzerkennung: Wer nach den Schaltern von A fragt,
+	 * bekommt nicht die von B. Das ist die ganze Erwartung — es gibt keine
+	 * Projektinhalte in dieser Tabelle, nur „will ich Mails".
+	 */
+	public function testChannelPreferencesAreScopedToTheirOwner(): void {
+		$prefs = Server::get(NotifyPrefMapper::class);
+
+		$aus = new NotifyPref();
+		$aus->setUserId(LeakMatrixFixture::ANNA);
+		$aus->setPrefKey(NotifyPref::CHANNEL_MAIL);
+		$aus->setEnabled(0);
+		$prefs->insert($aus);
+
+		$this->assertSame(
+			[NotifyPref::CHANNEL_MAIL],
+			array_map(static fn (NotifyPref $p): string => (string)$p->getPrefKey(), $prefs->findForUser(LeakMatrixFixture::ANNA)),
+		);
+		$this->assertSame(
+			[],
+			$prefs->findForUser(LeakMatrixFixture::CARLA),
+			'Carla hat nichts eingestellt — sie darf auch nichts von Anna sehen.',
+		);
+
+		// Und die Vorgabe: keine Zeile heisst „an".
+		$this->assertFalse($prefs->isEnabled(LeakMatrixFixture::ANNA, NotifyPref::CHANNEL_MAIL));
+		$this->assertTrue($prefs->isEnabled(LeakMatrixFixture::ANNA, NotifyPref::CHANNEL_BELL));
+		$this->assertTrue($prefs->isEnabled(LeakMatrixFixture::CARLA, NotifyPref::CHANNEL_MAIL));
+	}
+
+	/**
+	 * Der Lesestand (#79) gehört seiner Person — niemand sieht den einer anderen.
+	 *
+	 * Dieselbe Art Zusage wie bei den Kanalschaltern: Der erste Parameter ist
+	 * eine Benutzerkennung, und die ist die Grenze. Ein Stand entsteht nur beim
+	 * Öffnen, und öffnen kann jemand nur, was er sieht.
+	 */
+	public function testReadStateIsScopedToItsOwner(): void {
+		$reads = Server::get(TicketReadMapper::class);
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+
+		$reads->markSeen(LeakMatrixFixture::ANNA, $ticketId);
+
+		// Anna sieht ihren eigenen Stand …
+		$this->assertSame(
+			[$ticketId],
+			array_keys($reads->findSeenForTickets(LeakMatrixFixture::ANNA, [$ticketId])),
+		);
+		// … Carla, die denselben öffentlichen Vorgang sieht, aber nie geöffnet
+		// hat, bekommt nichts — schon gar nicht Annas Stand.
+		$this->assertSame(
+			[],
+			$reads->findSeenForTickets(LeakMatrixFixture::CARLA, [$ticketId]),
+			'Carla darf Annas Lesestand nicht sehen.',
+		);
+	}
+
+	/**
+	 * Der jüngste Kommentar je Vorgang (#79) folgt der gefilterten Menge — kein
+	 * Zeitstempel zu einem Vorgang, den der Betrachter nicht sieht.
+	 *
+	 * Gefüttert mit den sichtbaren IDs, wie die übrigen Kinder-Pfade; die
+	 * Antwort darf keine ID enthalten, die nicht darin steht.
+	 */
+	public function testNewestCommentFollowsTheFilteredTicketSet(): void {
+		$comments = Server::get(CommentMapper::class);
+		$tickets = Server::get(TicketMapper::class);
+
+		foreach (array_keys(self::VISIBLE) as $userId) {
+			$visibleIds = array_map(
+				static fn ($ticket): int => (int)$ticket->getId(),
+				$tickets->findVisibleInBoard($this->contextFor($userId)),
+			);
+
+			foreach (array_keys($comments->findNewestForTickets($visibleIds)) as $id) {
+				$this->assertContains(
+					$id,
+					$visibleIds,
+					$userId . ': jüngster Kommentar zu einem nicht sichtbaren Vorgang',
+				);
+			}
+		}
+	}
+
+	/**
+	 * **Die drei Stufen der Aufloesung** (Entscheidung mit Axel am 2026-08-11).
+	 *
+	 * Projektzeile schlaegt globale Zeile schlaegt Vorgabe. Der Fall, der sie
+	 * noetig gemacht hat: Wer in vielen Projekten Mitglied ist, aber nur wenige
+	 * davon fuehrt, muesste sonst alles abschalten — und verloere die
+	 * Zuweisungen mit.
+	 */
+	public function testProjectSettingsBeatTheGlobalOne(): void {
+		$prefs = Server::get(NotifyPrefMapper::class);
+		$board = $this->fixture->boardId;
+
+		// Global aus …
+		$global = new NotifyPref();
+		$global->setUserId(LeakMatrixFixture::ANNA);
+		$global->setPrefKey(NotifyPref::EVENT_TICKET_CREATED);
+		$global->setBoardId(NotifyPrefMapper::GLOBAL_SCOPE);
+		$global->setEnabled(0);
+		$prefs->insert($global);
+
+		$this->assertFalse(
+			$prefs->isEnabled(LeakMatrixFixture::ANNA, NotifyPref::EVENT_TICKET_CREATED, $board),
+			'Ohne Projektzeile gilt die globale — auch fuer Projekte, die es beim Einstellen noch nicht gab.',
+		);
+
+		// … dieses eine Projekt aber an.
+		$projekt = new NotifyPref();
+		$projekt->setUserId(LeakMatrixFixture::ANNA);
+		$projekt->setPrefKey(NotifyPref::EVENT_TICKET_CREATED);
+		$projekt->setBoardId($board);
+		$projekt->setEnabled(1);
+		$prefs->insert($projekt);
+
+		$this->assertTrue(
+			$prefs->isEnabled(LeakMatrixFixture::ANNA, NotifyPref::EVENT_TICKET_CREATED, $board),
+			'Die Projektzeile ist die Ausnahme und schlaegt die globale.',
+		);
+		$this->assertFalse(
+			$prefs->isEnabled(LeakMatrixFixture::ANNA, NotifyPref::EVENT_TICKET_CREATED, $board + 9999),
+			'Ein anderes Projekt bleibt bei der globalen Einstellung.',
+		);
+		$this->assertTrue(
+			$prefs->isEnabled(LeakMatrixFixture::ANNA, NotifyPref::EVENT_TICKET_ASSIGNED, $board),
+			'Ein anderer Anlass ist davon unberuehrt — der Rundruf abzuschalten heisst nicht, Zuweisungen abzuschalten.',
+		);
+	}
+
+	/**
+	 * **Jeder sieht nur seine eigenen Kanalschalter.**
+	 *
+	 * Die Route hat kein Board im Pfad und liefert keine Projektdaten — die
+	 * Erwartung ist deshalb eine andere als sonst in dieser Matrix, aber eine
+	 * echte: Die Grenze verlaeuft an der Benutzerkennung aus der Sitzung.
+	 *
+	 * Dass jemand in Projekt 7 keine Mails will, verraet nichts ueber Projekt 7.
+	 * Es verraet etwas ueber die Person — und die fragt selbst.
+	 */
+	public function testEveryViewerSeesOnlyTheirOwnChannelSwitches(): void {
+		$service = Server::get(NotifyPrefService::class);
+
+		// Je Projekt sind nur die **Anlaesse** einstellbar; die Kanaele gelten
+		// global (Entscheidung 2026-08-11).
+		$service->set(LeakMatrixFixture::ANNA, NotifyPref::EVENT_TICKET_CREATED, $this->fixture->boardId, false);
+		$service->set(LeakMatrixFixture::CARLA, NotifyPref::CHANNEL_BELL, NotifyPrefMapper::GLOBAL_SCOPE, false);
+
+		$annas = $service->forUser(LeakMatrixFixture::ANNA);
+		$carlas = $service->forUser(LeakMatrixFixture::CARLA);
+
+		$this->assertSame([], $annas['global'], 'Anna hat global nichts gesetzt.');
+		$this->assertSame(
+			[NotifyPref::EVENT_TICKET_CREATED => false],
+			$annas['boards'][$this->fixture->boardId] ?? [],
+		);
+
+		$this->assertSame([NotifyPref::CHANNEL_BELL => false], $carlas['global']);
+		$this->assertSame([], $carlas['boards'], 'Carla hat keine Projekt-Ausnahme — und schon gar nicht Annas.');
+
+		// Und der Urlaubsschalter: Ausnahmen weg, globale Zeile bleibt.
+		$service->clearBoardOverrides(LeakMatrixFixture::CARLA);
+		$this->assertSame(
+			[NotifyPref::CHANNEL_BELL => false],
+			$service->forUser(LeakMatrixFixture::CARLA)['global'],
+			'Die globale Zeile ist der Rueckfallwert, keine der Ausnahmen — sie bleibt stehen.',
+		);
 	}
 
 	/**
@@ -317,10 +635,15 @@ class LeakMatrixTest extends IntegrationTestCase {
 		// Jede Aufgabenmenge ist Teilmenge der sichtbaren Menge. Das ist die
 		// Zusage, die auch dann noch gilt, wenn Phase 4 Sortierung und
 		// Faelligkeit dazunimmt — ein neuer Filter darf sie nur verkleinern.
+		//
+		// Verglichen wird gegen die Sichtmenge **beider** Boards, je Board mit
+		// der dort geltenden Rolle. Gegen `VISIBLE` allein zu pruefen waere seit
+		// dem Zweitboard zu eng — und ein Test, den man weiten muss, weil er
+		// Richtiges anschlaegt, wird sonst leicht ganz gestrichen.
 		foreach (self::MY_TASKS_WITH_CLOSED as $userId => $tasks) {
 			$this->assertSame(
 				[],
-				array_values(array_diff($tasks, self::VISIBLE[$userId])),
+				array_values(array_diff($tasks, $this->visibleAnywhereFor($userId))),
 				$userId . ': Meine Aufgaben enthaelt Tickets ausserhalb der sichtbaren Menge.',
 			);
 		}
@@ -409,6 +732,364 @@ class LeakMatrixTest extends IntegrationTestCase {
 				. 'Matrix verlaesst sich darauf, dass TicketMapper der einzige Filter ist.',
 			);
 		}
+	}
+
+	/**
+	 * Der Endpunkt „Meine Aufgaben" — dieselbe Erwartung wie am Mapper, plus
+	 * die zwei Dinge, die es nur hier gibt.
+	 *
+	 * **Erstens: kein 404 fuer den Fremden.** Jede andere Leseroute haengt an
+	 * einem Board und weist ein Nichtmitglied mit 404 ab. Diese haengt an
+	 * keinem — sie kann nichts verbergen, was es zu verbergen gaebe, und
+	 * antwortet deshalb mit **leeren Listen**. Das ist kein Versehen, sondern
+	 * die einzige ehrliche Antwort: „Du hast keine Aufgaben" ist wahr.
+	 *
+	 * **Zweitens: die Schritte kommen aus der gefilterten Menge.** Jeder
+	 * gelieferte Schritt muss zu einem gelieferten Vorgang gehoeren. Ein
+	 * Schritt ohne seinen Vorgang waere die Auskunft, dass es ihn gibt.
+	 */
+	public function testTaskEndpointMatchesTheVisibleSetAcrossBoards(): void {
+		foreach ([self::ANNA, self::BERT, self::CARLA, self::DIRK] as $userId) {
+			$response = $this->taskController($userId)->index();
+			$this->assertSame(Http::STATUS_OK, $response->getStatus(), $userId);
+
+			$data = $response->getData();
+
+			$this->assertTicketLabels(
+				self::MY_TASKS_OPEN[$userId],
+				$data['tickets'],
+				$userId . ': Meine Tickets am Endpunkt',
+			);
+
+			$this->assertTicketLabels(
+				self::MY_STEPS_OPEN[$userId],
+				$data['stepTickets'],
+				$userId . ': Meine Arbeitsschritte am Endpunkt',
+			);
+
+			// **Die Anzahl zuerst.** Ohne sie waeren die Pruefungen darunter
+			// leere Schleifen: Ein Filter, der nichts durchlaesst, liesse den
+			// Abschnitt dauerhaft leer und den Test gruen.
+			$this->assertCount(
+				count(self::MY_STEPS_OPEN[$userId]),
+				$data['steps'],
+				$userId . ': Die Zahl der Schritte passt nicht zur Zahl ihrer Vorgaenge.',
+			);
+
+			// Jeder Schritt gehoert zu einem Vorgang, der mitgeliefert wurde.
+			$geliefert = array_map(static fn ($t): int => (int)$t->getId(), $data['stepTickets']);
+			foreach ($data['steps'] as $step) {
+				$this->assertContains(
+					(int)$step->getTicketId(),
+					$geliefert,
+					$userId . ': Ein Schritt kommt ohne seinen Vorgang — das verraet dessen Existenz.',
+				);
+				$this->assertSame(
+					$userId,
+					(string)$step->getAssignedUserId(),
+					$userId . ': Der Endpunkt liefert einen fremden Arbeitsschritt.',
+				);
+				$this->assertFalse(
+					$step->isDone(),
+					$userId . ': Ein erledigter Schritt steht noch in „Meine Arbeitsschritte".',
+				);
+			}
+
+			// Die Herkunftszeile — ausgeschrieben, nicht gegen das Universum
+			// aller Fixture-Boards. Sonst faellt ein fremdes Board nicht auf.
+			$this->assertSame(
+				self::TASK_BOARDS[$userId],
+				array_values(array_map(static fn ($b): string => $b['title'], $data['boards'])),
+				$userId . ': Ein fremdes Board in der Herkunftszeile.',
+			);
+		}
+
+		// Und das Nichtmitglied: leere Listen, kein 404.
+		$fremd = $this->taskController(self::FREMD)->index();
+		$this->assertSame(Http::STATUS_OK, $fremd->getStatus());
+		$this->assertSame([], $fremd->getData()['tickets']);
+		$this->assertSame([], $fremd->getData()['steps']);
+		$this->assertSame([], $fremd->getData()['stepTickets']);
+		$this->assertSame([], $fremd->getData()['boards']);
+	}
+
+	/**
+	 * Der Mapper hinter dem Ueberblick — **dieselbe Erwartung wie am Endpunkt,
+	 * eine Schicht tiefer** (#76).
+	 *
+	 * Beide stehen da, und das ist Absicht: Der Endpunkt koennte nachtraeglich
+	 * filtern und damit einen zu breiten Mapper verdecken. Genau das tut er
+	 * sogar — er laesst archivierte Projekte weg. Die Fixture hat keine, die
+	 * Mengen sind hier also gleich; waere nur der Endpunkt geprueft, liesse
+	 * sich die Regel im Mapper aufweichen, ohne dass ein Test rot wird.
+	 */
+	public function testTheOverviewMapperNeverWidensBeyondTheVisibleSet(): void {
+		$tickets = Server::get(TicketMapper::class);
+
+		foreach (self::OVERVIEW_OPEN as $userId => $expected) {
+			$this->assertTicketLabels(
+				$expected,
+				$tickets->findVisibleAcrossBoardsAll($userId, TaskFilter::openOnly()),
+				$userId . ': Der Ueberblick am Mapper',
+			);
+		}
+	}
+
+	/**
+	 * **Die Namensliste des Ueberblicks deckt nur die eigenen Projekte** (#76).
+	 *
+	 * `findForUserBoards()` liest ueber alle Boards des Betrachters auf einmal —
+	 * noetig, weil die Wartemarke Namen nennt (#104) und ein Aufruf je Board bei
+	 * ueber zwanzig Projekten keine Loesung waere.
+	 *
+	 * Die Gefahr steckt in der Unterabfrage: Faellt sie weg, liefert die Methode
+	 * **jede** Mitgliedschaft der Instanz. Das waeren keine Ticketdaten, aber
+	 * die Mitgliederliste fremder Projekte — namentlich, auf der Startseite.
+	 *
+	 * Anna traegt die Zusicherung: Sie ist nur im ersten Board und darf Erna,
+	 * die es nur im zweiten gibt, nirgends sehen. Bert ist in beiden und
+	 * bekommt beide.
+	 */
+	public function testMemberNamesCoverOnlyMyOwnBoards(): void {
+		$members = Server::get(MemberMapper::class);
+		$erwartet = [
+			self::ANNA => [$this->fixture->boardId],
+			self::BERT => [$this->fixture->boardId, $this->fixture->otherBoardId],
+			self::CARLA => [$this->fixture->boardId],
+			self::DIRK => [$this->fixture->boardId],
+			self::FREMD => [],
+		];
+
+		foreach ($erwartet as $userId => $boards) {
+			$gefunden = $members->findForUserBoards($userId);
+
+			$boardIds = array_values(array_unique(array_map(
+				static fn ($m): int => (int)$m->getBoardId(),
+				$gefunden,
+			)));
+			sort($boardIds);
+			sort($boards);
+
+			$this->assertSame($boards, $boardIds, $userId . ': fremde Projekte in der Namensliste');
+
+			// Und die Gegenprobe zur Gegenprobe: Wer Boards hat, bekommt auch
+			// Mitglieder. Ohne sie waere eine Methode, die immer nichts
+			// liefert, dauerhaft gruen.
+			if ($boards !== []) {
+				$this->assertNotEmpty($gefunden, $userId . ': keine Mitglieder trotz eigener Projekte');
+			}
+		}
+
+		// Anna sieht Erna nicht — namentlich benannt, damit ein Fehlschlag die
+		// Ursache nennt statt einer ID-Liste.
+		$annasLeute = array_map(
+			static fn ($m): string => (string)$m->getUserId(),
+			$members->findForUserBoards(self::ANNA),
+		);
+		$this->assertNotContains(
+			LeakMatrixFixture::ERNA,
+			$annasLeute,
+			'Anna bekommt ein Mitglied aus Ernas Zweitboard in ihre Namensliste.',
+		);
+	}
+
+	/**
+	 * Der Ueberblick (#76) — **die breiteste Menge dieser Matrix**.
+	 *
+	 * Jede andere Leseroute engt zusaetzlich ein: auf ein Board, auf meine
+	 * Vorgaenge, auf meine Schritte. Diese engt allein ueber die
+	 * Sichtbarkeitsregel ein — sie ist damit die Route, an der ein Ausfall der
+	 * Regel als Erstes und am deutlichsten sichtbar wuerde. Und sie ist die
+	 * **Startseite**: Was hier durchscheint, sieht man, ohne etwas anzuklicken.
+	 *
+	 * Drei Zusicherungen, von denen die letzten beiden neu sind:
+	 *
+	 * 1. **Die Ticketmenge** ist ausgeschrieben, nicht als Teilmenge geprueft.
+	 * 2. **Kein Wartezustand ohne seinen Vorgang.** Der Wartezustand nennt
+	 *    Kennungen von Personen und ein Datum; stuende er zu einem Vorgang da,
+	 *    den der Betrachter nicht sehen darf, waere das die Auskunft, dass es
+	 *    ihn gibt — und wer daran arbeitet.
+	 * 3. **Die Namen decken nur die eigenen Projekte.** `namesForUserBoards()`
+	 *    ist mit #76 dazugekommen und liest ueber alle Boards des Betrachters
+	 *    auf einmal. Eine Zuordnung, die ein fremdes Projekt mitbringt,
+	 *    verriete dessen Mitglieder — namentlich. Anna darf Ernas Zweitboard
+	 *    nicht in ihrer Namensliste haben, Bert schon.
+	 */
+	public function testOverviewEndpointMatchesTheVisibleSetAcrossBoards(): void {
+		foreach ([self::ANNA, self::BERT, self::CARLA, self::DIRK] as $userId) {
+			$response = $this->overviewController($userId)->index();
+			$this->assertSame(Http::STATUS_OK, $response->getStatus(), $userId);
+
+			$data = $response->getData();
+
+			$this->assertTicketLabels(
+				self::OVERVIEW_OPEN[$userId],
+				$data['tickets'],
+				$userId . ': Der Ueberblick am Endpunkt',
+			);
+
+			// (2) Jeder Wartezustand gehoert zu einem gelieferten Vorgang.
+			$geliefert = array_map(static fn ($t): int => (int)$t->getId(), $data['tickets']);
+			foreach (array_keys($data['waiting']) as $ticketId) {
+				$this->assertContains(
+					(int)$ticketId,
+					$geliefert,
+					$userId . ': Ein Wartezustand ohne seinen Vorgang — das verraet dessen Existenz.',
+				);
+			}
+
+			// (3) Die Namen decken genau die eigenen Projekte.
+			$this->assertSame(
+				self::TASK_BOARDS[$userId],
+				array_values(array_map(static fn ($b): string => $b['title'], $data['boards'])),
+				$userId . ': Ein fremdes Board in der Herkunftszeile.',
+			);
+			$this->assertSame(
+				array_keys($data['boards']),
+				array_keys($data['names']),
+				$userId . ': Die Namensliste deckt andere Projekte als die Herkunftszeile — '
+				. 'eines von beidem liefert ein fremdes Projekt mit.',
+			);
+		}
+
+		// Und das Nichtmitglied: leere Listen, kein 404 — wie bei `task#index`
+		// und aus demselben Grund. Diese Route haengt an keinem Board, sie kann
+		// nichts verbergen, was es zu verbergen gaebe.
+		$fremd = $this->overviewController(self::FREMD)->index();
+		$this->assertSame(Http::STATUS_OK, $fremd->getStatus());
+		$this->assertSame([], $fremd->getData()['tickets']);
+		$this->assertSame([], $fremd->getData()['waiting']);
+		$this->assertSame([], $fremd->getData()['boards']);
+		$this->assertSame([], $fremd->getData()['names']);
+	}
+
+	/**
+	 * **Das Akzeptanzkriterium von Phase 4, woertlich:** Eine Person, die in
+	 * Board A intern und in Board B extern ist, sieht in **einer** Abfrage die
+	 * je Board korrekte Menge.
+	 *
+	 * Bert ist diese Person. Der Test steht neben
+	 * {@see testMyTasksNeverWidensBeyondTheVisibleSet()}, weil der die Mengen
+	 * vergleicht — dieser hier benennt, **warum** sie so aussehen, und faellt
+	 * mit einer Meldung, die die Ursache nennt statt einer ID-Liste.
+	 *
+	 * Die beiden entscheidenden Zeilen kann keine Implementierung zugleich
+	 * erfuellen, die die Rolle global bestimmt: `b:internal/erna` (Erzeuger
+	 * intern) bleibt ihm verborgen, `b:internal/bert` (Erzeuger extern) nicht —
+	 * im ersten Board ist es genau andersherum.
+	 */
+	public function testTheSameuserHasADifferentRoleInEachBoard(): void {
+		$tickets = Server::get(TicketMapper::class);
+		$bert = self::BERT;
+
+		$sichtbarInB = $this->fixture->labelsOfTickets(
+			$tickets->findVisibleInBoard($this->fixture->contextFor($bert, $this->fixture->otherBoardId)),
+		);
+
+		$this->assertSame(
+			['b:internal/bert', 'b:public/erna'],
+			$sichtbarInB,
+			'Bert ist im Zweitboard die Kundenseite. Er darf dort das interne Ticket der '
+			. 'internen Seite NICHT sehen — im ersten Board sieht er das Gegenstueck sehr wohl.',
+		);
+
+		// Und die Gegenprobe im ersten Board, in derselben Pruefung: Dort ist er
+		// intern und sieht `internal/anna`, das interne Ticket der anderen
+		// internen Person. Beides zusammen schliesst die globale Rollenaufloesung
+		// aus — eine der beiden Zeilen faellt bei ihr immer.
+		$this->assertContains(
+			'internal/anna',
+			$this->fixture->labelsOfTickets(
+				$tickets->findVisibleInBoard($this->fixture->contextFor($bert)),
+			),
+			'Im ersten Board ist Bert intern und muss das interne Ticket der internen Seite sehen.',
+		);
+	}
+
+	/**
+	 * „Meine Arbeitsschritte" ist eine **andere Menge** als „Meine Tickets".
+	 *
+	 * Der Beleg fuer den eigenen Lesepfad: Berts Schritt haengt an
+	 * `b:public/erna`, einem Vorgang, fuer den er weder verantwortlich noch
+	 * mitarbeitend ist. `findVisibleAcrossBoards()` liefert ihn deshalb nicht —
+	 * und liefert stattdessen Vorgaenge, an denen Bert kein Schritt gehoert.
+	 * Waeren die beiden Mengen gleich, braeuchte es den zweiten Pfad nicht.
+	 */
+	public function testMyStepsAreADifferentSetThanMyTickets(): void {
+		$tickets = Server::get(TicketMapper::class);
+
+		$mitSchritt = $this->fixture->labelsOfTickets(
+			$tickets->findVisibleWithMyOpenSteps(self::BERT, TaskFilter::openOnly()),
+		);
+		$meineTickets = $this->fixture->labelsOfTickets(
+			$tickets->findVisibleAcrossBoards(self::BERT, TaskFilter::openOnly()),
+		);
+
+		$this->assertContains('b:public/erna', $mitSchritt, 'Der zugewiesene Schritt fehlt.');
+		$this->assertNotContains(
+			'b:public/erna',
+			$meineTickets,
+			'Wenn dieser Vorgang auch in „Meine Tickets" stuende, waere der zweite Lesepfad ueberfluessig — '
+			. 'dann waere die Fixture stumpf geworden, nicht der Code richtig.',
+		);
+	}
+
+	/**
+	 * Und derselbe Pfad verraet nichts: Niemand bekommt ueber einen
+	 * Arbeitsschritt einen Vorgang zu sehen, den die Regel verbirgt.
+	 *
+	 * Das ist die eigentliche Zusage dieses Lesepfades. Ein Schritt wird zwar
+	 * nur an jemanden vergeben, der den Vorgang sehen darf — aber Rollen
+	 * wechseln, und `assigned_role` ist eingefroren. Die Sichtbarkeit muss
+	 * deshalb aus dem JOIN kommen und nicht aus der Zuweisung.
+	 */
+	public function testMyStepsNeverWidensBeyondTheVisibleSet(): void {
+		$tickets = Server::get(TicketMapper::class);
+
+		foreach (self::MY_STEPS_OPEN as $userId => $expected) {
+			// Erst die **ausgeschriebene** Menge: Eine Teilmengenpruefung allein
+			// bliebe gruen, wenn der Schrittfilter ganz entfiele.
+			$this->assertTicketLabels(
+				$expected,
+				$tickets->findVisibleWithMyOpenSteps($userId, TaskFilter::openOnly()),
+				$userId . ': Meine Arbeitsschritte',
+			);
+
+			// Und die Zusage des Lesepfades: nichts davon liegt ausserhalb der
+			// Sichtmenge. Ein Schritt wird zwar nur an jemanden vergeben, der
+			// den Vorgang sehen darf — aber Rollen wechseln, und
+			// `assigned_role` ist eingefroren.
+			foreach ($this->fixture->labelsOfTickets(
+				$tickets->findVisibleWithMyOpenSteps($userId, TaskFilter::withClosed()),
+			) as $label) {
+				$this->assertContains(
+					$label,
+					$this->visibleAnywhereFor($userId),
+					$userId . ': „Meine Arbeitsschritte" zeigt ' . $label . ', obwohl die Regel es verbirgt.',
+				);
+			}
+		}
+	}
+
+	/**
+	 * Alles, was dieser Betrachter irgendwo sehen darf — ueber beide Boards.
+	 *
+	 * @return string[]
+	 */
+	private function visibleAnywhereFor(string $userId): array {
+		$tickets = Server::get(TicketMapper::class);
+
+		$labels = $this->fixture->labelsOfTickets(
+			$tickets->findVisibleInBoard($this->contextFor($userId)),
+		);
+
+		if ($userId === self::BERT) {
+			$labels = array_merge($labels, $this->fixture->labelsOfTickets(
+				$tickets->findVisibleInBoard($this->fixture->contextFor($userId, $this->fixture->otherBoardId)),
+			));
+		}
+
+		return $labels;
 	}
 
 	/**
@@ -531,13 +1212,25 @@ class LeakMatrixTest extends IntegrationTestCase {
 	 * Stelle, an der jemand spaeter „nur schnell" etwas dazunimmt.
 	 */
 	public function testBoardIndexEndpointFollowsMembership(): void {
-		foreach ([self::ANNA, self::BERT, self::CARLA, self::DIRK] as $userId) {
+		// Bert ist in **beiden** Boards Mitglied (im zweiten als Kundenseite),
+		// alle uebrigen nur im ersten. Die Liste folgt der Mitgliedschaft und
+		// sonst nichts.
+		$expected = [
+			self::ANNA => ['Leak-Matrix'],
+			self::BERT => ['Leak-Matrix', 'Leak-Matrix Zweitboard'],
+			self::CARLA => ['Leak-Matrix'],
+			self::DIRK => ['Leak-Matrix'],
+		];
+
+		foreach ($expected as $userId => $titles) {
 			$response = $this->boardController($userId)->index();
 
 			$this->assertSame(Http::STATUS_OK, $response->getStatus(), $userId);
 			$this->assertSame(
-				['Leak-Matrix'],
-				array_map(static fn ($b): string => (string)$b->getTitle(), $response->getData()),
+				$titles,
+				// Seit #115 liefert index() Arrays (jsonSerialize + pinned), keine
+				// Entities — die HTTP-Ausgabe ist dieselbe, die Rohform hier nicht.
+				array_map(static fn (array $b): string => (string)$b['title'], $response->getData()),
 				$userId . ' bekommt eine andere Boardliste als erwartet.',
 			);
 		}
@@ -708,11 +1401,14 @@ class LeakMatrixTest extends IntegrationTestCase {
 	 * registrierten** — Board-, Einzel-, Deep-Link- und projektuebergreifende
 	 * Abfrage plus die Zaehler.
 	 *
-	 * Er prueft ausserdem die beiden Wege, die `wouldSee()` benutzen
-	 * (Herunterstufen-Dialog und Schrittzuweisung). Dort steht **keine** eigene
-	 * Loeschpruefung, und das ist Absicht: Beide bekommen ihr Ticket aus einer
-	 * bereits gefilterten Abfrage. Dieser Test belegt, dass die Annahme traegt —
-	 * ohne ihn waere sie bloss eine Behauptung im Kommentar.
+	 * Er prueft ausserdem den Weg, der `wouldSee()` benutzt (Schrittzuweisung).
+	 * Dort steht **keine** eigene Loeschpruefung, und das ist Absicht: Er
+	 * bekommt sein Ticket aus einer bereits gefilterten Abfrage. Dieser Test
+	 * belegt, dass die Annahme traegt — ohne ihn waere sie bloss eine
+	 * Behauptung im Kommentar.
+	 *
+	 * Bis #103 stand hier ein zweiter solcher Weg, der Herunterstufen-Dialog
+	 * (`visibilityImpact`). Er ist mit der Rueckfrage aufgegeben.
 	 */
 	public function testADeletedTicketLeavesEveryReadPath(): void {
 		$tickets = Server::get(TicketMapper::class);
@@ -747,7 +1443,6 @@ class LeakMatrixTest extends IntegrationTestCase {
 			foreach ([
 				fn (): mixed => $tickets->findVisible($kontext, $ticketId),
 				fn (): mixed => $tickets->findVisibleAnywhere($userId, $ticketId),
-				fn (): mixed => $service->visibilityImpact($kontext, $ticketId, TicketScope::VISIBILITY_INTERNAL),
 				fn (): mixed => $steps->assignableFor($kontext, $ticketId),
 			] as $index => $pfad) {
 				try {
@@ -970,43 +1665,39 @@ class LeakMatrixTest extends IntegrationTestCase {
 	}
 
 	/**
-	 * Was ein Herunterstufen kostet: Namen und Zahlen, keine Warnung.
+	 * **Die Anhaenge-Absage nennt ihre Zahl im Rumpf** (§3.10 Stufe 1).
 	 *
-	 * Ueber den Controller, nicht den Service direkt — sonst bliebe die
-	 * eigentliche Route (Parameterbindung, Fehlerabbildung auf HTTP-Status)
-	 * ungeprueft, obwohl {@see ReadPathRegistry::ROUTE_PATHS} sie als
-	 * gefahren fuehrt.
+	 * Steht hier als Ersatz fuer `testVisibilityImpactNamesWhoLosesAccess`, das
+	 * mit `visibility-impact` weggefallen ist (#103). Der Lesepfad, der die
+	 * Anhaenge vorab zaehlte, ist aufgegeben — die Oberflaeche erfaehrt den Fall
+	 * seither allein aus dieser Antwort.
+	 *
+	 * **Geprueft wird die Form, nicht nur die Ablehnung.** Der Server
+	 * beantwortet zwei verschiedene Faelle mit 409: den Versionskonflikt und
+	 * diesen. Wer sie unterscheiden will, hat nur das Feld `attachments` — faellt
+	 * es weg, meldet die Oberflaeche der Person mit Anhaengen „bitte neu laden",
+	 * und Neuladen hilft nichts. `TicketWritePathTest` prueft die Ausnahme am
+	 * Dienst; hier steht, was ueber die Leitung geht.
 	 */
-	public function testVisibilityImpactNamesWhoLosesAccess(): void {
+	public function testTheAttachmentRefusalCarriesItsCountOverTheWire(): void {
 		$controller = $this->ticketController(self::ANNA);
 		$boardId = $this->fixture->boardId;
 		$publicAnna = $this->fixture->ticketIds['public/anna'];
 
-		// public/anna sehen alle vier. Auf 'internal' verlieren die beiden
-		// Externen den Zugriff, auf 'private' zusaetzlich Bert.
-		$response = $controller->visibilityImpact($boardId, $publicAnna, 'internal');
-		$this->assertSame(Http::STATUS_OK, $response->getStatus());
-		$internal = $response->getData();
-		sort($internal['losing']);
-		$this->assertSame([self::CARLA, self::DIRK], $internal['losing']);
-		$this->assertSame(1, $internal['comments'], 'Jedes Ticket der Fixture hat genau einen Kommentar.');
-		$this->assertSame(1, $internal['attachments']);
+		// Die Fixture haengt genau einen Anhang an dieses Ticket.
+		$response = $controller->visibility($boardId, $publicAnna, 1, 'internal');
 
-		$private = $controller->visibilityImpact($boardId, $publicAnna, 'private')->getData();
-		sort($private['losing']);
-		$this->assertSame([self::BERT, self::CARLA, self::DIRK], $private['losing']);
+		$this->assertSame(Http::STATUS_CONFLICT, $response->getStatus());
+		$daten = $response->getData();
+		$this->assertArrayHasKey('attachments', $daten, 'Ohne die Zahl ist die Absage vom Versionskonflikt nicht zu trennen.');
+		$this->assertSame(1, $daten['attachments']);
+		$this->assertNotSame('', (string)($daten['error'] ?? ''));
 
-		// Hochstufen nimmt niemandem etwas.
-		$public = $controller->visibilityImpact($boardId, $this->fixture->ticketIds['private/anna'], 'public')->getData();
-		$this->assertSame([], $public['losing']);
-
-		// Ein unbekannter Wert ist eine 400, kein durchgereichter Serverfehler.
-		$badRequest = $controller->visibilityImpact($boardId, $publicAnna, 'gestohlen');
-		$this->assertSame(Http::STATUS_BAD_REQUEST, $badRequest->getStatus());
-
-		// Das Nichtmitglied bekommt 404 wie an jedem anderen Lesepfad.
-		$fremdResponse = $this->ticketController(self::FREMD)->visibilityImpact($boardId, $publicAnna, 'internal');
-		$this->assertSame(Http::STATUS_NOT_FOUND, $fremdResponse->getStatus());
+		// Und der Vorgang steht unveraendert da.
+		$this->assertSame(
+			TicketScope::VISIBILITY_PUBLIC,
+			Server::get(TicketMapper::class)->findVisible($this->contextFor(self::ANNA), $publicAnna)->getVisibility(),
+		);
 	}
 
 	/**
@@ -1068,6 +1759,28 @@ class LeakMatrixTest extends IntegrationTestCase {
 		);
 	}
 
+	private function taskController(string $userId): TaskController {
+		return new TaskController(
+			$this->createStub(IRequest::class),
+			Server::get(TicketMapper::class),
+			Server::get(StepMapper::class),
+			Server::get(BoardMapper::class),
+			$userId,
+		);
+	}
+
+	private function overviewController(string $userId): OverviewController {
+		return new OverviewController(
+			$this->createStub(IRequest::class),
+			Server::get(TicketMapper::class),
+			Server::get(StepMapper::class),
+			Server::get(BoardMapper::class),
+			Server::get(WaitStateCalculator::class),
+			Server::get(MemberService::class),
+			$userId,
+		);
+	}
+
 	private function boardController(string $userId): BoardController {
 		return new BoardController(
 			$this->createStub(IRequest::class),
@@ -1075,6 +1788,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 			Server::get(MemberService::class),
 			Server::get(ColumnMapper::class),
 			Server::get(BoardAccess::class),
+			Server::get(BoardPinService::class),
 			$userId,
 		);
 	}
@@ -1107,7 +1821,9 @@ class LeakMatrixTest extends IntegrationTestCase {
 			Server::get(StepMapper::class),
 			Server::get(AttachmentMapper::class),
 			Server::get(TicketUserMapper::class),
+			Server::get(TicketReadMapper::class),
 			Server::get(TicketService::class),
+			Server::get(AttachmentService::class),
 			Server::get(WaitStateCalculator::class),
 			Server::get(BoardAccess::class),
 			$userId,

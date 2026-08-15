@@ -16,7 +16,7 @@
 
 import type { Board, Column, Member, MemberRole } from '@/types/board'
 
-import { apiGet, apiPatch, apiPost, apiPut } from '@/services/api'
+import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from '@/services/api'
 
 /**
  * Ein neues Projekt. Wer anlegt, wird Eigentümer und interner Verwalter.
@@ -49,6 +49,8 @@ export async function createBoard(data: {
  * @param changes.orgInternal
  * @param changes.orgExternal
  * @param changes.chatUrl
+ * @param changes.folderPublicPath
+ * @param changes.folderInternalPath
  */
 export async function updateBoard(boardId: number, changes: {
 	title?: string
@@ -56,6 +58,15 @@ export async function updateBoard(boardId: number, changes: {
 	orgInternal?: string | null
 	orgExternal?: string | null
 	chatUrl?: string | null
+	/**
+	 * Die beiden Projektordner als **Pfad**.
+	 *
+	 * Gespeichert wird daraus die Datei-ID; der Pfad benennt den Ordner nur
+	 * (§5.18). Zurück kommt der aufgelöste, kanonische Pfad — nicht der
+	 * getippte. Der leere String entfernt die Zuordnung.
+	 */
+	folderPublicPath?: string
+	folderInternalPath?: string
 }): Promise<Board> {
 	return apiPatch<Board, typeof changes>(`/boards/${boardId}`, changes)
 }
@@ -101,6 +112,28 @@ export async function renameColumn(boardId: number, columnId: number, title: str
  */
 export async function reorderColumns(boardId: number, columnIds: number[]): Promise<Column[]> {
 	return apiPut<Column[], { columnIds: number[] }>(`/boards/${boardId}/columns/order`, { columnIds })
+}
+
+/**
+ * Eine Spalte entfernen — **immer mit Zielspalte**.
+ *
+ * Es wird nichts gelöscht, sondern verschoben: Die Spalte enthält womöglich
+ * Vorgänge, die der Löschende nicht sehen darf. Eine Rückfrage könnte dann nur
+ * zwischen zwei Fehlern wählen — eine Zahl über alle verriete Verborgenes, eine
+ * Zahl über die sichtbaren löschte ungefragt mehr, als sie ankündigt.
+ *
+ * Nur der Eigentümer des Projekts darf das; Verwaltungsrecht allein reicht
+ * nicht und ergibt 403.
+ *
+ * @param boardId Kennung des Projekts.
+ * @param columnId Die Spalte, die wegfällt.
+ * @param targetColumnId Wohin ihre Vorgänge wandern — Pflicht, keine Vorbelegung.
+ */
+export async function deleteColumn(boardId: number, columnId: number, targetColumnId: number): Promise<void> {
+	await apiDelete<void, { targetColumnId: number }>(
+		`/boards/${boardId}/columns/${columnId}`,
+		{ targetColumnId },
+	)
 }
 
 /**

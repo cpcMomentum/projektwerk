@@ -25,6 +25,21 @@
 	.app-projektwerk .pw-view {
 		padding: 16px 12px 20px;
 	}
+
+	/*
+	 * **Nur die Kopfzeile macht dem Umschalter Platz.** Nextclouds
+	 * Navigations-Umschalter liegt auf dem Handy oben links UEBER dem Inhalt;
+	 * mit 12 px Innenabstand steht er auf der Ueberschrift, und aus „Projekte"
+	 * wird sichtbar „ojekte". Betraf alle vier Ansichten, aufgefallen an einem
+	 * Screenshot bei 375 px — im gerenderten Baum steht der Text vollstaendig
+	 * da, keine DOM-Pruefung haette es gemerkt.
+	 *
+	 * Der Abstand sitzt an der Kopfzeile und nicht an `.pw-view`, damit die
+	 * Liste darunter die volle Breite behaelt — dort zaehlt jede Spalte.
+	 */
+	.app-projektwerk .pw-view__head {
+		padding-inline-start: 44px;
+	}
 }
 
 .app-projektwerk .pw-view__head {
@@ -49,17 +64,25 @@
 	color: var(--color-text-maxcontrast);
 }
 
-/* ---- Abschnittskopf: 13 px, versal (rw-section > h3) -------------------- */
+/* ---- Abschnittskopf: 13 px, Satzschreibung ------------------------------ */
 
+/*
+ * **Keine Kapitaelchen mehr.** Nextclouds Design-Foundations sagen woertlich:
+ * „Do not use italics or upper case as they are less legible." Der Kopf trug
+ * beides — Versalien und eine Sperrung, die sie noch schwerer lesbar macht.
+ *
+ * Im Vorgang war das mit #99 behoben; hier stand es weiter, weil die Klasse
+ * auch die Spaltenkoepfe des Boards und die Einstellungen traegt und die
+ * Aenderung dort sichtbar ist. Sie ist trotzdem faellig: Eine Regel, die nur
+ * an der zuletzt angefassten Stelle gilt, ist keine.
+ */
 .app-projektwerk .pw-col__head {
 	display: flex;
 	align-items: baseline;
 	gap: 8px;
-	padding: 0 2px 10px;
+	padding: 0 2px 8px;
 	font-size: 13px;
 	font-weight: 600;
-	letter-spacing: 0.04em;
-	text-transform: uppercase;
 	color: var(--color-text-maxcontrast);
 }
 
@@ -121,7 +144,14 @@
 .app-projektwerk .pw-board {
 	display: grid;
 	grid-auto-flow: column;
-	grid-auto-columns: min(82vw, 300px);
+	/*
+	 * Auf dem Handy fast die volle Breite: Bei 82vw und 300 px Deckel blieben
+	 * auf einem 390-px-Geraet 1,4 Spalten stehen — der Rest der naechsten Spalte
+	 * ragt als Streifen herein, und eine Karte, die dorthin wandert, sieht aus
+	 * wie verschwunden. Der schmale Rest rechts ist Absicht und bleibt: Er
+	 * zeigt, dass es weitergeht.
+	 */
+	grid-auto-columns: min(88vw, 340px);
 	gap: 12px;
 	overflow-x: auto;
 	scroll-snap-type: x mandatory;
@@ -133,7 +163,16 @@
 	.app-projektwerk .pw-board {
 		grid-auto-flow: row;
 		grid-auto-columns: auto;
-		grid-template-columns: repeat(var(--pw-columns, 3), minmax(0, 1fr));
+		/*
+		 * **Mindestbreite statt `minmax(0, 1fr)`.** Mit `0` als Untergrenze
+		 * teilten sich sechs Spalten einen 1280er Schirm zu je rund 145 px —
+		 * darin brechen Titel mitten im Wort um („Hosting-Angebo t kalkulie
+		 * ren"). Axels Entscheidung vom 2026-08-09 lautet: volle Breite,
+		 * Spalten fest, waagerecht scrollen. Genau das leistet 260 px als
+		 * Untergrenze: Bei wenigen Spalten fuellen sie die Breite, bei vielen
+		 * wird gescrollt.
+		 */
+		grid-template-columns: repeat(var(--pw-columns, 3), minmax(260px, 1fr));
 		overflow-x: auto;
 	}
 }
@@ -188,7 +227,14 @@
 	flex-direction: column;
 	gap: 9px;
 	width: 100%;
-	padding: 14px 44px 13px 15px;
+	/*
+	 * **Rechts kein Sonderabstand mehr.** Hier standen 44 px, damit der Titel
+	 * nicht unter das absolut gesetzte „…"-Menue rutscht. Das Menue ueberlappt
+	 * aber nur die *Kopfzeile* — die Reservierung galt trotzdem fuer jede Zeile
+	 * und hat Titel wie Fusszeile 29 px zu frueh enden lassen. Sie sitzt jetzt
+	 * dort, wo das Menue tatsaechlich liegt (`.pw-card__top`).
+	 */
+	padding: 14px 15px 13px;
 	border: 0;
 	border-radius: inherit;
 	background: transparent;
@@ -198,8 +244,19 @@
 	cursor: pointer;
 }
 
-/* Das Menue liegt in der freien Ecke, die die Polsterung oben rechts laesst. */
-.app-projektwerk .pw-card__menu {
+/*
+ * Das Menue liegt in der freien Ecke, die die Polsterung oben rechts laesst.
+ *
+ * **Der Kindselektor ist noetig, nicht kosmetisch.** Nextclouds `NcActions`
+ * bringt `.action-item { position: relative }` aus einer bereichsbezogenen
+ * Regel mit — dieselbe Spezifitaet wie `.app-projektwerk .pw-card__menu`, und
+ * bei Gleichstand gewinnt die spaeter geladene. Folge: `top`/`right` kamen an,
+ * `position: absolute` nicht. Das Menue blieb im Textfluss, landete unten
+ * links und erzeugte unter der Karte einen weissen Streifen, den die
+ * Hervorhebung beim Ueberfahren nicht mitnahm — genau der Befund vom
+ * 2026-08-10.
+ */
+.app-projektwerk .pw-card > .pw-card__menu {
 	position: absolute;
 	top: 6px;
 	right: 6px;
@@ -236,10 +293,16 @@
 	text-decoration: line-through;
 }
 
+/*
+ * Nur diese Zeile weicht dem „…"-Menue aus — es sitzt absolut bei `top: 6px;
+ * right: 6px` und ueberlappt genau hier. Titel und Fusszeile laufen darunter
+ * durch bis an den Kartenrand.
+ */
 .app-projektwerk .pw-card__top {
 	display: flex;
 	align-items: center;
 	gap: 7px;
+	padding-inline-end: 29px;
 }
 
 .app-projektwerk .pw-num {
@@ -249,13 +312,18 @@
 	color: var(--color-text-maxcontrast);
 }
 
-/* Das optische Zeichen für „geändert" — kein Text auf der Karte. */
+/*
+ * „Seit deinem Blick geändert" (#79): ein kleiner, neutraler Punkt vorn in der
+ * Kopfzeile. Bewusst die Primärfarbe (ein „neu, sieh her") und nicht die
+ * Warnfarbe der Fusszeilen-Uhr — die trägt „liegt lange / überfällig", eine
+ * andere Aussage. Zwei Signale, zwei Farben, kein Widerspruch.
+ */
 .app-projektwerk .pw-changed {
-	width: 7px;
-	height: 7px;
+	flex: 0 0 auto;
+	width: 8px;
+	height: 8px;
 	border-radius: 50%;
-	background: var(--color-primary-element);
-	flex: none;
+	background: var(--color-primary-element, var(--color-main-text));
 }
 
 /*
@@ -290,22 +358,22 @@
 	font-size: 15px;
 	font-weight: 500;
 	line-height: 1.4;
-	overflow-wrap: anywhere;
+	/*
+	 * `break-word` statt `anywhere`: Beide verhindern, dass ein sehr langes
+	 * Wort die Spalte sprengt — aber `anywhere` erlaubt dem Browser, den
+	 * Umbruch auch dann mitten ins Wort zu legen, wenn ein normaler Umbruch
+	 * moeglich waere. Zusammen mit zu schmalen Spalten kam dabei
+	 * „Hosting-Angebo t kalkulie ren" heraus.
+	 */
+	overflow-wrap: break-word;
 }
 
 .app-projektwerk .pw-card__foot {
 	display: flex;
 	align-items: center;
-	gap: 10px;
+	gap: 6px;
 	color: var(--color-text-maxcontrast);
 	font-size: 11.5px;
-}
-
-.app-projektwerk .pw-card__foot .pw-right {
-	display: inline-flex;
-	align-items: center;
-	gap: 10px;
-	margin-left: auto;
 }
 
 .app-projektwerk .pw-steps {
@@ -420,25 +488,51 @@
 	gap: 12px;
 }
 
+/*
+ * Die Karte ist der Rahmen, der Knopf darin oeffnet — getrennt seit #115, weil
+ * der Stern ein zweites Bedienelement ist und ein Knopf nicht in einem Knopf
+ * stehen darf.
+ */
 .app-projektwerk .pw-boardcard {
+	position: relative;
 	display: flex;
-	flex-direction: column;
-	gap: 4px;
-	padding: 18px 20px;
-	min-height: var(--default-clickable-area, 44px);
 	background: var(--color-main-background);
 	border: 1px solid transparent;
 	border-radius: var(--border-radius-large);
 	box-shadow: 0 1px 2px rgba(0, 0, 0, .06), 0 1px 1px rgba(0, 0, 0, .04);
-	cursor: pointer;
-	text-align: left;
-	font: inherit;
-	color: inherit;
 	transition: box-shadow .12s ease;
 }
 
 .app-projektwerk .pw-boardcard:hover {
 	box-shadow: 0 2px 4px rgba(0, 0, 0, .1), 0 4px 12px rgba(0, 0, 0, .06);
+}
+
+.app-projektwerk .pw-boardcard__open {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	/* Rechts Platz fuer den Stern. */
+	padding: 18px 52px 18px 20px;
+	min-height: var(--default-clickable-area, 44px);
+	background: none;
+	border: none;
+	border-radius: var(--border-radius-large);
+	cursor: pointer;
+	text-align: left;
+	font: inherit;
+	color: inherit;
+}
+
+.app-projektwerk .pw-boardcard__pin {
+	position: absolute;
+	top: 8px;
+	inset-inline-end: 8px;
+}
+
+/* Der angepinnte Stern traegt die Signalfarbe, der leere bleibt ruhig. */
+.app-projektwerk .pw-boardcard__pin--on {
+	color: var(--color-favorite, var(--color-warning));
 }
 
 .app-projektwerk .pw-boardcard__title {
@@ -471,61 +565,140 @@
  * (§9). Sie steht neben Titel und Beschreibung, für alle Rollen gleich
  * voreingestellt.
  */
-.app-projektwerk .pw-visrow {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 8px;
-}
-
-.app-projektwerk .pw-visopt {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	flex: 1 1 190px;
-	padding: 10px 12px;
-	min-height: var(--default-clickable-area, 44px);
-	border: 1px solid var(--color-border-dark);
-	border-radius: var(--border-radius-large);
-	background: var(--color-main-background);
-	color: var(--color-main-text);
-	font: inherit;
-	text-align: left;
-	cursor: pointer;
-}
-
-.app-projektwerk .pw-visopt[aria-pressed='true'] {
-	border-color: var(--color-primary-element);
-	background: var(--color-primary-element-light);
-}
-
-.app-projektwerk .pw-visopt__body {
+.app-projektwerk .pw-vischoice {
 	display: flex;
 	flex-direction: column;
-	min-width: 0;
-}
-
-.app-projektwerk .pw-visopt__name {
-	font-size: 14px;
-	font-weight: 600;
-}
-
-.app-projektwerk .pw-visopt__hint {
-	font-size: 12px;
-	color: var(--color-text-maxcontrast);
-}
-
-.app-projektwerk .pw-visopt[aria-pressed='true'] .pw-visopt__hint {
-	color: inherit;
+	gap: 6px;
 }
 
 /*
- * Gesperrt heißt sichtbar-aber-nicht-wählbar, nicht unsichtbar: Wer „Nur ich"
- * sucht und es gar nicht fände, hielte es für einen Fehler. Der Grund steht im
- * Hinweistext an der Stelle des sonstigen.
+ * **Übernommen aus WorkTime** (`layout-seg` / `seg-btn`, dort in Zeiterfassung
+ * und Auswertung). Vorher standen hier drei große Karten mit je zwei Zeilen
+ * Text; der Abschnitt war damit 168 px hoch, auf dem Telefon 300. Für eine
+ * Entscheidung, die meistens einmal am Anfang fällt, war das die lauteste
+ * Stelle im ganzen Overlay.
+ *
+ * Der Umschalter ist nicht neu erfunden, sondern der aus WorkTime: Die Flotte
+ * soll an gleichen Stellen gleich aussehen, und ein zweites Muster für dieselbe
+ * Aufgabe wäre eines zu viel.
  */
-.app-projektwerk .pw-visopt:disabled {
-	opacity: 0.5;
-	cursor: not-allowed;
+/*
+ * Seit #99 rendert `NcRadioGroup` den Schalter. Was bleibt, ist die Einfassung:
+ * Er darf sich **nicht** ueber die volle Breite ziehen. `NcFormBox row` — der
+ * Behaelter innerhalb der Gruppe — setzt `flex: 1 1` auf seine Kinder; ohne
+ * `fit-content` waeren die drei Segmente so breit wie die Kopfzeile.
+ */
+.app-projektwerk .pw-vischoice {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	width: fit-content;
+	max-width: 100%;
+}
+
+/*
+ * Im Vorgang stehen die Segmente allein — der Erklaersatz entfaellt dort, also
+ * gibt es nichts abzusetzen.
+ *
+ * Ausnahme ist der Grund einer gesperrten Stufe: Der steht seit #103 auch hier
+ * und braucht seinen Abstand. `gap: 0` galt vorher fuer alles, weil ausser den
+ * Segmenten ohnehin nichts da war.
+ */
+.app-projektwerk .pw-vischoice--knapp {
+	gap: 0;
+}
+
+.app-projektwerk .pw-vischoice--knapp .pw-vishint--blocked {
+	margin-block-start: 4px;
+	font-size: 13px;
+}
+
+/*
+ * Im Vorgang sitzt der Schalter auf **34 px**, nicht auf 48.
+ *
+ * `NcRadioGroup` legt seine Knoepfe in eine `NcFormBox`, und die bemisst ihre
+ * Eintraege nach `--clickable-area-large`. In einer Werkzeugleiste ist das
+ * richtig; in der Kopfzeile des Vorgangs steht der Schalter neben `#0001` und
+ * dem Spaltennamen, und die drei sollen eine Zeile bilden (Axel, 2026-08-12).
+ * 34 px ist `--default-clickable-area` — die dokumentierte Untergrenze fuer
+ * Anklickbares, nicht darunter.
+ *
+ * Der Selektor greift ueber den **Namensteil** der CSS-Module-Klasse
+ * (`_radioGroupButton_ab12c`): Der Hash wechselt mit jeder Fassung von
+ * `@nextcloud/vue`, der Name davor nicht. Bricht die Klasse eines Tages weg,
+ * faellt der Schalter auf 48 px zurueck — sichtbar, aber nicht kaputt.
+ *
+ * Gilt nur fuer `--knapp`, also nur im Vorgang. Im Anlege-Formular bleibt es
+ * bei der Plattformgroesse.
+ */
+.app-projektwerk .pw-vischoice--knapp [class*='_radioGroupButton_'] {
+	min-height: var(--default-clickable-area, 34px);
+}
+
+/*
+ * `nowrap` (#103): „Alle Beteiligten" brach bei knappem Platz auf zwei Zeilen
+ * um. Das Segment wurde dadurch hoeher als seine beiden Nachbarn, und die ganze
+ * Gruppe rutschte unter die Nummer statt rechtsbuendig zu stehen — aus einer
+ * Zeile wurden drei. Ein Segmentschalter mit drei festen Beschriftungen hat
+ * nichts umzubrechen; wird der Platz zu knapp, schiebt sich die Gruppe lieber
+ * als Ganzes.
+ */
+.app-projektwerk .pw-vischoice--knapp [class*='_radioGroupButton__label'] {
+	font-size: 13px;
+	min-height: 0;
+	white-space: nowrap;
+}
+
+/*
+ * Der Ikonenkasten traegt `height: 100%` und wuchs damit auf 39 px, obwohl das
+ * Sinnbild 20 px misst — er war es, der den Schalter hochgetrieben hat, nicht
+ * die Beschriftung. Auf die Groesse des Sinnbilds festgelegt; die Klickflaeche
+ * bleibt am Knopf und damit bei 34 px.
+ */
+.app-projektwerk .pw-vischoice--knapp [class*='_radioGroupButton__icon'] {
+	height: 20px;
+	min-height: 0;
+}
+
+.app-projektwerk .pw-vishint {
+	margin: 0;
+	font-size: 13px;
+	line-height: 1.45;
+	color: var(--color-text-maxcontrast);
+}
+
+/*
+ * Gesperrt heisst sichtbar-aber-nicht-waehlbar, nicht unsichtbar: Wer „Nur ich"
+ * sucht und es gar nicht faende, hielte es fuer einen Fehler. Der Grund steht
+ * als eigene Zeile darunter — als `title` waere er auf dem Telefon unerreichbar.
+ *
+ * Ohne Kursive: Nextclouds Foundations fuehren sie ausdruecklich als schlechter
+ * lesbar auf, und dieser Satz ist eine Erklaerung, keine Verzierung.
+ */
+.app-projektwerk .pw-vishint--blocked {
+	color: var(--color-text-maxcontrast);
+}
+
+/*
+ * Im Vorgang sitzt der Schalter rechts in der Kopfzeile. Sobald der Widerruf
+ * oder die Anhaenge-Absage dazukommt, nimmt der Block die volle Zeilenbreite:
+ * Ein ganzer Satz passt nicht neben `#0001`.
+ *
+ * **Nur noch diese beiden** (#103). Der Zustand wurde fuer die Rueckfrage beim
+ * Herunterstufen gebaut — die ist weg, und mit ihr der Fall, der die volle
+ * Breite wirklich brauchte. Er bleibt, weil die Anhaenge-Absage ein ganzer Satz
+ * ist und der Widerruf ein Knopf mit Beschriftung.
+ */
+.app-projektwerk .pw-viscontrol {
+	margin-inline-start: auto;
+	width: fit-content;
+	max-width: 100%;
+}
+
+.app-projektwerk .pw-viscontrol--offen {
+	flex: 1 1 100%;
+	width: 100%;
+	margin-inline-start: 0;
 }
 
 /* ---- Ticket-Detail ------------------------------------------------------ */
@@ -534,47 +707,114 @@
  * Auf breiten Schirmen ein Overlay, auf schmalen vollflächig (§9) — derselbe
  * Pfad, damit Direktlinks immer tragen. NcModal macht genau das.
  */
+/*
+ * Alle Masse hier liegen auf Nextclouds 4-px-Raster
+ * (`--default-grid-baseline`). Die Foundations sagen dazu woertlich: „the base
+ * multiplier for all spacing. Use whole number multiples of this variable for
+ * all spacing, never raw numbers." Der Stand bis #99 lag mit 14 / 20 / 24 / 28
+ * / 6 px durchgehend daneben.
+ */
 .app-projektwerk .pw-detail {
-	padding: 20px 24px 28px;
+	padding: 12px 16px 24px;
 	display: flex;
 	flex-direction: column;
-	gap: 14px;
+	gap: 12px;
 }
 
-.app-projektwerk .pw-detail__head {
+/*
+ * Der Kopfbereich klebt: Nummer, Titel und Sichtbarkeit bleiben stehen, waehrend
+ * man durch lange Kommentare faehrt. Scroll-Container ist NcModals
+ * `.modal-container__content`.
+ *
+ * **`z-index: 1` und nicht 2** (#103). Auf 2 deckte die Zeile den
+ * Schliessen-Knopf von `NcModal` ab — der liegt auf 1, haengt an der Karte statt
+ * am scrollenden Inhalt, und keiner der beiden Kaesten dazwischen bildet einen
+ * eigenen Stapelkontext. Ein Klick auf die Mitte des X landete auf `.pw-meta`:
+ * Der Knopf war nicht teilweise verdeckt, sondern gar nicht erreichbar. Das
+ * `padding-inline-end` an `.pw-meta` haelt die Ecke nur **optisch** frei.
+ *
+ * Auf 1 steht die Zeile gleichauf mit dem Knopf — und der gewinnt, weil er im
+ * DOM **nach** `.modal-container__content` steht. Ueber `.pw-beschreibung`
+ * bleibt die Zeile trotzdem: Die ist `position: relative` ohne `z-index`, also
+ * Stufe 0.
+ *
+ * **Nicht 0.** Dann faellt die Zeile auf dieselbe Stufe wie `.pw-beschreibung`,
+ * und weil die im DOM spaeter steht, liefe ihr Text beim Scrollen ueber die
+ * klebende Zeile.
+ *
+ * **Nicht ueber `pointer-events`.** Den Kopf durchlaessig zu machen holt die
+ * Ecke zurueck, macht aber die ganze Zeile durchlaessig: Gemessen wurden 70
+ * Punkte innerhalb der Kopfzeile, an denen ein unter ihr weggescrollter
+ * `button.pw-abschnitt__aktion` anklickbar wurde — dieselbe Fehlerklasse, nur
+ * andersherum.
+ */
+.app-projektwerk .pw-kopf {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding-block-end: 8px;
+	background: var(--color-main-background);
+	box-shadow: 0 1px 0 var(--color-border);
+}
+
+/*
+ * Nummer, Spaltenname und Sichtbarkeit auf einer Zeile.
+ *
+ * `padding-inline-end` haelt die Ecke frei, in die `NcModal` seinen
+ * Schliessen-Knopf absolut setzt (34 px + 2 x 4 px Abstand). Ohne die
+ * Aussparung liegt der Sichtbarkeitsschalter darunter.
+ */
+.app-projektwerk .pw-meta {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
-	gap: 10px;
+	gap: 8px;
+	padding-inline-end: 42px;
+	min-height: var(--default-clickable-area, 34px);
 }
 
-.app-projektwerk .pw-detail__column {
-	font-size: 12px;
+/*
+ * 15 px statt 13: Nummer, Spalte und Sichtbarkeit haben dieselbe Wertigkeit und
+ * sollen wie eine Zeile wirken (Axel, 2026-08-12). Der Schalter daneben bleibt
+ * auf 34 px — flacher waere unter `--default-clickable-area`, und er ist der
+ * einzige Weg, die Sichtbarkeit zu aendern.
+ */
+.app-projektwerk .pw-meta .pw-num {
+	font-size: 15px;
 	font-weight: 600;
-	letter-spacing: 0.04em;
-	text-transform: uppercase;
+	font-variant-numeric: tabular-nums;
+	color: var(--color-main-text);
+}
+
+.app-projektwerk .pw-meta__sep {
 	color: var(--color-text-maxcontrast);
 }
 
-.app-projektwerk .pw-detail__closed {
-	font-size: 12px;
+/*
+ * Satzschreibung statt Kapitaelchen. Nextclouds Foundations: „Do not use
+ * italics or upper case as they are less legible."
+ */
+.app-projektwerk .pw-meta__column {
+	font-size: 15px;
+	font-weight: 500;
+	color: var(--color-main-text);
+}
+
+.app-projektwerk .pw-meta__closed {
+	font-size: 13px;
 	font-weight: 600;
 	color: var(--color-text-maxcontrast);
 }
 
 .app-projektwerk .pw-detail__title {
 	margin: 0;
-	font-size: 22px;
-	font-weight: 700;
+	font-size: 24px;
+	font-weight: 600;
 	line-height: 1.25;
 	overflow-wrap: anywhere;
-}
-
-.app-projektwerk .pw-detail__body {
-	margin: 0;
-	white-space: pre-wrap;
-	overflow-wrap: anywhere;
-	line-height: 1.55;
 }
 
 .app-projektwerk .pw-detail__empty {
@@ -582,24 +822,191 @@
 	color: var(--color-text-maxcontrast);
 }
 
-.app-projektwerk .pw-detail__section {
+/* ---- Beschreibung ------------------------------------------------------- */
+
+.app-projektwerk .pw-beschreibung {
+	position: relative;
+}
+
+/*
+ * Der Deckel: 150 px, danach ein weicher Verlauf.
+ *
+ * Bewusst `max-height` und nicht `-webkit-line-clamp` — mit
+ * `useExtendedMarkdown` sind Tabellen moeglich, und ein Clamp greift auf
+ * `display: table` nicht. Er versagte genau bei dem Inhalt, fuer den der Deckel
+ * da ist.
+ */
+.app-projektwerk .pw-beschreibung__text {
+	position: relative;
+	max-height: 150px;
+	overflow: hidden;
+	padding-inline-end: 42px;
+	line-height: 1.55;
+	overflow-wrap: anywhere;
+}
+
+.app-projektwerk .pw-beschreibung__text--offen {
+	max-height: none;
+}
+
+.app-projektwerk .pw-beschreibung__deckel {
+	position: absolute;
+	inset-inline: 0;
+	bottom: 0;
+	height: 32px;
+	pointer-events: none;
+	background: linear-gradient(transparent, var(--color-main-background));
+}
+
+.app-projektwerk .pw-beschreibung__text--offen .pw-beschreibung__deckel {
+	display: none;
+}
+
+/*
+ * **Links muessen als Links zu erkennen sein.**
+ *
+ * `NcRichText` rendert einen Markdown-Link als echtes `<a href target="_blank">`
+ * — anklickbar ist er also —, faerbt ihn aber nicht: Er stand in der normalen
+ * Textfarbe `#222` mitten im Absatz. Fuer ein Beschreibungsfeld, dessen
+ * Markdown-Faehigkeit gerade wegen der Links gewaehlt wurde, ist das der halbe
+ * Weg.
+ *
+ * Farbe **und** Unterstreichung, nicht nur Farbe (§9 Querschnitt: nie eine
+ * Auskunft allein ueber die Farbe).
+ *
+ * Gilt auch fuer die Kommentare — dort besteht dasselbe seit Phase 5, es faellt
+ * nur weniger auf, weil dort seltener Links stehen.
+ */
+.app-projektwerk .pw-beschreibung__text a,
+.app-projektwerk .pw-comment__text a {
+	color: var(--color-primary-element);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+.app-projektwerk .pw-beschreibung__text > :first-child {
+	margin-block-start: 0;
+}
+
+.app-projektwerk .pw-beschreibung__text > :last-child {
+	margin-block-end: 0;
+}
+
+.app-projektwerk .pw-beschreibung__mehr {
+	margin-block-start: 4px;
+}
+
+.app-projektwerk .pw-beschreibung__stift {
+	position: absolute;
+	top: 0;
+	inset-inline-end: 0;
+}
+
+.app-projektwerk .pw-beschreibung__edit {
 	display: flex;
 	flex-direction: column;
-	padding-top: 6px;
+	gap: 8px;
+}
+
+.app-projektwerk .pw-beschreibung__actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+}
+
+/* ---- Personen im Vorgang ------------------------------------------------ */
+
+/*
+ * Zwei nebeneinander, unter 520 px untereinander. Mehr als zwei koennen es
+ * nicht werden — der Vorgang traegt nach #97 genau zwei Rollen.
+ */
+.app-projektwerk .pw-personen {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 8px 16px;
+}
+
+@media (max-width: 520px) {
+	.app-projektwerk .pw-personen {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+/*
+ * Im Raster machen die Luecken die Abstaende — die Polsterung und der Trennstrich
+ * aus der allgemeinen Personenzeile wuerden hier Striche mitten durch die Zeile
+ * ziehen. Die Regeln gelten deshalb nur innerhalb von `.pw-personen`; die
+ * Mitgliederliste in den Einstellungen bleibt unberuehrt.
+ */
+.app-projektwerk .pw-personen .pw-person {
+	padding: 0;
+	gap: 8px;
+	min-height: var(--default-clickable-area, 34px);
+}
+
+.app-projektwerk .pw-personen .pw-person + .pw-person {
+	border-top: 0;
+}
+
+.app-projektwerk .pw-personen .pw-person__name {
+	font-size: 15px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.app-projektwerk .pw-personen .pw-person__org {
+	font-size: 13px;
+}
+
+.app-projektwerk .pw-person__picker {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.app-projektwerk .pw-person__flach {
+	color: var(--color-text-maxcontrast);
+}
+
+/* ---- Abschnitte im Vorgang ---------------------------------------------- */
+
+.app-projektwerk .pw-abschnitt {
+	display: flex;
+	flex-direction: column;
+	padding-block-start: 12px;
 	border-top: 1px solid var(--color-border);
+}
+
+.app-projektwerk .pw-abschnitt__kopf {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+	margin-block-end: 8px;
+}
+
+/* Satzschreibung, kein Versal, keine Sperrung — siehe oben. */
+.app-projektwerk .pw-abschnitt__kopf h3 {
+	margin: 0;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-abschnitt__zaehler {
+	font-size: 12px;
+	font-variant-numeric: tabular-nums;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-abschnitt__aktion {
+	margin-inline-start: auto;
 }
 
 /* ---- Sichtbarkeit ändern ------------------------------------------------ */
 
 .app-projektwerk .pw-viscontrol {
 	gap: 10px;
-}
-
-.app-projektwerk .pw-viscontrol__now {
-	display: flex;
-	align-items: center;
-	flex-wrap: wrap;
-	gap: 8px;
 }
 
 .app-projektwerk .pw-viscontrol__edit,
@@ -611,6 +1018,8 @@
 
 .app-projektwerk .pw-viscontrol__actions {
 	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
 	justify-content: flex-end;
 	gap: 8px;
 }
@@ -618,12 +1027,21 @@
 /*
  * Der Warnblock trägt Farbe UND Symbol UND Text (§9, „nie allein über Farbe").
  * Der Rand steht links, weil der Blick beim Lesen dort ankommt.
+ *
+ * Er traegt seit #103 nur noch die Anhaenge-Absage; die Rueckfrage beim
+ * Herunterstufen ist weg.
  */
 .app-projektwerk .pw-viscontrol__warn {
-	padding: 12px 14px;
+	padding: 10px 12px;
+	gap: 6px;
 	border-inline-start: 4px solid var(--color-warning, var(--color-error));
 	border-radius: var(--border-radius-large);
 	background: var(--color-background-hover);
+}
+
+/* Der Satz neben dem Warnsymbol — keine eigene Optik, nur kein Ueberlauf. */
+.app-projektwerk .pw-viscontrol__target {
+	min-width: 0;
 }
 
 .app-projektwerk .pw-viscontrol__lead {
@@ -633,19 +1051,6 @@
 	margin: 0;
 	font-weight: 600;
 	line-height: 1.45;
-}
-
-.app-projektwerk .pw-viscontrol__losing {
-	margin: 0;
-	padding-inline-start: 28px;
-	line-height: 1.6;
-	overflow-wrap: anywhere;
-}
-
-.app-projektwerk .pw-viscontrol__note {
-	margin: 0;
-	font-size: 13px;
-	color: var(--color-text-maxcontrast);
 }
 
 /* ---- Projekteinstellungen ------------------------------------------------ */
@@ -712,6 +1117,11 @@
 	color: var(--color-text-maxcontrast);
 }
 
+.app-projektwerk .pw-field--grow {
+	flex: 1 1 260px;
+	min-width: 0;
+}
+
 /* ---- Wartemarke ---------------------------------------------------------- */
 
 /*
@@ -730,17 +1140,58 @@
 	color: var(--color-main-text);
 	font-size: 12.5px;
 	font-weight: 600;
-	white-space: nowrap;
+	/*
+	 * **Kein `nowrap` mehr.** „wartet auf Kunde · seit 09.08." ist laenger als
+	 * eine schmale Spalte, und mit `nowrap` ragte die Marke sichtbar ueber den
+	 * Kartenrand hinaus. Sie darf jetzt umbrechen und bleibt in der Karte.
+	 */
+	max-width: 100%;
+	overflow-wrap: break-word;
+}
+
+/*
+ * **Auf der Karte weder Fuellung noch Rahmen — nur eine farbige Uhr.**
+ *
+ * Der Weg dahin ging ueber beides. Die gefuellte Pille lag als blasses Gelb
+ * unter den Avatar-Initialen, die selbst pastellfarben sind: zwei blasse
+ * Flaechen uebereinander, und man erkannte die Personen nicht mehr. Die
+ * Umrandung danach loeste das, zog aber einen Kasten um etwas, das kein
+ * Behaelter ist — sie konkurrierte mit dem Kartenrand selbst.
+ *
+ * Jetzt traegt ein einziger Glyph das Signal. Das reicht, weil das *Finden*
+ * wartender Vorgaenge nicht die Karte leistet, sondern der Filter „Nur
+ * wartend" in der Kopfzeile. Die Karte muss nur Auskunft geben, wenn man
+ * hinsieht — dafuer braucht sie nicht zu rufen.
+ */
+.app-projektwerk .pw-card__foot .pw-wait {
+	background: none;
+	border: 0;
+	padding: 0;
+	color: var(--color-main-text);
+}
+
+/*
+ * `--color-element-warning` (#BF7900), nicht `--color-warning-hover`: Letzteres
+ * ist ein Flaechen-Gelb (#ffe4a1) und auf Weiss kaum zu sehen; ersteres ist der
+ * Ton, den Nextcloud fuer warnende *Elemente* nimmt. Im Dunkelmodus dreht es
+ * auf #FFCC00, der Kontrast bleibt in beiden Richtungen.
+ *
+ * Ueberfaellig (#72) faerbt spaeter genau diese Regel rot um.
+ */
+.app-projektwerk .pw-wait__clock {
+	color: var(--color-element-warning, var(--color-warning-text));
+}
+
+.app-projektwerk .pw-wait__since {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	font-variant-numeric: tabular-nums;
 }
 
 .app-projektwerk .pw-wait--compact {
 	padding: 2px 7px;
 	font-size: 11.5px;
-}
-
-.app-projektwerk .pw-wait__sentence {
-	margin: 0;
-	line-height: 1.5;
 }
 
 /* ---- Arbeitsschritte ----------------------------------------------------- */
@@ -749,9 +1200,65 @@
 	display: flex;
 	align-items: center;
 	flex-wrap: wrap;
-	gap: 10px;
-	padding: 5px 0;
-	min-height: var(--default-clickable-area, 44px);
+	gap: 8px;
+	min-height: var(--default-clickable-area, 34px);
+}
+
+/*
+ * `NcCheckboxRadioSwitch` statt einer nackten Checkbox (#99): Damit wird der
+ * **ganze Titel** zur Klickflaeche. Vorher war nur die 13-px-Box anklickbar und
+ * der Text daneben tot — ausgerechnet beim haeufigsten Handgriff des Kunden.
+ */
+.app-projektwerk .pw-step__check {
+	flex: 1 1 200px;
+	min-width: 0;
+}
+
+.app-projektwerk .pw-step__check .checkbox-radio-switch__label {
+	overflow-wrap: anywhere;
+}
+
+.app-projektwerk .pw-step__rechts {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-inline-start: auto;
+	min-width: 0;
+}
+
+/*
+ * Variante C: Wo etwas gesetzt ist, steht Text — kein Formularfeld. Bei fuenf
+ * Schritten waeren das sonst fuenf Comboboxen und fuenf Datumsfelder
+ * untereinander, und genau das war die Kritik am alten Stand.
+ */
+.app-projektwerk .pw-step__info {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	min-width: 0;
+	font-size: 13px;
+	color: var(--color-text-maxcontrast);
+	font-variant-numeric: tabular-nums;
+}
+
+.app-projektwerk .pw-step__flach {
+	color: var(--color-text-maxcontrast);
+	font-weight: 400;
+}
+
+/*
+ * Beim Bearbeiten teilen sich Personenauswahl und Datum die Zeile. Die Auswahl
+ * schrumpft, das Datum nicht: Ihm Breite zu nehmen entfernt keine Zeichen,
+ * sondern die Bedienung.
+ */
+.app-projektwerk .pw-step__picker {
+	flex: 1 1 160px;
+	min-width: 0;
+}
+
+.app-projektwerk .pw-step__datum {
+	flex: 0 0 auto;
+	width: 150px;
 }
 
 .app-projektwerk .pw-step__title {
@@ -766,15 +1273,296 @@
 	text-decoration: line-through;
 }
 
-.app-projektwerk .pw-step__due {
-	font-size: 12px;
-	color: var(--color-text-maxcontrast);
-	font-variant-numeric: tabular-nums;
+/*
+ * Zustaendige und Frist als ein Paar.
+ *
+ * Beide Felder behalten ihre Eigenbreite (`flex-basis: auto`) und schrumpfen
+ * erst, wenn der Platz nicht reicht — auf dem Desktop steht der laengste Name
+ * dadurch vollstaendig da, auf 390 px teilen sich die beiden die Zeile.
+ * Mit `flex-basis: 0` waere der Name **auch auf dem Desktop** abgeschnitten:
+ * Die Eigenbreite des Kastens faellt dann auf null zusammen.
+ *
+ * Geschrumpft wird nur die Personenauswahl. Das Datumsfeld hat eine feste
+ * Inhaltsbreite (`TT.MM.JJJJ` plus Kalendersymbol); nimmt man ihr davon etwas
+ * weg, verschwindet nicht Text, sondern die Bedienung.
+ *
+ * `min-width: 0` ist kein Beiwerk: Flex-Kinder schrumpfen sonst nur bis zu
+ * ihrer Inhaltsbreite und nicht darunter.
+ */
+.app-projektwerk .pw-step__fields {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex: 0 1 auto;
+	min-width: 0;
 }
 
+/*
+ * Die Neuanlage in EINER Zeile (#99) statt in dreien: Titel, Person, Frist,
+ * Plus. Vorher lag das Textfeld ueber die volle Breite, darunter eine zweite
+ * Zeile mit den beiden Feldern und einem breiten „Hinzufuegen".
+ *
+ * Auf schmalen Schirmen faellt der Umbruch **vor** dem Feldpaar, nicht
+ * zwischen seinen Teilen: Das Textfeld nimmt die erste Zeile, Person, Frist und
+ * Plus teilen sich die zweite. Zwei Zeilen statt drei.
+ */
 .app-projektwerk .pw-step--new {
-	padding-top: 10px;
+	padding-block-start: 12px;
+	margin-block-start: 8px;
 	border-top: 1px solid var(--color-border);
+}
+
+.app-projektwerk .pw-step__neu-titel {
+	flex: 1 1 240px;
+	min-width: 0;
+}
+
+/*
+ * **`NcSelectUsers` bringt `min-width: 260px` mit** und sprengt damit jede
+ * enge Zeile: Auf 390 px (Inhaltsbreite 358) beansprucht die Auswahl allein
+ * schon mehr, als neben Frist und Plus uebrig bleibt — die Zeile brach um, und
+ * aus der einen Zeile wurden wieder drei.
+ *
+ * Zurueckgenommen an allen drei Stellen, an denen die Auswahl steht. Ohne
+ * `min-width: 0` schrumpfen Flex-Kinder ausserdem nur bis zu ihrer
+ * Inhaltsbreite und nicht darunter.
+ */
+/*
+ * `.v-select` steht mit im Selektor, und das ist kein Zierat: Die Regel der
+ * Komponente lautet `.v-select.select { min-width: 260px }` — zwei Klassen,
+ * also **dieselbe** Spezifitaet wie `.app-projektwerk .pw-step__neu-person`.
+ * Bei Gleichstand gewinnt, was spaeter im Bündel steht, und das ist die
+ * Komponente. Erst die dritte Klasse dreht das um.
+ */
+.app-projektwerk .pw-step__neu-person.v-select,
+.app-projektwerk .pw-step__picker.v-select,
+.app-projektwerk .pw-person__picker.v-select {
+	min-width: 0;
+}
+
+.app-projektwerk .pw-step__neu-person {
+	flex: 0 1 200px;
+}
+
+.app-projektwerk .pw-step__neu-datum {
+	flex: 0 0 auto;
+	width: 150px;
+}
+
+.app-projektwerk .pw-step__neu-plus {
+	flex: 0 0 var(--default-clickable-area, 34px);
+}
+
+@media (max-width: 480px) {
+	.app-projektwerk .pw-step__neu-titel {
+		flex: 1 1 100%;
+	}
+
+	.app-projektwerk .pw-step__neu-person {
+		flex: 1 1 120px;
+	}
+}
+
+/* ---- Anhänge ------------------------------------------------------------- */
+
+.app-projektwerk .pw-attach {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 4px 8px;
+	min-height: var(--default-clickable-area, 34px);
+}
+
+/*
+ * Der Dateiname darf umbrechen — an jeder Stelle.
+ *
+ * Er ist der einzige Text hier, dessen Länge niemand in der Hand hat, und ein
+ * `0042_Angebot_Wartungsvertrag_2026_final_v3.pdf` ohne Bruchstelle schöbe den
+ * Lösen-Knopf auf dem Handy aus der Zeile.
+ */
+.app-projektwerk .pw-attach__name {
+	flex: 1 1 200px;
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+/*
+ * Verwaiste Datei (#9): durchgestrichen und gedämpft — kein Link, keine Farbe,
+ * die zum Klicken einlädt. Die Ansage steht in der Meta-Zeile daneben.
+ */
+.app-projektwerk .pw-attach__name--weg {
+	text-decoration: line-through;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-attach__meta {
+	font-size: 13px;
+	color: var(--color-text-maxcontrast);
+}
+
+/*
+ * Das Dateifeld selbst ist unsichtbar, aber **nicht `display: none`**: Ein so
+ * entferntes Feld nimmt in manchen Browsern keinen programmgesteuerten Klick
+ * mehr an, und dann tut der Knopf davor gar nichts.
+ */
+.app-projektwerk .pw-attach__input {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+
+/* ---- Kommentare ---------------------------------------------------------- */
+
+.app-projektwerk .pw-comment {
+	display: flex;
+	gap: 10px;
+	padding: 8px 0;
+}
+
+.app-projektwerk .pw-comment__body {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.app-projektwerk .pw-comment__head {
+	display: flex;
+	align-items: baseline;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.app-projektwerk .pw-comment__name {
+	font-weight: 600;
+}
+
+.app-projektwerk .pw-comment__time,
+.app-projektwerk .pw-comment__edited {
+	font-size: 12px;
+	color: var(--color-text-maxcontrast);
+}
+
+/*
+ * Markdown bringt eigene Bloecke mit. Ohne `anywhere` sprengt eine lange URL
+ * das Overlay auf dem Telefon in die Breite — genau der Befund aus dem
+ * Geraetetest (#78), nur an einer neuen Stelle.
+ */
+.app-projektwerk .pw-comment__text {
+	margin-top: 2px;
+	line-height: 1.5;
+	overflow-wrap: anywhere;
+}
+
+.app-projektwerk .pw-comment__text > :first-child {
+	margin-top: 0;
+}
+
+.app-projektwerk .pw-comment__text > :last-child {
+	margin-bottom: 0;
+}
+
+/* Code scrollt in sich, statt die Spalte zu weiten. */
+.app-projektwerk .pw-comment__text pre {
+	max-width: 100%;
+	overflow-x: auto;
+}
+
+/*
+ * Tabellen ebenso — aber `overflow` **greift auf `display: table` nicht**. Der
+ * berechnete Wert faellt auf `visible` zurueck, und die Tabelle ragt dann aus
+ * dem Kommentar heraus, ohne sich schieben zu lassen. Auf 390 px Breite waren
+ * das gemessene 14 px schon bei vier schmalen Spalten. Erst `display: block`
+ * macht aus ihr einen Kasten, der scrollen kann; die Zeilen bleiben ueber
+ * anonyme Tabellenboxen erhalten.
+ */
+.app-projektwerk .pw-comment__text table {
+	display: block;
+	/*
+	 * `width: max-content` gehoert dazu, sonst zieht der Block als Blockkasten
+	 * die volle Breite — und der Rahmen der Tabelle stuende dann rechts weit
+	 * neben der letzten Zelle. Mit `max-content` schrumpft er auf den Inhalt,
+	 * `max-width` deckelt ihn am Kommentar, und was darueber hinausgeht,
+	 * scrollt.
+	 */
+	width: max-content;
+	max-width: 100%;
+	overflow-x: auto;
+}
+
+.app-projektwerk .pw-comment__edit {
+	margin-top: 6px;
+}
+
+.app-projektwerk .pw-comment__actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-top: 6px;
+}
+
+.app-projektwerk .pw-comment__confirm {
+	margin-top: 6px;
+	padding: 10px;
+	border-radius: var(--border-radius-large, 12px);
+	background-color: var(--color-background-hover);
+}
+
+.app-projektwerk .pw-comment__confirm p {
+	margin: 0;
+}
+
+/*
+ * Das Feld ruht zweizeilig und waechst beim Hineinklicken (#99). Vorher standen
+ * 86 px Eingabeflaeche plus Knopf dauerhaft unter jedem Vorgang, auch unter
+ * denen, in die nie jemand schreibt.
+ *
+ * Die Hoehe haengt an `:focus-within` **und** an der Klasse: Der Fokus allein
+ * liesse das Feld wieder zusammenfallen, sobald man es mit angefangenem Text
+ * verlaesst — und ein Entwurf, der beim Wegklicken auf zwei Zeilen schrumpft,
+ * sieht aus wie verloren.
+ */
+.app-projektwerk .pw-comment-new {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding-block-start: 12px;
+	border-top: 1px solid var(--color-border);
+}
+
+.app-projektwerk .pw-comment-new textarea {
+	min-height: 68px;
+	transition: min-height .12s ease;
+}
+
+.app-projektwerk .pw-comment-new--aktiv textarea,
+.app-projektwerk .pw-comment-new:focus-within textarea {
+	min-height: 120px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.app-projektwerk .pw-comment-new textarea {
+		transition: none;
+	}
+}
+
+/*
+ * Nextclouds Server bringt `.hidden-visually` mit; hier steht sie noch einmal,
+ * damit die Ueberschriften und Feldbeschriftungen, die nur fuer Screenreader da
+ * sind, auch dann verschwinden, wenn die Server-CSS einmal nicht greift — etwa
+ * im Komponententest.
+ */
+.app-projektwerk .hidden-visually {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
 }
 
 /* ---- Kontensuche --------------------------------------------------------- */
@@ -818,4 +1606,582 @@
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+/*
+ * „Meine Aufgaben" — projektuebergreifend (#8).
+ *
+ * Eine Liste, kein Board: Die Zeilen kommen aus verschiedenen Projekten, und
+ * Spalten waeren hier eine Ordnung, die es nicht gibt.
+ */
+.app-projektwerk .pw-tasks__block {
+	margin-bottom: 24px;
+}
+
+.app-projektwerk .pw-task {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 8px;
+	border-bottom: 1px solid var(--color-border);
+}
+
+.app-projektwerk .pw-task:last-child {
+	border-bottom: none;
+}
+
+/*
+ * Die Klickflaeche traegt zwei Zeilen und muss die volle Breite nehmen —
+ * sonst liegt sie neben dem Text statt darunter.
+ */
+.app-projektwerk .pw-task__body {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 2px;
+	flex: 1 1 auto;
+	min-width: 0;
+	padding: 4px 0;
+	border: none;
+	background: none;
+	text-align: start;
+	cursor: pointer;
+}
+
+.app-projektwerk .pw-task__body:hover .pw-task__title {
+	text-decoration: underline;
+}
+
+.app-projektwerk .pw-task__title {
+	font-weight: 600;
+}
+
+.app-projektwerk .pw-task__meta {
+	color: var(--color-text-maxcontrast);
+	font-size: 0.85em;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	max-width: 100%;
+}
+
+.app-projektwerk .pw-task__board {
+	white-space: nowrap;
+}
+
+/*
+ * Das Kaestchen ist die haeufigste Handlung der Seite (§9) und braucht die
+ * volle Klickflaeche, auch auf dem Handy.
+ *
+ * **Die Flaeche kommt aus `margin`, nicht aus `width`/`height`.** Beides direkt
+ * auf ein `input[type=checkbox]` zu setzen skaliert das native Steuerelement
+ * selbst — das Kaestchen waere dann drei- bis viermal so gross wie jedes andere
+ * der App. Der Rahmen darum vergroessert die Trefferflaeche, ohne das Kaestchen
+ * anzufassen.
+ */
+.app-projektwerk .pw-task__check {
+	flex: 0 0 auto;
+	margin: calc((var(--default-clickable-area, 44px) - 16px) / 2);
+	cursor: pointer;
+}
+
+.app-projektwerk .pw-task__due {
+	flex: 0 0 auto;
+	color: var(--color-text-maxcontrast);
+	font-size: 0.85em;
+	white-space: nowrap;
+}
+
+/*
+ * Ueberfaellig wird zusaetzlich zur Sortierung markiert: Oben zu stehen sagt
+ * nur „zuerst", nicht „zu spaet". Farbe UND Schriftschnitt, damit es nicht
+ * allein an der Farbe haengt.
+ *
+ * **`--color-error-text`, nicht `--color-error`.** Letzteres ist in Nextcloud
+ * eine FLAECHENfarbe (`#FFE7E7`, blasses Rosa) und als Textfarbe auf weissem
+ * Grund praktisch unsichtbar; `--color-error-text` (`#8A0000`) ist die dafuer
+ * vorgesehene. Der Fehler bricht nichts und faellt in keiner DOM-Pruefung auf
+ * — er war nur auf einem Screenshot zu sehen.
+ */
+.app-projektwerk .pw-task--overdue .pw-task__due {
+	color: var(--color-error-text, var(--color-error));
+	font-weight: 600;
+}
+
+.app-projektwerk .pw-tasks__overdue {
+	color: var(--color-error-text, var(--color-error));
+	font-weight: 600;
+}
+
+/*
+ * Der Ueberblick — der Einstieg (#76).
+ *
+ * **Eine Zeilenform fuer beide Abschnitte, und das ist der ganze Punkt.** Der
+ * Entwurf stellte drei verschiedene Formen nebeneinander: Listenzeilen mit
+ * Marken, Zaehler-Pillen und eine Kachelreihe. Axels Befund war „zu
+ * unstrukturiert" (2026-08-13), und er hatte recht — die Seite hatte drei
+ * Rhythmen auf einmal.
+ *
+ * Beide Abschnitte tragen deshalb dieselbe Zeile: links eine feste Spalte
+ * (Vorgangsnummer oder leer), in der Mitte Titel und Herkunft, rechts eine
+ * Marke. Was sich unterscheidet, ist der Inhalt, nicht die Gestalt.
+ *
+ * Nah an `.pw-task` und trotzdem eigene Klassen: Dort traegt die Zeile ein
+ * Kaestchen und eine Faelligkeit, hier eine Nummer und eine Standdauer. Sie
+ * zusammenzulegen hiesse, eine Klasse mit zwei Bedeutungen zu haben — und die
+ * naechste Aenderung an der einen Seite braeche die andere.
+ */
+.app-projektwerk .pw-ov__block {
+	margin-bottom: 24px;
+}
+
+/*
+ * Die ganze Zeile ist die Klickflaeche, nicht nur der Titel: Auf dem Handy ist
+ * ein Wort als Ziel zu wenig, und §9 setzt 34 px als Untergrenze.
+ */
+.app-projektwerk .pw-ov__row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	width: 100%;
+	min-height: var(--default-clickable-area, 34px);
+	padding: 6px 8px;
+	border: none;
+	border-bottom: 1px solid var(--color-border);
+	background: none;
+	text-align: start;
+	cursor: pointer;
+}
+
+.app-projektwerk .pw-ov__row:last-child {
+	border-bottom: none;
+}
+
+.app-projektwerk .pw-ov__row:hover {
+	background: var(--color-background-hover);
+}
+
+.app-projektwerk .pw-ov__row:hover .pw-ov__title {
+	text-decoration: underline;
+}
+
+.app-projektwerk .pw-ov__body {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 2px;
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.app-projektwerk .pw-ov__title {
+	font-weight: 600;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	max-width: 100%;
+}
+
+.app-projektwerk .pw-ov__meta {
+	color: var(--color-text-maxcontrast);
+	font-size: 0.85em;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	max-width: 100%;
+}
+
+.app-projektwerk .pw-ov__who {
+	white-space: nowrap;
+}
+
+/*
+ * Die leere Nummernspalte im Projektabschnitt: Ein Projekt hat keine Nummer,
+ * aber die Zeilen beider Abschnitte sollen auf derselben Kante beginnen. Ohne
+ * sie saessen sie um die Breite einer Nummer versetzt — genau die Unruhe, die
+ * hier weg soll.
+ *
+ * Die Breite haengt an `ch` und nicht an einem Pixelwert: `#0000` sind fuenf
+ * Zeichen in einer Ziffernbreite, und `font-variant-numeric: tabular-nums` an
+ * `.pw-num` macht sie alle gleich breit.
+ */
+.app-projektwerk .pw-ov__row .pw-num {
+	flex: 0 0 auto;
+	min-width: 5ch;
+}
+
+.app-projektwerk .pw-num--leer {
+	visibility: hidden;
+}
+
+/*
+ * Die Marke rechts. Farbe UND Schriftschnitt bei langer Wartezeit, nie Farbe
+ * allein (§9 Querschnitt) — und `--color-warning-text`, nicht
+ * `--color-warning`: Letzteres ist in Nextcloud eine Flaechenfarbe.
+ *
+ * **Kein Rot.** Rot hiesse „zu spaet", und das weiss hier niemand: Ohne
+ * Faelligkeit am Vorgang (#72) ist eine lange Wartezeit auffaellig, aber nicht
+ * ueberfaellig. Die Marke sagt deshalb „lange", nicht „falsch".
+ */
+.app-projektwerk .pw-marke {
+	flex: 0 0 auto;
+	color: var(--color-text-maxcontrast);
+	font-size: 0.85em;
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+}
+
+.app-projektwerk .pw-marke--lang {
+	color: var(--color-warning-text, var(--color-main-text));
+	font-weight: 600;
+}
+
+/*
+ * Der Stern der angepinnten Projekte (#116) sitzt in der Nummernspalte, damit
+ * die Zeilen auf derselben Kante beginnen. Favoritenfarbe wie in der Projektliste.
+ */
+.app-projektwerk .pw-ov__pin {
+	flex: 0 0 auto;
+	min-width: 5ch;
+	color: var(--color-favorite, var(--color-warning-text));
+}
+
+/*
+ * „Steht still" — derselbe warnende, nicht rote Ton wie die lange Wartezeit:
+ * auffaellig, aber keine Behauptung „zu spaet".
+ */
+.app-projektwerk .pw-ov__still {
+	font-size: 12px;
+	color: var(--color-warning-text, var(--color-main-text));
+}
+
+/*
+ * Mehrzeilige Felder so breit wie die einzeiligen daneben.
+ *
+ * `textarea` bringt eine eigene Vorgabebreite (`cols`) mit und ignoriert die
+ * Breite des Umfelds — in den Projekteinstellungen stand die Beschreibung
+ * deshalb als schmaler Kasten neben lauter vollbreiten Feldern.
+ */
+.app-projektwerk .pw-field textarea {
+	box-sizing: border-box;
+	width: 100%;
+	min-height: 80px;
+	resize: vertical;
+}
+
+/* ---- Karte: Kopfzeile traegt die Zuordnung, Fusszeile den Zustand -------- */
+
+/*
+ * **Der Traeger steht rechts in der Kopfzeile — leise.** `margin-inline-start:
+ * auto` schiebt ihn ans Ende, neben Nummer und Sichtbarkeit. Er ist eine
+ * Zuordnung und keine Handlungsaufforderung; deshalb 18 px und kein Name.
+ */
+.app-projektwerk .pw-card__owner {
+	margin-inline-start: auto;
+	flex: none;
+}
+
+/*
+ * Die Kugeln der Wartemarke. Sie tragen die Person in 18 Pixeln, wo ein Name
+ * eine halbe Zeile braucht — auf einer Karte, die einen Blick vertraegt, ist
+ * das der entscheidende Unterschied.
+ */
+.app-projektwerk .pw-wait__who {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+}
+
+.app-projektwerk .pw-wait__more {
+	font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Sie darf schrumpfen, wenn es eng wird, aber nicht umbrechen: Eine zweizeilige
+ * Fusszeile waere genau die Zeile, die dieser Umbau einspart.
+ */
+.app-projektwerk .pw-card__foot .pw-wait {
+	min-width: 0;
+	overflow: hidden;
+	white-space: nowrap;
+}
+
+/*
+ * Die Zaehler schliessen an die Wartezeile an, statt am anderen Ende zu stehen.
+ * Der Mittelpunkt kommt nur, wenn tatsaechlich etwas davor steht — bei einer
+ * Karte ohne Wartezustand sind die Zaehler das erste Kind und beginnen die
+ * Zeile ohne Trenner.
+ */
+.app-projektwerk .pw-counts {
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+	min-width: 0;
+}
+
+/*
+ * Der Abstand steht symmetrisch um den Punkt: 6 px liefert die `gap` der
+ * Fusszeile davor, 6 px dieser Rand danach. Ohne das haengt der Trenner
+ * sichtbar am rechten Teil statt zwischen beiden.
+ */
+.app-projektwerk .pw-card__foot > .pw-counts:not(:first-child)::before {
+	content: "·";
+	margin-inline-end: 6px;
+	color: var(--color-text-maxcontrast);
+}
+
+/*
+ * Die Fälligkeit in der Fusszeile (#72). Derselbe Trenner wie vor den Zählern,
+ * wenn etwas davorsteht.
+ */
+.app-projektwerk .pw-due {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+.app-projektwerk .pw-card__foot > .pw-due:not(:first-child)::before {
+	content: "·";
+	margin-inline-end: 6px;
+	color: var(--color-text-maxcontrast);
+}
+
+/*
+ * „In Verzug" — das kräftige Signal, sparsam: NC-Fehlerfarbe und Fettung, nur
+ * wenn das Datum wirklich gerissen ist. Ein Vorgang, der noch Luft hat, bleibt
+ * ruhig.
+ */
+.app-projektwerk .pw-due--overdue {
+	color: var(--color-error-text, var(--color-error));
+	font-weight: 600;
+}
+
+/* ---- Fälligkeit im Ticket-Detail (#72) ---------------------------------- */
+
+.app-projektwerk .pw-frist {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-wrap: wrap;
+	padding: 8px 2px;
+	min-height: var(--default-clickable-area, 44px);
+}
+
+.app-projektwerk .pw-frist__label {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-frist--overdue .pw-frist__label {
+	color: var(--color-error-text, var(--color-error));
+}
+
+.app-projektwerk .pw-frist__marke {
+	color: var(--color-error-text, var(--color-error));
+	font-weight: 600;
+}
+
+/* ---- Tabelle in „Meine Einstellungen" ------------------------------------ */
+
+/*
+ * Der Rahmen scrollt, nicht die Tabelle: `overflow` greift auf `display: table`
+ * nicht — der berechnete Wert faellt auf `visible` (am 2026-08-10 an einer
+ * Kommentartabelle gemessen).
+ */
+.app-projektwerk .pw-table-scroll {
+	overflow-x: auto;
+	margin: 8px 0 12px;
+}
+
+.app-projektwerk .pw-table {
+	border-collapse: collapse;
+	width: 100%;
+}
+
+.app-projektwerk .pw-table th,
+.app-projektwerk .pw-table td {
+	padding: 8px 12px;
+	text-align: left;
+	border-bottom: 1px solid var(--color-border);
+	/* Die Zeilen sind anklickbar — Plattform-Mindesthoehe, auch am Tisch. */
+	height: var(--default-clickable-area, 44px);
+}
+
+.app-projektwerk .pw-table thead th {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--color-text-maxcontrast);
+	border-bottom: 1px solid var(--color-border-dark);
+}
+
+/* Der Projektname ist der einzige Text, dessen Laenge niemand in der Hand hat. */
+.app-projektwerk .pw-table__name {
+	font-weight: 600;
+	overflow-wrap: anywhere;
+	min-width: 180px;
+}
+
+.app-projektwerk .pw-table__mid {
+	text-align: center;
+	width: 90px;
+}
+
+/*
+ * Die Markierung „fuer dieses Projekt festgelegt" — ein Punkt am Kaestchen.
+ *
+ * Am Kaestchen und nicht an der Zeile: Die beiden Kanaele sind unabhaengig,
+ * eine Angabe am Zeilenende waere fuer einen von ihnen falsch.
+ *
+ * Der Punkt ist **nicht** der einzige Traeger: Die Beschriftung fuers Vorlesen
+ * sagt dasselbe in Worten, und unter der Tabelle steht, was er bedeutet (§9 —
+ * Farbe UND Symbol UND Text).
+ */
+.app-projektwerk .pw-pin {
+	position: relative;
+	display: inline-flex;
+}
+
+.app-projektwerk .pw-pin--set::after {
+	content: '';
+	position: absolute;
+	top: -2px;
+	inset-inline-end: -7px;
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: var(--color-primary-element);
+}
+
+.app-projektwerk .pw-notify__global {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px 20px;
+}
+
+/* ---- Einstellungsseite mit zweiter Menueebene ----------------------------- */
+
+/*
+ * Zuschnitt wie im WorkTime-Verwaltungsbereich: Ueberschrift oben, darunter
+ * links die Abschnitte, rechts der Inhalt.
+ */
+.app-projektwerk .pw-settingspage__title {
+	margin: 0 0 14px;
+	font-size: 22px;
+	font-weight: 700;
+	letter-spacing: -0.01em;
+}
+
+.app-projektwerk .pw-settingspage__body {
+	display: flex;
+	align-items: flex-start;
+	gap: 24px;
+}
+
+/* Auf dem Handy waere eine zweite Spalte die halbe Breite — dort untereinander. */
+@media (max-width: 700px) {
+	.app-projektwerk .pw-settingspage__body {
+		flex-direction: column;
+		gap: 12px;
+	}
+}
+
+.app-projektwerk .pw-subnav {
+	flex: 0 0 240px;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	padding-inline-end: 16px;
+	border-inline-end: 1px solid var(--color-border);
+}
+
+@media (max-width: 700px) {
+	.app-projektwerk .pw-subnav {
+		flex: 1 1 auto;
+		width: 100%;
+		border-inline-end: 0;
+		border-bottom: 1px solid var(--color-border);
+		padding-inline-end: 0;
+		padding-bottom: 8px;
+	}
+}
+
+.app-projektwerk .pw-subnav__group {
+	margin: 8px 0 4px;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-subnav__item {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	width: 100%;
+	min-height: var(--default-clickable-area, 44px);
+	padding: 0 12px;
+	border: 0;
+	border-radius: var(--border-radius-large);
+	background: transparent;
+	font: inherit;
+	color: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.app-projektwerk .pw-subnav__item:hover {
+	background: var(--color-background-hover);
+}
+
+.app-projektwerk .pw-subnav__item--active {
+	background: var(--color-primary-element-light);
+	font-weight: 600;
+}
+
+.app-projektwerk .pw-settingspage__content {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.app-projektwerk .pw-settingspage__head {
+	margin: 0 0 4px;
+	font-size: 18px;
+	font-weight: 700;
+}
+
+.app-projektwerk .pw-settingspage__block {
+	margin-top: 20px;
+}
+
+.app-projektwerk .pw-settingspage__sub {
+	margin: 0 0 2px;
+	font-size: 15px;
+	font-weight: 600;
+}
+
+/*
+ * **Die Tabelle zieht sich nicht ueber die volle Breite.** Vorher stand der
+ * Projektname ganz links und die Kaestchen ganz rechts, mit einer Handbreite
+ * Nichts dazwischen — man musste die Zeile mit dem Finger verfolgen.
+ */
+.app-projektwerk .pw-table--notify {
+	width: auto;
+	min-width: min(100%, 560px);
+}
+
+.app-projektwerk .pw-table--notify .pw-table__mid {
+	width: 120px;
+}
+
+/* Die allgemeine Zeile traegt die Vorgabe — sie steht optisch fuer sich. */
+.app-projektwerk .pw-table__row--global {
+	background: var(--color-background-hover);
+}
+
+.app-projektwerk .pw-table__row--global .pw-table__name {
+	font-weight: 700;
 }

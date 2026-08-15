@@ -25,6 +25,8 @@ export interface Ticket {
 	/** Am Ticket eingefroren, nicht zur Laufzeit ermittelt. */
 	creatorRole: MemberRole
 	responsibleUserId: string | null
+	/** „Bis wann ist die Sache fertig" (#72). `JJJJ-MM-TT` ohne Uhrzeit, oder `null`. */
+	dueDate: string | null
 	closedAt: string | null
 	/** Für die Konflikterkennung; unverändert zurückschicken. */
 	version: number
@@ -39,6 +41,52 @@ export interface Ticket {
 	githubIssueUrl: string | null
 	createdAt: string | null
 	updatedAt: string | null
+}
+
+/**
+ * Ein Kommentar am Vorgang.
+ *
+ * **Ohne eigene Sichtbarkeit** — er erbt sie vollständig vom Ticket. Deshalb
+ * gibt es hier kein Feld dafür und im Browser keine Bedingung darauf.
+ *
+ * `updatedAt` ist beim Anlegen gleich `createdAt`; ein späterer Wert heißt
+ * genau „wurde nachträglich geändert".
+ */
+export interface Comment {
+	id: number
+	ticketId: number
+	authorUserId: string
+	/** Markdown. Wird mit `NcRichText` gerendert, ohne `interactive`. */
+	body: string
+	createdAt: string | null
+	updatedAt: string | null
+}
+
+/**
+ * Ein Anhang — ein **Verweis** auf eine Datei, keine Kopie.
+ *
+ * Führend ist `fileId`. `filePath` dient der Anzeige und darf veralten: Wer den
+ * Projektordner umbenennt, lässt eine Beschriftung falsch werden und keine
+ * Verknüpfung reißen (§5.18).
+ */
+export interface Attachment {
+	id: number
+	ticketId: number
+	/** Die Datei-ID in Nextcloud — der einzige führende Wert. */
+	fileId: number
+	/** Nur zur Anzeige, kann veraltet sein. */
+	filePath: string | null
+	fileName: string
+	/** 'public' | 'internal' — in welchem der beiden Projektordner sie liegt. */
+	location: string
+	uploadedBy: string
+	createdAt: string | null
+	/**
+	 * Ob die Datei im Dateibaum noch da ist (#9). `true` heißt: gelöscht oder
+	 * weggeschoben — die Zeile zeigt „nicht mehr vorhanden" statt eines Links.
+	 * Vom Server je Betrachter beim Öffnen des Vorgangs bestimmt.
+	 */
+	missing?: boolean
 }
 
 export interface Step {
@@ -84,13 +132,18 @@ export interface TicketList {
 	}
 	/** Nur die wartenden Tickets stehen drin. */
 	waiting: Record<number, WaitState>
+	/**
+	 * „Seit deinem Blick geändert" (#79) — nur die geänderten Vorgänge stehen
+	 * drin, und nur solche, die du schon einmal geöffnet hast.
+	 */
+	changed: Record<number, boolean>
 }
 
 export interface TicketDetail {
 	ticket: Ticket
 	waiting: WaitState | null
-	comments: unknown[]
+	comments: Comment[]
 	steps: Step[]
-	attachments: unknown[]
+	attachments: Attachment[]
 	collaborators: unknown[]
 }

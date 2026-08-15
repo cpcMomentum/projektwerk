@@ -17,11 +17,22 @@ return [
 		// Vollstaendigkeitstest laesst jede nicht registrierte Route fallen.
 		['name' => 'board#index', 'url' => '/api/v1/boards', 'verb' => 'GET'],
 		['name' => 'board#show', 'url' => '/api/v1/boards/{boardId}', 'verb' => 'GET'],
+		['name' => 'board#setPin', 'url' => '/api/v1/boards/{boardId}/pin', 'verb' => 'PUT'],
+
+		// „Meine Aufgaben" — die einzige GET-Route ohne Board im Pfad. Sie
+		// gehoert zu allen Projekten, und die Rolle bildet `TicketScope` je
+		// Board ueber den Verbund auf `pwerk_members`. Steht in der
+		// Leak-Matrix wie jede andere Leseroute.
+		['name' => 'task#index', 'url' => '/api/v1/tasks', 'verb' => 'GET'],
+		// Der Einstieg (#76). Wie `task#index` ohne Board im Pfad — die Ansicht
+		// gehoert zu allen Projekten, nicht zu einem.
+		['name' => 'overview#index', 'url' => '/api/v1/overview', 'verb' => 'GET'],
 
 		['name' => 'ticket#index', 'url' => '/api/v1/boards/{boardId}/tickets', 'verb' => 'GET'],
 		['name' => 'ticket#show', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}', 'verb' => 'GET'],
 		['name' => 'ticket#create', 'url' => '/api/v1/boards/{boardId}/tickets', 'verb' => 'POST'],
 		['name' => 'ticket#update', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}', 'verb' => 'PATCH'],
+		['name' => 'ticket#read', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/read', 'verb' => 'POST'],
 		// Verschieben und Sichtbarkeit sind eigene Wege, keine Felder im
 		// PATCH: Beide haben eigene Regeln (Nachbar-IDs bzw. die besitzende
 		// Seite), und ein Sammel-Update waere die Stelle, an der die Regel beim
@@ -30,7 +41,6 @@ return [
 		// Abfrage nimmt. Kein Papierkorb in der App — Wiederherstellen per occ.
 		['name' => 'ticket#destroy', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}', 'verb' => 'DELETE'],
 		['name' => 'ticket#move', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/move', 'verb' => 'POST'],
-		['name' => 'ticket#visibilityImpact', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/visibility-impact', 'verb' => 'GET'],
 		['name' => 'ticket#visibility', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/visibility', 'verb' => 'PUT'],
 
 		// Arbeitsschritte. Gelesen werden sie ueber ticket#index und
@@ -42,6 +52,34 @@ return [
 		['name' => 'step#create', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/steps', 'verb' => 'POST'],
 		['name' => 'step#update', 'url' => '/api/v1/boards/{boardId}/steps/{stepId}', 'verb' => 'PATCH'],
 
+		// Kommentare. Wie die Arbeitsschritte nur Schreibwege — gelesen werden
+		// sie ueber ticket#show aus der gefilterten Ticketmenge. Sie haben keine
+		// eigene Sichtbarkeit, sondern erben die des Tickets vollstaendig.
+		// Aendern und Loeschen kann nur die verfassende Person, ohne Ausnahme
+		// fuer Eigentuemer oder Verwalter.
+		['name' => 'comment#create', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/comments', 'verb' => 'POST'],
+		['name' => 'comment#update', 'url' => '/api/v1/boards/{boardId}/comments/{commentId}', 'verb' => 'PATCH'],
+		// Hart, kein weiches Loeschen: `pwerk_comments` hat kein `deleted_at`,
+		// und ein Verlauf mit unsichtbaren Luecken waere schlechter als einer
+		// ohne.
+		['name' => 'comment#destroy', 'url' => '/api/v1/boards/{boardId}/comments/{commentId}', 'verb' => 'DELETE'],
+
+		// Anhaenge. Zwei Schreibwege und **kein Leseweg**: Die Liste kommt ueber
+		// ticket#show mit, und die Datei selbst holt der Browser bei Nextcloud.
+		// Ein eigener Downloadweg waere ein zweiter Ort, an dem der
+		// Dateizugriff stimmen muesste.
+		['name' => 'attachment#create', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/attachments', 'verb' => 'POST'],
+		// „destroy" loest die Verknuepfung — die Datei bleibt liegen, die App
+		// loescht nie (§5.18).
+		['name' => 'attachment#destroy', 'url' => '/api/v1/boards/{boardId}/attachments/{attachmentId}', 'verb' => 'DELETE'],
+
+		// **Die eigenen Kanalschalter — ohne Board im Pfad.** Die Grenze ist die
+		// Benutzerkennung aus der Sitzung; ein `boardId` davor taeuschte eine
+		// Rechtepruefung vor, die es hier nicht braucht.
+		['name' => 'notifyPref#index', 'url' => '/api/v1/notify-prefs', 'verb' => 'GET'],
+		['name' => 'notifyPref#update', 'url' => '/api/v1/notify-prefs', 'verb' => 'PUT'],
+		['name' => 'notifyPref#clearOverrides', 'url' => '/api/v1/notify-prefs/overrides', 'verb' => 'DELETE'],
+
 		// Board-Einstellungen. Ausschliesslich Schreibwege — gelesen wird ueber
 		// board#show, das Board, Mitglieder und Spalten in einem Zug liefert und
 		// in der Leak-Matrix registriert ist.
@@ -52,6 +90,11 @@ return [
 		['name' => 'settings#createColumn', 'url' => '/api/v1/boards/{boardId}/columns', 'verb' => 'POST'],
 		['name' => 'settings#renameColumn', 'url' => '/api/v1/boards/{boardId}/columns/{columnId}', 'verb' => 'PATCH'],
 		['name' => 'settings#reorderColumns', 'url' => '/api/v1/boards/{boardId}/columns/order', 'verb' => 'PUT'],
+		// Entfernen heisst hier verschieben: Die Zielspalte ist Pflicht, und
+		// alle Vorgaenge wandern dorthin — auch die, die der Loeschende nicht
+		// sehen darf. Eine Rueckfrage mit Zahl koennte sonst nur zwischen
+		// „verraet Verborgenes" und „loescht mehr als angekuendigt" waehlen.
+		['name' => 'settings#deleteColumn', 'url' => '/api/v1/boards/{boardId}/columns/{columnId}', 'verb' => 'DELETE'],
 
 		// Konten suchen, um sie hinzuzufuegen. Eigener Endpunkt statt
 		// Nextclouds Personensuche — die liefert in Gast-Sitzungen eine leere

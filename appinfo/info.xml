@@ -23,7 +23,7 @@ Der eigentliche Zweck ist nicht das Board, sondern die **sichtbare Zustaendigkei
 - **Kunden ohne Fremdkonto** — Zusammenarbeit auf der eigenen Nextcloud, wahlweise per Gastzugang
     ]]></description>
 
-    <version>0.2.0</version>
+    <version>0.4.0</version>
     <licence>AGPL-3.0-or-later</licence>
 
     <author mail="axel.deffner@cpcmomentum.com" homepage="https://github.com/cpcMomentum">Axel Deffner</author>
@@ -37,7 +37,7 @@ Der eigentliche Zweck ist nicht das Board, sondern die **sichtbare Zustaendigkei
     <repository type="git">https://github.com/cpcMomentum/projektwerk.git</repository>
 
     <dependencies>
-        <php min-version="8.4"/>
+        <php min-version="8.3"/>
         <database>sqlite</database>
         <database>mysql</database>
         <database>pgsql</database>
@@ -49,6 +49,24 @@ Der eigentliche Zweck ist nicht das Board, sondern die **sichtbare Zustaendigkei
          oc_-Praefix max. 22 Zeichen). Genau deshalb lautet das Tabellen-
          praefix dieser App `pwerk_` und nicht `projektwerk_`.
          Element-Reihenfolge laut Store-XSD: php -> database -> nextcloud. -->
+
+    <!--
+        Der Nachlauf zum Mailversand.
+
+        **Hier und nicht im `Application::register()`.** Dort stand bis zum
+        2026-08-12 ein `$context->registerBackgroundJob(...)` — diese Methode
+        gibt es in `IRegistrationContext` **nicht**. Die Folge war kein stiller
+        Ausfall des Auftrags, sondern ein Abbruch der gesamten
+        App-Registrierung: Nextcloud faengt den Fehler in `Coordinator::register()`
+        ab, protokolliert „Error during app service registration" und liefert
+        danach auf **jeden** Aufruf der App 503 aus.
+
+        Der von der Plattform vorgesehene Weg ist dieses Element; die
+        mitgelieferten Apps (activity, admin_audit) machen es genauso.
+    -->
+    <background-jobs>
+        <job>OCA\Projektwerk\BackgroundJob\MailRetryJob</job>
+    </background-jobs>
 
     <navigations>
         <navigation>

@@ -79,30 +79,75 @@
 		</NcEmptyContent>
 
 		<div v-else class="pw-board">
-			<div v-for="column in store.columns" :key="column.id" class="pw-col">
+			<!--
+					Eine Spalte je Eintrag aus `columnViews` statt aus
+					`store.columns`: Die Vorlage rief `ticketsIn()` sonst
+					fuenfmal je Spalte und Neuzeichnen (Kopfzahl, Karten,
+					Knopf, Beschriftung, Leerzustand), und jeder Aufruf
+					sortierte die Erledigten neu. Einmal rechnen, fuenfmal
+					lesen.
+				-->
+			<div v-for="view in columnViews" :key="view.column.id" class="pw-col">
 				<div class="pw-col__head">
-					{{ column.title }}
-					<span class="pw-n">{{ store.ticketsIn(column.id).length }}</span>
+					{{ view.column.title }}
+					<!--
+						Die Zahl nennt die Spalte, nicht den Ausschnitt: Sie
+						folgt weder dem Filter noch dem Einklappen. Sonst bliebe
+						sie bei zehn stehen, waehrend das Team dreissig Vorgaenge
+						abschliesst — und widerspraeche der Zahl, die die
+						Rueckfrage beim Entfernen derselben Spalte nennt.
+					-->
+					<span class="pw-n">{{ view.total }}</span>
 				</div>
 				<div class="pw-stack">
 					<TicketCard
-						v-for="ticket in store.ticketsIn(column.id)"
+						v-for="ticket in view.tickets"
 						:key="ticket.id"
 						:ticket="ticket"
 						:showVisibility="showVisibility"
 						:responsibleName="store.nameOf(ticket.responsibleUserId)"
 						:columns="store.columns"
-						:lastEditorName="store.nameOf(ticket.lastEditorUserId)"
 						:commentCount="count('comments', ticket.id)"
 						:stepCount="count('steps', ticket.id)"
 						:stepsDone="count('stepsDone', ticket.id)"
 						:waitState="store.waiting[ticket.id] ?? null"
+						:changed="store.changed[ticket.id] === true"
+						:memberNames="store.memberNames"
 						:fromClientSide="!store.isInternal"
 						@open="openTicket"
 						@move="move" />
 
+					<!--
+						Ältere Erledigte (#59). Kein Archiv als Ablageort:
+						`closed_at` bleibt die einzige Wahrheit, das Aufklappen
+						ist ein Zustand DIESER Ansicht. Die Vorgaenge sind
+						laengst geladen — es gibt keine zweite Abfrageform.
+
+						**Ein einziger Knopf, kein v-if/v-else-if-Paar.** Zwei
+						Zweige waeren zwei Elemente: Vue haengt das eine aus und
+						das andere ein, und der Tastaturfokus faellt dabei auf
+						den `body` zurueck — wer sich durch eine lange Spalte
+						getabbt hat, faengt nach dem Klick von vorn an. Tastatur
+						und Screenreader sind Abnahmekriterium, nicht
+						Nachruestung.
+
+						Gezeigt wird er an `collapsibleCount`, nicht an
+						`hiddenClosedCount`: Die Frage ist „gibt es ueberhaupt
+						etwas zu klappen", nicht „ist gerade etwas verborgen".
+						Sonst stuende er auch ueber einer Spalte, in der nichts
+						zu verbergen ist, und taete nichts.
+					-->
+					<NcButton
+						v-if="view.collapsible > 0"
+						variant="tertiary"
+						class="pw-older"
+						:aria-expanded="view.expanded"
+						@click="store.toggleOlder(view.column.id)">
+						{{ view.expanded ? t('projektwerk', 'Ältere wieder ausblenden') : olderLabel(view.hidden) }}
+					</NcButton>
+
 					<!-- Leerzustaende sprechen (§9) — auch der gefilterte. -->
-					<div v-if="store.ticketsIn(column.id).length === 0" class="pw-empty">
+					<div v-if="view.tickets.length === 0" class="pw-empty">
 						{{ store.onlyWaiting
 							? t('projektwerk', 'Hier wartet nichts.')
 							: t('projektwerk', 'Hier liegt gerade nichts.') }}
@@ -121,10 +166,14 @@
 			:showVisibility="showVisibility"
 			:fromClientSide="!store.isInternal"
 			:steps="openSteps"
+			:comments="openComments"
+			:attachments="openAttachments"
 			:waiting="openTicketData ? (store.waiting[openTicketData.id] ?? null) : null"
 			@close="openTicketData = null"
 			@changed="applyChanged"
-			@stepsChanged="reloadOpenTicket" />
+			@stepsChanged="reloadOpenTicket"
+			@commentsChanged="reloadOpenTicket"
+			@attachmentsChanged="reloadOpenTicket" />
 
 		<CreateTicketDialog
 			:open="creating"
@@ -135,10 +184,10 @@
 </template>
 
 <script lang="ts">
-import type { Visibility } from '@/types/board'
-import type { Step, Ticket } from '@/types/ticket'
+import type { Column, Visibility } from '@/types/board'
+import type { Attachment, Comment, Step, Ticket } from '@/types/ticket'
 
-import { t } from '@nextcloud/l10n'
+import { n, t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
@@ -154,6 +203,20 @@ import { showError } from '@/services/toast'
 import { isConflict, reportWriteError } from '@/services/writeError'
 import { useBoardStore } from '@/stores/boardStore'
 
+/** Was die Vorlage über eine Spalte wissen muss — einmal je Neuzeichnen. */
+interface ColumnView {
+	column: Column
+	/** Der sichtbare Ausschnitt: Filter und Einklappen bereits angewandt. */
+	tickets: Ticket[]
+	/** Die Größe der Spalte für diesen Betrachter — ohne beides. */
+	total: number
+	/** Wie viele gerade zurückgehalten werden. */
+	hidden: number
+	/** Wie viele das Einklappen zurückhielte — auch wenn gerade aufgeklappt. */
+	collapsible: number
+	expanded: boolean
+}
+
 export default defineComponent({
 	name: 'BoardView',
 
@@ -164,7 +227,13 @@ export default defineComponent({
 	},
 
 	data() {
-		return { creating: false, openTicketData: null as Ticket | null, openSteps: [] as Step[] }
+		return {
+			creating: false,
+			openTicketData: null as Ticket | null,
+			openSteps: [] as Step[],
+			openComments: [] as Comment[],
+			openAttachments: [] as Attachment[],
+		}
 	},
 
 	computed: {
@@ -184,6 +253,26 @@ export default defineComponent({
 		orgLine(): string {
 			const board = this.store.board
 			return board === null ? '' : this.store.orgLine(board)
+		},
+
+		/**
+		 * Je Spalte einmal alles, was die Vorlage über sie wissen muss.
+		 *
+		 * `total` ist die Größe der Spalte für diesen Betrachter und folgt
+		 * **weder** dem Filter **noch** dem Einklappen — sie ist die Zahl in der
+		 * Kopfzeile. `tickets` ist der Ausschnitt, der gerade zu sehen ist.
+		 * Beide auseinanderzuhalten ist der Punkt: Sonst bliebe die Kopfzahl bei
+		 * zehn stehen, während das Team dreißig Vorgänge abschließt.
+		 */
+		columnViews(): ColumnView[] {
+			return this.store.columns.map((column) => ({
+				column,
+				tickets: this.store.ticketsIn(column.id),
+				total: this.store.visibleIn(column.id).length,
+				hidden: this.store.hiddenClosedCount(column.id),
+				collapsible: this.store.collapsibleCount(column.id),
+				expanded: this.store.expandedColumns.includes(column.id),
+			}))
 		},
 	},
 
@@ -205,17 +294,37 @@ export default defineComponent({
 		},
 
 		/**
+		 * „N ältere anzeigen" — mit Zahl, weil eine Zahl die Frage beantwortet,
+		 * die der Knopf sonst aufwirft.
+		 *
+		 * Die Zahl stammt aus derselben Rechnung wie das Ausblenden und kennt
+		 * damit nur, was dieser Betrachter ohnehin sehen darf (§5.8).
+		 *
+		 * @param anzahl Wie viele Vorgänge die Spalte gerade zurückhält.
+		 */
+		olderLabel(anzahl: number): string {
+			return n('projektwerk', '%n älteren Vorgang anzeigen', '%n ältere Vorgänge anzeigen', anzahl)
+		},
+
+		/**
 		 * Verschieben über das Kartenmenü: ans Ende der Zielspalte.
 		 *
 		 * Der Aufrufer nennt keine Position, sondern den letzten Nachbarn dort
 		 * — das ist derselbe Weg, den später auch Drag & Drop nimmt.
+		 *
+		 * **Der Nachbar kommt aus `visibleIn()`, nicht aus `ticketsIn()`.** Der
+		 * Unterschied sind die Zustände der Ansicht: Bei „Nur wartend" oder mit
+		 * eingeklappten älteren Erledigten ist das letzte *angezeigte* Ticket
+		 * nicht das letzte der Spalte, und das Ticket landete mittendrin statt
+		 * am Ende. Was die Ansicht gerade verbirgt, darf die Sortierung nicht
+		 * verschieben.
 		 *
 		 * @param payload Ticket und Zielspalte.
 		 * @param payload.ticket
 		 * @param payload.columnId
 		 */
 		async move(payload: { ticket: Ticket, columnId: number }) {
-			const inTarget = this.store.ticketsIn(payload.columnId)
+			const inTarget = this.store.visibleIn(payload.columnId)
 			const last = inTarget.length > 0 ? inTarget[inTarget.length - 1].id : null
 
 			try {
@@ -235,34 +344,44 @@ export default defineComponent({
 		async openTicket(ticket: Ticket) {
 			this.openTicketData = ticket
 			// Sofort leeren, nicht erst nach dem Laden: Sonst zeigt das Overlay
-			// kurz die Arbeitsschritte des vorigen Tickets unter dem neuen Titel.
+			// kurz die Arbeitsschritte und Kommentare des vorigen Tickets unter
+			// dem neuen Titel.
 			this.openSteps = []
-			await this.loadSteps(ticket.id)
+			this.openComments = []
+			this.openAttachments = []
+			// Öffnen heisst gelesen (#79): Der Punkt geht sofort aus. Ohne await
+			// — der Vermerk soll das Laden des Vorgangs nicht aufhalten.
+			this.store.markRead(ticket.id)
+			await this.loadDetail(ticket.id)
 		},
 
 		/**
-		 * Die Schritte des geöffneten Vorgangs nachladen.
+		 * Die Kinder des geöffneten Vorgangs nachladen.
 		 *
-		 * Über `ticket#show`, weil die Schritte dort aus der gefilterten
-		 * Einermenge kommen — es gibt keinen Weg, „die Schritte zu Ticket 42" zu
-		 * laden, der nicht durch die Sichtbarkeit geht.
+		 * Über `ticket#show`, weil Schritte und Kommentare dort aus der
+		 * gefilterten Einermenge kommen — es gibt keinen Weg, „die Kommentare zu
+		 * Ticket 42" zu laden, der nicht durch die Sichtbarkeit geht.
 		 *
 		 * @param ticketId Kennung des Vorgangs.
 		 */
-		async loadSteps(ticketId: number) {
+		async loadDetail(ticketId: number) {
 			try {
 				const detail = await fetchTicket(this.boardId, ticketId)
 				this.openSteps = detail.steps
+				this.openComments = detail.comments
+				this.openAttachments = detail.attachments
 			} catch {
 				this.openSteps = []
+				this.openComments = []
+				this.openAttachments = []
 			}
 		},
 
 		/**
-		 * Nach einer Änderung an den Schritten: Detail und Board neu laden.
+		 * Nach einer Änderung im Overlay: Detail und Board neu laden.
 		 *
-		 * Beides, weil eine Zuweisung den Wartezustand ändert — und der steht
-		 * auf der Karte, nicht nur im Overlay.
+		 * Beides, weil eine Zuweisung den Wartezustand ändert und ein Kommentar
+		 * den Zähler — und die stehen auf der Karte, nicht nur im Overlay.
 		 */
 		async reloadOpenTicket() {
 			const offen = this.openTicketData
@@ -270,7 +389,7 @@ export default defineComponent({
 				return
 			}
 			await this.store.open(this.boardId)
-			await this.loadSteps(offen.id)
+			await this.loadDetail(offen.id)
 			this.openTicketData = this.store.tickets.get(offen.id) ?? offen
 		},
 
@@ -313,7 +432,7 @@ export default defineComponent({
 			this.openTicketData = ticket
 		},
 
-		async create(data: { title: string, description: string | null, visibility: Visibility, columnId: number }) {
+		async create(data: { title: string, description: string | null, visibility: Visibility, columnId: number, dueDate: string | null }) {
 			try {
 				await createTicket(this.boardId, data)
 				this.creating = false
