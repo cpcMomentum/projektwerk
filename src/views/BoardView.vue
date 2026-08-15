@@ -111,6 +111,7 @@
 						:stepCount="count('steps', ticket.id)"
 						:stepsDone="count('stepsDone', ticket.id)"
 						:waitState="store.waiting[ticket.id] ?? null"
+						:changed="store.changed[ticket.id] === true"
 						:memberNames="store.memberNames"
 						:fromClientSide="!store.isInternal"
 						@open="openTicket"
@@ -348,6 +349,9 @@ export default defineComponent({
 			this.openSteps = []
 			this.openComments = []
 			this.openAttachments = []
+			// Öffnen heisst gelesen (#79): Der Punkt geht sofort aus. Ohne await
+			// — der Vermerk soll das Laden des Vorgangs nicht aufhalten.
+			this.store.markRead(ticket.id)
 			await this.loadDetail(ticket.id)
 		},
 

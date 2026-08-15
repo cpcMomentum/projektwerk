@@ -42,6 +42,24 @@ class MapperArchitectureTest extends TestCase {
 	];
 
 	/**
+	 * Ausnahmen mit Begruendung — der Guard bleibt für alles andere.
+	 *
+	 * Eine Ausnahme braucht einen Grund, und der steht hier, nicht in einem
+	 * Commit-Kommentar. Wer eine Methode einträgt, ohne dass der Grund trägt, tut
+	 * das sichtbar.
+	 *
+	 * @var array<string, string> `KurzerKlassenname::methode` => Begruendung
+	 */
+	private const ALLOWED_CHILD_READS = [
+		// Der juengste Kommentar je Vorgang fuer „geaendert seit deinem Blick"
+		// (#79). Folgt derselben gefilterten Ticketmenge wie findForTickets, ist
+		// in Registry und Leak-Matrix eingetragen und dort mit jedem Betrachter
+		// gefahren (testNewestCommentFollowsTheFilteredTicketSet). Die Uniformität
+		// der uebrigen drei Kinder-Mapper bleibt unangetastet.
+		'CommentMapper::findNewestForTickets' => 'Jüngster Kommentar je Vorgang (#79), leak-matrix-geprüft.',
+	];
+
+	/**
 	 * Kein Mapper nimmt eine nackte ID als erstes Argument.
 	 *
 	 * `find(int $id)`, `findForBoard(int $boardId)`, `findForTicket(int $id)` —
@@ -125,6 +143,11 @@ class MapperArchitectureTest extends TestCase {
 					continue;
 				}
 				if ($method->isConstructor()) {
+					continue;
+				}
+				// Dokumentierte Ausnahme? Dann kein Verstoss — die Begruendung
+				// steht bei ALLOWED_CHILD_READS.
+				if (isset(self::ALLOWED_CHILD_READS[$reflection->getShortName() . '::' . $method->getName()])) {
 					continue;
 				}
 				$offenders[] = $class . '::' . $method->getName();

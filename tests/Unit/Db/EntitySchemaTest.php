@@ -18,6 +18,7 @@ use OCA\Projektwerk\Db\Member;
 use OCA\Projektwerk\Db\NotifyPref;
 use OCA\Projektwerk\Db\Step;
 use OCA\Projektwerk\Db\Ticket;
+use OCA\Projektwerk\Db\TicketRead;
 use OCA\Projektwerk\Db\TicketUser;
 use OCP\AppFramework\Db\Entity;
 use OCP\DB\Types;
@@ -68,6 +69,7 @@ class EntitySchemaTest extends TestCase {
 			'pwerk_attachments' => Attachment::class,
 			'pwerk_notify_prefs' => NotifyPref::class,
 			'pwerk_mail_outbox' => MailOutbox::class,
+			'pwerk_reads' => TicketRead::class,
 		];
 	}
 
@@ -93,7 +95,7 @@ class EntitySchemaTest extends TestCase {
 			array_diff($tables, array_keys(self::entitiesByTable())),
 			'Migration legt eine Tabelle an, zu der kein Entity registriert ist.',
 		);
-		$this->assertCount(10, $tables, 'Migration 1 legt zehn Tabellen an.');
+		$this->assertCount(11, $tables, 'Zehn Tabellen aus Migration 1, dazu pwerk_reads aus Migration 7 (#79).');
 	}
 
 	public function testEntityFieldsMatchMigrationColumns(): void {

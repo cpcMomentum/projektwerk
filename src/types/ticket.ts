@@ -132,6 +132,11 @@ export interface TicketList {
 	}
 	/** Nur die wartenden Tickets stehen drin. */
 	waiting: Record<number, WaitState>
+	/**
+	 * „Seit deinem Blick geändert" (#79) — nur die geänderten Vorgänge stehen
+	 * drin, und nur solche, die du schon einmal geöffnet hast.
+	 */
+	changed: Record<number, boolean>
 }
 
 export interface TicketDetail {

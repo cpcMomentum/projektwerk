@@ -33,6 +33,19 @@ export async function fetchTicket(boardId: number, ticketId: number): Promise<Ti
 }
 
 /**
+ * Einen Vorgang als gelesen vermerken (#79) — der Punkt „seit deinem Blick
+ * geändert" verschwindet damit.
+ *
+ * `POST`, weil es ein Schreibvorgang ist; der Rumpf ist leer.
+ *
+ * @param boardId Kennung des Projekts.
+ * @param ticketId Kennung des Vorgangs.
+ */
+export async function markTicketRead(boardId: number, ticketId: number): Promise<void> {
+	await apiPost<void, Record<string, never>>(`/boards/${boardId}/tickets/${ticketId}/read`, {})
+}
+
+/**
  * Ein neues Ticket.
  *
  * `visibility` ist Pflicht und hat keine serverseitige Vorbelegung: §9 verlangt

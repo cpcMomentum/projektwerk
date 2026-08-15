@@ -32,6 +32,7 @@ return [
 		['name' => 'ticket#show', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}', 'verb' => 'GET'],
 		['name' => 'ticket#create', 'url' => '/api/v1/boards/{boardId}/tickets', 'verb' => 'POST'],
 		['name' => 'ticket#update', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}', 'verb' => 'PATCH'],
+		['name' => 'ticket#read', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/read', 'verb' => 'POST'],
 		// Verschieben und Sichtbarkeit sind eigene Wege, keine Felder im
 		// PATCH: Beide haben eigene Regeln (Nachbar-IDs bzw. die besitzende
 		// Seite), und ein Sammel-Update waere die Stelle, an der die Regel beim

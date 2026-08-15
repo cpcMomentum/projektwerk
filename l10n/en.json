@@ -269,7 +269,8 @@
 			"idle for %n days"
 		],
 		"Liegt bei niemandem": "Unassigned",
-		"Datei nicht mehr vorhanden": "File no longer available"
+		"Datei nicht mehr vorhanden": "File no longer available",
+		"Seit Ihrem letzten Blick geändert": "Changed since you last looked"
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }

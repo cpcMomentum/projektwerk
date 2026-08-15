@@ -81,6 +81,10 @@ final class ReadPathRegistry {
 		// Existenz genauso wie eine Zeile.
 		'CommentMapper::findForTickets',
 		'CommentMapper::countForTickets',
+		// Der jüngste Kommentar je Vorgang (#79) — Grundlage für „geändert seit
+		// deinem Blick". Wie die beiden darüber über die gefilterte Menge, und
+		// mit derselben Erwartung: keine Zeile zu einem verborgenen Vorgang.
+		'CommentMapper::findNewestForTickets',
 		'StepMapper::findForTickets',
 		'StepMapper::countForTickets',
 		'AttachmentMapper::findForTickets',
@@ -110,6 +114,11 @@ final class ReadPathRegistry {
 		// Lesepfad ist der eine darunter; ein zweiter Eintrag waere eine
 		// Erwartung an eine Abfrage, die es nicht gibt.
 		'NotifyPrefMapper::findForUser',
+		// Der Lesestand je Person (#79) — dieselbe Art Pfad wie die Kanalschalter:
+		// Der erste Parameter ist eine Benutzerkennung, und die ist die Grenze.
+		// Eine Person liest nur ihre eigenen Stände. Deshalb ebenfalls in
+		// VIEWERLESS_MAPPERS; die Erwartung ist `testReadStateIsScopedToItsOwner`.
+		'TicketReadMapper::findSeenForTickets',
 	];
 
 	/**
@@ -124,6 +133,10 @@ final class ReadPathRegistry {
 	public const VIEWERLESS_MAPPERS = [
 		'MailOutboxMapper',
 		'NotifyPrefMapper',
+		// Der Lesestand (#79): Seine Methoden nehmen eine Benutzerkennung, nie
+		// einen ViewerContext — genau das ist die Grenze. `findSeenForTickets`
+		// liefert nur die eigenen Stände.
+		'TicketReadMapper',
 	];
 
 	/**

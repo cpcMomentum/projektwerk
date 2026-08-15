@@ -243,6 +243,7 @@ OC.L10N.register(
     "An die Seitenleiste anpinnen" : "An die Seitenleiste anpinnen",
     "_steht still seit %n Tag_::_steht still seit %n Tagen_" : ["steht still seit %n Tag","steht still seit %n Tagen"],
     "Liegt bei niemandem" : "Liegt bei niemandem",
-    "Datei nicht mehr vorhanden" : "Datei nicht mehr vorhanden"
+    "Datei nicht mehr vorhanden" : "Datei nicht mehr vorhanden",
+    "Seit Ihrem letzten Blick geändert" : "Seit Ihrem letzten Blick geändert"
 },
 "nplurals=2; plural=(n != 1);");

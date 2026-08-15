@@ -269,7 +269,8 @@
 			"steht still seit %n Tagen"
 		],
 		"Liegt bei niemandem": "Liegt bei niemandem",
-		"Datei nicht mehr vorhanden": "Datei nicht mehr vorhanden"
+		"Datei nicht mehr vorhanden": "Datei nicht mehr vorhanden",
+		"Seit Ihrem letzten Blick geändert": "Seit Ihrem letzten Blick geändert"
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }

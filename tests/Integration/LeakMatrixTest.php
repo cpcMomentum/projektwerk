@@ -31,6 +31,7 @@ use OCA\Projektwerk\Db\NotifyPrefMapper;
 use OCA\Projektwerk\Db\StepMapper;
 use OCA\Projektwerk\Db\TaskFilter;
 use OCA\Projektwerk\Db\TicketMapper;
+use OCA\Projektwerk\Db\TicketReadMapper;
 use OCA\Projektwerk\Db\TicketUserMapper;
 use OCA\Projektwerk\Service\AttachmentService;
 use OCA\Projektwerk\Service\BoardPinService;
@@ -220,6 +221,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'ColumnMapper::findForBoard' => 'testBoardMetadataPathsTrustTheContextAlone',
 		'CommentMapper::findForTickets' => 'testChildrenFollowTheFilteredTicketSet',
 		'CommentMapper::countForTickets' => 'testChildCountersFollowTheFilteredTicketSet',
+		'CommentMapper::findNewestForTickets' => 'testNewestCommentFollowsTheFilteredTicketSet',
 		'StepMapper::findForTickets' => 'testChildrenFollowTheFilteredTicketSet',
 		'StepMapper::countForTickets' => 'testChildCountersFollowTheFilteredTicketSet',
 		'AttachmentMapper::findForTickets' => 'testChildrenFollowTheFilteredTicketSet',
@@ -231,6 +233,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 		// bei den beiden Tests selbst.
 		'MailOutboxMapper::findRetryable' => 'testTheOutboxIsNotAViewerPath',
 		'NotifyPrefMapper::findForUser' => 'testChannelPreferencesAreScopedToTheirOwner',
+		'TicketReadMapper::findSeenForTickets' => 'testReadStateIsScopedToItsOwner',
 	];
 
 	/**
@@ -360,6 +363,60 @@ class LeakMatrixTest extends IntegrationTestCase {
 		$this->assertFalse($prefs->isEnabled(LeakMatrixFixture::ANNA, NotifyPref::CHANNEL_MAIL));
 		$this->assertTrue($prefs->isEnabled(LeakMatrixFixture::ANNA, NotifyPref::CHANNEL_BELL));
 		$this->assertTrue($prefs->isEnabled(LeakMatrixFixture::CARLA, NotifyPref::CHANNEL_MAIL));
+	}
+
+	/**
+	 * Der Lesestand (#79) gehört seiner Person — niemand sieht den einer anderen.
+	 *
+	 * Dieselbe Art Zusage wie bei den Kanalschaltern: Der erste Parameter ist
+	 * eine Benutzerkennung, und die ist die Grenze. Ein Stand entsteht nur beim
+	 * Öffnen, und öffnen kann jemand nur, was er sieht.
+	 */
+	public function testReadStateIsScopedToItsOwner(): void {
+		$reads = Server::get(TicketReadMapper::class);
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+
+		$reads->markSeen(LeakMatrixFixture::ANNA, $ticketId);
+
+		// Anna sieht ihren eigenen Stand …
+		$this->assertSame(
+			[$ticketId],
+			array_keys($reads->findSeenForTickets(LeakMatrixFixture::ANNA, [$ticketId])),
+		);
+		// … Carla, die denselben öffentlichen Vorgang sieht, aber nie geöffnet
+		// hat, bekommt nichts — schon gar nicht Annas Stand.
+		$this->assertSame(
+			[],
+			$reads->findSeenForTickets(LeakMatrixFixture::CARLA, [$ticketId]),
+			'Carla darf Annas Lesestand nicht sehen.',
+		);
+	}
+
+	/**
+	 * Der jüngste Kommentar je Vorgang (#79) folgt der gefilterten Menge — kein
+	 * Zeitstempel zu einem Vorgang, den der Betrachter nicht sieht.
+	 *
+	 * Gefüttert mit den sichtbaren IDs, wie die übrigen Kinder-Pfade; die
+	 * Antwort darf keine ID enthalten, die nicht darin steht.
+	 */
+	public function testNewestCommentFollowsTheFilteredTicketSet(): void {
+		$comments = Server::get(CommentMapper::class);
+		$tickets = Server::get(TicketMapper::class);
+
+		foreach (array_keys(self::VISIBLE) as $userId) {
+			$visibleIds = array_map(
+				static fn ($ticket): int => (int)$ticket->getId(),
+				$tickets->findVisibleInBoard($this->contextFor($userId)),
+			);
+
+			foreach (array_keys($comments->findNewestForTickets($visibleIds)) as $id) {
+				$this->assertContains(
+					$id,
+					$visibleIds,
+					$userId . ': jüngster Kommentar zu einem nicht sichtbaren Vorgang',
+				);
+			}
+		}
 	}
 
 	/**
@@ -1764,6 +1821,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 			Server::get(StepMapper::class),
 			Server::get(AttachmentMapper::class),
 			Server::get(TicketUserMapper::class),
+			Server::get(TicketReadMapper::class),
 			Server::get(TicketService::class),
 			Server::get(AttachmentService::class),
 			Server::get(WaitStateCalculator::class),

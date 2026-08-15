@@ -313,6 +313,20 @@
 }
 
 /*
+ * „Seit deinem Blick geändert" (#79): ein kleiner, neutraler Punkt vorn in der
+ * Kopfzeile. Bewusst die Primärfarbe (ein „neu, sieh her") und nicht die
+ * Warnfarbe der Fusszeilen-Uhr — die trägt „liegt lange / überfällig", eine
+ * andere Aussage. Zwei Signale, zwei Farben, kein Widerspruch.
+ */
+.app-projektwerk .pw-changed {
+	flex: 0 0 auto;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--color-primary-element, var(--color-main-text));
+}
+
+/*
  * Sichtbarkeit: Farbe UND Symbol UND Wort (§9 verlangt alle drei), aber flach
  * statt als gefülltes Pill — die Hausregel aus RechnungsWerk lautet „flache
  * Statuszeichen, keine lauten Pills".

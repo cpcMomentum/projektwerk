@@ -16,7 +16,7 @@ import type { Ticket, TicketList, WaitState } from '@/types/ticket'
 import { t } from '@nextcloud/l10n'
 import { defineStore } from 'pinia'
 import { fetchBoard, fetchBoards, setBoardPin } from '@/services/boards'
-import { fetchTickets, moveTicket as moveTicketRequest } from '@/services/tickets'
+import { fetchTickets, markTicketRead, moveTicket as moveTicketRequest } from '@/services/tickets'
 import { showError } from '@/services/toast'
 
 /**
@@ -46,6 +46,8 @@ interface State {
 	counts: TicketList['counts'] | null
 	/** Gerechnet, nie gespeichert — nur die wartenden Tickets stehen drin. */
 	waiting: Record<number, WaitState>
+	/** „Seit deinem Blick geändert" (#79) — nur die geänderten Vorgänge. */
+	changed: Record<number, boolean>
 	/** Filterschalter „Nur wartend"; liegt quer zu den Spalten. */
 	onlyWaiting: boolean
 	/** Spalten, in denen „ältere anzeigen" gerade aufgeklappt ist (#59). */
@@ -65,6 +67,7 @@ export const useBoardStore = defineStore('board', {
 		columnOrder: new Map(),
 		counts: null,
 		waiting: {},
+		changed: {},
 		onlyWaiting: false,
 		expandedColumns: [],
 		loading: false,
@@ -259,6 +262,37 @@ export const useBoardStore = defineStore('board', {
 		},
 
 		/**
+		 * Einen Vorgang als gelesen vermerken (#79) — der Punkt geht sofort aus.
+		 *
+		 * Optimistisch: Der Punkt verschwindet vor der Netzrunde; scheitert der
+		 * Server, liefert das nächste `open()` den wahren Stand. Immer senden,
+		 * auch ohne sichtbaren Punkt — sonst entstünde beim allerersten Öffnen
+		 * nie ein Lesestand, und „seit deinem Blick geändert" bliebe für diesen
+		 * Vorgang für immer aus (der Server erwartet ohnehin einen Upsert).
+		 *
+		 * @param ticketId Kennung des Vorgangs.
+		 */
+		async markRead(ticketId: number): Promise<void> {
+			if (this.board === null) {
+				return
+			}
+
+			if (this.changed[ticketId] === true) {
+				// Neues Objekt für die Reaktivität, wie bei den Maps.
+				const next = { ...this.changed }
+				delete next[ticketId]
+				this.changed = next
+			}
+
+			try {
+				await markTicketRead(this.board.id, ticketId)
+			} catch {
+				// Kein Rückgängig: Beim nächsten Laden gewinnt der Server. Ein
+				// Fehler beim „gelesen" ist kein Grund, den Nutzer zu stören.
+			}
+		},
+
+		/**
 		 * Ein einzelnes Ticket durch den Stand vom Server ersetzen.
 		 *
 		 * Kein Neuladen der ganzen Liste, weil sich weder Spalte noch
@@ -288,6 +322,8 @@ export const useBoardStore = defineStore('board', {
 			// Gerechnet, nie gespeichert — kommt mit derselben Antwort wie die
 			// Tickets, aus denselben Schritten wie die Zähler.
 			this.waiting = list.waiting ?? {}
+			// „Seit deinem Blick geändert" (#79) — kommt mit derselben Antwort.
+			this.changed = list.changed ?? {}
 
 			const order = new Map<number, number[]>()
 			for (const column of this.columns) {

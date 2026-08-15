@@ -18,6 +18,7 @@ use OCA\Projektwerk\Db\AttachmentMapper;
 use OCA\Projektwerk\Db\CommentMapper;
 use OCA\Projektwerk\Db\StepMapper;
 use OCA\Projektwerk\Db\TicketMapper;
+use OCA\Projektwerk\Db\TicketReadMapper;
 use OCA\Projektwerk\Db\TicketUserMapper;
 use OCA\Projektwerk\Service\AttachmentService;
 use OCA\Projektwerk\Service\AttachmentsPresentException;
@@ -52,6 +53,7 @@ class TicketController extends Controller {
 		private StepMapper $steps,
 		private AttachmentMapper $attachments,
 		private TicketUserMapper $ticketUsers,
+		private TicketReadMapper $reads,
 		private TicketService $service,
 		private AttachmentService $attachmentService,
 		private WaitStateCalculator $waitState,
@@ -92,6 +94,11 @@ class TicketController extends Controller {
 					'attachments' => $this->attachments->countForTickets($ids),
 					'collaborators' => $this->ticketUsers->countForTickets($ids),
 				],
+				// „Seit deinem Blick geändert" (#79) — nur für Vorgänge, die
+				// dieser Betrachter schon einmal geöffnet hat. Aus **seinem**
+				// Lesestand und der Bewegung (Ticket-Änderung oder neuer
+				// Kommentar), beides über die bereits gefilterte Menge.
+				'changed' => $this->changedSince($viewer, $tickets, $ids),
 			]);
 		});
 	}
@@ -127,6 +134,32 @@ class TicketController extends Controller {
 				'attachments' => $this->attachmentService->withPresence($viewer, $this->attachments->findForTickets($ids)),
 				'collaborators' => $this->ticketUsers->findForTickets($ids),
 			]);
+		});
+	}
+
+	/**
+	 * Einen Vorgang als gelesen vermerken (#79).
+	 *
+	 * Setzt den Lesestand dieser Person auf jetzt — der Punkt „seit deinem
+	 * Blick geändert" verschwindet damit von der Karte. Nur für einen Vorgang,
+	 * den die Person auch sehen darf: `findVisible()` wirft sonst, und ein Stand
+	 * zu einem verborgenen Vorgang entstünde nie.
+	 *
+	 * `POST`, kein `GET`: Es ist ein Schreibvorgang, und er soll durch die
+	 * CSRF-Prüfung. Der Rumpf ist leer; die Antwort ist der Erfolg selbst.
+	 */
+	#[NoAdminRequired]
+	public function read(int $boardId, int $ticketId): JSONResponse {
+		return $this->withViewer($boardId, function (ViewerContext $viewer) use ($ticketId): JSONResponse {
+			try {
+				$ticket = $this->tickets->findVisible($viewer, $ticketId);
+			} catch (DoesNotExistException) {
+				return new JSONResponse([], Http::STATUS_NOT_FOUND);
+			}
+
+			$this->reads->markSeen($viewer->userId, (int)$ticket->getId());
+
+			return new JSONResponse([], Http::STATUS_NO_CONTENT);
 		});
 	}
 
@@ -261,6 +294,52 @@ class TicketController extends Controller {
 		}
 
 		return $done;
+	}
+
+	/**
+	 * „Seit deinem Blick geändert" je Vorgang (#79) — nur die geänderten stehen
+	 * drin, wie beim Wartezustand.
+	 *
+	 * **Nur für schon einmal geöffnete Vorgänge.** Ein nie geöffneter bekommt
+	 * keinen Punkt: „seit du zuletzt draufgeschaut hast" setzt ein Draufschauen
+	 * voraus, und am ersten Tag trüge sonst jede Karte einen. Neue Zuweisungen
+	 * fangen Glocke, Mail und „Meine Vorgänge" ab.
+	 *
+	 * **Bewegung heisst Ticket-Änderung oder neuer Kommentar.** Beide über die
+	 * bereits gefilterte Menge — der Lesestand nach `user_id`, der jüngste
+	 * Kommentar über dieselben sichtbaren IDs. Verglichen wird über Zeitstempel,
+	 * nicht über die ISO-Zeichenkette: Deren Reihenfolge stimmt nur bei gleichem
+	 * Zeitzonenversatz, und daran soll die Rechnung nicht hängen.
+	 *
+	 * @param \OCA\Projektwerk\Db\Ticket[] $tickets
+	 * @param int[] $ids
+	 * @return array<int, true> Nur die geänderten Vorgänge.
+	 */
+	private function changedSince(ViewerContext $viewer, array $tickets, array $ids): array {
+		$seen = $this->reads->findSeenForTickets($viewer->userId, $ids);
+		if ($seen === []) {
+			return [];
+		}
+
+		$newestComment = $this->comments->findNewestForTickets($ids);
+
+		$changed = [];
+		foreach ($tickets as $ticket) {
+			$id = (int)$ticket->getId();
+			if (!isset($seen[$id])) {
+				continue;
+			}
+
+			$seenTs = (int)strtotime($seen[$id]);
+			$activityTs = $ticket->getUpdatedAt()?->getTimestamp() ?? 0;
+			$commentTs = isset($newestComment[$id]) ? (int)strtotime($newestComment[$id]) : 0;
+
+			if (max($activityTs, $commentTs) > $seenTs) {
+				$changed[$id] = true;
+			}
+		}
+
+		return $changed;
 	}
 
 	/**
