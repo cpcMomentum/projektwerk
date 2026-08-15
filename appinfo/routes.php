@@ -106,6 +106,11 @@ return [
 		// Mitgliedschaft, nicht am Nextcloud-Konto.
 		['name' => 'settings#addMember', 'url' => '/api/v1/boards/{boardId}/members', 'verb' => 'POST'],
 		['name' => 'settings#updateMember', 'url' => '/api/v1/boards/{boardId}/members/{userId}', 'verb' => 'PATCH'],
+		// Entfernen (§5.29): erst die bezifferte Vorschau (GET), dann das
+		// Entfernen selbst (DELETE). Die Vorschau nennt, wie viele private
+		// Vorgaenge der Person dabei geloescht wuerden.
+		['name' => 'settings#memberRemovalImpact', 'url' => '/api/v1/boards/{boardId}/members/{userId}/removal-impact', 'verb' => 'GET'],
+		['name' => 'settings#removeMember', 'url' => '/api/v1/boards/{boardId}/members/{userId}', 'verb' => 'DELETE'],
 
 		// Deep-Links aus E-Mail und Glocke duerfen NIEMALS ein '#' enthalten —
 		// ein Fragment erreicht den Server nie und geht beim Login-Umweg

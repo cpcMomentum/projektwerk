@@ -1117,6 +1117,13 @@
 	color: var(--color-text-maxcontrast);
 }
 
+/* Die bezifferte Warnung beim Entfernen eines Mitglieds (§5.29) — kräftiger,
+   weil hier etwas unwiederbringlich gelöscht wird. */
+.app-projektwerk .pw-settings__hint--warn {
+	color: var(--color-error-text, var(--color-error));
+	font-weight: 600;
+}
+
 .app-projektwerk .pw-field--grow {
 	flex: 1 1 260px;
 	min-width: 0;
