@@ -6,8 +6,26 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-15
+
+Erste Auslieferung auf die Produktivinstanz. MVP-Stand: mit dieser Version lassen sich
+echte Kundenprojekte führen. Deklarierte PHP-Untergrenze ist 8.3 — die AIO-Instanz läuft
+auf NC 34 mit PHP 8.3, anders als die offiziellen Images.
+
 ### Added
 
+- **Der Überblick ist der Einstieg** (#76, #119, #120, #116, #115) — die Startseite zeigt in
+  einer Zeilenform, was **auf die Kundenseite wartet**, **meine eigenen Vorgänge** und was
+  **bei niemandem liegt**; Projekte lassen sich in die Seitenleiste **anpinnen**, und eine
+  Stillstand-Marke zeigt ruhende Projekte. Die Frage ist eine andere als bei „Meine Aufgaben":
+  dort geht es um *was ich zu tun habe*, hier um *woran das Projekt hängt*.
+- **„Seit deinem letzten Blick geändert"** (#79) — ein neutraler Punkt an der Karte, sobald
+  sich ein Vorgang seit dem letzten Öffnen verändert hat (Feld oder Kommentar); er geht beim
+  Öffnen aus. Nie geöffnet heißt kein Punkt — der Lesestand wird je Person geführt und läuft
+  durch dieselbe Sichtbarkeitsprüfung wie jede Ticket-Abfrage.
+- **Fälligkeit am Vorgang** (#72) — ein Fälligkeitsdatum am Ticket selbst, nicht nur am
+  einzelnen Arbeitsschritt; überfällige Vorgänge stehen in „Meine Aufgaben" und im Überblick
+  oben.
 - **Kommentar und Abschluss benachrichtigen** (#98) — bis dahin erreichte einen nach dem
   einmaligen Rundruf beim Anlegen nichts mehr, außer man bekam etwas zugewiesen: Die Kundenseite
   schrieb, und niemand erfuhr es. Wer benachrichtigt wird, folgt aus dem **Handeln** und nicht aus
@@ -179,8 +197,10 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
   *und* Anlässe; mit fünf Anlässen gegen zwei Kanäle verdeckte der Name mehr, als er benannte.
   Vor dem ersten Release, danach wäre es eine Migration auf fremden Installationen.
 
-- Plattformfenster auf Nextcloud 33–34 und PHP 8.4 angehoben. Nextcloud 32 erreicht im
-  September 2026 sein Lebensende; eine Untergrenze, die vor dem ersten Release stirbt, ist keine
+- Plattformfenster auf Nextcloud 33–34 und PHP 8.3 festgelegt (#132). Nextcloud 32 erreicht im
+  September 2026 sein Lebensende; eine Untergrenze, die vor dem ersten Release stirbt, ist keine.
+  Die PHP-Grenze lag zwischenzeitlich bei 8.4, ist aber auf 8.3 gesenkt: Die AIO-Produktivinstanz
+  liefert auf NC 34 PHP 8.3, und mit 8.4 verweigerte sie die Aktivierung
 
 ### Notes
 
