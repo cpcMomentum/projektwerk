@@ -81,6 +81,12 @@ export interface Attachment {
 	location: string
 	uploadedBy: string
 	createdAt: string | null
+	/**
+	 * Ob die Datei im Dateibaum noch da ist (#9). `true` heißt: gelöscht oder
+	 * weggeschoben — die Zeile zeigt „nicht mehr vorhanden" statt eines Links.
+	 * Vom Server je Betrachter beim Öffnen des Vorgangs bestimmt.
+	 */
+	missing?: boolean
 }
 
 export interface Step {

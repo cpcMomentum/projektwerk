@@ -29,7 +29,17 @@
 				eigener Weg waere ein zweiter Ort, an dem die Regel stimmen
 				muesste.
 			-->
+			<!--
+				Verwaiste Anhänge (#9): Die Datei ist im Dateibaum weg. Kein
+				Link — er führte auf Nextclouds „nicht gefunden" —, sondern die
+				klare Ansage, und das Lösen bleibt möglich, damit man die
+				Karteileiche aufräumen kann. Anzeigen statt blockieren.
+			-->
+			<span v-if="file.missing" class="pw-attach__name pw-attach__name--weg">
+				{{ file.fileName }}
+			</span>
 			<a
+				v-else
 				class="pw-attach__name"
 				:href="fileUrl(file)"
 				target="_blank"
@@ -37,7 +47,9 @@
 				{{ file.fileName }}
 			</a>
 
-			<span class="pw-attach__meta">{{ metaFor(file) }}</span>
+			<span class="pw-attach__meta">
+				{{ file.missing ? t('projektwerk', 'Datei nicht mehr vorhanden') : metaFor(file) }}
+			</span>
 
 			<NcButton
 				variant="tertiary"

@@ -92,6 +92,31 @@ class ProjectFolderService {
 	}
 
 	/**
+	 * Gibt es die Datei mit dieser Kennung im Baum dieser Person noch? (#9)
+	 *
+	 * **Nicht werfend, anders als {@see resolve()}.** Hier ist das Fehlen die
+	 * Antwort, nicht der Fehler: Ein Anhang, dessen Datei jemand im Dateibaum
+	 * gelöscht oder weggeschoben hat, soll in der Liste als „nicht mehr
+	 * vorhanden" stehen, statt jede weitere Dateioperation zu blockieren.
+	 *
+	 * Dieselbe Sichtweise wie beim Öffnen — der Baum **dieser** Person: Was sie
+	 * nicht erreichen kann, ist für sie so gut wie weg, und ein Treffer über
+	 * eine fremde Freigabe hülfe ihr nicht.
+	 */
+	public function exists(string $userId, int $fileId): bool {
+		try {
+			return $this->root->getUserFolder($userId)->getFirstNodeById($fileId) !== null;
+		} catch (\Throwable) {
+			// Lässt sich der Dateibaum dieser Person gerade nicht auflösen, ist
+			// das **kein** Beleg, dass die Datei fehlt. Ein echtes Fehlen ist der
+			// `null`-Treffer oben; hier ist der Baum selbst nicht greifbar. Dann
+			// wie bisher den Link zeigen, statt fälschlich „nicht mehr vorhanden"
+			// zu behaupten — die unangenehmere Falschaussage von beiden.
+			return true;
+		}
+	}
+
+	/**
 	 * Einen Ordner über seinen Pfad auflösen.
 	 *
 	 * **Der Pfad ist der Eingabeweg, die ID bleibt der Speicherweg.** Gespeichert

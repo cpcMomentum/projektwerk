@@ -111,6 +111,33 @@ class AttachmentService {
 	}
 
 	/**
+	 * Die Anhänge eines Vorgangs, jeder mit der Angabe, ob seine Datei noch da
+	 * ist (#9).
+	 *
+	 * **Anzeigen statt blockieren.** Ein Anhang, dessen Datei jemand im
+	 * Dateibaum gelöscht oder weggeschoben hat, taucht mit `missing = true` auf
+	 * und wird in der Liste als „nicht mehr vorhanden" gezeigt; die übrigen
+	 * Dateioperationen bleiben unberührt (§3.10). Bis hierher fragte
+	 * `nodeExists()` nur beim Anlegen nach dem freien Namen — für die Anzeige
+	 * geschah die Prüfung nie.
+	 *
+	 * Die Anhänge kommen bereits über die **gefilterte** Ticketmenge herein
+	 * (`findForTickets()`); hier wird nichts eigenständig abgefragt, nur der
+	 * Dateizustand je Anhang nachgeschlagen.
+	 *
+	 * @param Attachment[] $attachments Die Anhänge des sichtbaren Vorgangs.
+	 * @return array<int, array<string, mixed>>
+	 */
+	public function withPresence(ViewerContext $viewer, array $attachments): array {
+		return array_map(
+			fn (Attachment $attachment): array => $attachment->jsonSerialize() + [
+				'missing' => !$this->folders->exists($viewer->userId, (int)$attachment->getFileId()),
+			],
+			$attachments,
+		);
+	}
+
+	/**
 	 * Der Ordner, in den ein Anhang dieses Vorgangs gehört.
 	 *
 	 * @throws NoFolderException

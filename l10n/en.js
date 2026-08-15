@@ -242,6 +242,7 @@ OC.L10N.register(
     "Von der Seitenleiste lösen" : "Unpin from sidebar",
     "An die Seitenleiste anpinnen" : "Pin to sidebar",
     "_steht still seit %n Tag_::_steht still seit %n Tagen_" : ["idle for %n day","idle for %n days"],
-    "Liegt bei niemandem" : "Unassigned"
+    "Liegt bei niemandem" : "Unassigned",
+    "Datei nicht mehr vorhanden" : "File no longer available"
 },
 "nplurals=2; plural=(n != 1);");

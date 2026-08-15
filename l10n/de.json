@@ -268,7 +268,8 @@
 			"steht still seit %n Tag",
 			"steht still seit %n Tagen"
 		],
-		"Liegt bei niemandem": "Liegt bei niemandem"
+		"Liegt bei niemandem": "Liegt bei niemandem",
+		"Datei nicht mehr vorhanden": "Datei nicht mehr vorhanden"
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }

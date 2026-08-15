@@ -32,6 +32,7 @@ use OCA\Projektwerk\Db\StepMapper;
 use OCA\Projektwerk\Db\TaskFilter;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Db\TicketUserMapper;
+use OCA\Projektwerk\Service\AttachmentService;
 use OCA\Projektwerk\Service\BoardPinService;
 use OCA\Projektwerk\Service\MemberService;
 use OCA\Projektwerk\Service\NotifyPrefService;
@@ -1764,6 +1765,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 			Server::get(AttachmentMapper::class),
 			Server::get(TicketUserMapper::class),
 			Server::get(TicketService::class),
+			Server::get(AttachmentService::class),
 			Server::get(WaitStateCalculator::class),
 			Server::get(BoardAccess::class),
 			$userId,
