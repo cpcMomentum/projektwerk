@@ -308,4 +308,20 @@ export default defineComponent({
 	align-items: flex-end;
 	gap: 8px;
 }
+
+/*
+ * Das Eingabefeld schrumpft, der Knopf nicht. Ohne das drängte das Feld den
+ * „Ordner anlegen"-Knopf zusammen, bis seine Beschriftung zu „Ordner an…"
+ * abgeschnitten wurde. Jetzt gibt das Feld nach, und der Knopf behält seine
+ * volle Beschriftung.
+ */
+.pw-folderpick__new > :first-child {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.pw-folderpick__new > :last-child {
+	flex: 0 0 auto;
+	white-space: nowrap;
+}
 </style>
