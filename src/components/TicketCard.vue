@@ -25,8 +25,9 @@
 				<span
 					v-if="changed"
 					class="pw-changed"
+					role="img"
 					:title="t('projektwerk', 'Seit Ihrem letzten Blick geändert')"
-					aria-hidden="true" />
+					:aria-label="t('projektwerk', 'Seit Ihrem letzten Blick geändert')" />
 				<span class="pw-num">#{{ paddedNumber }}</span>
 				<!--
 					Die Kennzeichnung gibt es nur für die interne Seite und nur,

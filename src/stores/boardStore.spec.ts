@@ -19,7 +19,7 @@
  *   „12 ältere anzeigen" führte dort ins Leere.
  */
 
-import type { Ticket } from '@/types/ticket'
+import type { Ticket, TicketList } from '@/types/ticket'
 
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -37,9 +37,11 @@ vi.mock('@/services/boards', () => ({
 		viewer: null,
 	}),
 }))
+const markTicketReadSpy = vi.hoisted(() => vi.fn(() => Promise.resolve()))
 vi.mock('@/services/tickets', () => ({
 	fetchTickets: () => Promise.resolve({ tickets: [], counts: {}, waiting: {} }),
 	moveTicket: () => Promise.resolve(),
+	markTicketRead: markTicketReadSpy,
 }))
 vi.mock('@/services/toast', () => ({ showError: () => {} }))
 
@@ -239,5 +241,60 @@ describe('Ältere Erledigte', () => {
 
 		expect(lastShown).toBe(10)
 		expect(lastInColumn).toBe(14)
+	})
+})
+
+/**
+ * Der Lesestand (#79) — „geändert seit deinem Blick".
+ *
+ * Der Punkt hängt an zwei Bewegungen, die auseinandergehalten gehören: die
+ * optimistische Anzeige (Punkt weg beim Öffnen) und der Serverruf, der den
+ * Stand setzt. Genau ihre Kopplung war der Fehler, den das Review fand: Solange
+ * der Ruf nur mit sichtbarem Punkt ausging, bekam ein Vorgang beim allerersten
+ * Öffnen nie einen Stand — und danach nie einen Punkt.
+ */
+describe('Lesestand', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia())
+		markTicketReadSpy.mockClear()
+	})
+
+	it('übernimmt changed aus der geladenen Liste', () => {
+		const store = useBoardStore()
+		store.applyTickets({ tickets: [], counts: {}, waiting: {}, changed: { 42: true } } as unknown as TicketList)
+
+		expect(store.changed[42]).toBe(true)
+	})
+
+	it('nimmt den Punkt weg und meldet den Stand an den Server, wenn etwas geändert war', async () => {
+		const store = useBoardStore()
+		store.board = { id: 5 } as never
+		store.changed = { 42: true }
+
+		await store.markRead(42)
+
+		expect(store.changed[42]).toBeUndefined()
+		expect(markTicketReadSpy).toHaveBeenCalledWith(5, 42)
+	})
+
+	it('meldet den Stand auch dann, wenn kein Punkt zu sehen war', async () => {
+		// Der Kern der Regression: Ein erstmals geöffneter Vorgang hat keinen
+		// Punkt (`changed` leer), braucht aber trotzdem einen Lesestand — sonst
+		// bliebe er für diese Person auf ewig „nie gesehen" und zeigte nie eine
+		// spätere Änderung an.
+		const store = useBoardStore()
+		store.board = { id: 5 } as never
+
+		await store.markRead(42)
+
+		expect(markTicketReadSpy).toHaveBeenCalledWith(5, 42)
+	})
+
+	it('tut nichts ohne geladenes Board', async () => {
+		const store = useBoardStore()
+
+		await store.markRead(42)
+
+		expect(markTicketReadSpy).not.toHaveBeenCalled()
 	})
 })

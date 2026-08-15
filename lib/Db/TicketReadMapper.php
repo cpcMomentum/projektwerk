@@ -11,6 +11,7 @@ namespace OCA\Projektwerk\Db;
 
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Db\QBMapper;
+use OCP\DB\Exception;
 use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IDBConnection;
 
@@ -73,8 +74,13 @@ class TicketReadMapper extends QBMapper {
 	 * „Gelesen" setzen — je Person und Vorgang genau eine Zeile.
 	 *
 	 * Erst suchen, dann aktualisieren oder anlegen: Ein portabler Upsert über
-	 * QBMapper, der ohne datenbankspezifisches `ON CONFLICT` auskommt. Der
-	 * eindeutige Index fängt das seltene Wettrennen ab.
+	 * QBMapper, der ohne datenbankspezifisches `ON CONFLICT` auskommt.
+	 *
+	 * Zwei Tabs, die denselben Vorgang fast gleichzeitig öffnen, finden beide
+	 * keinen Stand und legen beide an — der zweite `insert()` läuft dann gegen
+	 * den eindeutigen Index (`pwerk_reads_ut_uidx`). Das ist kein Fehler,
+	 * sondern der Beweis, dass die Zeile inzwischen da ist: Der Verlierer des
+	 * Wettlaufs aktualisiert sie einfach, statt eine 500 zu werfen.
 	 *
 	 * @param string $userId Kennung der Person.
 	 * @param int $ticketId Kennung des Vorgangs.
@@ -84,12 +90,26 @@ class TicketReadMapper extends QBMapper {
 			$read = $this->findOneForUserAndTicket($userId, $ticketId);
 			$read->setSeenAt(new \DateTime());
 			$this->update($read);
+			return;
 		} catch (DoesNotExistException) {
-			$read = new TicketRead();
-			$read->setUserId($userId);
-			$read->setTicketId($ticketId);
-			$read->setSeenAt(new \DateTime());
+			// Noch kein Stand — unten anlegen.
+		}
+
+		$read = new TicketRead();
+		$read->setUserId($userId);
+		$read->setTicketId($ticketId);
+		$read->setSeenAt(new \DateTime());
+		try {
 			$this->insert($read);
+		} catch (Exception $e) {
+			if ($e->getReason() !== Exception::REASON_UNIQUE_CONSTRAINT_VIOLATION) {
+				throw $e;
+			}
+			// Ein anderer Tab war schneller: Die Zeile existiert nun. Ihren
+			// Stand nachziehen, statt den Aufruf scheitern zu lassen.
+			$read = $this->findOneForUserAndTicket($userId, $ticketId);
+			$read->setSeenAt(new \DateTime());
+			$this->update($read);
 		}
 	}
 
