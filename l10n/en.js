@@ -245,7 +245,18 @@ OC.L10N.register(
     "Liegt bei niemandem" : "Unassigned",
     "Datei nicht mehr vorhanden" : "File no longer available",
     "Seit Ihrem letzten Blick geändert" : "Changed since you last looked",
-    "Neues Projekt": "New project",
-    "Legen Sie Ihr erstes Projekt an, oder warten Sie, bis Sie zu einem hinzugefügt werden.": "Create your first project, or wait until you are added to one."
+    "Neues Projekt" : "New project",
+    "Legen Sie Ihr erstes Projekt an, oder warten Sie, bis Sie zu einem hinzugefügt werden." : "Create your first project, or wait until you are added to one.",
+    "Ordner wählen": "Choose folder",
+    "Eine Ebene höher": "Up one level",
+    "Meine Dateien": "My files",
+    "Wird geladen…": "Loading…",
+    "Hier gibt es keine Unterordner.": "No subfolders here.",
+    "Name des neuen Ordners": "Name of the new folder",
+    "Neuer Ordner": "New folder",
+    "Ordner anlegen": "Create folder",
+    "Diesen Ordner wählen": "Choose this folder",
+    "Die Ordner konnten nicht geladen werden.": "The folders could not be loaded.",
+    "Der Ordner konnte nicht angelegt werden.": "The folder could not be created."
 },
 "nplurals=2; plural=(n != 1);");

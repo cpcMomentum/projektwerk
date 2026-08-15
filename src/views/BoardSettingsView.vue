@@ -105,6 +105,21 @@
 						<span class="pw-settings__hint">{{ slot.hint }}</span>
 					</div>
 
+					<!--
+						Der Wähler ist der eigentliche Weg (#139): auswählen oder
+						anlegen, ohne einen Pfad abzutippen. Das Textfeld bleibt
+						daneben stehen — es zeigt den gesetzten Ordner und dient
+						als Rückfallweg.
+					-->
+					<NcButton
+						:disabled="busy || !mayManage"
+						@click="openPicker(slot.key)">
+						<template #icon>
+							<FolderIcon :size="20" />
+						</template>
+						{{ t('projektwerk', 'Ordner wählen') }}
+					</NcButton>
+
 					<NcButton
 						:disabled="busy || !mayManage || folderDrafts[slot.key] === slot.path"
 						@click="saveFolder(slot.key)">
@@ -367,6 +382,12 @@
 				</NcButton>
 			</template>
 		</NcDialog>
+
+		<FolderPicker
+			:open="picker.open"
+			:startPath="picker.start"
+			@update:open="picker.open = $event"
+			@select="onPicked" />
 	</div>
 </template>
 
@@ -384,7 +405,9 @@ import NcTextField from '@nextcloud/vue/components/NcTextField'
 import ArrowDownIcon from 'vue-material-design-icons/ArrowDown.vue'
 import ArrowUpIcon from 'vue-material-design-icons/ArrowUp.vue'
 import DeleteIcon from 'vue-material-design-icons/DeleteOutline.vue'
+import FolderIcon from 'vue-material-design-icons/Folder.vue'
 import LockIcon from 'vue-material-design-icons/Lock.vue'
+import FolderPicker from '@/components/FolderPicker.vue'
 import {
 	addMember,
 	createColumn,
@@ -410,7 +433,7 @@ import { useBoardStore } from '@/stores/boardStore'
 export default defineComponent({
 	name: 'BoardSettingsView',
 
-	components: { ArrowDownIcon, ArrowUpIcon, DeleteIcon, LockIcon, NcAvatar, NcButton, NcDialog, NcEmptyContent, NcTextField },
+	components: { ArrowDownIcon, ArrowUpIcon, DeleteIcon, FolderIcon, FolderPicker, LockIcon, NcAvatar, NcButton, NcDialog, NcEmptyContent, NcTextField },
 
 	setup() {
 		return { store: useBoardStore() }
@@ -441,6 +464,8 @@ export default defineComponent({
 			// Pfad muss erst geprueft werden, und bis dahin darf er nirgends
 			// als der gespeicherte gelten.
 			folderDrafts: { public: '', internal: '' } as Record<'public' | 'internal', string>,
+			// Der Ordner-Wähler (#139) und für welchen der beiden Slots er offen ist.
+			picker: { open: false, slot: 'public' as 'public' | 'internal', start: '' },
 		}
 	},
 
@@ -655,6 +680,27 @@ export default defineComponent({
 					: { folderPublicPath: path }),
 				t('projektwerk', 'Ordner konnte nicht gespeichert werden'),
 			)
+		},
+
+		/**
+		 * Den Ordner-Wähler für einen Slot öffnen — beim bereits gesetzten
+		 * Ordner beginnend, damit man nicht jedes Mal von der Wurzel klickt.
+		 *
+		 * @param slot Welcher der beiden Ordner.
+		 */
+		openPicker(slot: 'public' | 'internal'): void {
+			this.picker = { open: true, slot, start: this.folderDrafts[slot].trim() }
+		},
+
+		/**
+		 * Die Wahl aus dem Picker übernehmen und gleich speichern — die Auswahl
+		 * eines Ordners ist bereits die Bestätigung.
+		 *
+		 * @param path Der gewählte Pfad relativ zur Files-Wurzel.
+		 */
+		onPicked(path: string): void {
+			this.folderDrafts[this.picker.slot] = path
+			this.saveFolder(this.picker.slot)
 		},
 
 		addColumn() {
