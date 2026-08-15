@@ -6,6 +6,17 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-08-15
+
+### Added
+
+- **Ordner-Wähler für die Dateiablage** (#139) — beide Projektordner lassen sich jetzt über einen
+  Wähler **auswählen und anlegen**, statt nur einen Pfad einzutippen. Der Wähler steigt durch die
+  eigenen Nextcloud-Ordner, legt mit „Neuer Ordner" einen an und übernimmt die Auswahl direkt. Er
+  ist selbst gebaut (über WebDAV), weil Nextclouds nativer FilePicker sich nicht ins IIFE-Bundle
+  ziehen lässt (dynamischer Import vs. Vite 8/Rolldown) — dieselbe Werkzeuggrenze wie beim
+  Personen-Picker. Das Textfeld bleibt als Anzeige und Rückfallweg.
+
 ## [0.4.1] - 2026-08-15
 
 ### Fixed
