@@ -16,6 +16,7 @@ import type { Ticket, TicketList, WaitState } from '@/types/ticket'
 import { t } from '@nextcloud/l10n'
 import { defineStore } from 'pinia'
 import { fetchBoard, fetchBoards, setBoardPin } from '@/services/boards'
+import { createBoard } from '@/services/settings'
 import { fetchTickets, markTicketRead, moveTicket as moveTicketRequest } from '@/services/tickets'
 import { showError } from '@/services/toast'
 
@@ -170,6 +171,27 @@ export const useBoardStore = defineStore('board', {
 			} finally {
 				this.loading = false
 			}
+		},
+
+		/**
+		 * Ein neues Projekt anlegen (#135). Wer anlegt, wird Eigentümer und
+		 * interner Verwalter — das entscheidet der Server.
+		 *
+		 * Der neue Stand wird sofort in die Liste aufgenommen, damit er nach dem
+		 * Wechsel zurück auf „Projekte" ohne Nachladerunde dasteht. Fehler wirft
+		 * die Action weiter, damit die Ansicht beim Dialog bleiben kann.
+		 *
+		 * @param data Titel und optional Beschreibung sowie die beiden Firmennamen.
+		 * @param data.title Titel des Projekts.
+		 * @param data.description Optionale Beschreibung.
+		 * @param data.orgInternal Firmenname der eigenen Seite.
+		 * @param data.orgExternal Firmenname der Kundenseite.
+		 * @return Das angelegte Projekt.
+		 */
+		async createBoard(data: { title: string, description?: string | null, orgInternal?: string | null, orgExternal?: string | null }): Promise<Board> {
+			const board = await createBoard(data)
+			this.boards = [...this.boards, board]
+			return board
 		},
 
 		/**

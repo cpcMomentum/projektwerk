@@ -2,6 +2,12 @@
 	<div class="pw-view">
 		<div class="pw-view__head">
 			<h2>{{ t('projektwerk', 'Projekte') }}</h2>
+			<NcButton variant="primary" @click="creating = true">
+				<template #icon>
+					<PlusIcon :size="20" />
+				</template>
+				{{ t('projektwerk', 'Neues Projekt') }}
+			</NcButton>
 		</div>
 
 		<div v-if="store.loading" class="pw-boards">
@@ -10,12 +16,26 @@
 			</div>
 		</div>
 
+		<!--
+			Der Leerzustand bietet den Weg nach vorn selbst an: Wer noch kein
+			Projekt hat, soll hier eines anlegen können und nicht erst den Knopf
+			oben suchen. „Sobald Sie zu einem Projekt gehören" allein liesse eine
+			neue Person ratlos zurück (#135).
+		-->
 		<NcEmptyContent
 			v-else-if="store.boards.length === 0"
 			:name="t('projektwerk', 'Noch kein Projekt')"
-			:description="t('projektwerk', 'Sobald Sie zu einem Projekt gehören, steht es hier.')">
+			:description="t('projektwerk', 'Legen Sie Ihr erstes Projekt an, oder warten Sie, bis Sie zu einem hinzugefügt werden.')">
 			<template #icon>
 				<FolderMultipleIcon :size="20" />
+			</template>
+			<template #action>
+				<NcButton variant="primary" @click="creating = true">
+					<template #icon>
+						<PlusIcon :size="20" />
+					</template>
+					{{ t('projektwerk', 'Neues Projekt') }}
+				</NcButton>
 			</template>
 		</NcEmptyContent>
 
@@ -57,6 +77,11 @@
 				</NcButton>
 			</div>
 		</div>
+
+		<CreateBoardDialog
+			:open="creating"
+			@update:open="creating = $event"
+			@create="create" />
 	</div>
 </template>
 
@@ -66,17 +91,26 @@ import { defineComponent } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
 import FolderMultipleIcon from 'vue-material-design-icons/FolderMultiple.vue'
+import PlusIcon from 'vue-material-design-icons/Plus.vue'
 import StarIcon from 'vue-material-design-icons/Star.vue'
 import StarOutlineIcon from 'vue-material-design-icons/StarOutline.vue'
+import CreateBoardDialog from '@/components/CreateBoardDialog.vue'
+import { showError } from '@/services/toast'
 import { useBoardStore } from '@/stores/boardStore'
 
 export default defineComponent({
 	name: 'BoardsView',
 
-	components: { NcButton, NcEmptyContent, FolderMultipleIcon, StarIcon, StarOutlineIcon },
+	components: { CreateBoardDialog, NcButton, NcEmptyContent, FolderMultipleIcon, PlusIcon, StarIcon, StarOutlineIcon },
 
 	setup() {
 		return { store: useBoardStore() }
+	},
+
+	data() {
+		return {
+			creating: false,
+		}
 	},
 
 	mounted() {
@@ -88,6 +122,26 @@ export default defineComponent({
 
 		open(boardId: number) {
 			this.$router.push({ name: 'board', params: { boardId: String(boardId) } })
+		},
+
+		/**
+		 * Legt das Projekt an und wechselt gleich hinein — wer eben eines
+		 * angelegt hat, will es öffnen, nicht in der Liste suchen.
+		 *
+		 * @param data Titel, Beschreibung und die beiden Firmennamen.
+		 * @param data.title Titel des Projekts.
+		 * @param data.description Optionale Beschreibung.
+		 * @param data.orgInternal Firmenname der eigenen Seite.
+		 * @param data.orgExternal Firmenname der Kundenseite.
+		 */
+		async create(data: { title: string, description: string | null, orgInternal: string | null, orgExternal: string | null }) {
+			try {
+				const board = await this.store.createBoard(data)
+				this.creating = false
+				this.open(board.id)
+			} catch (e) {
+				showError((e as { message?: string }).message ?? t('projektwerk', 'Anlegen fehlgeschlagen'))
+			}
 		},
 	},
 })
