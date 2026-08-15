@@ -270,7 +270,9 @@
 		],
 		"Liegt bei niemandem": "Liegt bei niemandem",
 		"Datei nicht mehr vorhanden": "Datei nicht mehr vorhanden",
-		"Seit Ihrem letzten Blick geändert": "Seit Ihrem letzten Blick geändert"
+		"Seit Ihrem letzten Blick geändert": "Seit Ihrem letzten Blick geändert",
+		"Neues Projekt": "Neues Projekt",
+		"Legen Sie Ihr erstes Projekt an, oder warten Sie, bis Sie zu einem hinzugefügt werden.": "Legen Sie Ihr erstes Projekt an, oder warten Sie, bis Sie zu einem hinzugefügt werden."
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }
