@@ -16,7 +16,7 @@ import type { Ticket, TicketList, WaitState } from '@/types/ticket'
 import { t } from '@nextcloud/l10n'
 import { defineStore } from 'pinia'
 import { fetchBoard, fetchBoards, setBoardPin } from '@/services/boards'
-import { createBoard } from '@/services/settings'
+import { createBoard as createBoardRequest } from '@/services/settings'
 import { fetchTickets, markTicketRead, moveTicket as moveTicketRequest } from '@/services/tickets'
 import { showError } from '@/services/toast'
 
@@ -189,7 +189,7 @@ export const useBoardStore = defineStore('board', {
 		 * @return Das angelegte Projekt.
 		 */
 		async createBoard(data: { title: string, description?: string | null, orgInternal?: string | null, orgExternal?: string | null }): Promise<Board> {
-			const board = await createBoard(data)
+			const board = await createBoardRequest(data)
 			this.boards = [...this.boards, board]
 			return board
 		},
