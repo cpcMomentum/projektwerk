@@ -78,10 +78,10 @@
 			</div>
 		</div>
 
-		<CreateBoardDialog
+		<CreateBoardWizard
 			:open="creating"
 			@update:open="creating = $event"
-			@create="create" />
+			@finished="open" />
 	</div>
 </template>
 
@@ -94,14 +94,13 @@ import FolderMultipleIcon from 'vue-material-design-icons/FolderMultiple.vue'
 import PlusIcon from 'vue-material-design-icons/Plus.vue'
 import StarIcon from 'vue-material-design-icons/Star.vue'
 import StarOutlineIcon from 'vue-material-design-icons/StarOutline.vue'
-import CreateBoardDialog from '@/components/CreateBoardDialog.vue'
-import { showError } from '@/services/toast'
+import CreateBoardWizard from '@/components/CreateBoardWizard.vue'
 import { useBoardStore } from '@/stores/boardStore'
 
 export default defineComponent({
 	name: 'BoardsView',
 
-	components: { CreateBoardDialog, NcButton, NcEmptyContent, FolderMultipleIcon, PlusIcon, StarIcon, StarOutlineIcon },
+	components: { CreateBoardWizard, NcButton, NcEmptyContent, FolderMultipleIcon, PlusIcon, StarIcon, StarOutlineIcon },
 
 	setup() {
 		return { store: useBoardStore() }
@@ -120,28 +119,16 @@ export default defineComponent({
 	methods: {
 		t,
 
-		open(boardId: number) {
-			this.$router.push({ name: 'board', params: { boardId: String(boardId) } })
-		},
-
 		/**
-		 * Legt das Projekt an und wechselt gleich hinein — wer eben eines
-		 * angelegt hat, will es öffnen, nicht in der Liste suchen.
+		 * Ins Projekt wechseln — auch nach dem Anlegen: Wer eben eines angelegt
+		 * hat, will es öffnen, nicht in der Liste suchen. Der Assistent meldet
+		 * die Kennung über `@finished`.
 		 *
-		 * @param data Titel, Beschreibung und die beiden Firmennamen.
-		 * @param data.title Titel des Projekts.
-		 * @param data.description Optionale Beschreibung.
-		 * @param data.orgInternal Firmenname der eigenen Seite.
-		 * @param data.orgExternal Firmenname der Kundenseite.
+		 * @param boardId Kennung des Projekts.
 		 */
-		async create(data: { title: string, description: string | null, orgInternal: string | null, orgExternal: string | null }) {
-			try {
-				const board = await this.store.createBoard(data)
-				this.creating = false
-				this.open(board.id)
-			} catch (e) {
-				showError((e as { message?: string }).message ?? t('projektwerk', 'Anlegen fehlgeschlagen'))
-			}
+		open(boardId: number) {
+			this.creating = false
+			this.$router.push({ name: 'board', params: { boardId: String(boardId) } })
 		},
 	},
 })
