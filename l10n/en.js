@@ -274,7 +274,6 @@ OC.L10N.register(
     "Die Standardspalten stehen bereit." : "The default columns are ready.",
     "Rest später" : "Finish later",
     "Zurück" : "Back",
-    "Überspringen" : "Skip",
     "Die zwei Seiten" : "The two sides",
     "Projektchat" : "Project chat",
     "Weiter" : "Next"

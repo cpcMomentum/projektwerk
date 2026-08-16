@@ -274,7 +274,6 @@ OC.L10N.register(
     "Die Standardspalten stehen bereit." : "Die Standardspalten stehen bereit.",
     "Rest später" : "Rest später",
     "Zurück" : "Zurück",
-    "Überspringen" : "Überspringen",
     "Die zwei Seiten" : "Die zwei Seiten",
     "Projektchat" : "Projektchat",
     "Weiter" : "Weiter"
