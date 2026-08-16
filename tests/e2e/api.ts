@@ -142,6 +142,26 @@ export class Api {
 	}
 
 	/**
+	 * Einen Vorgang aktualisieren — hier vor allem die Fälligkeit (#72/#144).
+	 *
+	 * `dueDate` als `JJJJ-MM-TT` setzt sie, `null` löscht sie. Das Löschen reist
+	 * als **Leerstring**, nicht als `null`: `null` wäre am Endpunkt nicht von
+	 * „nicht geschickt" zu unterscheiden. Die `version` (optimistisches Sperren)
+	 * wird frisch geholt, damit der Test sie nicht mitschleppen muss.
+	 *
+	 * @param boardId Kennung des Projekts.
+	 * @param ticketId Kennung des Vorgangs.
+	 * @param daten Zu ändernde Felder.
+	 */
+	async ticketAktualisieren(boardId: number, ticketId: number, daten: { dueDate?: string | null }): Promise<any> {
+		const aktuell = await this.lesen(`/api/v1/boards/${boardId}/tickets/${ticketId}`)
+		const version = aktuell.ticket.version
+		const dueDate = daten.dueDate === null ? '' : daten.dueDate
+
+		return this.schreiben('patch', `/api/v1/boards/${boardId}/tickets/${ticketId}`, { version, dueDate })
+	}
+
+	/**
 	 * Den Austauschordner eines Projekts hinterlegen.
 	 *
 	 * Ueber den Pfad, wie die Oberflaeche auch — der Server loest ihn zur
