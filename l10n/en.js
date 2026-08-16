@@ -265,6 +265,18 @@ OC.L10N.register(
     "{name} aus dem Projekt entfernen? Offene Zuweisungen dieser Person werden aufgehoben." : "Remove {name} from the project? This person's open assignments will be cleared.",
     "Die Vorschau konnte nicht geladen werden" : "The preview could not be loaded",
     "Mitglied konnte nicht entfernt werden" : "The member could not be removed",
-    "_Dabei wird %n privater Vorgang dieser Person unwiederbringlich gelöscht._::_Dabei werden %n private Vorgänge dieser Person unwiederbringlich gelöscht._" : ["This will permanently delete %n private ticket of this person.", "This will permanently delete %n private tickets of this person."]
+    "_Dabei wird %n privater Vorgang dieser Person unwiederbringlich gelöscht._::_Dabei werden %n private Vorgänge dieser Person unwiederbringlich gelöscht._" : ["This will permanently delete %n private ticket of this person.","This will permanently delete %n private tickets of this person."],
+    "Schritt {current} von {total}" : "Step {current} of {total}",
+    "Die beiden Seiten des Projekts. Beides ist optional und jederzeit änderbar." : "The two sides of the project. Both are optional and can be changed at any time.",
+    "Ein Gastkonto entsteht, wenn du in „Dateien“ einen Ordner an die E-Mail-Adresse der Person freigibst." : "A guest account is created when you share a folder with the person’s email address in “Files”.",
+    "Dateien öffnen" : "Open Files",
+    "Diese Spalten wurden angelegt. Anpassen, umbenennen oder ergänzen kannst du sie jederzeit in den Projekteinstellungen." : "These columns were created. You can adjust, rename or add to them at any time in the project settings.",
+    "Die Standardspalten stehen bereit." : "The default columns are ready.",
+    "Rest später" : "Finish later",
+    "Zurück" : "Back",
+    "Überspringen" : "Skip",
+    "Die zwei Seiten" : "The two sides",
+    "Projektchat" : "Project chat",
+    "Weiter" : "Next"
 },
 "nplurals=2; plural=(n != 1);");

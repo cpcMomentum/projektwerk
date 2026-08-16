@@ -34,13 +34,19 @@ test('legt ein Projekt über die Oberfläche an und wechselt hinein', async ({ p
 
 	// Der Knopf trägt den Fix: Ohne ihn steht die Projekte-Ansicht ohne Weg
 	// nach vorn da. Er sitzt in der Kopfzeile und (bei null Projekten) auch im
-	// Leerzustand — beide rufen denselben Dialog.
+	// Leerzustand — beide rufen denselben Einrichtungsassistenten (#63).
 	await page.getByRole('button', { name: 'Neues Projekt' }).first().click()
 
 	const dialog = page.getByRole('dialog')
 	await expect(dialog).toBeVisible()
-	await dialog.locator('#pw-newboard-title').fill(titel)
-	await dialog.getByRole('button', { name: 'Anlegen' }).click()
+
+	// Der Assistent ist mehrschrittig: Schritt 1 legt das Projekt an, „Weiter"
+	// erzeugt es. Danach genügt „Rest später", um ohne die Folgeschritte gleich
+	// ins fertige Projekt zu springen — genau der „Rest später"-Ausgang, den der
+	// Assistent verspricht.
+	await dialog.locator('#pw-wiz-title').fill(titel)
+	await dialog.getByRole('button', { name: 'Weiter' }).click()
+	await dialog.getByRole('button', { name: 'Rest später' }).click()
 
 	// Nach dem Anlegen wird gleich ins neue Board gewechselt: Die URL trägt
 	// dessen Kennung, und die Überschrift trägt den Titel. Beides zusammen

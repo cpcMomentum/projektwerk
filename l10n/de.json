@@ -294,7 +294,19 @@
 		"_Dabei wird %n privater Vorgang dieser Person unwiederbringlich gelöscht._::_Dabei werden %n private Vorgänge dieser Person unwiederbringlich gelöscht._": [
 			"Dabei wird %n privater Vorgang dieser Person unwiederbringlich gelöscht.",
 			"Dabei werden %n private Vorgänge dieser Person unwiederbringlich gelöscht."
-		]
+		],
+		"Schritt {current} von {total}": "Schritt {current} von {total}",
+		"Die beiden Seiten des Projekts. Beides ist optional und jederzeit änderbar.": "Die beiden Seiten des Projekts. Beides ist optional und jederzeit änderbar.",
+		"Ein Gastkonto entsteht, wenn du in „Dateien“ einen Ordner an die E-Mail-Adresse der Person freigibst.": "Ein Gastkonto entsteht, wenn du in „Dateien“ einen Ordner an die E-Mail-Adresse der Person freigibst.",
+		"Dateien öffnen": "Dateien öffnen",
+		"Diese Spalten wurden angelegt. Anpassen, umbenennen oder ergänzen kannst du sie jederzeit in den Projekteinstellungen.": "Diese Spalten wurden angelegt. Anpassen, umbenennen oder ergänzen kannst du sie jederzeit in den Projekteinstellungen.",
+		"Die Standardspalten stehen bereit.": "Die Standardspalten stehen bereit.",
+		"Rest später": "Rest später",
+		"Zurück": "Zurück",
+		"Überspringen": "Überspringen",
+		"Die zwei Seiten": "Die zwei Seiten",
+		"Projektchat": "Projektchat",
+		"Weiter": "Weiter"
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }
