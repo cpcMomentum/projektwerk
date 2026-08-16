@@ -197,6 +197,35 @@
 	gap: 10px;
 }
 
+/*
+ * Der Zieh-Aufsatz (#11, 7a) hält dieselbe Spaltenoptik wie der Stapel — die
+ * Karten sollen sich nicht verschieben, nur weil ein Behälter dazwischenkommt.
+ * `min-height`, damit auch eine **leere** Spalte ein greifbares Ablageziel
+ * bleibt — mit nur wenigen Pixeln träfe man sie kaum. Bei Karten wächst der
+ * Behälter darüber hinaus, der Wert fügt dann keinen Leerraum hinzu.
+ */
+.app-projektwerk .pw-stack__drag {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	min-height: 48px;
+}
+
+/*
+ * sortablejs setzt diese Klassen während des Ziehens. `-ghost` ist der
+ * Platzhalter an der Zielstelle — ein gestrichelter Umriss zeigt, wo die Karte
+ * landet; `-chosen` ist die aufgenommene Karte.
+ */
+.app-projektwerk .pw-card.sortable-ghost {
+	opacity: 0.5;
+	outline: 2px dashed var(--color-primary-element);
+	outline-offset: -2px;
+}
+
+.app-projektwerk .pw-card.sortable-chosen {
+	cursor: grabbing;
+}
+
 /* ---- Ticketkarte -------------------------------------------------------- */
 
 /*

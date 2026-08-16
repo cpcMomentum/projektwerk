@@ -78,7 +78,15 @@
 			</template>
 		</NcEmptyContent>
 
-		<div v-else class="pw-board">
+		<!--
+			`:key="boardKey"` baut nach einem Drag & Drop das Board einmal sauber
+			aus dem Serverstand neu auf (#11, 7a). `sortablejs` verschiebt beim
+			Ziehen echte DOM-Knoten, die Vue über den Karten-Slot besitzt — danach
+			steht die Karte kurz in beiden Spalten. Der Neuaufbau verwirft den
+			Überrest; die Wahrheit kommt ohnehin vom Server. Nur beim Ziehen nötig,
+			nicht beim Menü (dort rührt niemand am DOM).
+		-->
+		<div v-else :key="boardKey" class="pw-board">
 			<!--
 					Eine Spalte je Eintrag aus `columnViews` statt aus
 					`store.columns`: Die Vorlage rief `ticketsIn()` sonst
@@ -100,22 +108,33 @@
 					<span class="pw-n">{{ view.total }}</span>
 				</div>
 				<div class="pw-stack">
-					<TicketCard
-						v-for="ticket in view.tickets"
-						:key="ticket.id"
-						:ticket="ticket"
-						:showVisibility="showVisibility"
-						:responsibleName="store.nameOf(ticket.responsibleUserId)"
-						:columns="store.columns"
-						:commentCount="count('comments', ticket.id)"
-						:stepCount="count('steps', ticket.id)"
-						:stepsDone="count('stepsDone', ticket.id)"
-						:waitState="store.waiting[ticket.id] ?? null"
-						:changed="store.changed[ticket.id] === true"
-						:memberNames="store.memberNames"
-						:fromClientSide="!store.isInternal"
-						@open="openTicket"
-						@move="move" />
+					<!--
+						Der Zieh-Aufsatz (#11, 7a) umschließt nur die Karten, nicht
+						den „Ältere anzeigen"-Knopf oder den Leerzustand. Das Ziehen
+						ruft dieselbe `moveTicket`-Kette wie das Menü — nur mit einer
+						genauen Zielposition statt „ans Ende".
+					-->
+					<BoardDragLayer
+						:tickets="view.tickets"
+						:columnId="view.column.id"
+						@move="moved">
+						<template #default="{ ticket }">
+							<TicketCard
+								:ticket="ticket"
+								:showVisibility="showVisibility"
+								:responsibleName="store.nameOf(ticket.responsibleUserId)"
+								:columns="store.columns"
+								:commentCount="count('comments', ticket.id)"
+								:stepCount="count('steps', ticket.id)"
+								:stepsDone="count('stepsDone', ticket.id)"
+								:waitState="store.waiting[ticket.id] ?? null"
+								:changed="store.changed[ticket.id] === true"
+								:memberNames="store.memberNames"
+								:fromClientSide="!store.isInternal"
+								@open="openTicket"
+								@move="move" />
+						</template>
+					</BoardDragLayer>
 
 					<!--
 						Ältere Erledigte (#59). Kein Archiv als Ablageort:
@@ -199,6 +218,7 @@ import ClockAlertIcon from 'vue-material-design-icons/ClockAlertOutline.vue'
 import CogIcon from 'vue-material-design-icons/Cog.vue'
 import FolderMultipleIcon from 'vue-material-design-icons/FolderMultiple.vue'
 import PlusIcon from 'vue-material-design-icons/Plus.vue'
+import BoardDragLayer from '@/components/board/BoardDragLayer.vue'
 import CreateTicketDialog from '@/components/CreateTicketDialog.vue'
 import TicketCard from '@/components/TicketCard.vue'
 import TicketDetail from '@/components/TicketDetail.vue'
@@ -224,7 +244,7 @@ interface ColumnView {
 export default defineComponent({
 	name: 'BoardView',
 
-	components: { ClockAlertIcon, CogIcon, CreateTicketDialog, FolderMultipleIcon, NcButton, NcEmptyContent, PlusIcon, TicketCard, TicketDetail },
+	components: { BoardDragLayer, ClockAlertIcon, CogIcon, CreateTicketDialog, FolderMultipleIcon, NcButton, NcEmptyContent, PlusIcon, TicketCard, TicketDetail },
 
 	setup() {
 		return { store: useBoardStore() }
@@ -237,6 +257,8 @@ export default defineComponent({
 			openSteps: [] as Step[],
 			openComments: [] as Comment[],
 			openAttachments: [] as Attachment[],
+			/** Erzwingt den sauberen Neuaufbau des Boards nach einem Drag & Drop. */
+			boardKey: 0,
 		}
 	},
 
@@ -342,6 +364,37 @@ export default defineComponent({
 					await this.store.open(this.boardId)
 				}
 				reportWriteError(e, t('projektwerk', 'Verschieben fehlgeschlagen'), isConflict(e))
+			}
+		},
+
+		/**
+		 * Verschieben per Drag & Drop (#11, 7a) — genaue Zielposition.
+		 *
+		 * Anders als das Menü (ans Ende) nennt das Ziehen die **Nachbarn** der
+		 * Ablegestelle. Es ruft aber dieselbe `moveTicket`-Kette und behandelt den
+		 * Konflikt gleich: Beim 409 wird nachgeladen, nicht zum Neuladen
+		 * aufgefordert — auch damit der Spiegel im Zieh-Aufsatz wieder auf den
+		 * Serverstand fällt.
+		 *
+		 * @param payload Ticket, Zielspalte und die beiden Nachbarn.
+		 * @param payload.ticketId Kennung des gezogenen Vorgangs.
+		 * @param payload.targetColumnId Zielspalte.
+		 * @param payload.beforeId Nachbar darüber oder null.
+		 * @param payload.afterId Nachbar darunter oder null.
+		 */
+		async moved(payload: { ticketId: number, targetColumnId: number, beforeId: number | null, afterId: number | null }) {
+			try {
+				await this.store.moveTicket(payload.ticketId, payload.targetColumnId, payload.beforeId, payload.afterId)
+			} catch (e) {
+				if (isConflict(e)) {
+					await this.store.open(this.boardId)
+				}
+				reportWriteError(e, t('projektwerk', 'Verschieben fehlgeschlagen'), isConflict(e))
+			} finally {
+				// Immer neu aufbauen — auch nach einem Fehlschlag: Dann hat
+				// `sortablejs` die Karte schon verschoben, der Server aber nicht,
+				// und nur der Neuaufbau bringt das Board wieder mit ihm in Deckung.
+				this.boardKey += 1
 			}
 		},
 
