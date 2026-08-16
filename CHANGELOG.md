@@ -6,6 +6,28 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.4.5] - 2026-08-16
+
+### Added
+
+- **Zuständige Person schon beim Anlegen wählen** (#146) — der Anlege-Dialog bekommt ein Feld
+  „Zuständige Person". Die Auswahl folgt der gewählten Sichtbarkeit: bei einem öffentlichen Vorgang
+  alle Mitglieder, bei einem internen nur die eigene Seite, bei einem Entwurf nur man selbst. Nach
+  dem Anlegen öffnet sich direkt die Detailansicht, wo Anhänge und Arbeitsschritte möglich sind.
+- **Dateien per Drag-and-drop anhängen** (#150) — Dateien lassen sich auf den Anhang-Bereich eines
+  Vorgangs ziehen, statt über den Auswahl-Dialog zu gehen. Mehrere Dateien auf einmal sind möglich;
+  der Auswahl-Knopf bleibt daneben bestehen.
+- **Tickets per Drag & Drop zwischen Spalten ziehen** (#11) — Karten lassen sich mit der Maus oder
+  per Langdruck am Touchgerät von Spalte zu Spalte ziehen. Das Menü „Verschieben nach …" und die
+  Tastatur bleiben der gleichwertige, barrierefreie Weg.
+
+### Changed
+
+- **Die Wartemarke hängt ihre Intensität an die Fälligkeit** (#144) — solange die vereinbarte Frist
+  läuft (oder keine gesetzt ist), bleibt die Marke ruhig und informativ; erst wenn die Fälligkeit
+  gerissen ist, wird sie zur kräftigen Warn-Marke. Beidseitig gleich: Der Kunde sieht dieselben zwei
+  Stufen. Weiterhin gerechnet, nichts gespeichert.
+
 ## [0.4.4] - 2026-08-16
 
 ### Added
