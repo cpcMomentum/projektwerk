@@ -49,6 +49,10 @@ return [
 		// „wem darf ich hier etwas geben", und diese Frage folgt aus der
 		// Sichtbarkeitsregel; sie steht deshalb in der Leak-Matrix.
 		['name' => 'step#assignable', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/assignable', 'verb' => 'GET'],
+		// Derselbe Picker fuer einen noch nicht angelegten Vorgang (#146): board-,
+		// nicht ticketgebunden, `visibility` als Abfrageparameter. Folgt derselben
+		// Sichtbarkeitsregel und steht deshalb ebenfalls in der Leak-Matrix.
+		['name' => 'step#assignableForNew', 'url' => '/api/v1/boards/{boardId}/assignable-new', 'verb' => 'GET'],
 		['name' => 'step#create', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/steps', 'verb' => 'POST'],
 		['name' => 'step#update', 'url' => '/api/v1/boards/{boardId}/steps/{stepId}', 'verb' => 'PATCH'],
 

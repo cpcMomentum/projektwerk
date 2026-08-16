@@ -79,9 +79,9 @@ describe('Überblick', () => {
 		store.apply(daten({
 			tickets: [ticket(1, 1), ticket(2, 1), ticket(3, 1)],
 			waiting: {
-				1: { since: '2026-08-13T21:14:14+00:00', userIds: ['carla'] },
-				2: { since: '2026-08-12T06:00:00+00:00', userIds: ['carla'] },
-				3: { since: '2026-08-01T23:59:00+00:00', userIds: ['carla'] },
+				1: { since: '2026-08-13T21:14:14+00:00', userIds: ['carla'], overdue: false },
+				2: { since: '2026-08-12T06:00:00+00:00', userIds: ['carla'], overdue: false },
+				3: { since: '2026-08-01T23:59:00+00:00', userIds: ['carla'], overdue: false },
 			},
 		}))
 		store.today = '2026-08-13'
@@ -111,8 +111,8 @@ describe('Überblick', () => {
 				2: { title: 'Umzug', orgInternal: null, orgExternal: null },
 			},
 			waiting: {
-				1: { since: '2026-08-10T08:00:00+00:00', userIds: ['carla', 'ohne-namen'] },
-				2: { since: '2026-08-10T08:00:00+00:00', userIds: ['carla'] },
+				1: { since: '2026-08-10T08:00:00+00:00', userIds: ['carla', 'ohne-namen'], overdue: false },
+				2: { since: '2026-08-10T08:00:00+00:00', userIds: ['carla'], overdue: false },
 			},
 			names: {
 				1: { carla: 'Carla Müller' },
@@ -142,7 +142,7 @@ describe('Überblick', () => {
 				2: { title: 'Umzug', orgInternal: null, orgExternal: null },
 				3: { title: 'Nichts los', orgInternal: null, orgExternal: null },
 			},
-			waiting: { 3: { since: '2026-08-10T08:00:00+00:00', userIds: ['carla'] } },
+			waiting: { 3: { since: '2026-08-10T08:00:00+00:00', userIds: ['carla'], overdue: false } },
 		}))
 		store.today = '2026-08-13'
 
@@ -211,7 +211,7 @@ describe('Überblick', () => {
 				ticket(2, 1, 'B', null, 'ich'), // wartet → gehört in den Warte-Abschnitt
 				ticket(3, 1, 'C', null, 'wer-anders'),
 			],
-			waiting: { 2: { since: '2026-08-10', userIds: ['kunde'] } },
+			waiting: { 2: { since: '2026-08-10', userIds: ['kunde'], overdue: false } },
 			me: 'ich',
 		}))
 
@@ -232,7 +232,7 @@ describe('Überblick', () => {
 				ticket(4, 1, 'D'), // wartet auf den Kunden
 			],
 			withOpenSteps: [3],
-			waiting: { 4: { since: '2026-08-10', userIds: ['kunde'] } },
+			waiting: { 4: { since: '2026-08-10', userIds: ['kunde'], overdue: false } },
 			me: 'ich',
 		}))
 

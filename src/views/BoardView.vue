@@ -177,7 +177,11 @@
 
 		<CreateTicketDialog
 			:open="creating"
+			:boardId="boardId"
 			:columns="store.columns"
+			:members="store.members"
+			:orgInternal="store.board?.orgInternal ?? ''"
+			:orgExternal="store.board?.orgExternal ?? ''"
 			@update:open="creating = $event"
 			@create="create" />
 	</div>
@@ -432,11 +436,18 @@ export default defineComponent({
 			this.openTicketData = ticket
 		},
 
-		async create(data: { title: string, description: string | null, visibility: Visibility, columnId: number, dueDate: string | null }) {
+		async create(data: { title: string, description: string | null, visibility: Visibility, columnId: number, dueDate: string | null, responsibleUserId: string | null }) {
 			try {
-				await createTicket(this.boardId, data)
+				const angelegt = await createTicket(this.boardId, data)
 				this.creating = false
 				await this.store.open(this.boardId)
+				// Variante (a) aus #146: direkt in den Detail-View, wo Anhänge und
+				// Arbeitsschritte „wie im Detail" möglich sind — ohne den schlanken
+				// Anlege-Dialog (#100) dafür aufzublähen. Den frischen Stand aus dem
+				// Speicher nehmen, damit `version` stimmt und der nächste Schreibweg
+				// nicht in einen 409 läuft.
+				const frisch = this.store.tickets.get(angelegt.id) ?? angelegt
+				await this.openTicket(frisch)
 			} catch (e) {
 				showError((e as { message?: string }).message ?? t('projektwerk', 'Anlegen fehlgeschlagen'))
 			}

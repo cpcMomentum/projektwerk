@@ -116,6 +116,12 @@ export interface WaitState {
 	/** Das **kleinste** `assignedAt` der wartenden Schritte, nicht das jüngste. */
 	since: string
 	userIds: string[]
+	/**
+	 * Ist die Fälligkeit (#72) gerissen? Steuert nur die **Intensität** der Marke
+	 * (#144), nicht ihr Vorhandensein: ruhig innerhalb der Frist, laut bei Verzug.
+	 * Gerechnet im Backend aus `dueDate`, nichts gespeichert.
+	 */
+	overdue: boolean
 }
 
 /** Zähler je Ticket-ID, aus derselben gefilterten Menge wie die Tickets. */

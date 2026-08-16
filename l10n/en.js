@@ -277,6 +277,7 @@ OC.L10N.register(
     "Die zwei Seiten" : "The two sides",
     "Projektchat" : "Project chat",
     "Weiter" : "Next",
+    "Zuständige Person" : "Responsible person",
     "Dateien hier ablegen" : "Drop files here"
 },
 "nplurals=2; plural=(n != 1);");

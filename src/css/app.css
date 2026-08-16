@@ -1165,6 +1165,12 @@
  * Farbe UND Symbol UND Text, wie jede Kennzeichnung in dieser App (§9) — wer
  * die Farbe nicht sieht, liest denselben Satz.
  */
+/*
+ * **Zwei Stufen, eine Zeile (#144).** Die Grundfassung ist die *ruhige*: Ball
+ * beim Kunden, aber innerhalb der Frist — neutrale Fuellung, gedaempfte Uhr,
+ * ruhigeres Gewicht. Erst `--overdue` (Faelligkeit gerissen) schaltet auf die
+ * kraeftige Warnfassung von frueher. So bedeutet „laut" konsequent „ueberfaellig".
+ */
 .app-projektwerk .pw-wait {
 	display: inline-flex;
 	align-items: center;
@@ -1172,10 +1178,10 @@
 	align-self: flex-start;
 	padding: 3px 9px;
 	border-radius: var(--border-radius-large);
-	background: var(--color-warning, var(--color-primary-element-light));
+	background: var(--color-background-hover);
 	color: var(--color-main-text);
 	font-size: 12.5px;
-	font-weight: 600;
+	font-weight: 500;
 	/*
 	 * **Kein `nowrap` mehr.** „wartet auf Kunde · seit 09.08." ist laenger als
 	 * eine schmale Spalte, und mit `nowrap` ragte die Marke sichtbar ueber den
@@ -1183,6 +1189,12 @@
 	 */
 	max-width: 100%;
 	overflow-wrap: break-word;
+}
+
+/* Verzug (#144): die kraeftige Fuellung und das schwerere Gewicht wie zuvor. */
+.app-projektwerk .pw-wait--overdue {
+	background: var(--color-warning, var(--color-primary-element-light));
+	font-weight: 600;
 }
 
 /*
@@ -1207,14 +1219,29 @@
 }
 
 /*
- * `--color-element-warning` (#BF7900), nicht `--color-warning-hover`: Letzteres
- * ist ein Flaechen-Gelb (#ffe4a1) und auf Weiss kaum zu sehen; ersteres ist der
- * Ton, den Nextcloud fuer warnende *Elemente* nimmt. Im Dunkelmodus dreht es
- * auf #FFCC00, der Kontrast bleibt in beiden Richtungen.
- *
- * Ueberfaellig (#72) faerbt spaeter genau diese Regel rot um.
+ * **Ruhig ist der Normalfall (#144).** Innerhalb der Frist traegt die Uhr eine
+ * gedaempfte Farbe — sie gibt Auskunft, sie ruft nicht.
  */
 .app-projektwerk .pw-wait__clock {
+	color: var(--color-text-maxcontrast);
+}
+
+/*
+ * **Verzug.** Auf der gefuellten Pille im Detail traegt die *Fuellung* das
+ * Signal; die Uhr bleibt in Textfarbe, damit sie auf dem Warngelb lesbar bleibt.
+ */
+.app-projektwerk .pw-wait--overdue .pw-wait__clock {
+	color: var(--color-main-text);
+}
+
+/*
+ * Auf der Karte gibt es keine Fuellung (siehe unten) — dort ist die Uhr selbst
+ * das Signal. `--color-element-warning` (#BF7900), nicht `--color-warning-hover`:
+ * Letzteres ist ein Flaechen-Gelb (#ffe4a1) und auf Weiss kaum zu sehen; ersteres
+ * ist der Ton, den Nextcloud fuer warnende *Elemente* nimmt. Im Dunkelmodus dreht
+ * es auf #FFCC00, der Kontrast bleibt in beiden Richtungen.
+ */
+.app-projektwerk .pw-card__foot .pw-wait--overdue .pw-wait__clock {
 	color: var(--color-element-warning, var(--color-warning-text));
 }
 
