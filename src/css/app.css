@@ -212,6 +212,18 @@
 }
 
 /*
+ * **Langdruck zieht, er markiert nicht** (#11, 7a). Ohne das feuert auf dem
+ * Handy beim langen Drücken die native Textauswahl und das iOS-„Kopieren"-
+ * Menü, statt den Zug zu starten — die Karte lässt sich dann kaum aufnehmen.
+ * Auf einer Kanban-Karte wird ohnehin kein Text markiert; ein Tippen öffnet sie.
+ */
+.app-projektwerk .pw-stack__drag .pw-card {
+	user-select: none;
+	-webkit-user-select: none;
+	-webkit-touch-callout: none;
+}
+
+/*
  * sortablejs setzt diese Klassen während des Ziehens. `-ghost` ist der
  * Platzhalter an der Zielstelle — ein gestrichelter Umriss zeigt, wo die Karte
  * landet; `-chosen` ist die aufgenommene Karte.
