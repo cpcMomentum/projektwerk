@@ -306,7 +306,8 @@
 		"Die zwei Seiten": "The two sides",
 		"Projektchat": "Project chat",
 		"Weiter": "Next",
-		"Zuständige Person": "Responsible person"
+		"Zuständige Person": "Responsible person",
+		"Dateien hier ablegen": "Drop files here"
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }
