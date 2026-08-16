@@ -1,5 +1,19 @@
 <template>
-	<section class="pw-abschnitt">
+	<!--
+		Der ganze Anhang-Bereich ist Drop-Ziel (#150): Dateien lassen sich
+		draufziehen, statt über den Auswahl-Knopf zu gehen. `@dragover.prevent`
+		muss sein — ohne Unterdrücken des Standardverhaltens nimmt der Browser den
+		Drop nicht an, sondern öffnet die Datei. Der Zustand hängt an einem
+		Zähler, nicht an einem Flag: `dragenter`/`dragleave` feuern auch beim
+		Überfahren von Kindelementen, und ein bloßes Flag flackerte dabei.
+	-->
+	<section
+		class="pw-abschnitt"
+		:class="{ 'pw-abschnitt--dragover': dragging }"
+		@dragenter.prevent="onDragEnter"
+		@dragover.prevent
+		@dragleave="onDragLeave"
+		@drop.prevent="onDrop">
 		<!--
 			Der Knopf steht **in** der Abschnittszeile, nicht als eigene Zeile
 			darunter (#99): Dort kostete er 34 px plus Abstand fuer eine Handlung,
@@ -75,6 +89,7 @@
 			ref="picker"
 			class="pw-attach__input"
 			type="file"
+			multiple
 			:disabled="busy"
 			@change="upload">
 
@@ -114,6 +129,16 @@
 				</NcButton>
 			</template>
 		</NcDialog>
+
+		<!--
+			Die Anzeige „hier ablegen" nur während des Ziehens. `pointer-events`
+			aus, damit die Fläche die `dragleave`/`drop`-Ereignisse nicht selbst
+			abfängt und dem Bereich darunter stiehlt.
+		-->
+		<div v-if="dragging" class="pw-abschnitt__drop">
+			<PaperclipIcon :size="24" />
+			{{ t('projektwerk', 'Dateien hier ablegen') }}
+		</div>
 	</section>
 </template>
 
@@ -164,7 +189,19 @@ export default defineComponent({
 			busy: false,
 			/** Der Anhang, über dessen Lösen gerade zurückgefragt wird. */
 			removing: null as Attachment | null,
+			/**
+			 * Wie tief die Ziehgeste im Bereich steckt (#150). `dragenter` und
+			 * `dragleave` feuern auch an Kindelementen; ein Zähler bleibt
+			 * standhaft, wo ein Flag flackerte. `dragging` folgt aus ihm.
+			 */
+			dragTiefe: 0,
 		}
+	},
+
+	computed: {
+		dragging(): boolean {
+			return this.dragTiefe > 0
+		},
 	},
 
 	methods: {
@@ -207,18 +244,61 @@ export default defineComponent({
 		 */
 		async upload(event: Event): Promise<void> {
 			const input = event.target as HTMLInputElement
-			const file = input.files?.[0]
 
-			if (file === undefined) {
-				return
-			}
-
-			await this.write(() => createAttachment(this.boardId, this.ticketId, file))
+			await this.uploadFiles(Array.from(input.files ?? []))
 
 			// **Auch im Fehlerfall zurücksetzen.** Sonst löst dieselbe Datei
 			// beim zweiten Versuch kein `change` mehr aus, weil sich der Wert
 			// des Feldes nicht geändert hat — und der Knopf wirkt kaputt.
 			input.value = ''
+		},
+
+		/**
+		 * Mehrere Dateien nacheinander anhängen (#150).
+		 *
+		 * In **einem** `write`-Aufruf, damit erst nach dem letzten Upload einmal
+		 * neu geladen wird — nicht je Datei. Nacheinander statt gleichzeitig, weil
+		 * jeder Upload eine Vorgangsnummer-präfigierte Datei im selben Ordner
+		 * anlegt; der Server vergibt sie je POST, und paralleles Schreiben würde
+		 * um dieselbe laufende Nummer konkurrieren.
+		 *
+		 * @param files Die anzuhängenden Dateien.
+		 */
+		async uploadFiles(files: File[]): Promise<void> {
+			if (files.length === 0) {
+				return
+			}
+
+			await this.write(async () => {
+				for (const file of files) {
+					await createAttachment(this.boardId, this.ticketId, file)
+				}
+			})
+		},
+
+		/**
+		 * @param event Das Zieh-Ereignis.
+		 */
+		onDragEnter(event: DragEvent): void {
+			// Nur echte Datei-Drags interessieren — ein gezogener Text oder ein
+			// Element aus der Seite soll den Bereich nicht aufleuchten lassen.
+			if (event.dataTransfer?.types.includes('Files')) {
+				this.dragTiefe += 1
+			}
+		},
+
+		onDragLeave(): void {
+			if (this.dragTiefe > 0) {
+				this.dragTiefe -= 1
+			}
+		},
+
+		/**
+		 * @param event Das Ablege-Ereignis.
+		 */
+		async onDrop(event: DragEvent): Promise<void> {
+			this.dragTiefe = 0
+			await this.uploadFiles(Array.from(event.dataTransfer?.files ?? []))
 		},
 
 		/**

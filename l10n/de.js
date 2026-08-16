@@ -276,6 +276,7 @@ OC.L10N.register(
     "Zurück" : "Zurück",
     "Die zwei Seiten" : "Die zwei Seiten",
     "Projektchat" : "Projektchat",
-    "Weiter" : "Weiter"
+    "Weiter" : "Weiter",
+    "Dateien hier ablegen" : "Dateien hier ablegen"
 },
 "nplurals=2; plural=(n != 1);");
