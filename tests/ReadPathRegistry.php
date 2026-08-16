@@ -175,6 +175,10 @@ final class ReadPathRegistry {
 		// Liefert keine Schritte, sondern die Antwort auf „wem darf ich hier
 		// etwas geben" — und die folgt aus der Sichtbarkeitsregel.
 		'step#assignable',
+		// Dieselbe Frage fuer einen noch nicht angelegten Vorgang (#146): „wem
+		// darf ich hier gleich die Zustaendigkeit geben". Folgt derselben
+		// Sichtbarkeitsregel, gegen einen gedachten Vorgang des Betrachters.
+		'step#assignableForNew',
 		// Liefert Nextcloud-Konten, keine Projektdaten — aber es ist ein
 		// Lesepfad mit Rechtepruefung, und die gehoert in die Matrix.
 		'memberSearch#search',

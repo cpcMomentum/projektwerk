@@ -34,6 +34,25 @@
 				<VisibilityChoice v-model="visibility" />
 			</div>
 
+			<!--
+				Die/der Zuständige gleich beim Anlegen (#146). Die Auswahl folgt der
+				gewählten Sichtbarkeit — bei einem öffentlichen Vorgang alle
+				Mitglieder, bei einem internen nur die eigene Seite. Deshalb kommt
+				sie vom Server (`assignable-new`) und wird bei jedem
+				Sichtbarkeitswechsel neu geholt; im Browser zu filtern wäre eine
+				zweite Fassung der Sichtbarkeitsregel. Voreinstellung „Niemand".
+			-->
+			<div class="pw-field">
+				<label :for="responsibleInputId">{{ t('projektwerk', 'Zuständige Person') }}</label>
+				<NcSelectUsers
+					:options="assignableOptions"
+					:modelValue="responsibleOption"
+					:inputId="responsibleInputId"
+					:labelOutside="true"
+					:placeholder="t('projektwerk', 'Niemand')"
+					@update:modelValue="setResponsible" />
+			</div>
+
 			<div class="pw-field">
 				<label for="pw-new-col">{{ t('projektwerk', 'Spalte') }}</label>
 				<select id="pw-new-col" v-model="columnId">
@@ -75,25 +94,39 @@
 
 <script lang="ts">
 import type { PropType } from 'vue'
-import type { Column, Visibility } from '@/types/board'
+import type { Column, Member, Visibility } from '@/types/board'
 
 import { t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcDateTimePicker from '@nextcloud/vue/components/NcDateTimePicker'
 import NcDialog from '@nextcloud/vue/components/NcDialog'
+import NcSelectUsers from '@nextcloud/vue/components/NcSelectUsers'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
 import VisibilityChoice from '@/components/VisibilityChoice.vue'
+import { fetchAssignableForNew } from '@/services/steps'
 import { toIsoDay } from '@/utils/date'
+
+/** Die Form, die `NcSelectUsers` je Option erwartet — wie im Detail-Picker. */
+interface PersonOption {
+	id: string
+	displayName: string
+	user: string
+	subname?: string
+}
 
 export default defineComponent({
 	name: 'CreateTicketDialog',
 
-	components: { NcButton, NcDateTimePicker, NcDialog, NcTextField, VisibilityChoice },
+	components: { NcButton, NcDateTimePicker, NcDialog, NcSelectUsers, NcTextField, VisibilityChoice },
 
 	props: {
 		open: { type: Boolean, default: false },
+		boardId: { type: Number, required: true },
 		columns: { type: Array as PropType<Column[]>, default: () => [] },
+		members: { type: Array as PropType<Member[]>, default: () => [] },
+		orgInternal: { type: String, default: '' },
+		orgExternal: { type: String, default: '' },
 	},
 
 	emits: ['update:open', 'create'],
@@ -106,12 +139,37 @@ export default defineComponent({
 			visibility: 'public' as Visibility,
 			columnId: null as number | null,
 			dueDate: null as Date | null,
+			// Wer bei der aktuellen Sichtbarkeit zuständig sein darf — vom Server.
+			responsibleUserId: null as string | null,
+			assignable: [] as string[],
 		}
 	},
 
 	computed: {
 		canSave(): boolean {
 			return this.title.trim() !== '' && this.columnId !== null
+		},
+
+		responsibleInputId(): string {
+			return 'pw-new-responsible'
+		},
+
+		/** Die Auswahlliste, wie `NcSelectUsers` sie erwartet — Namen aus den Mitgliedern. */
+		assignableOptions(): PersonOption[] {
+			return this.assignable.map((userId) => ({
+				id: userId,
+				displayName: this.nameOf(userId),
+				user: userId,
+				subname: this.roleOf(userId) === 'internal' ? this.orgInternal : this.orgExternal,
+			}))
+		},
+
+		responsibleOption(): PersonOption | null {
+			if (this.responsibleUserId === null) {
+				return null
+			}
+
+			return this.assignableOptions.find((o) => o.id === this.responsibleUserId) ?? null
 		},
 	},
 
@@ -123,12 +181,48 @@ export default defineComponent({
 				this.visibility = 'public'
 				this.columnId = this.columns[0]?.id ?? null
 				this.dueDate = null
+				this.responsibleUserId = null
+				this.loadAssignable()
+			}
+		},
+
+		// Wechselt die Sichtbarkeit, ändert sich die zuweisbare Menge. Wer nicht
+		// mehr dazugehört, fällt raus — sonst böte der Dialog jemanden an, den der
+		// Server beim Anlegen ablehnte.
+		visibility() {
+			if (this.open) {
+				this.loadAssignable()
 			}
 		},
 	},
 
 	methods: {
 		t,
+
+		nameOf(userId: string): string {
+			return this.members.find((m) => m.userId === userId)?.resolvedName ?? userId
+		},
+
+		roleOf(userId: string): string {
+			return this.members.find((m) => m.userId === userId)?.role ?? 'external'
+		},
+
+		async loadAssignable() {
+			try {
+				this.assignable = await fetchAssignableForNew(this.boardId, this.visibility)
+			} catch {
+				this.assignable = []
+			}
+
+			if (this.responsibleUserId !== null && !this.assignable.includes(this.responsibleUserId)) {
+				this.responsibleUserId = null
+			}
+		},
+
+		setResponsible(option: PersonOption | PersonOption[] | null) {
+			const gewaehlt = Array.isArray(option) ? (option[0] ?? null) : option
+			this.responsibleUserId = gewaehlt?.id ?? null
+		},
 
 		save() {
 			if (!this.canSave) {
@@ -140,6 +234,7 @@ export default defineComponent({
 				visibility: this.visibility,
 				columnId: this.columnId as number,
 				dueDate: toIsoDay(this.dueDate),
+				responsibleUserId: this.responsibleUserId,
 			})
 		},
 	},

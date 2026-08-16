@@ -180,6 +180,50 @@ class StepService {
 	}
 
 	/**
+	 * Wer an einem **noch nicht angelegten** Vorgang zustaendig sein duerfte (#146).
+	 *
+	 * Der Anlege-Dialog braucht den Picker, bevor es eine Ticket-ID gibt — und
+	 * damit bevor {@see assignableFor()} greift, das ein sichtbares Ticket laedt.
+	 * Die Regel bleibt dieselbe: {@see TicketScope::wouldSee()} entscheidet, nur
+	 * gegen einen **gedachten** Vorgang, dessen Ersteller der Betrachter selbst
+	 * ist. Genau so legt er ihn gleich an; die anlegende Rolle wird am Ticket
+	 * eingefroren (§8), und dieselbe Rolle steht hier im Vergleich.
+	 *
+	 * So bietet der Dialog nie jemanden an, den der Schreibpfad danach ablehnte —
+	 * dieselbe Zusicherung wie beim Detail-Picker, ohne eine zweite Fassung der
+	 * Regel im Frontend.
+	 *
+	 * @param string $visibility Die im Dialog gewaehlte Stufe.
+	 * @return string[] Benutzerkennungen
+	 * @throws \InvalidArgumentException Unbekannte Sichtbarkeit.
+	 */
+	public function assignableForNew(ViewerContext $viewer, string $visibility): array {
+		if (!in_array($visibility, [
+			TicketScope::VISIBILITY_PUBLIC,
+			TicketScope::VISIBILITY_INTERNAL,
+			TicketScope::VISIBILITY_PRIVATE,
+		], true)) {
+			throw new \InvalidArgumentException('Unbekannte Sichtbarkeit: ' . $visibility);
+		}
+
+		$allowed = [];
+		foreach ($this->members->findForBoard($viewer) as $member) {
+			$sieht = $this->scope->wouldSee(
+				$visibility,
+				$viewer->userId,
+				$viewer->role,
+				(string)$member->getUserId(),
+				(string)$member->getRole(),
+			);
+			if ($sieht) {
+				$allowed[] = (string)$member->getUserId();
+			}
+		}
+
+		return $allowed;
+	}
+
+	/**
 	 * Die Zuweisung setzen oder loeschen — mit der Rollenkopie.
 	 *
 	 * `assigned_role` wird **kopiert**, nicht verwiesen. Sonst kippte der

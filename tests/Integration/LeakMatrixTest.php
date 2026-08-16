@@ -251,6 +251,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'ticket#show' => 'testTicketShowEndpointMatchesTheVisibleSet',
 		'deepLink#ticket' => 'testDeepLinkTellsOnlyWhatTheViewerMaySee',
 		'step#assignable' => 'testAssignableNeverOffersSomeoneWhoCannotSeeTheTicket',
+		'step#assignableForNew' => 'testAssignableForNewFollowsTheChosenVisibility',
 		'memberSearch#search' => 'testMemberSearchRefusesEveryoneWithoutManagementRights',
 		'settings#memberRemovalImpact' => 'testRemovalImpactRefusesEveryoneWithoutManagementRights',
 		'notifyPref#index' => 'testEveryViewerSeesOnlyTheirOwnChannelSwitches',
@@ -1557,6 +1558,56 @@ class LeakMatrixTest extends IntegrationTestCase {
 					$erwartet,
 					$tatsaechlich,
 					$userId . ' bekommt bei ' . $label . ' eine Vorschlagsliste, die von der Sichtbarkeit abweicht.',
+				);
+			}
+		}
+	}
+
+	/**
+	 * **Der Verantwortlichen-Picker im Anlege-Dialog folgt der gewaehlten
+	 * Sichtbarkeit (#146).**
+	 *
+	 * Bevor es ein Ticket gibt, kann der Picker nicht am geladenen Vorgang
+	 * pruefen — er fragt gegen einen **gedachten** Vorgang, dessen Ersteller der
+	 * Betrachter ist. Die Erwartung ist genau die Sichtbarkeitsregel, angewandt
+	 * auf diese Lage:
+	 *
+	 * - `public`   → alle Mitglieder, intern und extern ohne Trennung,
+	 * - `internal` → nur die eigene Seite des Anlegenden,
+	 * - `private`  → nur er selbst.
+	 *
+	 * Faellt das auseinander, boete der Dialog jemanden an, den der Schreibpfad
+	 * danach mit `mayBecomeResponsible` ablehnte — dieselbe Luecke wie eine
+	 * zweite Fassung der Regel im Frontend.
+	 */
+	public function testAssignableForNewFollowsTheChosenVisibility(): void {
+		$service = Server::get(StepService::class);
+
+		// Die Mitglieder des Hauptboards mit ihrer eingefrorenen Rolle.
+		$intern = [self::ANNA, self::BERT];
+		$extern = [self::CARLA, self::DIRK];
+		$alle = array_merge($intern, $extern);
+
+		foreach ([self::ANNA, self::BERT, self::CARLA, self::DIRK] as $userId) {
+			$viewer = $this->contextFor($userId);
+			$eigeneSeite = in_array($userId, $intern, true) ? $intern : $extern;
+
+			$erwartung = [
+				TicketScope::VISIBILITY_PUBLIC => $alle,
+				TicketScope::VISIBILITY_INTERNAL => $eigeneSeite,
+				TicketScope::VISIBILITY_PRIVATE => [$userId],
+			];
+
+			foreach ($erwartung as $visibility => $soll) {
+				$tatsaechlich = $service->assignableForNew($viewer, $visibility);
+				sort($tatsaechlich);
+				sort($soll);
+
+				$this->assertSame(
+					$soll,
+					$tatsaechlich,
+					$userId . ' bekommt fuer einen neuen ' . $visibility . '-Vorgang eine '
+						. 'Zustaendigen-Auswahl, die von der Sichtbarkeit abweicht.',
 				);
 			}
 		}
