@@ -111,6 +111,19 @@ class StepController extends Controller {
 	}
 
 	/**
+	 * Wer an einem noch nicht angelegten Vorgang zustaendig sein duerfte (#146).
+	 *
+	 * Fuer den Verantwortlichen-Picker im Anlege-Dialog, bevor es eine Ticket-ID
+	 * gibt. `visibility` kommt als Abfrageparameter, weil die zuweisbare Menge von
+	 * der im Dialog gewaehlten Stufe abhaengt.
+	 */
+	#[NoAdminRequired]
+	public function assignableForNew(int $boardId, string $visibility = 'public'): JSONResponse {
+		return $this->run($boardId, fn (ViewerContext $viewer): mixed
+			=> ['userIds' => $this->service->assignableForNew($viewer, $visibility)]);
+	}
+
+	/**
 	 * @param callable(ViewerContext): mixed $write
 	 */
 	private function run(int $boardId, callable $write, int $status = Http::STATUS_OK): JSONResponse {

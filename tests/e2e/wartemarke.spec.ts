@@ -70,11 +70,52 @@ test.describe('Dienstleisterseite', () => {
 
 		// Variante A aus #104 (Axel, 2026-08-13): Marke und Satz sagten dasselbe,
 		// einmal kaputt und einmal richtig. Der Satz ist gegangen, weil die Marke
-		// mehr traegt — Uhr, Datum, und mit #72 dieselbe Uhr in Rot.
+		// mehr traegt — Uhr, Datum, und mit #144 dieselbe Uhr ruhig vs. laut.
 		await expect(page.locator('.pw-wait__sentence')).toHaveCount(0)
 		await expect(page.getByText(/Dieser Vorgang wartet auf die Kundenseite/)).toHaveCount(0)
 
 		// Gegenprobe: Die Auskunft selbst ist nicht mit dem Satz verschwunden.
 		await expect(page.locator('.pw-detail .pw-wait')).toContainText(KUNDE.name)
+	})
+})
+
+/**
+ * Die Intensität der Marke hängt an der Fälligkeit (#144).
+ *
+ * Ballbesitz und Verzug sind zwei Fragen: Der Ball liegt beim Kunden, aber
+ * „wirklich zu spät" ist der Vorgang erst, wenn seine Fälligkeit (#72) gerissen
+ * ist. Innerhalb der Frist bleibt die Marke ruhig (`.pw-wait` ohne
+ * `--overdue`), bei Verzug wird sie laut (`.pw-wait--overdue`).
+ *
+ * Der Wartezustand selbst ändert sich dabei nie — nur seine Darstellung. Die
+ * Daten liegen bewusst weit in Vergangenheit und Zukunft, damit der Test nicht
+ * am Testtag kippt.
+ */
+test.describe('Fälligkeit steuert die Intensität', () => {
+	test.use({ storageState: INTERN.sitzung })
+
+	test('ruhig innerhalb der Frist, laut bei Verzug', async ({ page }) => {
+		const api = await Api.fuer(page.request)
+
+		// Ausgangslage ohne Fälligkeit: wartend, aber ruhig.
+		await api.ticketAktualisieren(projekt.boardId, projekt.oeffentlich.id, { dueDate: null })
+		await page.goto(`${APP_PFAD}#/boards/${projekt.boardId}`)
+		await expect(page.getByText(projekt.oeffentlich.title)).toBeVisible({ timeout: 30_000 })
+		await page.getByText(projekt.oeffentlich.title).click()
+		await expect(page.locator('.pw-detail .pw-wait')).toBeVisible()
+		await expect(page.locator('.pw-detail .pw-wait--overdue')).toHaveCount(0)
+
+		// Fälligkeit in der Zukunft: weiterhin ruhig — der Ball liegt im Plan.
+		await api.ticketAktualisieren(projekt.boardId, projekt.oeffentlich.id, { dueDate: '2099-12-31' })
+		await page.reload()
+		await page.getByText(projekt.oeffentlich.title).click()
+		await expect(page.locator('.pw-detail .pw-wait')).toBeVisible()
+		await expect(page.locator('.pw-detail .pw-wait--overdue')).toHaveCount(0)
+
+		// Fälligkeit gerissen: jetzt die kräftige Marke.
+		await api.ticketAktualisieren(projekt.boardId, projekt.oeffentlich.id, { dueDate: '2020-01-01' })
+		await page.reload()
+		await page.getByText(projekt.oeffentlich.title).click()
+		await expect(page.locator('.pw-detail .pw-wait--overdue')).toBeVisible()
 	})
 })

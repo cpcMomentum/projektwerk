@@ -12,6 +12,7 @@ namespace OCA\Projektwerk\Tests\Unit\Access;
 use OCA\Projektwerk\Access\WaitStateCalculator;
 use OCA\Projektwerk\Db\Step;
 use OCA\Projektwerk\Db\Ticket;
+use OCP\AppFramework\Utility\ITimeFactory;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -24,12 +25,18 @@ use PHPUnit\Framework\TestCase;
  */
 class WaitStateCalculatorTest extends TestCase {
 
+	/** Feste „heute"-Uhr, damit „überfällig" (#144) nicht vom Testtag abhängt. */
+	private const HEUTE = '2026-08-16';
+
 	private WaitStateCalculator $calculator;
 
 	protected function setUp(): void {
 		parent::setUp();
 
-		$this->calculator = new WaitStateCalculator();
+		$time = $this->createMock(ITimeFactory::class);
+		$time->method('getDateTime')->willReturn(new \DateTime(self::HEUTE . ' 09:00:00'));
+
+		$this->calculator = new WaitStateCalculator($time);
 	}
 
 	public function testAnOpenExternalStepMakesTheTicketWait(): void {
@@ -174,10 +181,76 @@ class WaitStateCalculatorTest extends TestCase {
 		$this->assertArrayNotHasKey(2, $states);
 	}
 
+	public function testAWaitingTicketWithoutADueDateStaysCalm(): void {
+		// Ohne Fälligkeit gibt es kein „zu spät" (#144): Der Ball liegt beim
+		// Kunden, aber die Marke ruft nicht.
+		$state = $this->calculator->forTicket(
+			$this->ticket(),
+			[$this->step('external', false, '2026-06-12')],
+		);
+
+		$this->assertFalse($state['overdue']);
+	}
+
+	public function testATicketDueInTheFutureStaysCalm(): void {
+		// Innerhalb der vereinbarten Frist: ruhig, obwohl der Ball beim Kunden
+		// liegt.
+		$state = $this->calculator->forTicket(
+			$this->ticketWithDue('2026-09-01'),
+			[$this->step('external', false, '2026-06-12')],
+		);
+
+		$this->assertFalse($state['overdue']);
+	}
+
+	public function testTheDueDayItselfIsNotYetOverdue(): void {
+		// Datum-Vergleich auf Tagesebene, der Fälligkeitstag selbst zählt noch
+		// nicht — Wort für Wort dieselbe Regel wie im Frontend (`taskStore.ts`).
+		$state = $this->calculator->forTicket(
+			$this->ticketWithDue(self::HEUTE),
+			[$this->step('external', false, '2026-06-12')],
+		);
+
+		$this->assertFalse($state['overdue']);
+	}
+
+	public function testAnOverdueTicketMakesTheMarkLoud(): void {
+		// Fälligkeit gerissen: die kräftige Marke — „in Verzug".
+		$state = $this->calculator->forTicket(
+			$this->ticketWithDue('2026-08-15'),
+			[$this->step('external', false, '2026-06-12')],
+		);
+
+		$this->assertTrue($state['overdue']);
+	}
+
+	public function testOverdueRidesTheResponsibleSourceToo(): void {
+		// Die Fälligkeit hängt am Ticket, nicht an der Quelle des Wartens — auch
+		// ein per Verantwortlichem (#114) wartender Vorgang wird laut.
+		$ticket = $this->responsibleTicket('external', '2026-06-12', 'kunde');
+		$ticket->setDueDate(new \DateTime('2026-08-15'));
+
+		$state = $this->calculator->forTicket($ticket, []);
+
+		$this->assertTrue($state['overdue']);
+	}
+
 	private function ticket(int $id = 1): Ticket {
 		$ticket = new Ticket();
 		$ticket->setId($id);
 		$ticket->setVisibility('public');
+
+		return $ticket;
+	}
+
+	/**
+	 * Ein Ticket mit gesetzter Fälligkeit (#72), für die Verzugs-Stufe (#144).
+	 *
+	 * @param string $dueDate Fälligkeit als JJJJ-MM-TT.
+	 */
+	private function ticketWithDue(string $dueDate, int $id = 1): Ticket {
+		$ticket = $this->ticket($id);
+		$ticket->setDueDate(new \DateTime($dueDate));
 
 		return $ticket;
 	}

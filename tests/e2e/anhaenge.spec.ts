@@ -174,3 +174,43 @@ test('loest einen Anhang wieder — nach Rueckfrage', async ({ page, request }) 
 		})
 		.toBe(1)
 })
+
+/**
+ * **Eine per Drag-and-drop abgelegte Datei haengt genauso an wie eine gewaehlte
+ * (#150).** Der Drop ruft dieselbe `upload`-Logik wie der Knopf; geprueft wird
+ * beides: dass der Bereich beim Ziehen aufleuchtet UND dass die Datei danach als
+ * echter Anhang dasteht — nicht nur als optimistische Zeile.
+ *
+ * Steht bewusst am Ende: Er legt einen weiteren Anhang an, und die Tests davor
+ * zaehlen mit exakten Erwartungen.
+ */
+test('haengt eine per Drag-and-drop abgelegte Datei an', async ({ page, request }) => {
+	await detailOeffnen(page, projekt.oeffentlich.id, projekt.oeffentlich.title)
+
+	const bereich = page.locator('.pw-abschnitt', { has: page.getByRole('button', { name: 'Datei anhängen' }) })
+
+	// Ein echtes `DataTransfer` mit Datei — nur so steht `Files` in seinen
+	// `types`, und nur dann leuchtet der Bereich auf.
+	const daten = await page.evaluateHandle(() => {
+		const dt = new DataTransfer()
+		dt.items.add(new File([new Blob(['Drop-Inhalt für den E2E-Lauf'])], 'zeichnung.txt', { type: 'text/plain' }))
+		return dt
+	})
+
+	await bereich.dispatchEvent('dragenter', { dataTransfer: daten })
+	await expect(page.getByText('Dateien hier ablegen')).toBeVisible()
+
+	await bereich.dispatchEvent('drop', { dataTransfer: daten })
+
+	const erwartet = `${String(projekt.oeffentlich.number).padStart(4, '0')}_zeichnung.txt`
+	await expect(page.getByText(erwartet)).toBeVisible({ timeout: 15_000 })
+	// Die Anzeige „hier ablegen" ist nach dem Drop wieder weg.
+	await expect(page.getByText('Dateien hier ablegen')).toHaveCount(0)
+
+	// Gegenprobe beim Server: ein echter Anhang mit Datei-ID, keine DOM-Fata-Morgana.
+	const api = await Api.fuer(request)
+	const detail = await api.lesen(`/api/v1/boards/${projekt.boardId}/tickets/${projekt.oeffentlich.id}`)
+	const gedroppt = detail.attachments.find((a: { fileName: string }) => a.fileName === erwartet)
+	expect(gedroppt, 'Die abgelegte Datei fehlt in der Serverantwort').toBeTruthy()
+	expect(gedroppt.fileId, 'Ohne Datei-ID ist der Anhang ein toter Verweis').toBeGreaterThan(0)
+})
