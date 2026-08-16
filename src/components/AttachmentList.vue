@@ -258,7 +258,7 @@ export default defineComponent({
 		 *
 		 * In **einem** `write`-Aufruf, damit erst nach dem letzten Upload einmal
 		 * neu geladen wird — nicht je Datei. Nacheinander statt gleichzeitig, weil
-		 * jeder Upload eine Vorgangsnummer-präfigierte Datei im selben Ordner
+		 * jeder Upload eine Vorgangsnummer-präfixierte Datei im selben Ordner
 		 * anlegt; der Server vergibt sie je POST, und paralleles Schreiben würde
 		 * um dieselbe laufende Nummer konkurrieren.
 		 *
