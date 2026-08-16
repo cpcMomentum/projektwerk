@@ -100,22 +100,21 @@
 					<span class="pw-n">{{ view.total }}</span>
 				</div>
 				<div class="pw-stack">
-					<TicketCard
-						v-for="ticket in view.tickets"
-						:key="ticket.id"
-						:ticket="ticket"
+					<!--
+						Der Zieh-Aufsatz (#11, 7a) umschließt nur die Karten, nicht
+						den „Ältere anzeigen"-Knopf oder den Leerzustand. Er rendert
+						die Karten selbst und zieht ihre Daten aus demselben Store.
+						Das Ziehen (`dragmove`) ruft dieselbe `moveTicket`-Kette wie
+						das Menü (`menumove`) — nur mit genauer Zielposition statt
+						„ans Ende".
+					-->
+					<BoardDragLayer
+						:tickets="view.tickets"
+						:columnId="view.column.id"
 						:showVisibility="showVisibility"
-						:responsibleName="store.nameOf(ticket.responsibleUserId)"
-						:columns="store.columns"
-						:commentCount="count('comments', ticket.id)"
-						:stepCount="count('steps', ticket.id)"
-						:stepsDone="count('stepsDone', ticket.id)"
-						:waitState="store.waiting[ticket.id] ?? null"
-						:changed="store.changed[ticket.id] === true"
-						:memberNames="store.memberNames"
-						:fromClientSide="!store.isInternal"
 						@open="openTicket"
-						@move="move" />
+						@menumove="move"
+						@dragmove="moved" />
 
 					<!--
 						Ältere Erledigte (#59). Kein Archiv als Ablageort:
@@ -199,8 +198,8 @@ import ClockAlertIcon from 'vue-material-design-icons/ClockAlertOutline.vue'
 import CogIcon from 'vue-material-design-icons/Cog.vue'
 import FolderMultipleIcon from 'vue-material-design-icons/FolderMultiple.vue'
 import PlusIcon from 'vue-material-design-icons/Plus.vue'
+import BoardDragLayer from '@/components/board/BoardDragLayer.vue'
 import CreateTicketDialog from '@/components/CreateTicketDialog.vue'
-import TicketCard from '@/components/TicketCard.vue'
 import TicketDetail from '@/components/TicketDetail.vue'
 import { createTicket, fetchTicket } from '@/services/tickets'
 import { showError } from '@/services/toast'
@@ -224,7 +223,7 @@ interface ColumnView {
 export default defineComponent({
 	name: 'BoardView',
 
-	components: { ClockAlertIcon, CogIcon, CreateTicketDialog, FolderMultipleIcon, NcButton, NcEmptyContent, PlusIcon, TicketCard, TicketDetail },
+	components: { BoardDragLayer, ClockAlertIcon, CogIcon, CreateTicketDialog, FolderMultipleIcon, NcButton, NcEmptyContent, PlusIcon, TicketDetail },
 
 	setup() {
 		return { store: useBoardStore() }
@@ -293,10 +292,6 @@ export default defineComponent({
 	methods: {
 		t,
 
-		count(kind: 'comments' | 'steps' | 'stepsDone', ticketId: number): number {
-			return this.store.counts?.[kind]?.[ticketId] ?? 0
-		},
-
 		/**
 		 * „N ältere anzeigen" — mit Zahl, weil eine Zahl die Frage beantwortet,
 		 * die der Knopf sonst aufwirft.
@@ -338,6 +333,32 @@ export default defineComponent({
 				// Hier liegt das ganze Board im Speicher, und ein veralteter
 				// `version`-Wert liesse jeden weiteren Versuch scheitern — auch
 				// den an einer ganz anderen Karte.
+				if (isConflict(e)) {
+					await this.store.open(this.boardId)
+				}
+				reportWriteError(e, t('projektwerk', 'Verschieben fehlgeschlagen'), isConflict(e))
+			}
+		},
+
+		/**
+		 * Verschieben per Drag & Drop (#11, 7a) — genaue Zielposition.
+		 *
+		 * Anders als das Menü (ans Ende) nennt das Ziehen die **Nachbarn** der
+		 * Ablegestelle. Es ruft aber dieselbe `moveTicket`-Kette und behandelt den
+		 * Konflikt gleich: Beim 409 wird nachgeladen, nicht zum Neuladen
+		 * aufgefordert — auch damit der Spiegel im Zieh-Aufsatz wieder auf den
+		 * Serverstand fällt.
+		 *
+		 * @param payload Ticket, Zielspalte und die beiden Nachbarn.
+		 * @param payload.ticketId Kennung des gezogenen Vorgangs.
+		 * @param payload.targetColumnId Zielspalte.
+		 * @param payload.beforeId Nachbar darüber oder null.
+		 * @param payload.afterId Nachbar darunter oder null.
+		 */
+		async moved(payload: { ticketId: number, targetColumnId: number, beforeId: number | null, afterId: number | null }) {
+			try {
+				await this.store.moveTicket(payload.ticketId, payload.targetColumnId, payload.beforeId, payload.afterId)
+			} catch (e) {
 				if (isConflict(e)) {
 					await this.store.open(this.boardId)
 				}
