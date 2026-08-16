@@ -142,6 +142,9 @@ export default defineComponent({
 			// Wer bei der aktuellen Sichtbarkeit zuständig sein darf — vom Server.
 			responsibleUserId: null as string | null,
 			assignable: [] as string[],
+			// Zaehlt jeden Abruf durch, damit eine spaet eintreffende Antwort auf
+			// eine bereits verlassene Sichtbarkeit die aktuelle nicht ueberschreibt.
+			assignableAbruf: 0,
 		}
 	},
 
@@ -208,12 +211,22 @@ export default defineComponent({
 		},
 
 		async loadAssignable() {
+			const abruf = ++this.assignableAbruf
+
+			let assignable: string[]
 			try {
-				this.assignable = await fetchAssignableForNew(this.boardId, this.visibility)
+				assignable = await fetchAssignableForNew(this.boardId, this.visibility)
 			} catch {
-				this.assignable = []
+				assignable = []
 			}
 
+			// Zwischenzeitlich kam ein neuerer Abruf dazwischen (Sichtbarkeit erneut
+			// gewechselt) — dessen Antwort gilt, nicht diese veraltete.
+			if (abruf !== this.assignableAbruf) {
+				return
+			}
+
+			this.assignable = assignable
 			if (this.responsibleUserId !== null && !this.assignable.includes(this.responsibleUserId)) {
 				this.responsibleUserId = null
 			}
