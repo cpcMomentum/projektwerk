@@ -31,6 +31,23 @@ export async function fetchAssignable(boardId: number, ticketId: number): Promis
 }
 
 /**
+ * Wer an einem **noch nicht angelegten** Vorgang zuständig sein darf (#146).
+ *
+ * Für den Verantwortlichen-Picker im Anlege-Dialog, bevor es eine Ticket-ID
+ * gibt. Dieselbe Regel wie {@link fetchAssignable}, nur gegen einen gedachten
+ * Vorgang der gewählten Sichtbarkeit — deshalb hängt die Antwort an ihr und
+ * wird bei jedem Wechsel neu geholt.
+ *
+ * @param boardId Kennung des Projekts.
+ * @param visibility Die im Dialog gewählte Sichtbarkeit.
+ */
+export async function fetchAssignableForNew(boardId: number, visibility: string): Promise<string[]> {
+	const antwort = await apiGet<{ userIds: string[] }>(`/boards/${boardId}/assignable-new?visibility=${encodeURIComponent(visibility)}`)
+
+	return antwort.userIds
+}
+
+/**
  * Ein neuer Arbeitsschritt am Ende der Liste.
  *
  * @param boardId Kennung des Projekts.

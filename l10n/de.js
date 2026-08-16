@@ -276,6 +276,7 @@ OC.L10N.register(
     "Zurück" : "Zurück",
     "Die zwei Seiten" : "Die zwei Seiten",
     "Projektchat" : "Projektchat",
-    "Weiter" : "Weiter"
+    "Weiter" : "Weiter",
+    "Zuständige Person" : "Zuständige Person"
 },
 "nplurals=2; plural=(n != 1);");
