@@ -11,6 +11,7 @@ namespace OCA\Projektwerk\Access;
 
 use OCA\Projektwerk\Db\Step;
 use OCA\Projektwerk\Db\Ticket;
+use OCP\AppFramework\Utility\ITimeFactory;
 
 /**
  * „Wartet auf Kunde" — gerechnet, nicht gespeichert.
@@ -41,12 +42,25 @@ use OCA\Projektwerk\Db\Ticket;
  * sobald jemand die Rolle wechselt oder das Board verlaesst — an Vorgaengen, die
  * seit Wochen unveraendert sind.
  *
- * **Was hier (noch) NICHT steht:** „in Verzug". Warten ist ein Zustand des
- * Ballbesitzes; wirklich zu spaet ist ein Vorgang erst, wenn eine Faelligkeit
- * gerissen ist. Die Ticket-Faelligkeit kommt mit #72; bis dahin traegt nur der
- * Schritt ein Datum.
+ * **Ballbesitz und Verzug sind zwei Fragen (#144).** Warten ist ein Zustand des
+ * Ballbesitzes — „wessen Zug". Wirklich zu spaet ist ein Vorgang erst, wenn seine
+ * Faelligkeit (#72) gerissen ist. Beides steht jetzt im selben Zustand: `overdue`
+ * ist wahr, sobald die Ticket-`dueDate` **vor** heute liegt. Die Marke selbst
+ * bleibt beidseitig sichtbar und aendert nur ihre Intensitaet — ruhig innerhalb
+ * der Frist, laut bei Verzug. Der Vergleich ist auf **Tagesebene** (`Y-m-d`), wie
+ * im Frontend: `dueDate` ist ein Datum ohne Uhrzeit, und der Faelligkeitstag
+ * selbst zaehlt noch nicht als zu spaet.
+ *
+ * **Weiterhin nichts gespeichert.** `overdue` folgt aus `dueDate` und der Uhr;
+ * die Klasse liest die Zeit ueber `ITimeFactory`, aber nichts aus der Datenbank
+ * und schreibt nichts zurueck.
  */
 class WaitStateCalculator {
+
+	public function __construct(
+		private ITimeFactory $time,
+	) {
+	}
 
 	/**
 	 * Der Wartezustand eines Tickets, oder `null`.
@@ -60,7 +74,7 @@ class WaitStateCalculator {
 	 *
 	 * @param Step[] $steps Die Schritte **dieses** Tickets, aus der gefilterten
 	 *                      Menge — nie eigenstaendig abgefragt (§5.8).
-	 * @return array{since: string, userIds: string[]}|null
+	 * @return array{since: string, userIds: string[], overdue: bool}|null
 	 */
 	public function forTicket(Ticket $ticket, array $steps): ?array {
 		if ($ticket->getClosedAt() !== null) {
@@ -118,7 +132,25 @@ class WaitStateCalculator {
 			// ehrlicher als ein erfundenes.
 			'since' => $since?->format(\DateTime::ATOM) ?? '',
 			'userIds' => $userIds,
+			'overdue' => $this->isOverdue($ticket),
 		];
+	}
+
+	/**
+	 * Ist die Faelligkeit (#72) gerissen?
+	 *
+	 * Nur die **Intensitaet** der Marke haengt hieran (#144), nicht ihr
+	 * Vorhandensein: Ballbesitz und Verzug sind zwei Fragen. Der Vergleich ist auf
+	 * Tagesebene und der Faelligkeitstag selbst zaehlt noch nicht als zu spaet —
+	 * Wort fuer Wort dieselbe Regel wie im Frontend (`taskStore.ts`).
+	 */
+	private function isOverdue(Ticket $ticket): bool {
+		$dueDate = $ticket->getDueDate();
+		if ($dueDate === null) {
+			return false;
+		}
+
+		return $dueDate->format('Y-m-d') < $this->time->getDateTime()->format('Y-m-d');
 	}
 
 	/**
@@ -129,7 +161,7 @@ class WaitStateCalculator {
 	 *
 	 * @param Ticket[] $tickets
 	 * @param Step[] $steps Alle Schritte der gefilterten Ticketmenge.
-	 * @return array<int, array{since: string, userIds: string[]}>
+	 * @return array<int, array{since: string, userIds: string[], overdue: bool}>
 	 */
 	public function forTickets(array $tickets, array $steps): array {
 		$byTicket = [];

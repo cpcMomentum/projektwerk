@@ -2,7 +2,7 @@
 	<span
 		v-if="state"
 		class="pw-wait"
-		:class="{ 'pw-wait--compact': compact }"
+		:class="{ 'pw-wait--compact': compact, 'pw-wait--overdue': overdue }"
 		:title="compact ? sentence : undefined">
 		<!--
 			**Auf der Karte tragen Kugeln die Personen, nicht Woerter.** Ein
@@ -29,10 +29,10 @@
 			davor keine sind.
 
 			Farbig ist nur sie, nicht der Text: Ein Zeichen traegt das Signal,
-			der Rest bleibt schwarz und damit gut lesbar. Und weil die Farbe an
-			einem einzelnen Glyph haengt, ist die naechste Stufe geschenkt —
-			ueberfaellig faerbt dieselbe Uhr rot (#72), ohne dass die Zeile
-			ihre Form aendert.
+			der Rest bleibt schwarz und damit gut lesbar. Und weil die Stufe an
+			diesem einen Glyph haengt (#144), aendert sie die Zeile nicht:
+			innerhalb der Frist eine ruhige `ClockOutline` in gedaempfter Farbe,
+			bei Verzug die kraeftige `ClockAlertOutline` in Warnfarbe.
 
 			**Das Wort „seit" bleibt stehen.** Ein nacktes „06.08." wird
 			zweideutig, sobald Vorgaenge ein Faelligkeitsdatum bekommen: Dann
@@ -40,12 +40,12 @@
 			zwei entgegengesetzte Aussagen.
 		-->
 		<span v-if="compact" class="pw-wait__since">
-			<ClockAlertIcon class="pw-wait__clock" :size="13" />
+			<component :is="clockIcon" class="pw-wait__clock" :size="13" />
 			{{ t('projektwerk', 'seit {date}', { date: formattedSince }) }}
 		</span>
 
 		<template v-else>
-			<ClockAlertIcon :size="16" />
+			<component :is="clockIcon" class="pw-wait__clock" :size="16" />
 			{{ sentence }}
 		</template>
 	</span>
@@ -59,6 +59,7 @@ import { t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
 import NcAvatar from '@nextcloud/vue/components/NcAvatar'
 import ClockAlertIcon from 'vue-material-design-icons/ClockAlertOutline.vue'
+import ClockIcon from 'vue-material-design-icons/ClockOutline.vue'
 
 /** Mehr Kugeln als das passen nicht auf eine Karte, ohne sie zu sprengen. */
 const MAX_AVATARS = 2
@@ -81,7 +82,7 @@ const MAX_AVATARS = 2
 export default defineComponent({
 	name: 'WaitBadge',
 
-	components: { ClockAlertIcon, NcAvatar },
+	components: { ClockAlertIcon, ClockIcon, NcAvatar },
 
 	props: {
 		state: { type: Object as PropType<WaitState | null>, default: null },
@@ -99,6 +100,23 @@ export default defineComponent({
 	},
 
 	computed: {
+		/**
+		 * Ist die Fälligkeit (#72) gerissen? Kommt fertig gerechnet aus dem
+		 * Backend (`WaitStateCalculator`), damit Karte und Detail dieselbe Stufe
+		 * lesen und die Regel an genau einer Stelle steht.
+		 */
+		overdue(): boolean {
+			return this.state?.overdue ?? false
+		},
+
+		/**
+		 * Ruhig eine `ClockOutline`, bei Verzug die kräftige `ClockAlertOutline`
+		 * (#144). Die Zeile behält ihre Form; nur der Glyph wechselt.
+		 */
+		clockIcon(): string {
+			return this.overdue ? 'ClockAlertIcon' : 'ClockIcon'
+		},
+
 		/** Die ersten Kugeln, mehr passen nicht. */
 		avatars(): { userId: string, name: string }[] {
 			return (this.state?.userIds ?? [])
