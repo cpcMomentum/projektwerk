@@ -6,6 +6,21 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.4.4] - 2026-08-16
+
+### Added
+
+- **Einrichtungsassistent beim Anlegen eines Projekts** (#63) — der Ein-Schritt-Dialog wird durch
+  einen mehrschrittigen Assistenten ersetzt: Projekt (Titel, Beschreibung), die zwei Seiten (beide
+  Firmennamen), Mitglieder (Personensuche mit Rolle), Spalten (die angelegten Standardspalten) und
+  Projektchat. Das Projekt entsteht nach dem ersten Schritt; die weiteren Schritte konfigurieren es
+  und lassen sich überspringen, indem man sie leer lässt und weitergeht. „Rest später" speichert den
+  aktuellen Schritt und springt ins Projekt.
+- **Hinweis auf die Herkunft von Gastkonten im Mitglieder-Schritt** (#74) — beim Hinzufügen einer
+  Person, die noch kein Nextcloud-Konto hat, führt ein Komfort-Link in die Dateien-App, wo eine
+  Freigabe an eine E-Mail-Adresse ein Gastkonto entstehen lässt. Die App legt dabei selbst keine
+  Freigabe und kein Konto an.
+
 ## [0.4.3] - 2026-08-15
 
 ### Added
