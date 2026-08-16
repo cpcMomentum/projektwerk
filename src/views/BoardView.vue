@@ -78,15 +78,7 @@
 			</template>
 		</NcEmptyContent>
 
-		<!--
-			`:key="boardKey"` baut nach einem Drag & Drop das Board einmal sauber
-			aus dem Serverstand neu auf (#11, 7a). `sortablejs` verschiebt beim
-			Ziehen echte DOM-Knoten, die Vue über den Karten-Slot besitzt — danach
-			steht die Karte kurz in beiden Spalten. Der Neuaufbau verwirft den
-			Überrest; die Wahrheit kommt ohnehin vom Server. Nur beim Ziehen nötig,
-			nicht beim Menü (dort rührt niemand am DOM).
-		-->
-		<div v-else :key="boardKey" class="pw-board">
+		<div v-else class="pw-board">
 			<!--
 					Eine Spalte je Eintrag aus `columnViews` statt aus
 					`store.columns`: Die Vorlage rief `ticketsIn()` sonst
@@ -110,31 +102,19 @@
 				<div class="pw-stack">
 					<!--
 						Der Zieh-Aufsatz (#11, 7a) umschließt nur die Karten, nicht
-						den „Ältere anzeigen"-Knopf oder den Leerzustand. Das Ziehen
-						ruft dieselbe `moveTicket`-Kette wie das Menü — nur mit einer
-						genauen Zielposition statt „ans Ende".
+						den „Ältere anzeigen"-Knopf oder den Leerzustand. Er rendert
+						die Karten selbst und zieht ihre Daten aus demselben Store.
+						Das Ziehen (`dragmove`) ruft dieselbe `moveTicket`-Kette wie
+						das Menü (`menumove`) — nur mit genauer Zielposition statt
+						„ans Ende".
 					-->
 					<BoardDragLayer
 						:tickets="view.tickets"
 						:columnId="view.column.id"
-						@move="moved">
-						<template #default="{ ticket }">
-							<TicketCard
-								:ticket="ticket"
-								:showVisibility="showVisibility"
-								:responsibleName="store.nameOf(ticket.responsibleUserId)"
-								:columns="store.columns"
-								:commentCount="count('comments', ticket.id)"
-								:stepCount="count('steps', ticket.id)"
-								:stepsDone="count('stepsDone', ticket.id)"
-								:waitState="store.waiting[ticket.id] ?? null"
-								:changed="store.changed[ticket.id] === true"
-								:memberNames="store.memberNames"
-								:fromClientSide="!store.isInternal"
-								@open="openTicket"
-								@move="move" />
-						</template>
-					</BoardDragLayer>
+						:showVisibility="showVisibility"
+						@open="openTicket"
+						@menumove="move"
+						@dragmove="moved" />
 
 					<!--
 						Ältere Erledigte (#59). Kein Archiv als Ablageort:
@@ -220,7 +200,6 @@ import FolderMultipleIcon from 'vue-material-design-icons/FolderMultiple.vue'
 import PlusIcon from 'vue-material-design-icons/Plus.vue'
 import BoardDragLayer from '@/components/board/BoardDragLayer.vue'
 import CreateTicketDialog from '@/components/CreateTicketDialog.vue'
-import TicketCard from '@/components/TicketCard.vue'
 import TicketDetail from '@/components/TicketDetail.vue'
 import { createTicket, fetchTicket } from '@/services/tickets'
 import { showError } from '@/services/toast'
@@ -244,7 +223,7 @@ interface ColumnView {
 export default defineComponent({
 	name: 'BoardView',
 
-	components: { BoardDragLayer, ClockAlertIcon, CogIcon, CreateTicketDialog, FolderMultipleIcon, NcButton, NcEmptyContent, PlusIcon, TicketCard, TicketDetail },
+	components: { BoardDragLayer, ClockAlertIcon, CogIcon, CreateTicketDialog, FolderMultipleIcon, NcButton, NcEmptyContent, PlusIcon, TicketDetail },
 
 	setup() {
 		return { store: useBoardStore() }
@@ -257,8 +236,6 @@ export default defineComponent({
 			openSteps: [] as Step[],
 			openComments: [] as Comment[],
 			openAttachments: [] as Attachment[],
-			/** Erzwingt den sauberen Neuaufbau des Boards nach einem Drag & Drop. */
-			boardKey: 0,
 		}
 	},
 
@@ -314,10 +291,6 @@ export default defineComponent({
 
 	methods: {
 		t,
-
-		count(kind: 'comments' | 'steps' | 'stepsDone', ticketId: number): number {
-			return this.store.counts?.[kind]?.[ticketId] ?? 0
-		},
 
 		/**
 		 * „N ältere anzeigen" — mit Zahl, weil eine Zahl die Frage beantwortet,
@@ -390,11 +363,6 @@ export default defineComponent({
 					await this.store.open(this.boardId)
 				}
 				reportWriteError(e, t('projektwerk', 'Verschieben fehlgeschlagen'), isConflict(e))
-			} finally {
-				// Immer neu aufbauen — auch nach einem Fehlschlag: Dann hat
-				// `sortablejs` die Karte schon verschoben, der Server aber nicht,
-				// und nur der Neuaufbau bringt das Board wieder mit ihm in Deckung.
-				this.boardKey += 1
 			}
 		},
 
