@@ -275,6 +275,19 @@ class TicketController extends Controller {
 	}
 
 	/**
+	 * Einen weich gelöschten Vorgang wiederherstellen (#167, Undo).
+	 *
+	 * Das Gegenstück zu {@see destroy()}: Nach dem Löschen bietet die Oberfläche
+	 * einen Undo-Toast; ein Klick darauf ruft diesen Endpunkt. Ohne `version`,
+	 * weil die Wiederherstellung idempotent ist und dem Löschen unmittelbar folgt.
+	 */
+	#[NoAdminRequired]
+	public function restore(int $boardId, int $ticketId): JSONResponse {
+		return $this->write($boardId, fn (ViewerContext $viewer): mixed
+			=> $this->service->restore($viewer, $ticketId));
+	}
+
+	/**
 	 * Wie viele Schritte je Ticket erledigt sind.
 	 *
 	 * Aus derselben Menge wie die Gesamtzahl — „3 von 5" darf nicht aus zwei

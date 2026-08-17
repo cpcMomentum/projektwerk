@@ -116,7 +116,8 @@
 						@open="openTicket"
 						@menumove="move"
 						@dragmove="moved"
-						@toggleclosed="toggleClosed" />
+						@toggleclosed="toggleClosed"
+						@delete="deleteTicket" />
 
 					<!--
 						Ältere Erledigte (#59). Kein Archiv als Ablageort:
@@ -172,6 +173,7 @@
 			:waiting="openTicketData ? (store.waiting[openTicketData.id] ?? null) : null"
 			@close="openTicketData = null"
 			@changed="applyChanged"
+			@delete="deleteTicket"
 			@stepsChanged="reloadOpenTicket"
 			@commentsChanged="reloadOpenTicket"
 			@attachmentsChanged="reloadOpenTicket" />
@@ -203,8 +205,8 @@ import PlusIcon from 'vue-material-design-icons/Plus.vue'
 import BoardDragLayer from '@/components/board/BoardDragLayer.vue'
 import CreateTicketDialog from '@/components/CreateTicketDialog.vue'
 import TicketDetail from '@/components/TicketDetail.vue'
-import { createTicket, fetchTicket, updateTicket } from '@/services/tickets'
-import { showError } from '@/services/toast'
+import { deleteTicket as apiDeleteTicket, restoreTicket as apiRestoreTicket, createTicket, fetchTicket, updateTicket } from '@/services/tickets'
+import { showError, showUndo } from '@/services/toast'
 import { isConflict, reportWriteError } from '@/services/writeError'
 import { useBoardStore } from '@/stores/boardStore'
 
@@ -506,6 +508,54 @@ export default defineComponent({
 				reportWriteError(e, schliessen
 					? t('projektwerk', 'Abschließen fehlgeschlagen')
 					: t('projektwerk', 'Wieder öffnen fehlgeschlagen'), isConflict(e))
+			}
+		},
+
+		/**
+		 * Einen Vorgang weich löschen und einen Undo-Toast anbieten (#167).
+		 *
+		 * Sofort löschen (der Server ist die Wahrheit), Detail schließen falls
+		 * offen, Board neu laden — der Vorgang fällt aus der Ansicht. Der Toast
+		 * hält die Kennung; ein Klick holt ihn über `restore` zurück. Kommt aus
+		 * dem Karten-Menü UND aus dem Detail an genau dieser Stelle zusammen,
+		 * damit Toast und Neuladen nicht doppelt liegen.
+		 *
+		 * @param ticket Der zu löschende Vorgang.
+		 */
+		async deleteTicket(ticket: Ticket) {
+			try {
+				await apiDeleteTicket(ticket.boardId, ticket.id, ticket.version)
+
+				if (this.openTicketData?.id === ticket.id) {
+					this.openTicketData = null
+				}
+				await this.store.open(this.boardId)
+
+				showUndo(
+					t('projektwerk', 'Vorgang gelöscht'),
+					() => { void this.restoreTicket(ticket) },
+				)
+			} catch (e) {
+				// Konflikt: nachladen, aus demselben Grund wie oben.
+				if (isConflict(e)) {
+					await this.store.open(this.boardId)
+				}
+				reportWriteError(e, t('projektwerk', 'Löschen fehlgeschlagen'), isConflict(e))
+			}
+		},
+
+		/**
+		 * Ein zuvor gelöschtes Ticket zurückholen (#167, Undo-Klick). Idempotent
+		 * und ohne Version; danach neu laden, damit die Karte wieder erscheint.
+		 *
+		 * @param ticket Der wiederherzustellende Vorgang.
+		 */
+		async restoreTicket(ticket: Ticket) {
+			try {
+				await apiRestoreTicket(ticket.boardId, ticket.id)
+				await this.store.open(this.boardId)
+			} catch (e) {
+				reportWriteError(e, t('projektwerk', 'Wiederherstellen fehlgeschlagen'))
 			}
 		},
 

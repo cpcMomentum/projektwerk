@@ -170,6 +170,19 @@
 					{{ column.title }}
 				</NcActionButton>
 			</template>
+
+			<!--
+				Löschen als letzter Eintrag (#167) — weich und über den Undo-Toast
+				sofort umkehrbar, deshalb ohne schwere Rückfrage.
+			-->
+			<NcActionButton
+				:closeAfterClick="true"
+				@click="$emit('delete', ticket)">
+				<template #icon>
+					<DeleteOutlineIcon :size="20" />
+				</template>
+				{{ t('projektwerk', 'Löschen') }}
+			</NcActionButton>
 		</NcActions>
 	</article>
 </template>
@@ -190,6 +203,7 @@ import CalendarAlertIcon from 'vue-material-design-icons/CalendarAlert.vue'
 import CalendarIcon from 'vue-material-design-icons/CalendarOutline.vue'
 import CheckIcon from 'vue-material-design-icons/Check.vue'
 import CommentOutlineIcon from 'vue-material-design-icons/CommentOutline.vue'
+import DeleteOutlineIcon from 'vue-material-design-icons/DeleteOutline.vue'
 import FormatListChecksIcon from 'vue-material-design-icons/FormatListChecks.vue'
 import OfficeBuildingIcon from 'vue-material-design-icons/OfficeBuilding.vue'
 import PencilIcon from 'vue-material-design-icons/Pencil.vue'
@@ -207,6 +221,7 @@ export default defineComponent({
 		CalendarAlertIcon,
 		CheckIcon,
 		CommentOutlineIcon,
+		DeleteOutlineIcon,
 		FormatListChecksIcon,
 		NcActionButton,
 		NcActionCaption,
@@ -244,7 +259,7 @@ export default defineComponent({
 		fromClientSide: { type: Boolean, default: false },
 	},
 
-	emits: ['open', 'move', 'toggleclosed'],
+	emits: ['open', 'move', 'toggleclosed', 'delete'],
 
 	computed: {
 		/** Die Zielspalten — die eigene ist keine. */

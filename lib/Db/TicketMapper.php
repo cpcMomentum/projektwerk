@@ -125,6 +125,43 @@ class TicketMapper extends QBMapper {
 	}
 
 	/**
+	 * Ein **geloeschtes** Ticket zum Wiederherstellen finden (#167).
+	 *
+	 * **Bewusst am Sichtbarkeits-Scope vorbei**, denn der nimmt Geloeschtes aus
+	 * jeder Abfrage — genau das, was hier gefunden werden soll. Deshalb steht
+	 * die Methode im TicketMapper (der einzige erlaubte Ort fuer `pwerk_tickets`)
+	 * und nicht in einem zweiten Lesepfad.
+	 *
+	 * Sicher trotz fehlendem Scope: `withViewer` hat die Board-Mitgliedschaft
+	 * bereits geprueft, hier wird zusaetzlich auf **das Board des Betrachters**
+	 * und auf **die eigene Rolle** (`creator_role`) eingegrenzt — man kann nur
+	 * zurueckholen, was die eigene Seite geloescht hat. Ein fremdes Ticket, ein
+	 * fremdes Board und eine unbekannte Kennung ergeben denselben
+	 * `DoesNotExistException`; die Fehlerform verraet nichts (wie `findVisible`).
+	 *
+	 * @throws DoesNotExistException  unbekannt, fremdes Board oder andere Seite
+	 */
+	public function findForRestore(ViewerContext $viewer, int $ticketId): Ticket {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select(self::T . '.*')
+			->from($this->tableName, self::T)
+			->where($qb->expr()->eq(
+				self::T . '.id',
+				$qb->createNamedParameter($ticketId, IQueryBuilder::PARAM_INT),
+			))
+			->andWhere($qb->expr()->eq(
+				self::T . '.board_id',
+				$qb->createNamedParameter($viewer->boardId, IQueryBuilder::PARAM_INT),
+			))
+			->andWhere($qb->expr()->eq(
+				self::T . '.creator_role',
+				$qb->createNamedParameter($viewer->role),
+			));
+
+		return $this->findEntity($qb);
+	}
+
+	/**
 	 * „Meine Tickets" ueber alle Boards hinweg — verantwortlich **oder**
 	 * mitarbeitend (§ Meine Aufgaben).
 	 *
