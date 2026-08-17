@@ -279,6 +279,8 @@ OC.L10N.register(
     "Weiter" : "Next",
     "Zuständige Person" : "Responsible person",
     "Dateien hier ablegen" : "Drop files here",
-    "Anlegen und öffnen" : "Create and open"
+    "Anlegen und öffnen" : "Create and open",
+    "Titel bearbeiten" : "Edit title",
+    "Titel konnte nicht gespeichert werden" : "Could not save the title"
 },
 "nplurals=2; plural=(n != 1);");
