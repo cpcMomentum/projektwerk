@@ -43,7 +43,8 @@
 			:memberNames="store.memberNames"
 			:fromClientSide="!store.isInternal"
 			@open="$emit('open', $event)"
-			@move="$emit('menumove', $event)" />
+			@move="$emit('menumove', $event)"
+			@toggleclosed="$emit('toggleclosed', $event)" />
 	</VueDraggable>
 </template>
 
@@ -84,7 +85,7 @@ export default defineComponent({
 		highlightId: { type: Number as PropType<number | null>, default: null },
 	},
 
-	emits: ['open', 'menumove', 'dragmove'],
+	emits: ['open', 'menumove', 'dragmove', 'toggleclosed'],
 
 	setup() {
 		return { store: useBoardStore() }

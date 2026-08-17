@@ -826,6 +826,11 @@
 	box-shadow: 0 1px 0 var(--color-border);
 }
 
+/* Der Abschließen-/Wieder-öffnen-Knopf sitzt links unter der Wartemarke (#168). */
+.app-projektwerk .pw-kopf__aktionen {
+	display: flex;
+}
+
 /*
  * Nummer, Spaltenname und Sichtbarkeit auf einer Zeile.
  *

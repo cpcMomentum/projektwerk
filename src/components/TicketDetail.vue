@@ -119,6 +119,27 @@
 						beantwortet der Personen-Block zwei Zeilen weiter.
 					-->
 					<WaitBadge :state="waiting" :fromClientSide="fromClientSide" :names="memberNames" />
+
+					<!--
+						Abschließen ist eine bewusste Handlung (#168, §9) und braucht
+						darum einen deutlichen Ort im Kopf, nicht nur einen Menüpunkt —
+						zumal Kunden Gäste sind und die Aktion sehen sollen. Der Knopf
+						ist zugleich das Archiv: abgeschlossen klappt unter „Ältere
+						anzeigen" weg. Das Ergebnis (erledigt vs. verworfen) kommt
+						getrennt (#171); hier geht es nur um offen/geschlossen.
+					-->
+					<div class="pw-kopf__aktionen">
+						<NcButton
+							:variant="ticket.closedAt ? 'secondary' : 'primary'"
+							:disabled="busy"
+							@click="toggleClosed">
+							<template #icon>
+								<CheckIcon v-if="!ticket.closedAt" :size="20" />
+								<RestoreIcon v-else :size="20" />
+							</template>
+							{{ ticket.closedAt ? t('projektwerk', 'Wieder öffnen') : t('projektwerk', 'Abschließen') }}
+						</NcButton>
+					</div>
 				</header>
 
 				<!--
@@ -393,11 +414,13 @@ import NcTextField from '@nextcloud/vue/components/NcTextField'
 import AccountPlusIcon from 'vue-material-design-icons/AccountPlusOutline.vue'
 import CalendarAlertIcon from 'vue-material-design-icons/CalendarAlert.vue'
 import CalendarIcon from 'vue-material-design-icons/CalendarOutline.vue'
+import CheckIcon from 'vue-material-design-icons/Check.vue'
 import ChevronDownIcon from 'vue-material-design-icons/ChevronDown.vue'
 import ChevronUpIcon from 'vue-material-design-icons/ChevronUp.vue'
 import CloseIcon from 'vue-material-design-icons/Close.vue'
 import PencilOutlineIcon from 'vue-material-design-icons/PencilOutline.vue'
 import PlusIcon from 'vue-material-design-icons/Plus.vue'
+import RestoreIcon from 'vue-material-design-icons/Restore.vue'
 import AttachmentList from '@/components/AttachmentList.vue'
 import CommentList from '@/components/CommentList.vue'
 import StepList from '@/components/StepList.vue'
@@ -421,7 +444,7 @@ interface PersonOption {
 export default defineComponent({
 	name: 'TicketDetail',
 
-	components: { AccountPlusIcon, AttachmentList, CalendarIcon, CalendarAlertIcon, ChevronDownIcon, ChevronUpIcon, CloseIcon, CommentList, NcAvatar, NcButton, NcDateTimePicker, NcModal, NcRichText, NcSelectUsers, NcTextArea, NcTextField, PencilOutlineIcon, PlusIcon, StepList, VisibilityControl, WaitBadge },
+	components: { AccountPlusIcon, AttachmentList, CalendarIcon, CalendarAlertIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, CloseIcon, CommentList, NcAvatar, NcButton, NcDateTimePicker, NcModal, NcRichText, NcSelectUsers, NcTextArea, NcTextField, PencilOutlineIcon, PlusIcon, RestoreIcon, StepList, VisibilityControl, WaitBadge },
 
 	props: {
 		ticket: { type: Object as PropType<Ticket | null>, default: null },
@@ -624,6 +647,36 @@ export default defineComponent({
 				// Ohne Liste bleibt die Auswahl leer; alles Uebrige am Vorgang
 				// funktioniert weiter. Eine Meldung waere hier Laerm.
 				this.assignable = []
+			}
+		},
+
+		/**
+		 * Den Vorgang abschließen oder wieder öffnen (#168). Nur der Übergang
+		 * offen↔geschlossen; das Backend setzt `closed_at` und zieht die
+		 * Benachrichtigungen. Über `changed` läuft der frische Stand zurück, sodass
+		 * Kopf (Knopf, „Geschlossen") und Karte gleich mitgehen.
+		 */
+		async toggleClosed(): Promise<void> {
+			if (this.ticket === null || this.busy) {
+				return
+			}
+
+			const schliessen = this.ticket.closedAt === null
+			this.busy = true
+			try {
+				const updated = await updateTicket(
+					this.ticket.boardId,
+					this.ticket.id,
+					this.ticket.version,
+					{ closed: schliessen },
+				)
+				this.$emit('changed', updated)
+			} catch (e) {
+				reportWriteError(e, schliessen
+					? t('projektwerk', 'Abschließen fehlgeschlagen')
+					: t('projektwerk', 'Wieder öffnen fehlgeschlagen'))
+			} finally {
+				this.busy = false
 			}
 		},
 

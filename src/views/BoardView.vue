@@ -115,7 +115,8 @@
 						:highlightId="highlightId"
 						@open="openTicket"
 						@menumove="move"
-						@dragmove="moved" />
+						@dragmove="moved"
+						@toggleclosed="toggleClosed" />
 
 					<!--
 						Ältere Erledigte (#59). Kein Archiv als Ablageort:
@@ -202,7 +203,7 @@ import PlusIcon from 'vue-material-design-icons/Plus.vue'
 import BoardDragLayer from '@/components/board/BoardDragLayer.vue'
 import CreateTicketDialog from '@/components/CreateTicketDialog.vue'
 import TicketDetail from '@/components/TicketDetail.vue'
-import { createTicket, fetchTicket } from '@/services/tickets'
+import { createTicket, fetchTicket, updateTicket } from '@/services/tickets'
 import { showError } from '@/services/toast'
 import { isConflict, reportWriteError } from '@/services/writeError'
 import { useBoardStore } from '@/stores/boardStore'
@@ -468,6 +469,44 @@ export default defineComponent({
 		applyChanged(ticket: Ticket) {
 			this.store.replaceTicket(ticket)
 			this.openTicketData = ticket
+		},
+
+		/**
+		 * Einen Vorgang vom Karten-Menü aus abschließen oder wieder öffnen (#168) —
+		 * derselbe offen↔geschlossen-Übergang wie der Knopf im Detail.
+		 *
+		 * **Das Overlay geht nur mit, wenn genau dieser Vorgang offen ist.** Sonst
+		 * risse ein Klick im Karten-Menü das Detail auf — `applyChanged` setzt
+		 * `openTicketData` bedingungslos und taugt hier deshalb nicht.
+		 *
+		 * @param ticket Der Vorgang, dessen Abschluss umgeschaltet wird.
+		 */
+		async toggleClosed(ticket: Ticket) {
+			const schliessen = ticket.closedAt === null
+
+			try {
+				const updated = await updateTicket(
+					ticket.boardId,
+					ticket.id,
+					ticket.version,
+					{ closed: schliessen },
+				)
+				this.store.replaceTicket(updated)
+				if (this.openTicketData?.id === updated.id) {
+					this.openTicketData = updated
+				}
+			} catch (e) {
+				// Beim Konflikt wird nachgeladen statt zum Neuladen aufgefordert,
+				// aus demselben Grund wie bei move()/moved(): Das ganze Board
+				// steht im Speicher, ein veralteter `version`-Wert liesse jeden
+				// weiteren Versuch scheitern — auch an einer ganz anderen Karte.
+				if (isConflict(e)) {
+					await this.store.open(this.boardId)
+				}
+				reportWriteError(e, schliessen
+					? t('projektwerk', 'Abschließen fehlgeschlagen')
+					: t('projektwerk', 'Wieder öffnen fehlgeschlagen'), isConflict(e))
+			}
 		},
 
 		async create(data: { title: string, description: string | null, visibility: Visibility, columnId: number, dueDate: string | null, responsibleUserId: string | null, openAfter: boolean }) {
