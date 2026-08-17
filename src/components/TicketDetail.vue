@@ -62,9 +62,45 @@
 							@changed="$emit('changed', $event)" />
 					</div>
 
-					<h2 :id="titleId" class="pw-detail__title">
-						{{ ticket.title }}
-					</h2>
+					<!--
+						Der Titel ist bearbeitbar wie Beschreibung und Zuständige
+						(#169) — bis dahin die einzige Angabe im Detail, die nur
+						dastand. Stift oder Doppelklick öffnen das Feld; der Titel ist
+						Pflicht, ein leerer wird nicht gespeichert.
+					-->
+					<template v-if="!editingTitle">
+						<div class="pw-detail__titelzeile">
+							<h2 :id="titleId" class="pw-detail__title" @dblclick="startEditTitle">
+								{{ ticket.title }}
+							</h2>
+							<NcButton
+								variant="tertiary"
+								class="pw-detail__title-stift"
+								:ariaLabel="t('projektwerk', 'Titel bearbeiten')"
+								@click="startEditTitle">
+								<template #icon>
+									<PencilOutlineIcon :size="20" />
+								</template>
+							</NcButton>
+						</div>
+					</template>
+
+					<div v-else class="pw-detail__title-edit">
+						<NcTextField
+							v-model="titleEntwurf"
+							:label="t('projektwerk', 'Titel')"
+							:disabled="busy"
+							@keydown.enter="saveTitle"
+							@keydown.esc.stop="cancelEditTitle" />
+						<div class="pw-detail__title-actions">
+							<NcButton :disabled="busy" @click="cancelEditTitle">
+								{{ t('projektwerk', 'Abbrechen') }}
+							</NcButton>
+							<NcButton variant="primary" :disabled="busy || !titleSpeicherbar" @click="saveTitle">
+								{{ t('projektwerk', 'Speichern') }}
+							</NcButton>
+						</div>
+					</div>
 
 					<!--
 						Die Marke steht ueber dem Titel (§9), hier als ganze Zeile.
@@ -374,6 +410,7 @@ import NcModal from '@nextcloud/vue/components/NcModal'
 import NcRichText from '@nextcloud/vue/components/NcRichText'
 import NcSelectUsers from '@nextcloud/vue/components/NcSelectUsers'
 import NcTextArea from '@nextcloud/vue/components/NcTextArea'
+import NcTextField from '@nextcloud/vue/components/NcTextField'
 import AccountPlusIcon from 'vue-material-design-icons/AccountPlusOutline.vue'
 import CalendarAlertIcon from 'vue-material-design-icons/CalendarAlert.vue'
 import CalendarIcon from 'vue-material-design-icons/CalendarOutline.vue'
@@ -407,7 +444,7 @@ interface PersonOption {
 export default defineComponent({
 	name: 'TicketDetail',
 
-	components: { AccountPlusIcon, AttachmentList, CalendarIcon, CalendarAlertIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, CloseIcon, CommentList, NcAvatar, NcButton, NcDateTimePicker, NcModal, NcRichText, NcSelectUsers, NcTextArea, PencilOutlineIcon, PlusIcon, RestoreIcon, StepList, VisibilityControl, WaitBadge },
+	components: { AccountPlusIcon, AttachmentList, CalendarIcon, CalendarAlertIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, CloseIcon, CommentList, NcAvatar, NcButton, NcDateTimePicker, NcModal, NcRichText, NcSelectUsers, NcTextArea, NcTextField, PencilOutlineIcon, PlusIcon, RestoreIcon, StepList, VisibilityControl, WaitBadge },
 
 	props: {
 		ticket: { type: Object as PropType<Ticket | null>, default: null },
@@ -431,6 +468,9 @@ export default defineComponent({
 	data() {
 		return {
 			busy: false,
+			/** Der Titel wird gerade bearbeitet (#169). */
+			editingTitle: false,
+			titleEntwurf: '',
 			/** Die Beschreibung wird gerade bearbeitet. */
 			editingText: false,
 			textEntwurf: '',
@@ -478,6 +518,16 @@ export default defineComponent({
 
 		responsibleInputId(): string {
 			return `pw-detail-responsible-${this.ticket?.id ?? 0}`
+		},
+
+		/**
+		 * Speicherbar ist der Titel nur, wenn er nicht leer und gegenüber dem
+		 * gespeicherten Stand geändert ist (#169). Anders als die Beschreibung
+		 * ist er Pflicht — ein Vorgang ohne Namen darf nicht entstehen.
+		 */
+		titleSpeicherbar(): boolean {
+			const entwurf = this.titleEntwurf.trim()
+			return entwurf !== '' && entwurf !== (this.ticket?.title ?? '')
 		},
 
 		/** Leerer Entwurf und leere Beschreibung sind dasselbe — beides heisst `null`. */
@@ -547,6 +597,8 @@ export default defineComponent({
 		'ticket.id': {
 			immediate: true,
 			handler() {
+				this.editingTitle = false
+				this.titleEntwurf = ''
 				this.editingText = false
 				this.editingResponsible = false
 				this.textEntwurf = ''
@@ -623,6 +675,45 @@ export default defineComponent({
 				reportWriteError(e, schliessen
 					? t('projektwerk', 'Abschließen fehlgeschlagen')
 					: t('projektwerk', 'Wieder öffnen fehlgeschlagen'))
+			} finally {
+				this.busy = false
+			}
+		},
+
+		startEditTitle(): void {
+			this.titleEntwurf = this.ticket?.title ?? ''
+			this.editingTitle = true
+		},
+
+		cancelEditTitle(): void {
+			this.editingTitle = false
+			this.titleEntwurf = ''
+		},
+
+		/**
+		 * Den Titel schreiben (#169). Pflichtfeld: ein leerer oder unveränderter
+		 * Titel wird nicht gespeichert. Konflikterkennung über `version` wie bei
+		 * den anderen Feldern.
+		 */
+		async saveTitle(): Promise<void> {
+			if (this.ticket === null || this.busy || !this.titleSpeicherbar) {
+				return
+			}
+
+			const titel = this.titleEntwurf.trim()
+			this.busy = true
+			try {
+				const updated = await updateTicket(
+					this.ticket.boardId,
+					this.ticket.id,
+					this.ticket.version,
+					{ title: titel },
+				)
+				this.$emit('changed', updated)
+				this.editingTitle = false
+				this.titleEntwurf = ''
+			} catch (e) {
+				reportWriteError(e, t('projektwerk', 'Titel konnte nicht gespeichert werden'))
 			} finally {
 				this.busy = false
 			}

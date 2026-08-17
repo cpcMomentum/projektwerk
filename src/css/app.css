@@ -888,6 +888,38 @@
 	overflow-wrap: anywhere;
 }
 
+/*
+ * Titel und Stift in einer Zeile (#169): der Titel nimmt die Breite, der Stift
+ * sitzt rechts daneben — wie der Bearbeiten-Stift der Beschreibung, nur inline
+ * statt absolut, weil hier keine geklebte Kopfzeile darüberliegt.
+ */
+.app-projektwerk .pw-detail__titelzeile {
+	display: flex;
+	align-items: flex-start;
+	gap: 4px;
+}
+
+.app-projektwerk .pw-detail__titelzeile .pw-detail__title {
+	flex: 1 1 auto;
+}
+
+.app-projektwerk .pw-detail__title-stift {
+	flex: 0 0 auto;
+	margin-block-start: 2px;
+}
+
+.app-projektwerk .pw-detail__title-edit {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.app-projektwerk .pw-detail__title-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+}
+
 .app-projektwerk .pw-detail__empty {
 	margin: 0;
 	color: var(--color-text-maxcontrast);

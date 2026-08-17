@@ -283,6 +283,8 @@ OC.L10N.register(
     "Abschließen" : "Abschließen",
     "Wieder öffnen" : "Wieder öffnen",
     "Abschließen fehlgeschlagen" : "Abschließen fehlgeschlagen",
-    "Wieder öffnen fehlgeschlagen" : "Wieder öffnen fehlgeschlagen"
+    "Wieder öffnen fehlgeschlagen" : "Wieder öffnen fehlgeschlagen",
+    "Titel bearbeiten" : "Titel bearbeiten",
+    "Titel konnte nicht gespeichert werden" : "Titel konnte nicht gespeichert werden"
 },
 "nplurals=2; plural=(n != 1);");
