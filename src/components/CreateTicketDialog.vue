@@ -81,11 +81,25 @@
 			</div>
 		</div>
 
+		<!--
+			Zwei Abschlüsse (#165). Anhänge und Arbeitsschritte brauchen einen
+			bereits gespeicherten Vorgang, deshalb bleibt der Dialog schlank (#100)
+			und das Ausbauen geschieht im Detail. Ob man nach dem Anlegen gleich
+			dorthin springt, ist jetzt eine bewusste Wahl statt eines Automatismus:
+
+			- „Anlegen" (primär, der erwartbare Default) legt an und lässt einen
+			  auf dem Board — die neue Karte wird dort kurz hervorgehoben.
+			- „Anlegen und öffnen" legt an und springt direkt ins Detail (der
+			  bisherige #146-Weg), für „jetzt gleich Schritte/Anhänge dran".
+		-->
 		<template #actions>
 			<NcButton @click="$emit('update:open', false)">
 				{{ t('projektwerk', 'Abbrechen') }}
 			</NcButton>
-			<NcButton variant="primary" :disabled="!canSave" @click="save">
+			<NcButton :disabled="!canSave" @click="save(true)">
+				{{ t('projektwerk', 'Anlegen und öffnen') }}
+			</NcButton>
+			<NcButton variant="primary" :disabled="!canSave" @click="save(false)">
 				{{ t('projektwerk', 'Anlegen') }}
 			</NcButton>
 		</template>
@@ -237,7 +251,11 @@ export default defineComponent({
 			this.responsibleUserId = gewaehlt?.id ?? null
 		},
 
-		save() {
+		/**
+		 * @param openAfter Nach dem Anlegen direkt ins Detail springen (#165)?
+		 *   „Anlegen und öffnen" ruft mit `true`, „Anlegen" mit `false`.
+		 */
+		save(openAfter: boolean) {
 			if (!this.canSave) {
 				return
 			}
@@ -248,6 +266,7 @@ export default defineComponent({
 				columnId: this.columnId as number,
 				dueDate: toIsoDay(this.dueDate),
 				responsibleUserId: this.responsibleUserId,
+				openAfter,
 			})
 		},
 	},
