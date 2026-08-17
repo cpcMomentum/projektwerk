@@ -335,6 +335,31 @@
 }
 
 /*
+ * Frisch angelegt (#165): ein kurzer Ring in der Akzentfarbe, damit „wo ist
+ * mein Vorgang" ohne ein zweites Modal beantwortet ist. Die Animation klingt
+ * über 1,5 s aus — dieselbe Dauer, nach der die Ansicht die Klasse wieder
+ * entfernt. Ohne Bewegungsvorliebe steht der Ring einfach still, bis er geht.
+ */
+.app-projektwerk .pw-card--neu {
+	box-shadow: 0 0 0 2px var(--color-primary-element), 0 2px 8px rgba(0, 0, 0, .12);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.app-projektwerk .pw-card--neu {
+		animation: pw-card-neu 1.5s ease-out forwards;
+	}
+}
+
+@keyframes pw-card-neu {
+	0% {
+		box-shadow: 0 0 0 2px var(--color-primary-element), 0 2px 8px rgba(0, 0, 0, .12);
+	}
+	100% {
+		box-shadow: 0 1px 2px rgba(0, 0, 0, .06), 0 1px 1px rgba(0, 0, 0, .04);
+	}
+}
+
+/*
  * Nur diese Zeile weicht dem „…"-Menue aus — es sitzt absolut bei `top: 6px;
  * right: 6px` und ueberlappt genau hier. Titel und Fusszeile laufen darunter
  * durch bis an den Kartenrand.

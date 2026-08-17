@@ -218,6 +218,8 @@ export default defineComponent({
 		waitState: { type: Object as PropType<WaitState | null>, default: null },
 		/** „Seit deinem Blick geändert" (#79) — der neutrale Punkt oben. */
 		changed: { type: Boolean, default: false },
+		/** Frisch angelegt und darum gerade kurz hervorgehoben (#165). */
+		highlighted: { type: Boolean, default: false },
 		/** Aus Sicht der Kundenseite formuliert. */
 		fromClientSide: { type: Boolean, default: false },
 	},
@@ -246,6 +248,11 @@ export default defineComponent({
 			}
 			if (this.ticket.closedAt !== null) {
 				classes.push('pw-card--closed')
+			}
+			// Kurz nach dem Anlegen (#165) — ein vergänglicher Anstrich, den die
+			// CSS von selbst ausklingen lässt.
+			if (this.highlighted) {
+				classes.push('pw-card--neu')
 			}
 			return classes
 		},

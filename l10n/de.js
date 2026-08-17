@@ -278,6 +278,7 @@ OC.L10N.register(
     "Projektchat" : "Projektchat",
     "Weiter" : "Weiter",
     "Zuständige Person" : "Zuständige Person",
-    "Dateien hier ablegen" : "Dateien hier ablegen"
+    "Dateien hier ablegen" : "Dateien hier ablegen",
+    "Anlegen und öffnen" : "Anlegen und öffnen"
 },
 "nplurals=2; plural=(n != 1);");
