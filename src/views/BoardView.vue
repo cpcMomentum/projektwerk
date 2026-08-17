@@ -482,19 +482,30 @@ export default defineComponent({
 		 * @param ticket Der Vorgang, dessen Abschluss umgeschaltet wird.
 		 */
 		async toggleClosed(ticket: Ticket) {
+			const schliessen = ticket.closedAt === null
+
 			try {
 				const updated = await updateTicket(
 					ticket.boardId,
 					ticket.id,
 					ticket.version,
-					{ closed: ticket.closedAt === null },
+					{ closed: schliessen },
 				)
 				this.store.replaceTicket(updated)
 				if (this.openTicketData?.id === updated.id) {
 					this.openTicketData = updated
 				}
 			} catch (e) {
-				showError((e as { message?: string }).message ?? t('projektwerk', 'Abschließen fehlgeschlagen'))
+				// Beim Konflikt wird nachgeladen statt zum Neuladen aufgefordert,
+				// aus demselben Grund wie bei move()/moved(): Das ganze Board
+				// steht im Speicher, ein veralteter `version`-Wert liesse jeden
+				// weiteren Versuch scheitern — auch an einer ganz anderen Karte.
+				if (isConflict(e)) {
+					await this.store.open(this.boardId)
+				}
+				reportWriteError(e, schliessen
+					? t('projektwerk', 'Abschließen fehlgeschlagen')
+					: t('projektwerk', 'Wieder öffnen fehlgeschlagen'), isConflict(e))
 			}
 		},
 
