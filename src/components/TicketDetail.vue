@@ -139,6 +139,23 @@
 							</template>
 							{{ ticket.closedAt ? t('projektwerk', 'Wieder öffnen') : t('projektwerk', 'Abschließen') }}
 						</NcButton>
+
+						<!--
+							Löschen ist weich und über den Undo-Toast sofort umkehrbar
+							(#167), deshalb ohne schwere Rückfrage — tertiär und leiser
+							als der Abschließen-Knopf. Der eigentliche Löschvorgang
+							läuft in BoardView, damit Toast und Neuladen an einer
+							Stelle liegen (wie beim Karten-Menü).
+						-->
+						<NcButton
+							variant="tertiary"
+							:disabled="busy"
+							@click="$emit('delete', ticket)">
+							<template #icon>
+								<DeleteOutlineIcon :size="20" />
+							</template>
+							{{ t('projektwerk', 'Löschen') }}
+						</NcButton>
 					</div>
 				</header>
 
@@ -418,6 +435,7 @@ import CheckIcon from 'vue-material-design-icons/Check.vue'
 import ChevronDownIcon from 'vue-material-design-icons/ChevronDown.vue'
 import ChevronUpIcon from 'vue-material-design-icons/ChevronUp.vue'
 import CloseIcon from 'vue-material-design-icons/Close.vue'
+import DeleteOutlineIcon from 'vue-material-design-icons/DeleteOutline.vue'
 import PencilOutlineIcon from 'vue-material-design-icons/PencilOutline.vue'
 import PlusIcon from 'vue-material-design-icons/Plus.vue'
 import RestoreIcon from 'vue-material-design-icons/Restore.vue'
@@ -444,7 +462,7 @@ interface PersonOption {
 export default defineComponent({
 	name: 'TicketDetail',
 
-	components: { AccountPlusIcon, AttachmentList, CalendarIcon, CalendarAlertIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, CloseIcon, CommentList, NcAvatar, NcButton, NcDateTimePicker, NcModal, NcRichText, NcSelectUsers, NcTextArea, NcTextField, PencilOutlineIcon, PlusIcon, RestoreIcon, StepList, VisibilityControl, WaitBadge },
+	components: { AccountPlusIcon, AttachmentList, CalendarIcon, CalendarAlertIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, CloseIcon, CommentList, DeleteOutlineIcon, NcAvatar, NcButton, NcDateTimePicker, NcModal, NcRichText, NcSelectUsers, NcTextArea, NcTextField, PencilOutlineIcon, PlusIcon, RestoreIcon, StepList, VisibilityControl, WaitBadge },
 
 	props: {
 		ticket: { type: Object as PropType<Ticket | null>, default: null },
@@ -463,7 +481,7 @@ export default defineComponent({
 		fromClientSide: { type: Boolean, default: false },
 	},
 
-	emits: ['close', 'changed', 'stepsChanged', 'commentsChanged', 'attachmentsChanged'],
+	emits: ['close', 'changed', 'delete', 'stepsChanged', 'commentsChanged', 'attachmentsChanged'],
 
 	data() {
 		return {

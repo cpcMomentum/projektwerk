@@ -40,6 +40,9 @@ return [
 		// Weiches Loeschen: setzt `deleted_at`, das TicketScope aus jeder
 		// Abfrage nimmt. Kein Papierkorb in der App — Wiederherstellen per occ.
 		['name' => 'ticket#destroy', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}', 'verb' => 'DELETE'],
+		// Wiederherstellen (#167, Undo): das Gegenstueck zu destroy. Setzt
+		// `deleted_at` zurueck auf null; ohne `version`, weil idempotent.
+		['name' => 'ticket#restore', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/restore', 'verb' => 'POST'],
 		['name' => 'ticket#move', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/move', 'verb' => 'POST'],
 		['name' => 'ticket#visibility', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/visibility', 'verb' => 'PUT'],
 

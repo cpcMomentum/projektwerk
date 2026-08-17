@@ -9,7 +9,7 @@
 import type { Visibility } from '@/types/board'
 import type { Ticket, TicketDetail, TicketList } from '@/types/ticket'
 
-import { apiGet, apiPatch, apiPost, apiPut } from '@/services/api'
+import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from '@/services/api'
 
 /**
  * Die sichtbaren Tickets eines Boards, mit den Zählern ihrer Kinder.
@@ -125,6 +125,37 @@ export async function moveTicket(
 	return apiPost<Ticket, typeof target & { version: number }>(
 		`/boards/${boardId}/tickets/${ticketId}/move`,
 		{ ...target, version },
+	)
+}
+
+/**
+ * Einen Vorgang weich löschen (#167). Setzt `deleted_at`; der Vorgang fällt aus
+ * jeder Ansicht, bleibt aber in der Datenbank — rückgängig über
+ * {@link restoreTicket}. Die Antwort ist der gelöschte Stand.
+ *
+ * @param boardId Kennung des Projekts.
+ * @param ticketId Kennung des Tickets.
+ * @param version Der zuletzt gelesene Stand.
+ */
+export async function deleteTicket(boardId: number, ticketId: number, version: number): Promise<Ticket> {
+	return apiDelete<Ticket, { version: number }>(
+		`/boards/${boardId}/tickets/${ticketId}`,
+		{ version },
+	)
+}
+
+/**
+ * Einen gelöschten Vorgang wiederherstellen (#167, Undo). Ohne Version:
+ * idempotent und folgt dem Löschen unmittelbar. Die Antwort ist der
+ * wiederhergestellte Stand.
+ *
+ * @param boardId Kennung des Projekts.
+ * @param ticketId Kennung des Tickets.
+ */
+export async function restoreTicket(boardId: number, ticketId: number): Promise<Ticket> {
+	return apiPost<Ticket, Record<string, never>>(
+		`/boards/${boardId}/tickets/${ticketId}/restore`,
+		{},
 	)
 }
 

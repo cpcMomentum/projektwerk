@@ -578,6 +578,63 @@ class TicketWritePathTest extends IntegrationTestCase {
 	}
 
 	/**
+	 * Löschen ist weich und umkehrbar (#167): Nach dem Löschen fällt der Vorgang
+	 * aus jeder sichtbaren Abfrage, `restore()` holt ihn zurück.
+	 */
+	public function testDeleteIsSoftAndRestoreBringsItBack(): void {
+		$anna = $this->viewer(LeakMatrixFixture::ANNA);
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+
+		$this->service->delete($anna, $ticketId, 1);
+
+		try {
+			$this->tickets->findVisible($anna, $ticketId);
+			$this->fail('Der gelöschte Vorgang sollte nicht mehr sichtbar sein.');
+		} catch (DoesNotExistException) {
+			// erwartet: aus der sichtbaren Menge gefallen
+		}
+
+		$restored = $this->service->restore($anna, $ticketId);
+		$this->assertNull($restored->getDeletedAt());
+
+		// Und wieder da.
+		$this->assertSame(
+			$ticketId,
+			(int)$this->tickets->findVisible($anna, $ticketId)->getId(),
+		);
+	}
+
+	/**
+	 * Wiederherstellen darf nur die besitzende Seite (§7). Die Kundenseite
+	 * bekommt für einen intern angelegten Vorgang denselben Fehler wie für einen
+	 * unbekannten — die Fehlerform verrät nicht, welcher Fall vorliegt.
+	 */
+	public function testRestoreIsRefusedForTheOtherSide(): void {
+		$anna = $this->viewer(LeakMatrixFixture::ANNA);
+		$carla = $this->viewer(LeakMatrixFixture::CARLA);
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+
+		$this->service->delete($anna, $ticketId, 1);
+
+		$this->expectException(DoesNotExistException::class);
+		$this->service->restore($carla, $ticketId);
+	}
+
+	/**
+	 * Ein bereits offener Vorgang lässt sich schadlos „wiederherstellen" — der
+	 * Undo-Toast darf ohne Fehler mehrfach ausgelöst werden.
+	 */
+	public function testRestoreOnAnOpenTicketIsIdempotent(): void {
+		$anna = $this->viewer(LeakMatrixFixture::ANNA);
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+
+		$restored = $this->service->restore($anna, $ticketId);
+
+		$this->assertNull($restored->getDeletedAt());
+		$this->assertSame($ticketId, (int)$restored->getId());
+	}
+
+	/**
 	 * Ein Ticket, das der Betrachter nicht sieht, lässt sich auch nicht ändern.
 	 */
 	public function testInvisibleTicketsCannotBeWritten(): void {
