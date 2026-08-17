@@ -472,14 +472,17 @@ export default defineComponent({
 
 		async create(data: { title: string, description: string | null, visibility: Visibility, columnId: number, dueDate: string | null, responsibleUserId: string | null, openAfter: boolean }) {
 			try {
-				const angelegt = await createTicket(this.boardId, data)
+				// `openAfter` ist rein lokale UI-Wahl (#165) und kein Feld der
+				// Ticket-API — nicht mit ins Anfrage-Objekt nehmen.
+				const { openAfter, ...ticketData } = data
+				const angelegt = await createTicket(this.boardId, ticketData)
 				this.creating = false
 				await this.store.open(this.boardId)
 				// Den frischen Stand aus dem Speicher nehmen, damit `version` stimmt
 				// und der nächste Schreibweg nicht in einen 409 läuft.
 				const frisch = this.store.tickets.get(angelegt.id) ?? angelegt
 
-				if (data.openAfter) {
+				if (openAfter) {
 					// #146-Weg (Variante a), jetzt als bewusste Wahl (#165): direkt
 					// ins Detail, wo Anhänge und Arbeitsschritte „wie im Detail"
 					// möglich sind — ohne den schlanken Anlege-Dialog (#100) dafür
