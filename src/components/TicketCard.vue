@@ -131,10 +131,24 @@
 			nachgerüstet.
 		-->
 		<NcActions
-			v-if="otherColumns.length > 0"
 			class="pw-card__menu"
 			:forceMenu="true"
 			:ariaLabel="menuLabel">
+			<!--
+				Abschließen / Wieder öffnen direkt an der Karte (#168) — sichtbar
+				auch für die Kundenseite, ohne erst ins Detail zu müssen. Ruft
+				dieselbe offen↔geschlossen-Kette wie der Knopf im Detail.
+			-->
+			<NcActionButton
+				:closeAfterClick="true"
+				@click="$emit('toggleclosed', ticket)">
+				<template #icon>
+					<CheckIcon v-if="ticket.closedAt === null" :size="20" />
+					<RestoreIcon v-else :size="20" />
+				</template>
+				{{ ticket.closedAt === null ? t('projektwerk', 'Abschließen') : t('projektwerk', 'Wieder öffnen') }}
+			</NcActionButton>
+
 			<!--
 				**Ein Hauptwort, kein Handlungssatz.** „Verschieben nach …" las
 				sich wie ein Knopf — und weil Ueberschriften in
@@ -143,17 +157,19 @@
 				Verschieben ginge nicht. „Zielspalte" laesst sich nicht fuer
 				eine Handlung halten; die Handlung sind die Zeilen darunter.
 			-->
-			<NcActionCaption :name="t('projektwerk', 'Zielspalte')" />
-			<NcActionButton
-				v-for="column in otherColumns"
-				:key="column.id"
-				:closeAfterClick="true"
-				@click="$emit('move', { ticket, columnId: column.id })">
-				<template #icon>
-					<ArrowRightIcon :size="20" />
-				</template>
-				{{ column.title }}
-			</NcActionButton>
+			<template v-if="otherColumns.length > 0">
+				<NcActionCaption :name="t('projektwerk', 'Zielspalte')" />
+				<NcActionButton
+					v-for="column in otherColumns"
+					:key="column.id"
+					:closeAfterClick="true"
+					@click="$emit('move', { ticket, columnId: column.id })">
+					<template #icon>
+						<ArrowRightIcon :size="20" />
+					</template>
+					{{ column.title }}
+				</NcActionButton>
+			</template>
 		</NcActions>
 	</article>
 </template>
@@ -172,10 +188,12 @@ import NcAvatar from '@nextcloud/vue/components/NcAvatar'
 import ArrowRightIcon from 'vue-material-design-icons/ArrowRight.vue'
 import CalendarAlertIcon from 'vue-material-design-icons/CalendarAlert.vue'
 import CalendarIcon from 'vue-material-design-icons/CalendarOutline.vue'
+import CheckIcon from 'vue-material-design-icons/Check.vue'
 import CommentOutlineIcon from 'vue-material-design-icons/CommentOutline.vue'
 import FormatListChecksIcon from 'vue-material-design-icons/FormatListChecks.vue'
 import OfficeBuildingIcon from 'vue-material-design-icons/OfficeBuilding.vue'
 import PencilIcon from 'vue-material-design-icons/Pencil.vue'
+import RestoreIcon from 'vue-material-design-icons/Restore.vue'
 import WaitBadge from '@/components/WaitBadge.vue'
 import { germanDate, isOverdue } from '@/utils/date'
 
@@ -187,6 +205,7 @@ export default defineComponent({
 		ArrowRightIcon,
 		CalendarIcon,
 		CalendarAlertIcon,
+		CheckIcon,
 		CommentOutlineIcon,
 		FormatListChecksIcon,
 		NcActionButton,
@@ -195,6 +214,7 @@ export default defineComponent({
 		NcAvatar,
 		OfficeBuildingIcon,
 		PencilIcon,
+		RestoreIcon,
 	},
 
 	props: {
@@ -224,7 +244,7 @@ export default defineComponent({
 		fromClientSide: { type: Boolean, default: false },
 	},
 
-	emits: ['open', 'move'],
+	emits: ['open', 'move', 'toggleclosed'],
 
 	computed: {
 		/** Die Zielspalten — die eigene ist keine. */
