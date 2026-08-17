@@ -124,7 +124,14 @@
 								</template>
 								{{ t('projektwerk', 'Beschreibung hinzufügen') }}
 							</NcButton>
-							<span class="pw-beschreibung__deckel" aria-hidden="true" />
+							<!--
+								Der Verlauf verblasst nur, wenn wirklich etwas unter
+								dem Deckel liegt (#163). Sonst blendete er die letzte
+								Zeile eines vollstaendig sichtbaren Textes aus — es sah
+								abgeschnitten aus, obwohl der „Mehr anzeigen"-Knopf
+								(gleiche Bedingung) fehlte, weil nichts verborgen war.
+							-->
+							<span v-if="textZuHoch" class="pw-beschreibung__deckel" aria-hidden="true" />
 						</div>
 
 						<NcButton
