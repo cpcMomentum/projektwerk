@@ -6,6 +6,14 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Der Verlauf am unteren Rand der Beschreibung erschien auch bei vollständig sichtbarem Text**
+  (#163). Der Fade-Deckel hing an keiner Bedingung und blendete so die letzte Zeile kurzer
+  Beschreibungen grundlos aus, ohne dass ein „Mehr anzeigen"-Knopf zum Aufklappen da war. Der
+  Deckel folgt jetzt derselben Bedingung wie der Knopf (`textZuHoch`): Beides nur, wenn wirklich
+  etwas verborgen ist.
+
 ## [0.4.5] - 2026-08-16
 
 ### Added
