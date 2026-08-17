@@ -32,6 +32,7 @@
 			:key="ticket.id"
 			:ticket="ticket"
 			:showVisibility="showVisibility"
+			:highlighted="ticket.id === highlightId"
 			:responsibleName="store.nameOf(ticket.responsibleUserId)"
 			:columns="store.columns"
 			:commentCount="store.counts?.comments?.[ticket.id] ?? 0"
@@ -79,6 +80,8 @@ export default defineComponent({
 		columnId: { type: Number, required: true },
 		/** Ob die Sichtbarkeits-Kennzeichnung an der Karte gezeigt wird. */
 		showVisibility: { type: Boolean, default: false },
+		/** Die frisch angelegte Karte, die kurz hervorgehoben wird (#165), oder null. */
+		highlightId: { type: Number as PropType<number | null>, default: null },
 	},
 
 	emits: ['open', 'menumove', 'dragmove'],

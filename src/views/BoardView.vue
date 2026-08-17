@@ -112,6 +112,7 @@
 						:tickets="view.tickets"
 						:columnId="view.column.id"
 						:showVisibility="showVisibility"
+						:highlightId="highlightId"
 						@open="openTicket"
 						@menumove="move"
 						@dragmove="moved" />
@@ -236,6 +237,10 @@ export default defineComponent({
 			openSteps: [] as Step[],
 			openComments: [] as Comment[],
 			openAttachments: [] as Attachment[],
+			// Die frisch angelegte Karte, die gerade kurz hervorgehoben wird (#165),
+			// und ihr Ablauf-Timer — beides rein lokal und vergänglich.
+			highlightId: null as number | null,
+			highlightTimer: null as number | null,
 		}
 	},
 
@@ -287,6 +292,14 @@ export default defineComponent({
 				this.openFromQuery()
 			},
 		},
+	},
+
+	beforeUnmount() {
+		// Den Hervorhebungs-Timer nicht über das Verlassen der Ansicht hinaus
+		// weiterlaufen lassen (#165).
+		if (this.highlightTimer !== null) {
+			window.clearTimeout(this.highlightTimer)
+		}
 	},
 
 	methods: {
@@ -457,21 +470,52 @@ export default defineComponent({
 			this.openTicketData = ticket
 		},
 
-		async create(data: { title: string, description: string | null, visibility: Visibility, columnId: number, dueDate: string | null, responsibleUserId: string | null }) {
+		async create(data: { title: string, description: string | null, visibility: Visibility, columnId: number, dueDate: string | null, responsibleUserId: string | null, openAfter: boolean }) {
 			try {
-				const angelegt = await createTicket(this.boardId, data)
+				// `openAfter` ist rein lokale UI-Wahl (#165) und kein Feld der
+				// Ticket-API — nicht mit ins Anfrage-Objekt nehmen.
+				const { openAfter, ...ticketData } = data
+				const angelegt = await createTicket(this.boardId, ticketData)
 				this.creating = false
 				await this.store.open(this.boardId)
-				// Variante (a) aus #146: direkt in den Detail-View, wo Anhänge und
-				// Arbeitsschritte „wie im Detail" möglich sind — ohne den schlanken
-				// Anlege-Dialog (#100) dafür aufzublähen. Den frischen Stand aus dem
-				// Speicher nehmen, damit `version` stimmt und der nächste Schreibweg
-				// nicht in einen 409 läuft.
+				// Den frischen Stand aus dem Speicher nehmen, damit `version` stimmt
+				// und der nächste Schreibweg nicht in einen 409 läuft.
 				const frisch = this.store.tickets.get(angelegt.id) ?? angelegt
-				await this.openTicket(frisch)
+
+				if (openAfter) {
+					// #146-Weg (Variante a), jetzt als bewusste Wahl (#165): direkt
+					// ins Detail, wo Anhänge und Arbeitsschritte „wie im Detail"
+					// möglich sind — ohne den schlanken Anlege-Dialog (#100) dafür
+					// aufzublähen.
+					await this.openTicket(frisch)
+				} else {
+					// „Anlegen" ohne Sprung (#165): auf dem Board bleiben und die neue
+					// Karte kurz hervorheben, damit „wo ist mein Vorgang" ohne ein
+					// zweites Modal beantwortet ist.
+					this.highlightNew(frisch.id)
+				}
 			} catch (e) {
 				showError((e as { message?: string }).message ?? t('projektwerk', 'Anlegen fehlgeschlagen'))
 			}
+		},
+
+		/**
+		 * Die frisch angelegte Karte für kurze Zeit markieren (#165). Ein rein
+		 * lokaler, vergänglicher Zustand — nichts am Vorgang, nichts am Server;
+		 * der neutrale „seit deinem Blick geändert"-Punkt (#79) bleibt davon
+		 * unberührt.
+		 *
+		 * @param ticketId Die Kennung der neuen Karte.
+		 */
+		highlightNew(ticketId: number): void {
+			if (this.highlightTimer !== null) {
+				window.clearTimeout(this.highlightTimer)
+			}
+			this.highlightId = ticketId
+			this.highlightTimer = window.setTimeout(() => {
+				this.highlightId = null
+				this.highlightTimer = null
+			}, 1500)
 		},
 	},
 })

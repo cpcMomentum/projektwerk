@@ -307,7 +307,8 @@
 		"Projektchat": "Project chat",
 		"Weiter": "Next",
 		"Zuständige Person": "Responsible person",
-		"Dateien hier ablegen": "Drop files here"
+		"Dateien hier ablegen": "Drop files here",
+		"Anlegen und öffnen": "Create and open"
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }

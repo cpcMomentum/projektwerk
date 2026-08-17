@@ -6,6 +6,13 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Nach dem Anlegen wählt man selbst, ob das Detail aufgeht** (#165). Bisher sprang die
+  Oberfläche automatisch ins Detail (#146) — das las sich als überraschendes zweites Modal. Der
+  Anlege-Dialog hat jetzt zwei Abschlüsse: „Anlegen" bleibt auf dem Board und hebt die neue Karte
+  kurz hervor, „Anlegen und öffnen" führt wie bisher direkt ins Detail.
+
 ## [0.4.5] - 2026-08-16
 
 ### Added
