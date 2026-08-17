@@ -264,8 +264,9 @@ class TicketController extends Controller {
 	/**
 	 * Einen Vorgang loeschen — weich, und ohne Papierkorb in der App.
 	 *
-	 * Wiederhergestellt wird per `occ projektwerk:ticket:restore`. Der
-	 * Rueckgabewert ist der geloeschte Stand; das Frontend nimmt die Karte
+	 * Wiederhergestellt wird ueber {@see restore()} (Undo-Toast) oder, falls
+	 * der Toast schon verschwunden ist, per `occ projektwerk:ticket:restore`.
+	 * Der Rueckgabewert ist der geloeschte Stand; das Frontend nimmt die Karte
 	 * daraufhin aus der Ansicht.
 	 */
 	#[NoAdminRequired]

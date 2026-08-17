@@ -139,6 +139,12 @@ class TicketMapper extends QBMapper {
 	 * fremdes Board und eine unbekannte Kennung ergeben denselben
 	 * `DoesNotExistException`; die Fehlerform verraet nichts (wie `findVisible`).
 	 *
+	 * **Nicht genug fuer `private`:** Die Rolle trennt nur die Seite, nicht die
+	 * anlegende Person. Fuer private Vorgaenge prueft
+	 * {@see \OCA\Projektwerk\Service\TicketService::restore()} deshalb
+	 * zusaetzlich `creator_user_id` gegen den Betrachter, bevor der gefundene
+	 * Vorgang verwendet wird.
+	 *
 	 * @throws DoesNotExistException  unbekannt, fremdes Board oder andere Seite
 	 */
 	public function findForRestore(ViewerContext $viewer, int $ticketId): Ticket {

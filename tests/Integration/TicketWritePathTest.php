@@ -621,6 +621,23 @@ class TicketWritePathTest extends IntegrationTestCase {
 	}
 
 	/**
+	 * Wiederherstellen darf bei einem privaten Vorgang nicht jedes Mitglied
+	 * derselben Seite, sondern nur die anlegende Person selbst (§7). Anna und
+	 * Bert sind beide intern — ohne die zusätzliche Prüfung in `restore()`
+	 * bekäme Bert Annas privaten, gelöschten Vorgang samt Inhalt zurück.
+	 */
+	public function testRestoreOfAPrivateTicketIsRefusedForAColleagueOnTheSameSide(): void {
+		$anna = $this->viewer(LeakMatrixFixture::ANNA);
+		$bert = $this->viewer(LeakMatrixFixture::BERT);
+		$ticketId = $this->fixture->ticketIds['private/anna'];
+
+		$this->service->delete($anna, $ticketId, 1);
+
+		$this->expectException(DoesNotExistException::class);
+		$this->service->restore($bert, $ticketId);
+	}
+
+	/**
 	 * Ein bereits offener Vorgang lässt sich schadlos „wiederherstellen" — der
 	 * Undo-Toast darf ohne Fehler mehrfach ausgelöst werden.
 	 */

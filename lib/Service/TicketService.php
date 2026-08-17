@@ -462,17 +462,33 @@ class TicketService {
 	 *
 	 * Das Gegenstück zu {@see delete()}. Wer löschen darf, darf auch zurückholen —
 	 * {@see \OCA\Projektwerk\Db\TicketMapper::findForRestore()} grenzt bereits auf
-	 * das Board des Betrachters und die eigene Rolle ein, deshalb hier keine
-	 * zweite Besitzerprüfung.
+	 * das Board des Betrachters und die eigene Rolle ein.
+	 *
+	 * **Private Vorgänge zusätzlich geprüft:** `findForRestore()` kennt nur
+	 * Board und Rolle, nicht die anlegende Person — anders als `delete()`, das
+	 * über `findVisible()` (und damit `TicketScope`) bereits auf die anlegende
+	 * Person eingrenzt, bevor es überhaupt löschen lässt. Ohne diese zweite
+	 * Prüfung könnte jedes Mitglied derselben Seite den privaten, gelöschten
+	 * Vorgang einer Kollegin wiederherstellen — und dessen Inhalt in der
+	 * Antwort mitgeschickt bekommen, obwohl §7 „privat" auf die anlegende
+	 * Person beschränkt.
 	 *
 	 * **Kein `version`:** Die Wiederherstellung folgt dem Löschen unmittelbar
 	 * (Undo-Toast) und ist idempotent — ein bereits offener Vorgang wird
 	 * unverändert zurückgegeben, kein Fehler.
 	 *
-	 * @throws DoesNotExistException  unbekannt, fremdes Board oder andere Seite
+	 * @throws DoesNotExistException  unbekannt, fremdes Board, andere Seite
+	 *                                 oder fremder privater Vorgang
 	 */
 	public function restore(ViewerContext $viewer, int $ticketId): Ticket {
 		$ticket = $this->tickets->findForRestore($viewer, $ticketId);
+
+		if ($ticket->getVisibility() === TicketScope::VISIBILITY_PRIVATE
+			&& $ticket->getCreatorUserId() !== $viewer->userId) {
+			// Dieselbe Fehlerform wie bei unbekannt/fremdes Board/andere Seite
+			// (siehe findForRestore) — sie verrät nicht, welcher Fall vorliegt.
+			throw new DoesNotExistException('Vorgang nicht gefunden.');
+		}
 
 		if ($ticket->getDeletedAt() === null) {
 			return $ticket;
