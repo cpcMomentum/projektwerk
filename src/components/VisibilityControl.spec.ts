@@ -206,15 +206,13 @@ describe('VisibilityControl', () => {
 	 * Ein Klick auf die geltende Stufe ist keine Änderung.
 	 *
 	 * Ohne diese Sperre schriebe jeder Klick auf die bereits markierte Stufe
-	 * denselben Wert noch einmal — und stellte danach einen Widerruf auf einen
-	 * Wechsel, der keiner war.
+	 * denselben Wert noch einmal — ein Netzaufruf ohne Wirkung.
 	 */
 	it('tut nichts, wenn die geltende Stufe angeklickt wird', async () => {
 		const wrapper = mountControl(ticketOf({ visibility: 'public' }), viewerOf())
 		await choose(wrapper, 'public')
 
 		expect(changeVisibility).not.toHaveBeenCalled()
-		expect(wrapper.findAll('button').find((b) => b.text() === 'Rückgängig')).toBeUndefined()
 	})
 
 	/**
@@ -295,25 +293,20 @@ describe('VisibilityControl', () => {
 	})
 
 	/**
-	 * **Der Widerruf steht nach JEDEM Wechsel** (#103).
+	 * **Kein „Rückgängig" nach einem Wechsel** (#181).
 	 *
-	 * Vorher nur nach dem folgenlosen — also genau dort, wo ohnehin nichts
-	 * passieren konnte. Seit die Rückfrage weg ist, ist er das einzige Netz und
-	 * wird gerade für den folgenreichen Fall gebraucht. Der Test stuft deshalb
-	 * **herunter**: der Fall, der früher keinen Widerruf bekam.
+	 * Der Widerruf ist entfernt: Der Umschalter steht ohnehin offen und ist der
+	 * Ein-Klick-Rückweg. Ein eigener Knopf war redundant und liess die Kopfzeile
+	 * springen (`pw-viscontrol--offen`). Nach einem erfolgreichen Wechsel darf
+	 * deshalb weder ein „Rückgängig" erscheinen noch die Zeile umbrechen.
 	 */
-	it('lässt auch ein Herunterstufen widerrufen', async () => {
+	it('stellt nach einem Wechsel kein „Rückgängig" auf und bricht die Zeile nicht um', async () => {
 		const wrapper = mountControl(ticketOf({ visibility: 'public' }), viewerOf())
 		await choose(wrapper, 'internal')
 
-		const undo = wrapper.findAll('button').find((b) => b.text() === 'Rückgängig')
-		expect(undo).toBeDefined()
-
-		await undo?.trigger('click')
-		await wrapper.vm.$nextTick()
-
-		// Zurück auf den Stand von eben.
-		expect(changeVisibility).toHaveBeenLastCalledWith(7, 42, 5, 'public')
+		expect(changeVisibility).toHaveBeenCalledWith(7, 42, 5, 'internal')
+		expect(wrapper.findAll('button').find((b) => b.text() === 'Rückgängig')).toBeUndefined()
+		expect(wrapper.find('.pw-viscontrol--offen').exists()).toBe(false)
 	})
 
 	it('meldet einen Konflikt als solchen statt als allgemeinen Fehler', async () => {
