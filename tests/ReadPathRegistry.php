@@ -55,6 +55,16 @@ final class ReadPathRegistry {
 		// Der Deep-Link kennt nur die Ticketnummer, kein Board — deshalb ohne
 		// Board-Einschraenkung, aber ueber dieselbe Regel.
 		'TicketMapper::findVisibleAnywhere',
+		// Der Wiederherstell-Abruf (#167). Der **einzige** Ticket-Lesepfad, der
+		// bewusst am Sichtbarkeits-Scope vorbeigeht: Er joint nicht auf die
+		// Mitgliedschaft — sonst faende er das Geloeschte nie wieder — und filtert
+		// das Deleted-Flag nicht. Statt der Sichtbarkeitsregel traegt er eine
+		// engere, andere Bedingung: **Board + eigene Rolle**. Eine interne Person
+		// stellt jeden intern erzeugten Vorgang ihres Boards wieder her, die
+		// Kundenseite nur ihre eigenen. Die Mitgliedschaftsgrenze sitzt eine
+		// Schicht hoeher (BoardAccess), nicht in diesem Finder. Die Erwartung
+		// dazu ist `testRestoreLookupIsScopedToBoardAndOwningRole`.
+		'TicketMapper::findForRestore',
 		'TicketMapper::countVisibleInBoard',
 		// Liest ungefiltert (§3.8) und ist deshalb der einzige Pfad, dessen
 		// Erwartung lautet: fuer jeden Betrachter derselbe Wert.

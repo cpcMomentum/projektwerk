@@ -457,6 +457,33 @@ class TicketService {
 		return $saved;
 	}
 
+	/**
+	 * Einen weich gelöschten Vorgang wiederherstellen (#167, Undo).
+	 *
+	 * Das Gegenstück zu {@see delete()}. Wer löschen darf, darf auch zurückholen —
+	 * {@see \OCA\Projektwerk\Db\TicketMapper::findForRestore()} grenzt bereits auf
+	 * das Board des Betrachters und die eigene Rolle ein, deshalb hier keine
+	 * zweite Besitzerprüfung.
+	 *
+	 * **Kein `version`:** Die Wiederherstellung folgt dem Löschen unmittelbar
+	 * (Undo-Toast) und ist idempotent — ein bereits offener Vorgang wird
+	 * unverändert zurückgegeben, kein Fehler.
+	 *
+	 * @throws DoesNotExistException  unbekannt, fremdes Board oder andere Seite
+	 */
+	public function restore(ViewerContext $viewer, int $ticketId): Ticket {
+		$ticket = $this->tickets->findForRestore($viewer, $ticketId);
+
+		if ($ticket->getDeletedAt() === null) {
+			return $ticket;
+		}
+
+		$ticket->setDeletedAt(null);
+		$this->touch($ticket, $viewer);
+
+		return $this->tickets->update($ticket);
+	}
+
 	private function insertWithNumber(
 		ViewerContext $viewer,
 		string $title,

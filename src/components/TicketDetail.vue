@@ -62,9 +62,45 @@
 							@changed="$emit('changed', $event)" />
 					</div>
 
-					<h2 :id="titleId" class="pw-detail__title">
-						{{ ticket.title }}
-					</h2>
+					<!--
+						Der Titel ist bearbeitbar wie Beschreibung und Zuständige
+						(#169) — bis dahin die einzige Angabe im Detail, die nur
+						dastand. Stift oder Doppelklick öffnen das Feld; der Titel ist
+						Pflicht, ein leerer wird nicht gespeichert.
+					-->
+					<template v-if="!editingTitle">
+						<div class="pw-detail__titelzeile">
+							<h2 :id="titleId" class="pw-detail__title" @dblclick="startEditTitle">
+								{{ ticket.title }}
+							</h2>
+							<NcButton
+								variant="tertiary"
+								class="pw-detail__title-stift"
+								:ariaLabel="t('projektwerk', 'Titel bearbeiten')"
+								@click="startEditTitle">
+								<template #icon>
+									<PencilOutlineIcon :size="20" />
+								</template>
+							</NcButton>
+						</div>
+					</template>
+
+					<div v-else class="pw-detail__title-edit">
+						<NcTextField
+							v-model="titleEntwurf"
+							:label="t('projektwerk', 'Titel')"
+							:disabled="busy"
+							@keydown.enter="saveTitle"
+							@keydown.esc.stop="cancelEditTitle" />
+						<div class="pw-detail__title-actions">
+							<NcButton :disabled="busy" @click="cancelEditTitle">
+								{{ t('projektwerk', 'Abbrechen') }}
+							</NcButton>
+							<NcButton variant="primary" :disabled="busy || !titleSpeicherbar" @click="saveTitle">
+								{{ t('projektwerk', 'Speichern') }}
+							</NcButton>
+						</div>
+					</div>
 
 					<!--
 						Die Marke steht ueber dem Titel (§9), hier als ganze Zeile.
@@ -83,6 +119,44 @@
 						beantwortet der Personen-Block zwei Zeilen weiter.
 					-->
 					<WaitBadge :state="waiting" :fromClientSide="fromClientSide" :names="memberNames" />
+
+					<!--
+						Abschließen ist eine bewusste Handlung (#168, §9) und braucht
+						darum einen deutlichen Ort im Kopf, nicht nur einen Menüpunkt —
+						zumal Kunden Gäste sind und die Aktion sehen sollen. Der Knopf
+						ist zugleich das Archiv: abgeschlossen klappt unter „Ältere
+						anzeigen" weg. Das Ergebnis (erledigt vs. verworfen) kommt
+						getrennt (#171); hier geht es nur um offen/geschlossen.
+					-->
+					<div class="pw-kopf__aktionen">
+						<NcButton
+							:variant="ticket.closedAt ? 'secondary' : 'primary'"
+							:disabled="busy"
+							@click="toggleClosed">
+							<template #icon>
+								<CheckIcon v-if="!ticket.closedAt" :size="20" />
+								<RestoreIcon v-else :size="20" />
+							</template>
+							{{ ticket.closedAt ? t('projektwerk', 'Wieder öffnen') : t('projektwerk', 'Abschließen') }}
+						</NcButton>
+
+						<!--
+							Löschen ist weich und über den Undo-Toast sofort umkehrbar
+							(#167), deshalb ohne schwere Rückfrage — tertiär und leiser
+							als der Abschließen-Knopf. Der eigentliche Löschvorgang
+							läuft in BoardView, damit Toast und Neuladen an einer
+							Stelle liegen (wie beim Karten-Menü).
+						-->
+						<NcButton
+							variant="tertiary"
+							:disabled="busy"
+							@click="$emit('delete', ticket)">
+							<template #icon>
+								<DeleteOutlineIcon :size="20" />
+							</template>
+							{{ t('projektwerk', 'Löschen') }}
+						</NcButton>
+					</div>
 				</header>
 
 				<!--
@@ -124,7 +198,14 @@
 								</template>
 								{{ t('projektwerk', 'Beschreibung hinzufügen') }}
 							</NcButton>
-							<span class="pw-beschreibung__deckel" aria-hidden="true" />
+							<!--
+								Der Verlauf verblasst nur, wenn wirklich etwas unter
+								dem Deckel liegt (#163). Sonst blendete er die letzte
+								Zeile eines vollstaendig sichtbaren Textes aus — es sah
+								abgeschnitten aus, obwohl der „Mehr anzeigen"-Knopf
+								(gleiche Bedingung) fehlte, weil nichts verborgen war.
+							-->
+							<span v-if="textZuHoch" class="pw-beschreibung__deckel" aria-hidden="true" />
 						</div>
 
 						<NcButton
@@ -346,14 +427,18 @@ import NcModal from '@nextcloud/vue/components/NcModal'
 import NcRichText from '@nextcloud/vue/components/NcRichText'
 import NcSelectUsers from '@nextcloud/vue/components/NcSelectUsers'
 import NcTextArea from '@nextcloud/vue/components/NcTextArea'
+import NcTextField from '@nextcloud/vue/components/NcTextField'
 import AccountPlusIcon from 'vue-material-design-icons/AccountPlusOutline.vue'
 import CalendarAlertIcon from 'vue-material-design-icons/CalendarAlert.vue'
 import CalendarIcon from 'vue-material-design-icons/CalendarOutline.vue'
+import CheckIcon from 'vue-material-design-icons/Check.vue'
 import ChevronDownIcon from 'vue-material-design-icons/ChevronDown.vue'
 import ChevronUpIcon from 'vue-material-design-icons/ChevronUp.vue'
 import CloseIcon from 'vue-material-design-icons/Close.vue'
+import DeleteOutlineIcon from 'vue-material-design-icons/DeleteOutline.vue'
 import PencilOutlineIcon from 'vue-material-design-icons/PencilOutline.vue'
 import PlusIcon from 'vue-material-design-icons/Plus.vue'
+import RestoreIcon from 'vue-material-design-icons/Restore.vue'
 import AttachmentList from '@/components/AttachmentList.vue'
 import CommentList from '@/components/CommentList.vue'
 import StepList from '@/components/StepList.vue'
@@ -377,7 +462,7 @@ interface PersonOption {
 export default defineComponent({
 	name: 'TicketDetail',
 
-	components: { AccountPlusIcon, AttachmentList, CalendarIcon, CalendarAlertIcon, ChevronDownIcon, ChevronUpIcon, CloseIcon, CommentList, NcAvatar, NcButton, NcDateTimePicker, NcModal, NcRichText, NcSelectUsers, NcTextArea, PencilOutlineIcon, PlusIcon, StepList, VisibilityControl, WaitBadge },
+	components: { AccountPlusIcon, AttachmentList, CalendarIcon, CalendarAlertIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, CloseIcon, CommentList, DeleteOutlineIcon, NcAvatar, NcButton, NcDateTimePicker, NcModal, NcRichText, NcSelectUsers, NcTextArea, NcTextField, PencilOutlineIcon, PlusIcon, RestoreIcon, StepList, VisibilityControl, WaitBadge },
 
 	props: {
 		ticket: { type: Object as PropType<Ticket | null>, default: null },
@@ -396,11 +481,14 @@ export default defineComponent({
 		fromClientSide: { type: Boolean, default: false },
 	},
 
-	emits: ['close', 'changed', 'stepsChanged', 'commentsChanged', 'attachmentsChanged'],
+	emits: ['close', 'changed', 'delete', 'stepsChanged', 'commentsChanged', 'attachmentsChanged'],
 
 	data() {
 		return {
 			busy: false,
+			/** Der Titel wird gerade bearbeitet (#169). */
+			editingTitle: false,
+			titleEntwurf: '',
 			/** Die Beschreibung wird gerade bearbeitet. */
 			editingText: false,
 			textEntwurf: '',
@@ -448,6 +536,16 @@ export default defineComponent({
 
 		responsibleInputId(): string {
 			return `pw-detail-responsible-${this.ticket?.id ?? 0}`
+		},
+
+		/**
+		 * Speicherbar ist der Titel nur, wenn er nicht leer und gegenüber dem
+		 * gespeicherten Stand geändert ist (#169). Anders als die Beschreibung
+		 * ist er Pflicht — ein Vorgang ohne Namen darf nicht entstehen.
+		 */
+		titleSpeicherbar(): boolean {
+			const entwurf = this.titleEntwurf.trim()
+			return entwurf !== '' && entwurf !== (this.ticket?.title ?? '')
 		},
 
 		/** Leerer Entwurf und leere Beschreibung sind dasselbe — beides heisst `null`. */
@@ -517,6 +615,8 @@ export default defineComponent({
 		'ticket.id': {
 			immediate: true,
 			handler() {
+				this.editingTitle = false
+				this.titleEntwurf = ''
 				this.editingText = false
 				this.editingResponsible = false
 				this.textEntwurf = ''
@@ -565,6 +665,75 @@ export default defineComponent({
 				// Ohne Liste bleibt die Auswahl leer; alles Uebrige am Vorgang
 				// funktioniert weiter. Eine Meldung waere hier Laerm.
 				this.assignable = []
+			}
+		},
+
+		/**
+		 * Den Vorgang abschließen oder wieder öffnen (#168). Nur der Übergang
+		 * offen↔geschlossen; das Backend setzt `closed_at` und zieht die
+		 * Benachrichtigungen. Über `changed` läuft der frische Stand zurück, sodass
+		 * Kopf (Knopf, „Geschlossen") und Karte gleich mitgehen.
+		 */
+		async toggleClosed(): Promise<void> {
+			if (this.ticket === null || this.busy) {
+				return
+			}
+
+			const schliessen = this.ticket.closedAt === null
+			this.busy = true
+			try {
+				const updated = await updateTicket(
+					this.ticket.boardId,
+					this.ticket.id,
+					this.ticket.version,
+					{ closed: schliessen },
+				)
+				this.$emit('changed', updated)
+			} catch (e) {
+				reportWriteError(e, schliessen
+					? t('projektwerk', 'Abschließen fehlgeschlagen')
+					: t('projektwerk', 'Wieder öffnen fehlgeschlagen'))
+			} finally {
+				this.busy = false
+			}
+		},
+
+		startEditTitle(): void {
+			this.titleEntwurf = this.ticket?.title ?? ''
+			this.editingTitle = true
+		},
+
+		cancelEditTitle(): void {
+			this.editingTitle = false
+			this.titleEntwurf = ''
+		},
+
+		/**
+		 * Den Titel schreiben (#169). Pflichtfeld: ein leerer oder unveränderter
+		 * Titel wird nicht gespeichert. Konflikterkennung über `version` wie bei
+		 * den anderen Feldern.
+		 */
+		async saveTitle(): Promise<void> {
+			if (this.ticket === null || this.busy || !this.titleSpeicherbar) {
+				return
+			}
+
+			const titel = this.titleEntwurf.trim()
+			this.busy = true
+			try {
+				const updated = await updateTicket(
+					this.ticket.boardId,
+					this.ticket.id,
+					this.ticket.version,
+					{ title: titel },
+				)
+				this.$emit('changed', updated)
+				this.editingTitle = false
+				this.titleEntwurf = ''
+			} catch (e) {
+				reportWriteError(e, t('projektwerk', 'Titel konnte nicht gespeichert werden'))
+			} finally {
+				this.busy = false
 			}
 		},
 

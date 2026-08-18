@@ -32,6 +32,7 @@
 			:key="ticket.id"
 			:ticket="ticket"
 			:showVisibility="showVisibility"
+			:highlighted="ticket.id === highlightId"
 			:responsibleName="store.nameOf(ticket.responsibleUserId)"
 			:columns="store.columns"
 			:commentCount="store.counts?.comments?.[ticket.id] ?? 0"
@@ -42,7 +43,9 @@
 			:memberNames="store.memberNames"
 			:fromClientSide="!store.isInternal"
 			@open="$emit('open', $event)"
-			@move="$emit('menumove', $event)" />
+			@move="$emit('menumove', $event)"
+			@toggleclosed="$emit('toggleclosed', $event)"
+			@delete="$emit('delete', $event)" />
 	</VueDraggable>
 </template>
 
@@ -79,9 +82,11 @@ export default defineComponent({
 		columnId: { type: Number, required: true },
 		/** Ob die Sichtbarkeits-Kennzeichnung an der Karte gezeigt wird. */
 		showVisibility: { type: Boolean, default: false },
+		/** Die frisch angelegte Karte, die kurz hervorgehoben wird (#165), oder null. */
+		highlightId: { type: Number as PropType<number | null>, default: null },
 	},
 
-	emits: ['open', 'menumove', 'dragmove'],
+	emits: ['open', 'menumove', 'dragmove', 'toggleclosed', 'delete'],
 
 	setup() {
 		return { store: useBoardStore() }

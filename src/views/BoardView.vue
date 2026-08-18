@@ -112,9 +112,12 @@
 						:tickets="view.tickets"
 						:columnId="view.column.id"
 						:showVisibility="showVisibility"
+						:highlightId="highlightId"
 						@open="openTicket"
 						@menumove="move"
-						@dragmove="moved" />
+						@dragmove="moved"
+						@toggleclosed="toggleClosed"
+						@delete="deleteTicket" />
 
 					<!--
 						Ältere Erledigte (#59). Kein Archiv als Ablageort:
@@ -170,6 +173,7 @@
 			:waiting="openTicketData ? (store.waiting[openTicketData.id] ?? null) : null"
 			@close="openTicketData = null"
 			@changed="applyChanged"
+			@delete="deleteTicket"
 			@stepsChanged="reloadOpenTicket"
 			@commentsChanged="reloadOpenTicket"
 			@attachmentsChanged="reloadOpenTicket" />
@@ -201,8 +205,8 @@ import PlusIcon from 'vue-material-design-icons/Plus.vue'
 import BoardDragLayer from '@/components/board/BoardDragLayer.vue'
 import CreateTicketDialog from '@/components/CreateTicketDialog.vue'
 import TicketDetail from '@/components/TicketDetail.vue'
-import { createTicket, fetchTicket } from '@/services/tickets'
-import { showError } from '@/services/toast'
+import { deleteTicket as apiDeleteTicket, restoreTicket as apiRestoreTicket, createTicket, fetchTicket, updateTicket } from '@/services/tickets'
+import { showError, showUndo } from '@/services/toast'
 import { isConflict, reportWriteError } from '@/services/writeError'
 import { useBoardStore } from '@/stores/boardStore'
 
@@ -236,6 +240,10 @@ export default defineComponent({
 			openSteps: [] as Step[],
 			openComments: [] as Comment[],
 			openAttachments: [] as Attachment[],
+			// Die frisch angelegte Karte, die gerade kurz hervorgehoben wird (#165),
+			// und ihr Ablauf-Timer — beides rein lokal und vergänglich.
+			highlightId: null as number | null,
+			highlightTimer: null as number | null,
 		}
 	},
 
@@ -287,6 +295,14 @@ export default defineComponent({
 				this.openFromQuery()
 			},
 		},
+	},
+
+	beforeUnmount() {
+		// Den Hervorhebungs-Timer nicht über das Verlassen der Ansicht hinaus
+		// weiterlaufen lassen (#165).
+		if (this.highlightTimer !== null) {
+			window.clearTimeout(this.highlightTimer)
+		}
 	},
 
 	methods: {
@@ -457,21 +473,138 @@ export default defineComponent({
 			this.openTicketData = ticket
 		},
 
-		async create(data: { title: string, description: string | null, visibility: Visibility, columnId: number, dueDate: string | null, responsibleUserId: string | null }) {
+		/**
+		 * Einen Vorgang vom Karten-Menü aus abschließen oder wieder öffnen (#168) —
+		 * derselbe offen↔geschlossen-Übergang wie der Knopf im Detail.
+		 *
+		 * **Das Overlay geht nur mit, wenn genau dieser Vorgang offen ist.** Sonst
+		 * risse ein Klick im Karten-Menü das Detail auf — `applyChanged` setzt
+		 * `openTicketData` bedingungslos und taugt hier deshalb nicht.
+		 *
+		 * @param ticket Der Vorgang, dessen Abschluss umgeschaltet wird.
+		 */
+		async toggleClosed(ticket: Ticket) {
+			const schliessen = ticket.closedAt === null
+
 			try {
-				const angelegt = await createTicket(this.boardId, data)
+				const updated = await updateTicket(
+					ticket.boardId,
+					ticket.id,
+					ticket.version,
+					{ closed: schliessen },
+				)
+				this.store.replaceTicket(updated)
+				if (this.openTicketData?.id === updated.id) {
+					this.openTicketData = updated
+				}
+			} catch (e) {
+				// Beim Konflikt wird nachgeladen statt zum Neuladen aufgefordert,
+				// aus demselben Grund wie bei move()/moved(): Das ganze Board
+				// steht im Speicher, ein veralteter `version`-Wert liesse jeden
+				// weiteren Versuch scheitern — auch an einer ganz anderen Karte.
+				if (isConflict(e)) {
+					await this.store.open(this.boardId)
+				}
+				reportWriteError(e, schliessen
+					? t('projektwerk', 'Abschließen fehlgeschlagen')
+					: t('projektwerk', 'Wieder öffnen fehlgeschlagen'), isConflict(e))
+			}
+		},
+
+		/**
+		 * Einen Vorgang weich löschen und einen Undo-Toast anbieten (#167).
+		 *
+		 * Sofort löschen (der Server ist die Wahrheit), Detail schließen falls
+		 * offen, Board neu laden — der Vorgang fällt aus der Ansicht. Der Toast
+		 * hält die Kennung; ein Klick holt ihn über `restore` zurück. Kommt aus
+		 * dem Karten-Menü UND aus dem Detail an genau dieser Stelle zusammen,
+		 * damit Toast und Neuladen nicht doppelt liegen.
+		 *
+		 * @param ticket Der zu löschende Vorgang.
+		 */
+		async deleteTicket(ticket: Ticket) {
+			try {
+				await apiDeleteTicket(ticket.boardId, ticket.id, ticket.version)
+
+				if (this.openTicketData?.id === ticket.id) {
+					this.openTicketData = null
+				}
+				await this.store.open(this.boardId)
+
+				showUndo(
+					t('projektwerk', 'Vorgang gelöscht'),
+					() => { void this.restoreTicket(ticket) },
+				)
+			} catch (e) {
+				// Konflikt: nachladen, aus demselben Grund wie oben.
+				if (isConflict(e)) {
+					await this.store.open(this.boardId)
+				}
+				reportWriteError(e, t('projektwerk', 'Löschen fehlgeschlagen'), isConflict(e))
+			}
+		},
+
+		/**
+		 * Ein zuvor gelöschtes Ticket zurückholen (#167, Undo-Klick). Idempotent
+		 * und ohne Version; danach neu laden, damit die Karte wieder erscheint.
+		 *
+		 * @param ticket Der wiederherzustellende Vorgang.
+		 */
+		async restoreTicket(ticket: Ticket) {
+			try {
+				await apiRestoreTicket(ticket.boardId, ticket.id)
+				await this.store.open(this.boardId)
+			} catch (e) {
+				reportWriteError(e, t('projektwerk', 'Wiederherstellen fehlgeschlagen'))
+			}
+		},
+
+		async create(data: { title: string, description: string | null, visibility: Visibility, columnId: number, dueDate: string | null, responsibleUserId: string | null, openAfter: boolean }) {
+			try {
+				// `openAfter` ist rein lokale UI-Wahl (#165) und kein Feld der
+				// Ticket-API — nicht mit ins Anfrage-Objekt nehmen.
+				const { openAfter, ...ticketData } = data
+				const angelegt = await createTicket(this.boardId, ticketData)
 				this.creating = false
 				await this.store.open(this.boardId)
-				// Variante (a) aus #146: direkt in den Detail-View, wo Anhänge und
-				// Arbeitsschritte „wie im Detail" möglich sind — ohne den schlanken
-				// Anlege-Dialog (#100) dafür aufzublähen. Den frischen Stand aus dem
-				// Speicher nehmen, damit `version` stimmt und der nächste Schreibweg
-				// nicht in einen 409 läuft.
+				// Den frischen Stand aus dem Speicher nehmen, damit `version` stimmt
+				// und der nächste Schreibweg nicht in einen 409 läuft.
 				const frisch = this.store.tickets.get(angelegt.id) ?? angelegt
-				await this.openTicket(frisch)
+
+				if (openAfter) {
+					// #146-Weg (Variante a), jetzt als bewusste Wahl (#165): direkt
+					// ins Detail, wo Anhänge und Arbeitsschritte „wie im Detail"
+					// möglich sind — ohne den schlanken Anlege-Dialog (#100) dafür
+					// aufzublähen.
+					await this.openTicket(frisch)
+				} else {
+					// „Anlegen" ohne Sprung (#165): auf dem Board bleiben und die neue
+					// Karte kurz hervorheben, damit „wo ist mein Vorgang" ohne ein
+					// zweites Modal beantwortet ist.
+					this.highlightNew(frisch.id)
+				}
 			} catch (e) {
 				showError((e as { message?: string }).message ?? t('projektwerk', 'Anlegen fehlgeschlagen'))
 			}
+		},
+
+		/**
+		 * Die frisch angelegte Karte für kurze Zeit markieren (#165). Ein rein
+		 * lokaler, vergänglicher Zustand — nichts am Vorgang, nichts am Server;
+		 * der neutrale „seit deinem Blick geändert"-Punkt (#79) bleibt davon
+		 * unberührt.
+		 *
+		 * @param ticketId Die Kennung der neuen Karte.
+		 */
+		highlightNew(ticketId: number): void {
+			if (this.highlightTimer !== null) {
+				window.clearTimeout(this.highlightTimer)
+			}
+			this.highlightId = ticketId
+			this.highlightTimer = window.setTimeout(() => {
+				this.highlightId = null
+				this.highlightTimer = null
+			}, 1500)
 		},
 	},
 })

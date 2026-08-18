@@ -278,6 +278,15 @@ OC.L10N.register(
     "Projektchat" : "Project chat",
     "Weiter" : "Next",
     "Zuständige Person" : "Responsible person",
-    "Dateien hier ablegen" : "Drop files here"
+    "Dateien hier ablegen" : "Drop files here",
+    "Anlegen und öffnen" : "Create and open",
+    "Abschließen" : "Close",
+    "Wieder öffnen" : "Reopen",
+    "Abschließen fehlgeschlagen" : "Could not close",
+    "Wieder öffnen fehlgeschlagen" : "Could not reopen",
+    "Titel bearbeiten" : "Edit title",
+    "Titel konnte nicht gespeichert werden" : "Could not save the title",
+    "Vorgang gelöscht" : "Item deleted",
+    "Wiederherstellen fehlgeschlagen" : "Restore failed"
 },
 "nplurals=2; plural=(n != 1);");

@@ -335,6 +335,31 @@
 }
 
 /*
+ * Frisch angelegt (#165): ein kurzer Ring in der Akzentfarbe, damit „wo ist
+ * mein Vorgang" ohne ein zweites Modal beantwortet ist. Die Animation klingt
+ * über 1,5 s aus — dieselbe Dauer, nach der die Ansicht die Klasse wieder
+ * entfernt. Ohne Bewegungsvorliebe steht der Ring einfach still, bis er geht.
+ */
+.app-projektwerk .pw-card--neu {
+	box-shadow: 0 0 0 2px var(--color-primary-element), 0 2px 8px rgba(0, 0, 0, .12);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.app-projektwerk .pw-card--neu {
+		animation: pw-card-neu 1.5s ease-out forwards;
+	}
+}
+
+@keyframes pw-card-neu {
+	0% {
+		box-shadow: 0 0 0 2px var(--color-primary-element), 0 2px 8px rgba(0, 0, 0, .12);
+	}
+	100% {
+		box-shadow: 0 1px 2px rgba(0, 0, 0, .06), 0 1px 1px rgba(0, 0, 0, .04);
+	}
+}
+
+/*
  * Nur diese Zeile weicht dem „…"-Menue aus — es sitzt absolut bei `top: 6px;
  * right: 6px` und ueberlappt genau hier. Titel und Fusszeile laufen darunter
  * durch bis an den Kartenrand.
@@ -801,6 +826,11 @@
 	box-shadow: 0 1px 0 var(--color-border);
 }
 
+/* Der Abschließen-/Wieder-öffnen-Knopf sitzt links unter der Wartemarke (#168). */
+.app-projektwerk .pw-kopf__aktionen {
+	display: flex;
+}
+
 /*
  * Nummer, Spaltenname und Sichtbarkeit auf einer Zeile.
  *
@@ -856,6 +886,38 @@
 	font-weight: 600;
 	line-height: 1.25;
 	overflow-wrap: anywhere;
+}
+
+/*
+ * Titel und Stift in einer Zeile (#169): der Titel nimmt die Breite, der Stift
+ * sitzt rechts daneben — wie der Bearbeiten-Stift der Beschreibung, nur inline
+ * statt absolut, weil hier keine geklebte Kopfzeile darüberliegt.
+ */
+.app-projektwerk .pw-detail__titelzeile {
+	display: flex;
+	align-items: flex-start;
+	gap: 4px;
+}
+
+.app-projektwerk .pw-detail__titelzeile .pw-detail__title {
+	flex: 1 1 auto;
+}
+
+.app-projektwerk .pw-detail__title-stift {
+	flex: 0 0 auto;
+	margin-block-start: 2px;
+}
+
+.app-projektwerk .pw-detail__title-edit {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.app-projektwerk .pw-detail__title-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
 }
 
 .app-projektwerk .pw-detail__empty {

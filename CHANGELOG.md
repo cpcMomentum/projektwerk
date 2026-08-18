@@ -6,6 +6,34 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.4.6] - 2026-08-18
+
+### Added
+
+- **Titel eines Vorgangs im Detail bearbeiten** (#169). Der Titel lässt sich jetzt direkt im Detail
+  ändern, per Stift-Symbol oder Doppelklick. Er bleibt Pflichtfeld: ein leerer Titel wird nicht
+  gespeichert.
+- **Vorgänge abschließen und wieder öffnen** (#168). Ein Knopf im Detail-Kopf und im Karten-Menü
+  schließt einen Vorgang ab. Abgeschlossene Vorgänge liegen unter „Ältere anzeigen" und lassen sich
+  von dort wieder öffnen. Abschließen ist die Ablage, kein zusätzlicher Status.
+- **Löschen mit Rückgängig** (#167). Vorgänge lassen sich im Detail und im Karten-Menü löschen.
+  Direkt danach erscheint ein kurzer Hinweis mit „Rückgängig", der den Vorgang wiederherstellt.
+
+### Changed
+
+- **Nach dem Anlegen wählt man selbst, ob das Detail aufgeht** (#165). Bisher sprang die
+  Oberfläche automatisch ins Detail (#146) — das las sich als überraschendes zweites Modal. Der
+  Anlege-Dialog hat jetzt zwei Abschlüsse: „Anlegen" bleibt auf dem Board und hebt die neue Karte
+  kurz hervor, „Anlegen und öffnen" führt wie bisher direkt ins Detail.
+
+### Fixed
+
+- **Der Verlauf am unteren Rand der Beschreibung erschien auch bei vollständig sichtbarem Text**
+  (#163). Der Fade-Deckel hing an keiner Bedingung und blendete so die letzte Zeile kurzer
+  Beschreibungen grundlos aus, ohne dass ein „Mehr anzeigen"-Knopf zum Aufklappen da war. Der
+  Deckel folgt jetzt derselben Bedingung wie der Knopf (`textZuHoch`): Beides nur, wenn wirklich
+  etwas verborgen ist.
+
 ## [0.4.5] - 2026-08-16
 
 ### Added
