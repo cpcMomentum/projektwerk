@@ -99,6 +99,33 @@ class LeakMatrixTest extends IntegrationTestCase {
 		self::FREMD => [],
 	];
 
+	/**
+	 * Was jeder Betrachter **wiederherstellen** darf (#167) — und warum das
+	 * anders geschnitten ist als {@see VISIBLE}.
+	 *
+	 * `findForRestore` bindet an **Board + Erzeugerrolle**, nicht an die
+	 * Sichtbarkeitsregel: Es findet auch Geloeschtes und joint bewusst nicht auf
+	 * die Mitgliedschaft. Deshalb sind Annas und Berts Mengen hier **identisch**
+	 * — beide sind intern, und es zaehlt die Rolle, nicht die Person; eine
+	 * interne Person stellt jeden intern erzeugten Vorgang ihres Boards wieder
+	 * her, auch einen fremden. Carla und Dirk als Kundenseite ebenso ueber die
+	 * externe Erzeugerrolle.
+	 *
+	 * FREMD steht hier **nicht**: Sein Betrachterkontext existiert im Betrieb
+	 * nicht (`BoardAccess::contextFor` wirft fuer ein Nichtmitglied, der
+	 * Restore-Endpunkt endet mit 404, bevor der Mapper laeuft). Die
+	 * Mitgliedschaftsgrenze ist eine Schicht hoeher, nicht in diesem Finder — ihn
+	 * hier von Hand zu bauen pruefte einen Zustand, den es nicht gibt.
+	 *
+	 * @var array<string, string[]>
+	 */
+	private const RESTORABLE = [
+		self::ANNA => ['public/anna', 'public/bert', 'internal/anna', 'internal/bert', 'private/anna', 'private/bert'],
+		self::BERT => ['public/anna', 'public/bert', 'internal/anna', 'internal/bert', 'private/anna', 'private/bert'],
+		self::CARLA => ['public/carla', 'internal/carla', 'private/carla'],
+		self::DIRK => ['public/carla', 'internal/carla', 'private/carla'],
+	];
+
 	/** @var array<string, string[]> */
 	private const VISIBLE_IN_COLUMN_A = [
 		self::ANNA => ['public/anna', 'public/carla', 'internal/bert', 'private/anna'],
@@ -215,6 +242,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'MemberMapper::findForUserBoards' => 'testMemberNamesCoverOnlyMyOwnBoards',
 		'TicketMapper::findVisibleWithMyOpenSteps' => 'testMyStepsNeverWidensBeyondTheVisibleSet',
 		'TicketMapper::findVisibleAnywhere' => 'testDeepLinkLookupMatchesTheVisibleSet',
+		'TicketMapper::findForRestore' => 'testRestoreLookupIsScopedToBoardAndOwningRole',
 		'TicketMapper::countVisibleInBoard' => 'testCountersNeverCountWhatIsHidden',
 		'TicketMapper::findLastPositionInColumn' => 'testLastPositionIsTheSameForEveryViewer',
 		// zusaetzlich gefahren von testBothCompanyNamesReachEveryViewer
@@ -594,6 +622,50 @@ class LeakMatrixTest extends IntegrationTestCase {
 					$this->assertFalse(
 						$maySee,
 						$userId . ' bekam DoesNotExistException auf ' . $label . ', darf es aber sehen.',
+					);
+				}
+			}
+		}
+	}
+
+	/**
+	 * Der Wiederherstell-Abruf (#167) — vier Betrachter x **alle** Fixture-Tickets.
+	 *
+	 * `findForRestore` geht bewusst am Sichtbarkeits-Scope vorbei: kein Join auf
+	 * die Mitgliedschaft (sonst faende es Geloeschtes nie wieder), kein
+	 * Deleted-Filter. Es traegt stattdessen eine engere, andere Bedingung —
+	 * **Board + Erzeugerrolle**. Jede Kombination muss das Ticket liefern **oder**
+	 * `DoesNotExistException` werfen; die Fehlerform verraet nicht, ob es das
+	 * Ticket nicht gibt oder es nur nicht das eigene Board/die eigene Rolle ist.
+	 *
+	 * Zwei Belege stecken in der Iteration ueber **alle** Tickets: Die
+	 * `b:`-Tickets liegen auf dem Zweitboard, jeder Kontext hier traegt das erste
+	 * — sie muessen ausnahmslos werfen (Beleg fuer die Board-Bedingung). Und dass
+	 * Anna Berts intern erzeugte Vorgaenge findet, aber keinen der Kundenseite,
+	 * ist der Beleg fuer die Rollen-Bedingung.
+	 *
+	 * FREMD fehlt bewusst — Begruendung bei {@see RESTORABLE}.
+	 */
+	public function testRestoreLookupIsScopedToBoardAndOwningRole(): void {
+		$tickets = Server::get(TicketMapper::class);
+
+		foreach (self::RESTORABLE as $userId => $expected) {
+			$context = $this->fixture->contextFor($userId);
+
+			foreach ($this->fixture->ticketIds as $label => $ticketId) {
+				$mayRestore = in_array($label, $expected, true);
+
+				try {
+					$ticket = $tickets->findForRestore($context, $ticketId);
+					$this->assertTrue(
+						$mayRestore,
+						$userId . ' hat ' . $label . ' zum Wiederherstellen geladen, darf es aber nicht.',
+					);
+					$this->assertSame($label, $ticket->getTitle());
+				} catch (DoesNotExistException) {
+					$this->assertFalse(
+						$mayRestore,
+						$userId . ' bekam DoesNotExistException auf ' . $label . ', darf es aber wiederherstellen.',
 					);
 				}
 			}
