@@ -272,6 +272,7 @@ class TicketController extends Controller {
 	 * gesetzte Nummer (409 mit dem aktuellen Stand), nicht der Versionsvergleich.
 	 */
 	#[NoAdminRequired]
+	#[UserRateLimit(limit: 60, period: 3600)]
 	public function transferToGithub(int $boardId, int $ticketId): JSONResponse {
 		return $this->write($boardId, fn (ViewerContext $viewer): mixed
 			=> $this->service->transferToGithub($viewer, $ticketId));
