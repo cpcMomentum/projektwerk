@@ -29,6 +29,40 @@
 				</h3>
 
 				<!--
+					**Der eigene Ordner für private Anhänge** (#184). Dateien an
+					„Nur ich"-Vorgängen liegen im eigenen Files-Bereich, nicht im
+					geteilten Projektordner. Ohne Wahl gilt die Vorgabe; hier
+					lässt sie sich ändern. Der Server prüft den Pfad und legt ihn
+					bei Bedarf an — das Textfeld zeigt den gesetzten Ordner und
+					dient zugleich als Rückfallweg zum Wähler.
+				-->
+				<section class="pw-settingspage__block">
+					<h4 class="pw-settingspage__sub">
+						{{ t('projektwerk', 'Ordner für private Anhänge') }}
+					</h4>
+					<p class="pw-settings__hint">
+						{{ t('projektwerk', 'Dateien an „Nur ich"-Vorgängen liegen in diesem Ordner Ihrer eigenen Dateien. Ohne Wahl wird „ProjektWerk" verwendet und beim ersten Anhang angelegt.') }}
+					</p>
+
+					<div class="pw-settings__row">
+						<NcTextField
+							v-model="ordnerEntwurf"
+							:label="t('projektwerk', 'Ordnerpfad')"
+							:disabled="busy"
+							@keydown.enter="ordnerSpeichern" />
+						<NcButton :disabled="busy" @click="pickerOeffnen">
+							<template #icon>
+								<FolderIcon :size="20" />
+							</template>
+							{{ t('projektwerk', 'Ordner wählen') }}
+						</NcButton>
+						<NcButton :disabled="busy || ordnerEntwurf === ordnerAktuell" @click="ordnerSpeichern">
+							{{ t('projektwerk', 'Übernehmen') }}
+						</NcButton>
+					</div>
+				</section>
+
+				<!--
 					**Zwei Fragen, zwei Formen.**
 
 					„Wie" ist eine Handvoll Schalter und gilt überall gleich —
@@ -139,6 +173,12 @@
 				</section>
 			</div>
 		</div>
+
+		<FolderPicker
+			:open="picker.open"
+			:startPath="picker.start"
+			@update:open="picker.open = $event"
+			@select="onOrdnerGewaehlt" />
 	</div>
 </template>
 
@@ -149,9 +189,13 @@ import type { Board } from '@/types/board'
 import { t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
+import NcTextField from '@nextcloud/vue/components/NcTextField'
 import BellIcon from 'vue-material-design-icons/BellOutline.vue'
+import FolderIcon from 'vue-material-design-icons/Folder.vue'
+import FolderPicker from '@/components/FolderPicker.vue'
 import { fetchBoards } from '@/services/boards'
 import { clearNotifyOverrides, fetchNotifyPrefs, setNotifyPref } from '@/services/notifyPrefs'
+import { fetchPrivateFolder, setPrivateFolder } from '@/services/privateFolder'
 import { showError } from '@/services/toast'
 
 /**
@@ -174,13 +218,18 @@ import { showError } from '@/services/toast'
 export default defineComponent({
 	name: 'MySettingsView',
 
-	components: { BellIcon, NcButton },
+	components: { BellIcon, FolderIcon, FolderPicker, NcButton, NcTextField },
 
 	data() {
 		return {
 			busy: false,
 			prefs: { global: {}, boards: {} } as NotifyPrefs,
 			boards: [] as Board[],
+			/** Der gespeicherte Ordner für private Anhänge — der Vergleichswert. */
+			ordnerAktuell: '',
+			/** Der bearbeitete Pfad, bis er übernommen wird. */
+			ordnerEntwurf: '',
+			picker: { open: false, start: '' },
 		}
 	},
 
@@ -247,13 +296,53 @@ export default defineComponent({
 
 		async laden(): Promise<void> {
 			try {
-				// Beides zusammen: Ohne die Projektliste bliebe nur die
+				// Alles zusammen: Ohne die Projektliste bliebe nur die
 				// allgemeine Zeile — und die war ja gerade das Problem.
-				const [prefs, boards] = await Promise.all([fetchNotifyPrefs(), fetchBoards()])
+				const [prefs, boards, ordner] = await Promise.all([
+					fetchNotifyPrefs(),
+					fetchBoards(),
+					fetchPrivateFolder(),
+				])
 				this.prefs = prefs
 				this.boards = boards
+				this.ordnerAktuell = ordner.path
+				this.ordnerEntwurf = ordner.path
 			} catch (e) {
 				showError((e as { message?: string }).message ?? t('projektwerk', 'Einstellungen konnten nicht geladen werden'))
+			}
+		},
+
+		/** Den Wähler öffnen, ab dem aktuell gesetzten Ordner. */
+		pickerOeffnen(): void {
+			this.picker.start = this.ordnerAktuell
+			this.picker.open = true
+		},
+
+		/**
+		 * @param pfad Der im Wähler gewählte Ordner — noch nicht gespeichert.
+		 */
+		onOrdnerGewaehlt(pfad: string): void {
+			this.ordnerEntwurf = pfad
+		},
+
+		/**
+		 * Den gewählten Ordner übernehmen. Der Server prüft den Pfad und legt
+		 * ihn bei Bedarf an; ein unmöglicher Ordner kommt als Fehler zurück.
+		 */
+		async ordnerSpeichern(): Promise<void> {
+			if (this.busy || this.ordnerEntwurf === this.ordnerAktuell) {
+				return
+			}
+
+			this.busy = true
+			try {
+				const { path } = await setPrivateFolder(this.ordnerEntwurf)
+				this.ordnerAktuell = path
+				this.ordnerEntwurf = path
+			} catch (e) {
+				showError((e as { message?: string }).message ?? t('projektwerk', 'Ordner konnte nicht gespeichert werden'))
+			} finally {
+				this.busy = false
 			}
 		},
 

@@ -40,11 +40,14 @@ use OCA\Projektwerk\Service\BoardService;
 use OCA\Projektwerk\Service\ColumnService;
 use OCA\Projektwerk\Service\MemberService;
 use OCA\Projektwerk\Service\NotifyPrefService;
+use OCA\Projektwerk\Service\ProjectFolderService;
 use OCA\Projektwerk\Service\StepService;
 use OCA\Projektwerk\Service\TicketService;
 use OCA\Projektwerk\Tests\ReadPathRegistry;
+use OCA\Projektwerk\AppInfo\Application;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
+use OCP\Config\IUserConfig;
 use OCP\IConfig;
 use OCP\IRequest;
 use OCP\IUserManager;
@@ -283,6 +286,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'memberSearch#search' => 'testMemberSearchRefusesEveryoneWithoutManagementRights',
 		'settings#memberRemovalImpact' => 'testRemovalImpactRefusesEveryoneWithoutManagementRights',
 		'notifyPref#index' => 'testEveryViewerSeesOnlyTheirOwnChannelSwitches',
+		'privateFolder#index' => 'testThePrivateFolderPathIsScopedToItsOwner',
 		'task#index' => 'testTaskEndpointMatchesTheVisibleSetAcrossBoards',
 		'overview#index' => 'testOverviewEndpointMatchesTheVisibleSetAcrossBoards',
 	];
@@ -535,6 +539,35 @@ class LeakMatrixTest extends IntegrationTestCase {
 			[NotifyPref::CHANNEL_BELL => false],
 			$service->forUser(LeakMatrixFixture::CARLA)['global'],
 			'Die globale Zeile ist der Rueckfallwert, keine der Ausnahmen — sie bleibt stehen.',
+		);
+	}
+
+	/**
+	 * **Der eigene Ordner für private Anhänge ist an die Person gebunden** (#184).
+	 *
+	 * Wie die Kanalschalter: kein Board im Pfad, die Grenze ist die
+	 * Benutzerkennung. Jede Person liest nur ihren eigenen Pfad; wer keinen
+	 * gewählt hat, bekommt die Vorgabe — nie den Ordner einer anderen.
+	 *
+	 * Gesetzt wird direkt über `IUserConfig`, nicht über `setPrivatePath()`: Das
+	 * legte einen echten Ordner im Dateibaum an, den die Fixture-Mitglieder gar
+	 * nicht haben. Geprüft wird die **Zuordnung** des Werts zur Person, nicht die
+	 * Ordner-Auflösung — die steht im AttachmentRelocationTest gegen echte Ordner.
+	 */
+	public function testThePrivateFolderPathIsScopedToItsOwner(): void {
+		$folders = Server::get(ProjectFolderService::class);
+		$config = Server::get(IUserConfig::class);
+
+		$config->setValueString(self::ANNA, Application::APP_ID, 'private_attachment_folder', 'Anna/Privat');
+		$config->setValueString(self::CARLA, Application::APP_ID, 'private_attachment_folder', 'Carla/Geheim');
+
+		$this->assertSame('Anna/Privat', $folders->privatePath(self::ANNA));
+		$this->assertSame('Carla/Geheim', $folders->privatePath(self::CARLA), 'Carla sieht ihren eigenen Pfad, nicht Annas.');
+
+		// Bert hat nichts gesetzt — die Vorgabe, nicht der Ordner einer anderen.
+		$this->assertSame(
+			ProjectFolderService::DEFAULT_PRIVATE_FOLDER,
+			$folders->privatePath(self::BERT),
 		);
 	}
 

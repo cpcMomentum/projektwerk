@@ -204,6 +204,11 @@ final class ReadPathRegistry {
 		// Sie hier wegzulassen hiesse, eine Leseroute ohne Erwartung zu haben —
 		// genau das, was der Vollstaendigkeitstest verhindert.
 		'notifyPref#index',
+		// Derselbe Fall (#184): der eigene Ordner fuer private Anhaenge, kein
+		// Board im Pfad. Die Grenze ist die Benutzerkennung aus der Sitzung —
+		// jeder sieht nur seinen eigenen Pfad. Erwartung:
+		// `testThePrivateFolderPathIsScopedToItsOwner`.
+		'privateFolder#index',
 	];
 
 	/**
