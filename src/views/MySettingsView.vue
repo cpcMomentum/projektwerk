@@ -296,19 +296,24 @@ export default defineComponent({
 
 		async laden(): Promise<void> {
 			try {
-				// Alles zusammen: Ohne die Projektliste bliebe nur die
+				// Beides zusammen: Ohne die Projektliste bliebe nur die
 				// allgemeine Zeile — und die war ja gerade das Problem.
-				const [prefs, boards, ordner] = await Promise.all([
-					fetchNotifyPrefs(),
-					fetchBoards(),
-					fetchPrivateFolder(),
-				])
+				const [prefs, boards] = await Promise.all([fetchNotifyPrefs(), fetchBoards()])
 				this.prefs = prefs
 				this.boards = boards
-				this.ordnerAktuell = ordner.path
-				this.ordnerEntwurf = ordner.path
 			} catch (e) {
 				showError((e as { message?: string }).message ?? t('projektwerk', 'Einstellungen konnten nicht geladen werden'))
+			}
+
+			// **Der private Ordner getrennt** (#191): eine Nebeneinstellung darf
+			// die Benachrichtigungs-Tabelle nicht mitreißen. Scheitert der Abruf,
+			// bleibt der Rest der Seite bedienbar; nur das Ordnerfeld ist leer.
+			try {
+				const { path } = await fetchPrivateFolder()
+				this.ordnerAktuell = path
+				this.ordnerEntwurf = path
+			} catch (e) {
+				showError((e as { message?: string }).message ?? t('projektwerk', 'Der Ordner für private Anhänge konnte nicht geladen werden'))
 			}
 		},
 

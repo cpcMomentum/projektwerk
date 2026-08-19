@@ -288,6 +288,7 @@ OC.L10N.register(
     "Wiederherstellen fehlgeschlagen" : "Wiederherstellen fehlgeschlagen",
     "Ordner für private Anhänge" : "Ordner für private Anhänge",
     "Dateien an „Nur ich\"-Vorgängen liegen in diesem Ordner Ihrer eigenen Dateien. Ohne Wahl wird „ProjektWerk\" verwendet und beim ersten Anhang angelegt." : "Dateien an „Nur ich\"-Vorgängen liegen in diesem Ordner Ihrer eigenen Dateien. Ohne Wahl wird „ProjektWerk\" verwendet und beim ersten Anhang angelegt.",
-    "Ordnerpfad" : "Ordnerpfad"
+    "Ordnerpfad" : "Ordnerpfad",
+    "Der Ordner für private Anhänge konnte nicht geladen werden" : "Der Ordner für private Anhänge konnte nicht geladen werden"
 },
 "nplurals=2; plural=(n != 1);");

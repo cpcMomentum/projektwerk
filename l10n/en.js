@@ -288,6 +288,7 @@ OC.L10N.register(
     "Wiederherstellen fehlgeschlagen" : "Restore failed",
     "Ordner für private Anhänge" : "Folder for private attachments",
     "Dateien an „Nur ich\"-Vorgängen liegen in diesem Ordner Ihrer eigenen Dateien. Ohne Wahl wird „ProjektWerk\" verwendet und beim ersten Anhang angelegt." : "Files on \"Only me\" items live in this folder in your own files. Without a choice, \"ProjektWerk\" is used and created on the first attachment.",
-    "Ordnerpfad" : "Folder path"
+    "Ordnerpfad" : "Folder path",
+    "Der Ordner für private Anhänge konnte nicht geladen werden" : "The folder for private attachments could not be loaded"
 },
 "nplurals=2; plural=(n != 1);");
