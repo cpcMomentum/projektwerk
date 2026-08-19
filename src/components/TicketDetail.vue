@@ -156,6 +156,32 @@
 							</template>
 							{{ t('projektwerk', 'Löschen') }}
 						</NcButton>
+
+						<!--
+							**GitHub-Überführung** (#12) — einseitig, einmalig. Ist
+							der Vorgang schon überführt, steht statt der Aktion der
+							Link zum Issue; sonst nur für interne Betrachter an
+							Boards mit hinterlegtem Repo.
+						-->
+						<a
+							v-if="ticket.githubIssueNumber"
+							class="pw-github-link"
+							:href="ticket.githubIssueUrl ?? undefined"
+							target="_blank"
+							rel="noopener noreferrer">
+							<GithubIcon :size="20" />
+							{{ t('projektwerk', 'GitHub-Issue #{number}', { number: ticket.githubIssueNumber }) }}
+						</a>
+						<NcButton
+							v-else-if="canTransferToGithub"
+							variant="tertiary"
+							:disabled="busy"
+							@click="transferToGithub">
+							<template #icon>
+								<GithubIcon :size="20" />
+							</template>
+							{{ t('projektwerk', 'Nach GitHub überführen') }}
+						</NcButton>
 					</div>
 				</header>
 
@@ -436,6 +462,7 @@ import ChevronDownIcon from 'vue-material-design-icons/ChevronDown.vue'
 import ChevronUpIcon from 'vue-material-design-icons/ChevronUp.vue'
 import CloseIcon from 'vue-material-design-icons/Close.vue'
 import DeleteOutlineIcon from 'vue-material-design-icons/DeleteOutline.vue'
+import GithubIcon from 'vue-material-design-icons/Github.vue'
 import PencilOutlineIcon from 'vue-material-design-icons/PencilOutline.vue'
 import PlusIcon from 'vue-material-design-icons/Plus.vue'
 import RestoreIcon from 'vue-material-design-icons/Restore.vue'
@@ -444,6 +471,7 @@ import CommentList from '@/components/CommentList.vue'
 import StepList from '@/components/StepList.vue'
 import VisibilityControl from '@/components/VisibilityControl.vue'
 import WaitBadge from '@/components/WaitBadge.vue'
+import { transferTicketToGithub } from '@/services/github'
 import { fetchAssignable } from '@/services/steps'
 import { updateTicket } from '@/services/tickets'
 import { reportWriteError } from '@/services/writeError'
@@ -462,7 +490,7 @@ interface PersonOption {
 export default defineComponent({
 	name: 'TicketDetail',
 
-	components: { AccountPlusIcon, AttachmentList, CalendarIcon, CalendarAlertIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, CloseIcon, CommentList, DeleteOutlineIcon, NcAvatar, NcButton, NcDateTimePicker, NcModal, NcRichText, NcSelectUsers, NcTextArea, NcTextField, PencilOutlineIcon, PlusIcon, RestoreIcon, StepList, VisibilityControl, WaitBadge },
+	components: { AccountPlusIcon, AttachmentList, CalendarIcon, CalendarAlertIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, CloseIcon, CommentList, DeleteOutlineIcon, GithubIcon, NcAvatar, NcButton, NcDateTimePicker, NcModal, NcRichText, NcSelectUsers, NcTextArea, NcTextField, PencilOutlineIcon, PlusIcon, RestoreIcon, StepList, VisibilityControl, WaitBadge },
 
 	props: {
 		ticket: { type: Object as PropType<Ticket | null>, default: null },
@@ -479,6 +507,10 @@ export default defineComponent({
 		waiting: { type: Object as PropType<WaitState | null>, default: null },
 		/** Aus Sicht der Kundenseite formuliert. */
 		fromClientSide: { type: Boolean, default: false },
+		/** Ob dieses Board die GitHub-Überführung anbietet (#12). */
+		githubEnabled: { type: Boolean, default: false },
+		/** Das am Board hinterlegte Ziel-Repository „owner/repo" (#12). */
+		githubRepo: { type: String, default: '' },
 	},
 
 	emits: ['close', 'changed', 'delete', 'stepsChanged', 'commentsChanged', 'attachmentsChanged'],
@@ -517,6 +549,21 @@ export default defineComponent({
 	computed: {
 		paddedNumber(): string {
 			return String(this.ticket?.number ?? 0).padStart(4, '0')
+		},
+
+		/**
+		 * Ob die Überführungs-Aktion angeboten wird (#12): nur intern, nur wenn
+		 * das Board sie eingeschaltet und ein Repo hinterlegt hat, und nur
+		 * solange der Vorgang noch nicht überführt ist. Externe (Kunden als
+		 * Gäste) sehen sie nie — die serverseitige Grenze steht zusätzlich im
+		 * TicketService.
+		 */
+		canTransferToGithub(): boolean {
+			return this.viewer?.role === 'internal'
+				&& this.githubEnabled
+				&& this.githubRepo.trim() !== ''
+				&& this.ticket !== null
+				&& !this.ticket.githubIssueNumber
 		},
 
 		/** Die Fälligkeit als `Date` für den Datumswähler, oder null. */
@@ -693,6 +740,29 @@ export default defineComponent({
 				reportWriteError(e, schliessen
 					? t('projektwerk', 'Abschließen fehlgeschlagen')
 					: t('projektwerk', 'Wieder öffnen fehlgeschlagen'))
+			} finally {
+				this.busy = false
+			}
+		},
+
+		/**
+		 * Den Vorgang nach GitHub überführen (#12) — einseitig, einmalig. Bei
+		 * Erfolg trägt der aktualisierte Vorgang Nummer und Adresse des Issues;
+		 * die Aktion weicht dann dem Link. Fehler (kein Token, falsches Repo,
+		 * GitHub nicht erreichbar) kommen als Servermeldung; der Vorgang bleibt
+		 * unverändert.
+		 */
+		async transferToGithub(): Promise<void> {
+			if (this.ticket === null || this.busy) {
+				return
+			}
+
+			this.busy = true
+			try {
+				const updated = await transferTicketToGithub(this.ticket.boardId, this.ticket.id)
+				this.$emit('changed', updated)
+			} catch (e) {
+				reportWriteError(e, t('projektwerk', 'Überführung nach GitHub fehlgeschlagen'))
 			} finally {
 				this.busy = false
 			}

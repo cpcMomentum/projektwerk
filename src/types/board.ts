@@ -36,6 +36,13 @@ export interface Board {
 	/** Ohne Adresse entfällt der Knopf „Zum Projektchat" ersatzlos. */
 	chatUrl: string | null
 	githubEnabled: boolean
+	/**
+	 * Das Ziel-Repository der GitHub-Überführung als „owner/repo" (#12).
+	 *
+	 * `null`, solange keins gesetzt ist — ein aktiviertes Board ohne Repo ist
+	 * ein zulässiger Zwischenzustand, die Überführungs-Aktion bleibt dann aus.
+	 */
+	githubRepo: string | null
 	archived: boolean
 	/**
 	 * Ob **dieser** Nutzer das Projekt in die Seitenleiste gepinnt hat (#115).

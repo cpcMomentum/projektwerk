@@ -145,7 +145,7 @@ class BoardService {
 	 * nichts gesetzt — die Anhänge aus Phase 5 sind der erste Anlass. Ohne sie
 	 * hätte ein Anhang keinen Ort, an den er gehört.
 	 *
-	 * @param array{title?: string, description?: ?string, orgInternal?: ?string, orgExternal?: ?string, chatUrl?: ?string, folderPublicPath?: ?string, folderInternalPath?: ?string} $changes
+	 * @param array{title?: string, description?: ?string, orgInternal?: ?string, orgExternal?: ?string, chatUrl?: ?string, folderPublicPath?: ?string, folderInternalPath?: ?string, githubEnabled?: bool, githubRepo?: ?string} $changes
 	 * @throws NotManagerException
 	 * @throws \OCP\Files\NotPermittedException Ordner nicht erreichbar oder nicht beschreibbar
 	 */
@@ -177,6 +177,18 @@ class BoardService {
 		}
 		if (array_key_exists('folderInternalPath', $changes)) {
 			$this->setFolder($viewer, $board, Attachment::LOCATION_INTERNAL, $changes['folderInternalPath']);
+		}
+		if (array_key_exists('githubEnabled', $changes)) {
+			// SMALLINT 0/1, nie Types::BOOLEAN — siehe {@see Board}.
+			$board->setGithubEnabled($changes['githubEnabled'] ? 1 : 0);
+		}
+		if (array_key_exists('githubRepo', $changes)) {
+			// Reine Adresse „owner/repo" (#12). Leer heißt: kein Ziel — die
+			// Überführungs-Aktion bleibt dann aus. Die Formatprüfung sitzt bewusst
+			// erst beim Überführen ({@see GithubService}), damit ein aktiviertes
+			// Board ohne fertig eingetragenes Repo ein zulässiger Zwischenzustand
+			// bleibt.
+			$board->setGithubRepo($this->trimOrNull($changes['githubRepo']));
 		}
 
 		$board->setUpdatedAt(new \DateTime());

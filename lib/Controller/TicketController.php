@@ -22,6 +22,7 @@ use OCA\Projektwerk\Db\TicketReadMapper;
 use OCA\Projektwerk\Db\TicketUserMapper;
 use OCA\Projektwerk\Service\AttachmentService;
 use OCA\Projektwerk\Service\ConflictException;
+use OCA\Projektwerk\Service\GithubTransferException;
 use OCA\Projektwerk\Service\NoFolderException;
 use OCA\Projektwerk\Service\NotOwningSideException;
 use OCA\Projektwerk\Service\TicketService;
@@ -263,6 +264,20 @@ class TicketController extends Controller {
 	}
 
 	/**
+	 * Einen Vorgang nach GitHub überführen (#12, Stufe 1) — einseitig, einmalig.
+	 *
+	 * Legt ein Issue im am Board hinterlegten Repository an und speichert Nummer
+	 * und Adresse am Vorgang. Ohne `version`: Die Überführung ist keine
+	 * konkurrierende Feldänderung; gegen ein zweites Issue schützt die bereits
+	 * gesetzte Nummer (409 mit dem aktuellen Stand), nicht der Versionsvergleich.
+	 */
+	#[NoAdminRequired]
+	public function transferToGithub(int $boardId, int $ticketId): JSONResponse {
+		return $this->write($boardId, fn (ViewerContext $viewer): mixed
+			=> $this->service->transferToGithub($viewer, $ticketId));
+	}
+
+	/**
 	 * Einen Vorgang loeschen — weich, und ohne Papierkorb in der App.
 	 *
 	 * Wiederhergestellt wird per `occ projektwerk:ticket:restore`. Der
@@ -383,6 +398,13 @@ class TicketController extends Controller {
 				// Frontend jedes 409 als Versionskonflikt liest („bitte neu
 				// laden") — hier soll aber die Servermeldung sprechen, die sagt,
 				// was zu tun ist.
+				return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+			} catch (GithubTransferException $e) {
+				// **400 wie NoFolderException:** Es fehlt kein Recht und die
+				// Anfrage ist richtig gebaut — es hakt an der Einrichtung (kein
+				// Token, falsches Repo) oder an GitHub selbst. Die Meldung ist
+				// schon kundentauglich formuliert und soll unverändert sprechen;
+				// ein 409 läse das Frontend als Versionskonflikt.
 				return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
 			} catch (NotOwningSideException $e) {
 				// 403 und nicht 404: Der Betrachter sieht das Ticket, es steht

@@ -52,6 +52,8 @@ use OCP\DB\Types;
  * @method void setTicketCounter(int $ticketCounter)
  * @method int getGithubEnabled()
  * @method void setGithubEnabled(int $githubEnabled)
+ * @method ?string getGithubRepo()
+ * @method void setGithubRepo(?string $githubRepo)
  * @method int getArchived()
  * @method void setArchived(int $archived)
  * @method int getChangeSeq()
@@ -75,6 +77,7 @@ class Board extends Entity implements JsonSerializable {
 	protected ?string $chatUrl = null;
 	protected ?int $ticketCounter = null;
 	protected ?int $githubEnabled = null;
+	protected ?string $githubRepo = null;
 	protected ?int $archived = null;
 	protected ?int $changeSeq = null;
 	protected ?DateTime $createdAt = null;
@@ -95,6 +98,7 @@ class Board extends Entity implements JsonSerializable {
 		// SMALLINT 0/1, nie Types::BOOLEAN mit notnull — das erzeugt
 		// Schema-Fehler, und PARAM_BOOL schreibt auf PostgreSQL 'f' statt 0.
 		$this->addType('githubEnabled', Types::SMALLINT);
+		$this->addType('githubRepo', Types::STRING);
 		$this->addType('archived', Types::SMALLINT);
 		$this->addType('changeSeq', Types::INTEGER);
 		$this->addType('createdAt', Types::DATETIME);
@@ -119,6 +123,7 @@ class Board extends Entity implements JsonSerializable {
 			'folderInternalPath' => $this->getFolderInternalPath(),
 			'chatUrl' => $this->getChatUrl(),
 			'githubEnabled' => $this->getGithubEnabled() === 1,
+			'githubRepo' => $this->getGithubRepo(),
 			'archived' => $this->isArchived(),
 			'createdAt' => $this->getCreatedAt()?->format(DateTime::ATOM),
 			'updatedAt' => $this->getUpdatedAt()?->format(DateTime::ATOM),
