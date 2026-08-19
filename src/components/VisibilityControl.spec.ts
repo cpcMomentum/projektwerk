@@ -263,13 +263,13 @@ describe('VisibilityControl', () => {
 	it('zeigt die Servermeldung, wenn der Umzug nicht geht — ohne Warnblock', async () => {
 		changeVisibility.mockRejectedValue({
 			status: 400,
-			message: 'An Vorgängen, die nur die eigene Seite oder nur Sie selbst sehen, sind keine Anhänge möglich.',
+			message: 'Für dieses Projekt ist noch kein Ordner hinterlegt. Die Projektverwaltung trägt ihn in den Einstellungen ein.',
 		})
 
 		const wrapper = mountControl(ticketOf({ visibility: 'public' }), viewerOf())
 		await choose(wrapper, 'internal')
 
-		expect(showError).toHaveBeenCalledWith('An Vorgängen, die nur die eigene Seite oder nur Sie selbst sehen, sind keine Anhänge möglich.')
+		expect(showError).toHaveBeenCalledWith('Für dieses Projekt ist noch kein Ordner hinterlegt. Die Projektverwaltung trägt ihn in den Einstellungen ein.')
 		expect(wrapper.find('.pw-viscontrol__warn').exists()).toBe(false)
 	})
 
