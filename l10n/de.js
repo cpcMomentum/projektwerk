@@ -285,6 +285,10 @@ OC.L10N.register(
     "Titel bearbeiten" : "Titel bearbeiten",
     "Titel konnte nicht gespeichert werden" : "Titel konnte nicht gespeichert werden",
     "Vorgang gelöscht" : "Vorgang gelöscht",
-    "Wiederherstellen fehlgeschlagen" : "Wiederherstellen fehlgeschlagen"
+    "Wiederherstellen fehlgeschlagen" : "Wiederherstellen fehlgeschlagen",
+    "Ordner für private Anhänge" : "Ordner für private Anhänge",
+    "Dateien an „Nur ich\"-Vorgängen liegen in diesem Ordner Ihrer eigenen Dateien. Ohne Wahl wird „ProjektWerk\" verwendet und beim ersten Anhang angelegt." : "Dateien an „Nur ich\"-Vorgängen liegen in diesem Ordner Ihrer eigenen Dateien. Ohne Wahl wird „ProjektWerk\" verwendet und beim ersten Anhang angelegt.",
+    "Ordnerpfad" : "Ordnerpfad",
+    "Der Ordner für private Anhänge konnte nicht geladen werden" : "Der Ordner für private Anhänge konnte nicht geladen werden"
 },
 "nplurals=2; plural=(n != 1);");

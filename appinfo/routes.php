@@ -87,6 +87,11 @@ return [
 		['name' => 'notifyPref#update', 'url' => '/api/v1/notify-prefs', 'verb' => 'PUT'],
 		['name' => 'notifyPref#clearOverrides', 'url' => '/api/v1/notify-prefs/overrides', 'verb' => 'DELETE'],
 
+		// Der eigene Ordner fuer private Anhaenge (#184, Phase B) — ebenfalls
+		// user-scoped, ohne Board im Pfad.
+		['name' => 'privateFolder#index', 'url' => '/api/v1/my/private-folder', 'verb' => 'GET'],
+		['name' => 'privateFolder#update', 'url' => '/api/v1/my/private-folder', 'verb' => 'PUT'],
+
 		// Board-Einstellungen. Ausschliesslich Schreibwege — gelesen wird ueber
 		// board#show, das Board, Mitglieder und Spalten in einem Zug liefert und
 		// in der Leak-Matrix registriert ist.
