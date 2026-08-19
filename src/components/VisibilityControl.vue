@@ -4,16 +4,11 @@
 		Abschnitt: Ueberschrift, Trennlinie und die beiden Erklaerzeilen kosteten
 		zusammen 110 px fuer eine Angabe, die §9 als Chip in der Kopfzeile fuehrt.
 
-		`--offen` bricht die Zeile auf: Solange nur der Schalter dasteht, ist er
-		ein rechtsbuendiges Element neben Nummer und Spaltenname. Sobald die
-		Anhaenge-Absage dazukommt, nimmt der Block die volle Breite, denn ein
-		ganzer Satz passt nicht neben `#0001`.
-
-		Vorbehalten ist das jetzt allein der Anhaenge-Absage. Zwei fruehere
-		Ausloeser sind weg: die Rueckfrage beim Herunterstufen (#103) und der
-		Widerruf nach jedem Wechsel (#181). Der stets sichtbare Umschalter ist
-		selbst der Ein-Klick-Rueckweg, ein eigenes „Rueckgaengig" war redundant
-		und liess die Zeile springen (Axel, 2026-08-18).
+		Der Schalter ist ein rechtsbuendiges Element neben Nummer und Spaltenname
+		— und bleibt es. Drei fruehere Zusatzbloecke, die die Zeile aufbrachen
+		(`--offen`), sind weg: die Rueckfrage beim Herunterstufen (#103), der
+		Widerruf nach jedem Wechsel (#181) und die Anhaenge-Absage (#185, seit die
+		Datei mit der Sichtbarkeit umzieht statt den Wechsel zu sperren).
 
 		**Der Nur-Lese-Chip haengt mit hier drin** und nicht im Elternteil: Wer
 		aendern darf, folgt aus `mayChange`, und diese Frage soll an genau einer
@@ -23,8 +18,7 @@
 	-->
 	<div
 		v-if="mayChange"
-		class="pw-viscontrol"
-		:class="{ 'pw-viscontrol--offen': stage !== 'idle' }">
+		class="pw-viscontrol">
 		<!--
 			Die Auswahl steht **offen und immer da**, ein Klick ist die ganze
 			Entscheidung: kein vorgeschaltetes „Ändern", kein „Übernehmen" (#75)
@@ -46,46 +40,22 @@
 				:modelValue="ticket.visibility"
 				:unavailable="unavailable"
 				:blockedHint="blockedHint"
-				:busy="busy || stage !== 'idle'"
+				:busy="busy"
 				:hideHints="true"
 				@update:modelValue="choose" />
 		</div>
 
 		<!--
-			**Anhänge sperren den Wechsel** (§3.10 Stufe 1).
+			**Anhänge sperren den Wechsel nicht mehr** (#185). Der Ablageort IST
+			die Sichtbarkeit, also zieht die Datei mit in den Ordner der neuen
+			Stufe — statt die Person zu bitten, sie zuerst zu lösen. Der frühere
+			Warnblock ist deshalb weg.
 
-			Das ist **keine Rückfrage**, sondern eine Unmöglichkeit — deshalb hat
-			es den Wegfall der Rückfrage (#103) überlebt. Kein „Trotzdem"-Knopf:
-			Es gibt nichts, was die App an dieser Stelle tun könnte. Der
-			Ablageort IST die Sichtbarkeit, und die Dateien umzuziehen ist nicht
-			transaktional zur Datenbank — ein halb gelungener Umzug wäre ein
-			Leck, das keine spätere Codekorrektur heilt. Der Satz sagt deshalb,
-			was zu tun ist, statt eine Wahl vorzutäuschen.
-
-			**Der Fall kommt jetzt vom Server**, nicht mehr aus einer
-			Vorabprüfung: `visibility-impact` ist mit #103 aufgegeben. Der
-			Wechsel wird versucht, der Server weist ihn mit 409 ab und legt die
-			Zahl bei — dieselbe Ordnung wie beim Anhängen selbst („Knopf zeigen,
-			Servermeldung sprechen lassen").
-
-			Gesprochen wird trotzdem der Text von hier und nicht der des Servers:
-			`AttachmentsPresentException` baut seinen Satz ohne `t()`, und die
-			Zahl beugt `n()` hier ohnehin richtig.
+			Geht der Umzug ausnahmsweise nicht — die Zielstufe hat keinen Ordner
+			(nach „Nur ich"; für die Kundenseite „Intern") —, weist der Server
+			den Wechsel mit 409 ab, und die Servermeldung erscheint als Fehler
+			(kein eigener Zustand hier). Der private Ablageort kommt mit Phase B.
 		-->
-		<div v-if="stage === 'blocked'" class="pw-viscontrol__warn">
-			<p class="pw-viscontrol__lead">
-				<AlertIcon :size="20" />
-				<span class="pw-viscontrol__target">
-					{{ blockedByAttachments }}
-				</span>
-			</p>
-
-			<div class="pw-viscontrol__actions">
-				<NcButton @click="reset">
-					{{ t('projektwerk', 'Verstanden') }}
-				</NcButton>
-			</div>
-		</div>
 	</div>
 
 	<!--
@@ -109,15 +79,12 @@
 
 <script lang="ts">
 import type { PropType } from 'vue'
-import type { ApiError } from '@/services/api'
 import type { ViewerInfo, Visibility } from '@/types/board'
 import type { Ticket } from '@/types/ticket'
 
-import { n, t } from '@nextcloud/l10n'
+import { t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
-import NcButton from '@nextcloud/vue/components/NcButton'
 import AccountMultipleIcon from 'vue-material-design-icons/AccountMultiple.vue'
-import AlertIcon from 'vue-material-design-icons/AlertOutline.vue'
 import OfficeBuildingIcon from 'vue-material-design-icons/OfficeBuilding.vue'
 import PencilIcon from 'vue-material-design-icons/Pencil.vue'
 import VisibilityChoice from '@/components/VisibilityChoice.vue'
@@ -152,7 +119,7 @@ import { reportWriteError } from '@/services/writeError'
 export default defineComponent({
 	name: 'VisibilityControl',
 
-	components: { AccountMultipleIcon, AlertIcon, NcButton, OfficeBuildingIcon, PencilIcon, VisibilityChoice },
+	components: { AccountMultipleIcon, OfficeBuildingIcon, PencilIcon, VisibilityChoice },
 
 	props: {
 		ticket: { type: Object as PropType<Ticket>, required: true },
@@ -172,9 +139,6 @@ export default defineComponent({
 
 	data() {
 		return {
-			stage: 'idle' as 'idle' | 'blocked',
-			/** Wie viele Anhänge den Wechsel sperren — aus der Absage des Servers. */
-			blockedCount: 0,
 			busy: false,
 		}
 	},
@@ -214,33 +178,6 @@ export default defineComponent({
 		blockedHint(): string {
 			return t('projektwerk', 'Auf „Nur ich" herunterstufen kann nur die anlegende Person')
 		},
-
-		/**
-		 * Der Satz, der die Sperre erklärt — mit der Zahl, weil sie die
-		 * Handlung bestimmt.
-		 *
-		 * „Lösen", nicht „löschen": Die Dateien bleiben liegen, gelöst wird nur
-		 * die Verknüpfung. Wer hier „löschen" läse, räumte mehr weg als nötig.
-		 */
-		blockedByAttachments(): string {
-			return n(
-				'projektwerk',
-				'Dieser Vorgang hat %n Anhang. Bitte ihn zuerst vom Vorgang lösen — die Datei selbst bleibt dabei liegen.',
-				'Dieser Vorgang hat %n Anhänge. Bitte sie zuerst vom Vorgang lösen — die Dateien selbst bleiben dabei liegen.',
-				this.blockedCount,
-			)
-		},
-	},
-
-	watch: {
-		// Ein anderer Vorgang im selben Overlay: Auswahl und Anhänge-Absage
-		// gehören zum alten Ticket und dürfen nicht stehen bleiben.
-		'ticket.id': {
-			immediate: true,
-			handler() {
-				this.reset()
-			},
-		},
 	},
 
 	methods: {
@@ -257,11 +194,6 @@ export default defineComponent({
 				return t('projektwerk', 'Intern')
 			}
 			return t('projektwerk', 'Nur ich')
-		},
-
-		reset(): void {
-			this.stage = 'idle'
-			this.blockedCount = 0
 		},
 
 		/**
@@ -291,24 +223,12 @@ export default defineComponent({
 					target,
 				)
 				this.$emit('changed', updated)
-				this.reset()
 			} catch (e) {
-				// **Anhänge sperren den Wechsel** (§3.10 Stufe 1) — und das ist
-				// nicht derselbe Fall wie ein Versionskonflikt, obwohl der Server
-				// beide mit 409 beantwortet. Wer nur den Status liest, meldet der
-				// Person mit Anhängen „bitte neu laden", und Neuladen hilft nichts.
-				//
-				// Unterschieden wird an der Zahl, die der Controller eigens
-				// beilegt. Ohne sie gäbe es kein Merkmal: Der Status ist gleich,
-				// und die Meldung ist Text.
-				const anhaenge = Number((e as ApiError)?.data?.attachments ?? 0)
-				if (anhaenge > 0) {
-					this.blockedCount = anhaenge
-					this.stage = 'blocked'
-
-					return
-				}
-
+				// Was nicht geht, weist der Server ab — Versionskonflikt (409 mit
+				// aktuellem Stand) oder, seit #185, ein fehlender Zielordner für
+				// die Anhänge (409 mit Meldung). Beides ist hier dasselbe: die
+				// Servermeldung anzeigen. Der frühere Sonderfall „Anhänge sperren"
+				// entfällt, weil die Datei jetzt mitzieht.
 				this.fail(e, t('projektwerk', 'Sichtbarkeit konnte nicht geändert werden'))
 			} finally {
 				this.busy = false
@@ -320,13 +240,7 @@ export default defineComponent({
 		 * @param fallback Meldung, wenn der Server keine eigene mitgibt.
 		 */
 		fail(e: unknown, fallback: string): void {
-			// 409 heißt: jemand anders war schneller. Der Stand im Overlay ist
-			// veraltet, und ein zweiter Versuch mit derselben `version` scheiterte
-			// genauso — deshalb zurück in den Ruhezustand statt einer Wiederholung.
-			// Nachladen kann dieser Bereich nicht, er hält nur ein Ticket.
-			if (reportWriteError(e, fallback)) {
-				this.reset()
-			}
+			reportWriteError(e, fallback)
 		},
 	},
 })

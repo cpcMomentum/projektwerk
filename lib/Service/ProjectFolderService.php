@@ -14,6 +14,7 @@ use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Db\Attachment;
 use OCA\Projektwerk\Db\Board;
 use OCA\Projektwerk\Db\Ticket;
+use OCP\Files\File;
 use OCP\Files\Folder;
 use OCP\Files\IRootFolder;
 use OCP\Files\NotPermittedException;
@@ -54,12 +55,31 @@ class ProjectFolderService {
 	 * Zusage. Für sie gibt es folgerichtig auch keine Anhänge (§3.10).
 	 */
 	public function locationFor(Ticket $ticket): ?string {
-		return match ((string)$ticket->getVisibility()) {
+		return $this->locationForVisibility(
+			(string)$ticket->getVisibility(),
+			(string)$ticket->getCreatorRole(),
+		);
+	}
+
+	/**
+	 * Derselbe Ablageort, aber für eine **gedachte** Sichtbarkeit.
+	 *
+	 * Beim Umzug (#185) braucht die App den Zielordner **vor** dem Wechsel — also
+	 * für die Sichtbarkeit, die der Vorgang gleich haben wird, nicht für die, die
+	 * er hat. Die Erzeugerrolle bleibt dabei dieselbe: Ein Sichtbarkeitswechsel
+	 * ändert nicht, wer den Vorgang angelegt hat.
+	 *
+	 * `null` heißt wie bei {@see locationFor()} „für diese Sichtbarkeit gibt es
+	 * keinen Ablageort" — die Kundenseite hat keinen internen Ordner, und
+	 * `private` hat (bis Phase B, #184) gar keinen.
+	 */
+	public function locationForVisibility(string $visibility, string $creatorRole): ?string {
+		return match ($visibility) {
 			TicketScope::VISIBILITY_PUBLIC => Attachment::LOCATION_PUBLIC,
 			// Nur die Dienstleisterseite hat einen internen Ordner. Für die
 			// Kundenseite wäre `91_Tickets_intern` genau der Ordner, den sie
 			// nicht sehen darf — ein Anhang dort wäre für sie selbst unlesbar.
-			TicketScope::VISIBILITY_INTERNAL => (string)$ticket->getCreatorRole() === ViewerContext::ROLE_INTERNAL
+			TicketScope::VISIBILITY_INTERNAL => $creatorRole === ViewerContext::ROLE_INTERNAL
 				? Attachment::LOCATION_INTERNAL
 				: null,
 			default => null,
@@ -89,6 +109,26 @@ class ProjectFolderService {
 		// Freigaben mehrfach im Baum hängen. Für die Frage „darf diese Person
 		// dorthin schreiben" ist ein Treffer genau so gut wie alle.
 		return $this->assertUsable($this->root->getUserFolder($userId)->getFirstNodeById($fileId));
+	}
+
+	/**
+	 * Die **Datei** eines Anhangs im Baum dieser Person auflösen.
+	 *
+	 * Wie {@see resolve()}, nur für eine Datei statt eines Ordners — gebraucht
+	 * beim Umzug (#185), wo die Datei-ID aus der Datenbank kommt. Dieselbe
+	 * Sichtweise: Was diese Person nicht erreicht, existiert für sie nicht, und
+	 * ein Treffer über eine fremde Freigabe hülfe ihr nicht.
+	 *
+	 * @throws NotPermittedException Keine Datei oder nicht erreichbar
+	 */
+	public function resolveFile(string $userId, int $fileId): File {
+		$node = $this->root->getUserFolder($userId)->getFirstNodeById($fileId);
+
+		if (!$node instanceof File) {
+			throw new NotPermittedException('Diese Datei ist nicht erreichbar.');
+		}
+
+		return $node;
 	}
 
 	/**

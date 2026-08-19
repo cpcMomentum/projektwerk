@@ -34,12 +34,15 @@ use OCP\Files\NotPermittedException;
  * die Datei jemandem hinzulegen, der den Vorgang nicht sehen darf. Die App
  * lehnt dann ab, statt einen Ort zu raten.
  *
- * **Die Sichtbarkeit eines Vorgangs mit Anhängen lässt sich nicht ändern**
- * (§3.10 Stufe 1). Ein Umzug der Dateien wäre nicht transaktional zur
- * Datenbank: Bräche er in der Mitte ab, läge die Datei im falschen Ordner,
- * während das Ticket schon umgestellt ist — ein Leck, das **physisch** ist und
- * das keine spätere Codekorrektur heilt. Solange Spike S2 nicht beantwortet
- * ist, wird deshalb gar nicht erst verschoben.
+ * **Anhänge ziehen mit der Sichtbarkeit um** (#185, {@see relocate()}). Der
+ * Ablageort IST die Sichtbarkeit, also wandert die Datei in den Ordner der
+ * Ziel-Sichtbarkeit, statt den Wechsel zu blockieren. Der Umzug ist nicht
+ * transaktional zur Datenbank — deshalb bestimmt {@see TicketService} die
+ * **Reihenfolge** so, dass die Datei nie offener liegt als der Vorgang: Ein
+ * abgebrochener Umzug degradiert zu „Anhang fehlt" ({@see withPresence()}),
+ * nie zu einem Leck. Die Datei-ID wird nach dem Umzug am Zielknoten neu gelesen
+ * (die offene Frage aus §11.3 / Spike S2 ist damit gegenstandslos, statt
+ * beantwortet werden zu müssen).
  *
  * **Löschen löst nur die Verknüpfung.** Die Datei bleibt liegen, wo sie liegt
  * — die App löscht nie (§5.18). Das ist im Rückfragedialog benannt, damit
@@ -96,6 +99,89 @@ class AttachmentService {
 	}
 
 	/**
+	 * Kann der Vorgang mit seinen Anhängen auf `$targetVisibility` wechseln?
+	 *
+	 * **Vorabprüfung ohne Nebenwirkung** (#185). Der Aufrufer
+	 * ({@see TicketService::changeVisibility()}) braucht die Antwort, **bevor**
+	 * er die Datenbank ändert — beim Hochstufen wird erst die Sichtbarkeit
+	 * gesetzt und dann die Datei verschoben, und ein fehlender Zielordner darf
+	 * nicht erst auffallen, wenn der Vorgang schon offen ist.
+	 *
+	 * Ohne Anhänge ist nichts zu prüfen: Der Wechsel bewegt dann keine Datei.
+	 * Mit Anhängen muss der Zielordner stehen — sonst gibt es keinen Ort, der
+	 * so eng wäre wie der Vorgang, und der Wechsel wird abgelehnt (in Phase A
+	 * ist das der Fall „nach privat" und „Kundenseite nach intern").
+	 *
+	 * @throws NoFolderException      Zielsichtbarkeit hat keinen Ablageort
+	 * @throws NotPermittedException  Zielordner nicht erreichbar/beschreibbar
+	 */
+	public function assertRelocatable(ViewerContext $viewer, Ticket $ticket, string $targetVisibility): void {
+		if ($this->attachmentsOf($ticket) === []) {
+			return;
+		}
+
+		$this->folderForVisibility($viewer, $ticket, $targetVisibility);
+	}
+
+	/**
+	 * Die Anhänge eines Vorgangs in den Ordner der Ziel-Sichtbarkeit ziehen (#185).
+	 *
+	 * **Der Ablageort IST die Sichtbarkeit** (§5.18) — also zieht die Datei mit,
+	 * statt den Wechsel zu blockieren. Aufgerufen aus
+	 * {@see TicketService::changeVisibility()}, das die **Reihenfolge** relativ
+	 * zum Datenbank-Schreiben bestimmt, damit die Datei nie offener liegt als der
+	 * Vorgang.
+	 *
+	 * **Die Datei-ID wird nach dem Umzug am Zielknoten neu gelesen** und
+	 * gespeichert. Ein Verschieben innerhalb derselben Storage erhält die ID
+	 * (dann ist das ein No-op); ein Verschieben über Storage-Grenzen ist intern
+	 * ein Kopieren-und-Löschen und vergibt eine neue ID. Beide Fälle sind damit
+	 * abgedeckt, ohne sich auf das eine oder andere zu verlassen (die offene
+	 * Frage aus §11.3 / Spike S2). Anzeigepfad und Name folgen dem neuen Ort.
+	 *
+	 * @throws NoFolderException      Zielsichtbarkeit hat keinen Ablageort
+	 * @throws NotPermittedException  Datei oder Zielordner nicht erreichbar
+	 */
+	public function relocate(ViewerContext $viewer, Ticket $ticket, string $targetVisibility): void {
+		$attachments = $this->attachmentsOf($ticket);
+
+		if ($attachments === []) {
+			return;
+		}
+
+		$target = $this->folderForVisibility($viewer, $ticket, $targetVisibility);
+		$location = (string)$this->folders->locationForVisibility($targetVisibility, (string)$ticket->getCreatorRole());
+
+		foreach ($attachments as $attachment) {
+			$file = $this->folders->resolveFile($viewer->userId, (int)$attachment->getFileId());
+			$name = $this->freeMoveName($target, $attachment->getFileName());
+
+			$file->move($target->getPath() . '/' . $name);
+
+			// Die ID am **Ziel** neu lesen, nicht die alte glauben — siehe oben.
+			$moved = $target->get($name);
+			$attachment->setFileId($moved->getId());
+			$attachment->setFileName($name);
+			$attachment->setFilePath($this->folders->displayPath($viewer->userId, $target) . '/' . $name);
+			$attachment->setLocation($location);
+			$this->attachments->update($attachment);
+		}
+	}
+
+	/**
+	 * Die Anhänge eines Vorgangs — als flache Liste.
+	 *
+	 * `findForTickets()` liefert bereits eine flache `Attachment[]` (nicht nach
+	 * Ticket-ID indiziert, anders als `countForTickets()`) — für eine
+	 * Einermenge sind das genau die Anhänge dieses Vorgangs.
+	 *
+	 * @return Attachment[]
+	 */
+	private function attachmentsOf(Ticket $ticket): array {
+		return $this->attachments->findForTickets([$ticket->getId()]);
+	}
+
+	/**
 	 * Die Verknüpfung lösen — **die Datei bleibt liegen** (§5.18).
 	 *
 	 * Anders als beim Kommentar gibt es hier keine Autorenschranke: Wer den
@@ -144,7 +230,21 @@ class AttachmentService {
 	 * @throws NotPermittedException
 	 */
 	private function folderFor(ViewerContext $viewer, Ticket $ticket): Folder {
-		$location = $this->folders->locationFor($ticket);
+		return $this->folderForVisibility($viewer, $ticket, (string)$ticket->getVisibility());
+	}
+
+	/**
+	 * Der Zielordner für eine **gedachte** Sichtbarkeit des Vorgangs (#185).
+	 *
+	 * Beim Umzug wird der Ordner der Ziel-Sichtbarkeit gebraucht, nicht der der
+	 * aktuellen. Sonst identisch zu {@see folderFor()}: dieselben zwei Gründe für
+	 * „kein Ordner", dieselbe Auflösung über den Baum der handelnden Person.
+	 *
+	 * @throws NoFolderException      Für diese Sichtbarkeit gibt es keinen Ablageort
+	 * @throws NotPermittedException  Ordner nicht erreichbar oder nicht beschreibbar
+	 */
+	private function folderForVisibility(ViewerContext $viewer, Ticket $ticket, string $visibility): Folder {
+		$location = $this->folders->locationForVisibility($visibility, (string)$ticket->getCreatorRole());
 
 		if ($location === null) {
 			// Zwei verschiedene Gründe, **eine** Meldung — und beide sind keine
@@ -198,6 +298,37 @@ class AttachmentService {
 				: $prefix . $stamm . '_' . $n . $endung;
 
 			if (!$folder->nodeExists($kandidat)) {
+				return $kandidat;
+			}
+		}
+
+		throw new NotPermittedException('Es gibt bereits zu viele Dateien mit diesem Namen.');
+	}
+
+	/**
+	 * Ein freier Name im Zielordner beim **Umzug** (#185).
+	 *
+	 * Anders als {@see freeName()} setzt diese Fassung **keinen** Präfix davor:
+	 * Der Name trägt die Vorgangsnummer schon (er wurde beim Anhängen so
+	 * gebildet). Sie sorgt nur dafür, dass er im Zielordner nicht mit einer
+	 * bereits dort liegenden Datei kollidiert — dann wird wie beim Anhängen
+	 * gezählt (`0042_scan_2.pdf`) statt überschrieben.
+	 *
+	 * @throws NotPermittedException
+	 */
+	private function freeMoveName(Folder $target, string $name): string {
+		if (!$target->nodeExists($name)) {
+			return $name;
+		}
+
+		$punkt = strrpos($name, '.');
+		$stamm = $punkt === false || $punkt === 0 ? $name : substr($name, 0, $punkt);
+		$endung = $punkt === false || $punkt === 0 ? '' : substr($name, $punkt);
+
+		for ($n = 2; $n <= self::MAX_ATTEMPTS; $n++) {
+			$kandidat = $stamm . '_' . $n . $endung;
+
+			if (!$target->nodeExists($kandidat)) {
 				return $kandidat;
 			}
 		}

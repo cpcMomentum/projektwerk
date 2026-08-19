@@ -11,7 +11,6 @@ namespace OCA\Projektwerk\Service;
 
 use OCA\Projektwerk\Access\TicketScope;
 use OCA\Projektwerk\Access\ViewerContext;
-use OCA\Projektwerk\Db\AttachmentMapper;
 use OCA\Projektwerk\Db\BoardMapper;
 use OCA\Projektwerk\Db\ColumnMapper;
 use OCA\Projektwerk\Db\MailOutbox;
@@ -47,7 +46,7 @@ class TicketService {
 		private BoardMapper $boards,
 		private ColumnMapper $columns,
 		private MemberMapper $members,
-		private AttachmentMapper $attachments,
+		private AttachmentService $attachmentService,
 		private TicketReadMapper $reads,
 		private TicketScope $scope,
 		private PositionService $positions,
@@ -378,16 +377,21 @@ class TicketService {
 	 * Kundenticket so herunterstufen, dass er selbst den Zugriff verliert — ein
 	 * Vorgang, der danach für niemanden mehr erreichbar wäre.
 	 *
-	 * **Ein Vorgang mit Anhängen lässt sich nicht umstellen** (§3.10 Stufe 1).
-	 * Die Begründung steht bei {@see AttachmentsPresentException}; kurz: Der
-	 * Ablageort ist die Sichtbarkeit, ein Umzug der Dateien ist nicht
-	 * transaktional zur Datenbank, und ein halb gelungener Umzug wäre ein Leck,
-	 * das keine spätere Codekorrektur heilt.
+	 * **Anhänge ziehen mit** (#185) statt den Wechsel zu blockieren. Der
+	 * Ablageort IST die Sichtbarkeit (§5.18), also wandert die Datei in den
+	 * Ordner der Ziel-Sichtbarkeit. Die Reihenfolge relativ zum Schreiben hält
+	 * die Datei dabei nie offener als den Vorgang (siehe unten); die Bewegung
+	 * selbst macht {@see AttachmentService::relocate()}.
 	 *
-	 * @throws DoesNotExistException       Ticket nicht sichtbar
-	 * @throws ConflictException           zwischenzeitlich geändert
-	 * @throws NotOwningSideException      die andere Seite besitzt dieses Ticket
-	 * @throws AttachmentsPresentException es hängen noch Anhänge daran
+	 * Für intern↔öffentlich geht das immer — beide haben einen Ordner. Fehlt der
+	 * Zielordner (nach `private`, Kundenseite nach intern), lehnt
+	 * {@see AttachmentService::assertRelocatable()} den Wechsel ab, **bevor**
+	 * geschrieben ist. Der private Ablageort kommt mit Phase B (#184).
+	 *
+	 * @throws DoesNotExistException   Ticket nicht sichtbar
+	 * @throws ConflictException       zwischenzeitlich geändert
+	 * @throws NotOwningSideException  die andere Seite besitzt dieses Ticket
+	 * @throws NoFolderException       die Zielsichtbarkeit hat keinen Ablageort für die vorhandenen Anhänge
 	 */
 	public function changeVisibility(ViewerContext $viewer, int $ticketId, int $version, string $visibility): Ticket {
 		$this->assertKnownVisibility($visibility);
@@ -397,19 +401,59 @@ class TicketService {
 
 		$this->assertOwningSide($viewer, $ticket, $visibility);
 
-		// **„Darf ich" steht vor „geht es".** Wer die Seite nicht besitzt, darf
-		// ohnehin nicht umstellen und bekommt deshalb auch keine Zahl über die
-		// Anhänge zu sehen. Und nur bei einer echten Änderung: Dieselbe Stufe
-		// noch einmal zu wählen bewegt keine Datei und darf an einem Anhang
-		// nicht scheitern.
-		if ($visibility !== (string)$ticket->getVisibility()) {
-			$this->assertNoAttachments($ticketId);
+		$current = (string)$ticket->getVisibility();
+
+		// Dieselbe Stufe noch einmal zu wählen bewegt nichts — keine Datei, kein
+		// Schreiben. „Darf ich" (oben) steht dabei vor „geht es".
+		if ($visibility === $current) {
+			return $ticket;
 		}
 
+		// **Anhänge ziehen mit** (#185) statt den Wechsel zu blockieren — der
+		// Ablageort IST die Sichtbarkeit (§5.18). Erst prüfen, ob die
+		// Zielsichtbarkeit überhaupt einen Ablageort hat, solange ein Anhang
+		// daranhängt: Fehlt er (nach `private`; Kundenseite nach intern), wird
+		// der Wechsel abgelehnt, **bevor** irgendetwas geschrieben ist.
+		$this->attachmentService->assertRelocatable($viewer, $ticket, $visibility);
+
+		// **Die Reihenfolge hält die Datei nie offener als den Vorgang.**
+		// Hochstufen: erst Sichtbarkeit, dann Datei in den offeneren Ordner —
+		// klemmt der Umzug, ist der Vorgang schon offen, die Datei aber noch im
+		// engeren Ordner und erscheint als „fehlt", nie offener. Herabstufen:
+		// erst Datei in den engeren Ordner, dann Sichtbarkeit. Ein abgebrochener
+		// Umzug degradiert so zu „Anhang fehlt", nie zu einem Leck; der
+		// Reparaturschritt (RelocateAttachments) zieht ihn nach.
+		if ($this->opennessRank($visibility) > $this->opennessRank($current)) {
+			$ticket->setVisibility($visibility);
+			$this->touch($ticket, $viewer);
+			$saved = $this->tickets->update($ticket);
+			$this->attachmentService->relocate($viewer, $saved, $visibility);
+
+			return $saved;
+		}
+
+		$this->attachmentService->relocate($viewer, $ticket, $visibility);
 		$ticket->setVisibility($visibility);
 		$this->touch($ticket, $viewer);
 
 		return $this->tickets->update($ticket);
+	}
+
+	/**
+	 * Wie offen eine Sichtbarkeit ist — je größer, desto mehr Menschen sehen den
+	 * Vorgang (`private` < `internal` < `public`).
+	 *
+	 * **Nur für die Richtung eines Wechsels** (#185), nicht für die
+	 * Sichtbarkeitsregel: Die steht als eine Bedingung an einer Stelle in
+	 * `TicketScope`; diese Ordnung entscheidet keinen Zugriff, sie bestimmt nur,
+	 * ob beim Umzug erst die Datei oder erst die Sichtbarkeit dran ist.
+	 */
+	private function opennessRank(string $visibility): int {
+		return match ($visibility) {
+			TicketScope::VISIBILITY_PUBLIC => 3,
+			TicketScope::VISIBILITY_INTERNAL => 2,
+			default => 1,
+		};
 	}
 
 	/**
@@ -631,42 +675,6 @@ class TicketService {
 		}
 	}
 
-	/**
-	 * Der Riegel aus §3.10 Stufe 1.
-	 *
-	 * **Die Filterung ist schon passiert, nicht hier.** Gezählt wird über eine
-	 * Einermenge auf dem Mapper; die Sichtbarkeit steckt darin, dass diese
-	 * `$ticketId` aus {@see TicketMapper::findVisible()} kommt und der Aufrufer
-	 * sie nicht anders bekommt. Ein `ViewerContext` als Parameter täuschte hier
-	 * eine zweite Prüfung vor, die es nicht gibt — und eine vorgetäuschte
-	 * Prüfung ist schlechter als gar keine, weil man sich auf sie verlässt.
-	 *
-	 * **Bekanntes, enges Zeitfenster.** Zwischen dieser Zählung und dem
-	 * `update()` liegt keine Sperre: Wer in genau diesen Millisekunden einen
-	 * Anhang hochlädt, käme mit dem Wechsel noch durch. Das ist dasselbe
-	 * optimistische Muster wie im Rest der Klasse — und anders als dort wäre die
-	 * Folge hier eine Datei im falschen Ordner, also der Fall, den §3.10 gerade
-	 * verhindern soll.
-	 *
-	 * Warum trotzdem keine Sperre: Sie müsste die Anhangzeilen **und** die
-	 * Ticketzeile über die Transaktion halten, und der einzige realistische
-	 * Ausloeser ist eine Person, die im selben Augenblick anhängt, während eine
-	 * andere umstellt. Aufgeschrieben statt behoben, damit es beim Auto-Move aus
-	 * Phase 7b — wo die Datei dann wirklich bewegt wird — nicht neu entdeckt
-	 * werden muss. Dort gehört es zusammen mit `verify-after-move` gelöst.
-	 *
-	 * @throws AttachmentsPresentException
-	 */
-	private function assertNoAttachments(int $ticketId): void {
-		$count = $this->attachments->countForTickets([$ticketId])[$ticketId] ?? 0;
-
-		if ($count > 0) {
-			// Die Zahl steht in der Meldung, weil sie die Handlung bestimmt:
-			// „Bitte den Anhang zuerst entfernen" ist eine andere Aufgabe als
-			// dieselbe Bitte für sieben.
-			throw new AttachmentsPresentException($count);
-		}
-	}
 
 	private function assertKnownVisibility(string $visibility): void {
 		$known = [

@@ -1820,32 +1820,30 @@ class LeakMatrixTest extends IntegrationTestCase {
 	}
 
 	/**
-	 * **Die Anhaenge-Absage nennt ihre Zahl im Rumpf** (§3.10 Stufe 1).
+	 * **Fehlt der Zielordner, kommt die Absage als 400 mit Meldung über die
+	 * Leitung** (#185).
 	 *
-	 * Steht hier als Ersatz fuer `testVisibilityImpactNamesWhoLosesAccess`, das
-	 * mit `visibility-impact` weggefallen ist (#103). Der Lesepfad, der die
-	 * Anhaenge vorab zaehlte, ist aufgegeben — die Oberflaeche erfaehrt den Fall
-	 * seither allein aus dieser Antwort.
-	 *
-	 * **Geprueft wird die Form, nicht nur die Ablehnung.** Der Server
-	 * beantwortet zwei verschiedene Faelle mit 409: den Versionskonflikt und
-	 * diesen. Wer sie unterscheiden will, hat nur das Feld `attachments` — faellt
-	 * es weg, meldet die Oberflaeche der Person mit Anhaengen „bitte neu laden",
-	 * und Neuladen hilft nichts. `TicketWritePathTest` prueft die Ausnahme am
-	 * Dienst; hier steht, was ueber die Leitung geht.
+	 * Seit #185 zieht ein Anhang mit der Sichtbarkeit um, statt den Wechsel zu
+	 * sperren. Geht das nicht — die Zielstufe hat keinen Ablageort, hier weil das
+	 * Fixture-Board keine Ordner hinterlegt hat —, weist der Server mit **400**
+	 * ab und legt die Meldung bei. **Nicht 409**: Ein 409 läse die Oberfläche als
+	 * Versionskonflikt („bitte neu laden") und verschluckte die eigentliche
+	 * Meldung. Und **kein** `attachments`-Feld mehr — die alte Zahl-im-Rumpf-Form
+	 * ist mit der Sperre weg. `TicketWritePathTest` prüft die Ausnahme am Dienst;
+	 * hier steht, was über die Leitung geht.
 	 */
-	public function testTheAttachmentRefusalCarriesItsCountOverTheWire(): void {
+	public function testAVisibilityChangeWithoutATargetFolderIsRefusedOverTheWire(): void {
 		$controller = $this->ticketController(self::ANNA);
 		$boardId = $this->fixture->boardId;
 		$publicAnna = $this->fixture->ticketIds['public/anna'];
 
-		// Die Fixture haengt genau einen Anhang an dieses Ticket.
+		// Die Fixture haengt genau einen Anhang an dieses Ticket, das Board hat
+		// aber keinen internen Ordner — der Umzug hat kein Ziel.
 		$response = $controller->visibility($boardId, $publicAnna, 1, 'internal');
 
-		$this->assertSame(Http::STATUS_CONFLICT, $response->getStatus());
+		$this->assertSame(Http::STATUS_BAD_REQUEST, $response->getStatus());
 		$daten = $response->getData();
-		$this->assertArrayHasKey('attachments', $daten, 'Ohne die Zahl ist die Absage vom Versionskonflikt nicht zu trennen.');
-		$this->assertSame(1, $daten['attachments']);
+		$this->assertArrayNotHasKey('attachments', $daten, 'Die Zahl-im-Rumpf-Form ist mit der Sperre weg (#185).');
 		$this->assertNotSame('', (string)($daten['error'] ?? ''));
 
 		// Und der Vorgang steht unveraendert da.
