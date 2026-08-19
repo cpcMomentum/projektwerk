@@ -20,6 +20,7 @@ use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Db\TicketReadMapper;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\DB\Exception as DbException;
+use OCP\Files\NotPermittedException;
 use OCP\IDBConnection;
 
 /**
@@ -392,6 +393,7 @@ class TicketService {
 	 * @throws ConflictException       zwischenzeitlich geändert
 	 * @throws NotOwningSideException  die andere Seite besitzt dieses Ticket
 	 * @throws NoFolderException       die Zielsichtbarkeit hat keinen Ablageort für die vorhandenen Anhänge
+	 * @throws NotPermittedException   Anhang oder Zielordner beim Umzug nicht erreichbar/beschreibbar
 	 */
 	public function changeVisibility(ViewerContext $viewer, int $ticketId, int $version, string $visibility): Ticket {
 		$this->assertKnownVisibility($visibility);
