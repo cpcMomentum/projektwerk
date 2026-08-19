@@ -53,7 +53,7 @@
 
 			Geht der Umzug ausnahmsweise nicht — die Zielstufe hat keinen Ordner
 			(nach „Nur ich"; für die Kundenseite „Intern") —, weist der Server
-			den Wechsel mit 409 ab, und die Servermeldung erscheint als Fehler
+			den Wechsel mit 400 ab, und die Servermeldung erscheint als Fehler
 			(kein eigener Zustand hier). Der private Ablageort kommt mit Phase B.
 		-->
 	</div>
@@ -226,7 +226,7 @@ export default defineComponent({
 			} catch (e) {
 				// Was nicht geht, weist der Server ab — Versionskonflikt (409 mit
 				// aktuellem Stand) oder, seit #185, ein fehlender Zielordner für
-				// die Anhänge (409 mit Meldung). Beides ist hier dasselbe: die
+				// die Anhänge (400 mit Meldung). Beides ist hier dasselbe: die
 				// Servermeldung anzeigen. Der frühere Sonderfall „Anhänge sperren"
 				// entfällt, weil die Datei jetzt mitzieht.
 				this.fail(e, t('projektwerk', 'Sichtbarkeit konnte nicht geändert werden'))

@@ -675,7 +675,6 @@ class TicketService {
 		}
 	}
 
-
 	private function assertKnownVisibility(string $visibility): void {
 		$known = [
 			TicketScope::VISIBILITY_PUBLIC,
