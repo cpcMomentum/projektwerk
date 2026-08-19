@@ -14,9 +14,10 @@
  * fahren beide Richtungen — public → internal und internal → public — und
  * erwarten in beiden dasselbe: sofort, ohne Zwischenschritt.
  *
- * **Und sie trennen die beiden 409er.** Versionskonflikt und Anhänge-Sperre
- * kommen mit demselben Status; das einzige Merkmal ist das Feld `attachments`
- * im Rumpf. Wer es überliest, meldet der Person mit Anhängen „bitte neu laden".
+ * **Anhänge sperren den Wechsel nicht mehr** (#185): Die Datei zieht mit der
+ * Sichtbarkeit um. Geht das nicht, kommt die Absage als **400** mit Meldung —
+ * bewusst nicht als 409, das `reportWriteError` als Versionskonflikt läse und
+ * die eigentliche Meldung verschluckte.
  */
 
 import type { ViewerInfo, Visibility } from '@/types/board'
@@ -249,47 +250,27 @@ describe('VisibilityControl', () => {
 	})
 
 	/**
-	 * **Anhänge sperren den Wechsel** (§3.10 Stufe 1) — und die Absage kommt
-	 * seit #103 vom Server, nicht mehr aus einer Vorabprüfung.
+	 * **Der Umzug ersetzt die Sperre** (#185). Ein Wechsel mit Anhang wird nicht
+	 * mehr blockiert — die Datei zieht mit der Sichtbarkeit um. Geht das
+	 * ausnahmsweise nicht (die Zielstufe hat keinen Ablageort), weist der Server
+	 * mit **400** und einer Meldung ab, und die erscheint als Fehler.
 	 *
-	 * Kein „Trotzdem": Es gibt nichts, was die App an dieser Stelle tun könnte,
-	 * solange der Dateiumzug nicht transaktional zur Datenbank ist.
+	 * **400 und nicht 409**: Ein 409 läse `reportWriteError` als Versionskonflikt
+	 * („bitte neu laden") und verschluckte die eigentliche Meldung. Der Test
+	 * hält fest, dass die Servermeldung durchkommt — und dass es keinen eigenen
+	 * Warnblock mehr gibt.
 	 */
-	it('spricht die Anhänge-Absage des Servers', async () => {
+	it('zeigt die Servermeldung, wenn der Umzug nicht geht — ohne Warnblock', async () => {
 		changeVisibility.mockRejectedValue({
-			status: 409,
-			message: 'Bitte die 2 Anhänge zuerst vom Vorgang lösen.',
-			data: { attachments: 2 },
+			status: 400,
+			message: 'An Vorgängen, die nur die eigene Seite oder nur Sie selbst sehen, sind keine Anhänge möglich.',
 		})
 
 		const wrapper = mountControl(ticketOf({ visibility: 'public' }), viewerOf())
 		await choose(wrapper, 'internal')
 
-		const warn = wrapper.find('.pw-viscontrol__warn')
-		expect(warn.text()).toContain('2 Anhänge')
-		expect(warn.text()).toContain('lösen')
-
-		// **Nicht die Konfliktmeldung.** Beide Fälle sind 409; wer sie nicht
-		// trennt, schickt hier „bitte neu laden" los, und Neuladen hilft nicht.
-		expect(showError).not.toHaveBeenCalled()
-	})
-
-	/**
-	 * Bei genau einem Anhang steht dort kein „1 Anhänge".
-	 *
-	 * Gebeugt wird im Browser und nicht vom Server: Dessen Satz in
-	 * `AttachmentsPresentException` läuft ohne `t()` und käme auf Englisch
-	 * gedachtem Deutsch heraus, sobald jemand die Oberfläche umstellt.
-	 */
-	it('beugt die Zahl in der Sperre', async () => {
-		changeVisibility.mockRejectedValue({ status: 409, message: 'egal', data: { attachments: 1 } })
-
-		const wrapper = mountControl(ticketOf({ visibility: 'public' }), viewerOf())
-		await choose(wrapper, 'internal')
-
-		const text = wrapper.find('.pw-viscontrol__warn').text()
-		expect(text).toContain('1 Anhang')
-		expect(text).not.toContain('1 Anhänge')
+		expect(showError).toHaveBeenCalledWith('An Vorgängen, die nur die eigene Seite oder nur Sie selbst sehen, sind keine Anhänge möglich.')
+		expect(wrapper.find('.pw-viscontrol__warn').exists()).toBe(false)
 	})
 
 	/**

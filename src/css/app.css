@@ -761,12 +761,6 @@
 	max-width: 100%;
 }
 
-.app-projektwerk .pw-viscontrol--offen {
-	flex: 1 1 100%;
-	width: 100%;
-	margin-inline-start: 0;
-}
-
 /* ---- Ticket-Detail ------------------------------------------------------ */
 
 /*
@@ -1141,8 +1135,7 @@
 	gap: 10px;
 }
 
-.app-projektwerk .pw-viscontrol__edit,
-.app-projektwerk .pw-viscontrol__warn {
+.app-projektwerk .pw-viscontrol__edit {
 	display: flex;
 	flex-direction: column;
 	gap: 10px;
@@ -1154,35 +1147,6 @@
 	align-items: center;
 	justify-content: flex-end;
 	gap: 8px;
-}
-
-/*
- * Der Warnblock trägt Farbe UND Symbol UND Text (§9, „nie allein über Farbe").
- * Der Rand steht links, weil der Blick beim Lesen dort ankommt.
- *
- * Er traegt seit #103 nur noch die Anhaenge-Absage; die Rueckfrage beim
- * Herunterstufen ist weg.
- */
-.app-projektwerk .pw-viscontrol__warn {
-	padding: 10px 12px;
-	gap: 6px;
-	border-inline-start: 4px solid var(--color-warning, var(--color-error));
-	border-radius: var(--border-radius-large);
-	background: var(--color-background-hover);
-}
-
-/* Der Satz neben dem Warnsymbol — keine eigene Optik, nur kein Ueberlauf. */
-.app-projektwerk .pw-viscontrol__target {
-	min-width: 0;
-}
-
-.app-projektwerk .pw-viscontrol__lead {
-	display: flex;
-	align-items: flex-start;
-	gap: 8px;
-	margin: 0;
-	font-weight: 600;
-	line-height: 1.45;
 }
 
 /* ---- Projekteinstellungen ------------------------------------------------ */

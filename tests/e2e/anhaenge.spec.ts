@@ -121,31 +121,26 @@ test('zaehlt bei Namensgleichheit, statt zu ueberschreiben', async ({ page, requ
 })
 
 /**
- * **Die Sichtbarkeit laesst sich nicht aendern, solange Anhaenge daran haengen**
- * (§3.10 Stufe 1).
+ * **Fehlt der Zielordner, wird der Wechsel abgelehnt** (#185).
  *
- * Der einzige Punkt, an dem ein Leck physisch wuerde: Laege die Datei erst in
- * `90_Austausch`, haette die Kundenseite sie gesehen, und keine spaetere
- * Codekorrektur naehme das zurueck.
+ * Seit #185 zieht ein Anhang mit der Sichtbarkeit um, statt den Wechsel zu
+ * sperren. Das setzt einen Ablageort in der Zielstufe voraus. Dieses Projekt
+ * hat nur den Austauschordner hinterlegt, keinen internen — der Wechsel
+ * `öffentlich → intern` hat also für den Anhang kein Ziel. Der Server weist ihn
+ * mit **400** ab (nicht 409, das die Oberfläche als Versionskonflikt läse) und
+ * legt die Meldung bei; der Vorgang bleibt unverändert.
  */
-test('verweigert den Sichtbarkeitswechsel, solange Anhaenge haengen', async ({ page, request }) => {
+test('lehnt den Wechsel ab, wenn die Zielstufe keinen Ordner hat', async ({ page, request }) => {
 	await detailOeffnen(page, projekt.oeffentlich.id, projekt.oeffentlich.title)
 
 	// Ueber die Klasse des Umschalters: „Intern" steht auch auf einer Karte im
 	// Hintergrund und in einem Aktionsmenue.
 	await stufeWaehlen(page, 'Intern')
 
-	// **Die Absage kommt seit #103 vom Server**, nicht aus einer Vorabpruefung:
-	// `visibility-impact` ist mit der Rueckfrage aufgegeben. Der Wechsel wird
-	// versucht, der Server weist ihn mit 409 ab und legt die Zahl bei — und die
-	// Oberflaeche spricht ihren eigenen, gebeugten Satz.
-	//
-	// Genau hier haengt die Unterscheidung der beiden 409er: Liest die
-	// Oberflaeche das Feld `attachments` nicht, stuende an dieser Stelle „Der
-	// Vorgang wurde zwischenzeitlich geaendert. Bitte neu laden."
-	await expect(page.getByText(/zuerst vom Vorgang lösen/)).toBeVisible({ timeout: 15_000 })
+	// Die Servermeldung erscheint als Fehler — und nicht „bitte neu laden": Der
+	// Fall ist kein Versionskonflikt, sondern ein fehlendes Ziel (400, nicht 409).
+	await expect(page.getByText(/noch kein Ordner hinterlegt/)).toBeVisible({ timeout: 15_000 })
 	await expect(page.getByText(/zwischenzeitlich geändert/)).toHaveCount(0)
-	await expect(page.getByRole('button', { name: 'Sichtbarkeit ändern' })).toHaveCount(0)
 
 	// Und der Vorgang steht unveraendert da: Ein abgewiesener Versuch darf nichts
 	// halb erledigt hinterlassen.

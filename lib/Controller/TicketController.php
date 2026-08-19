@@ -21,8 +21,8 @@ use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Db\TicketReadMapper;
 use OCA\Projektwerk\Db\TicketUserMapper;
 use OCA\Projektwerk\Service\AttachmentService;
-use OCA\Projektwerk\Service\AttachmentsPresentException;
 use OCA\Projektwerk\Service\ConflictException;
+use OCA\Projektwerk\Service\NoFolderException;
 use OCA\Projektwerk\Service\NotOwningSideException;
 use OCA\Projektwerk\Service\TicketService;
 use OCP\AppFramework\Controller;
@@ -31,6 +31,7 @@ use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\UserRateLimit;
 use OCP\AppFramework\Http\JSONResponse;
+use OCP\Files\NotPermittedException;
 use OCP\IRequest;
 
 /**
@@ -372,16 +373,16 @@ class TicketController extends Controller {
 					['error' => $e->getMessage(), 'current' => $e->current],
 					Http::STATUS_CONFLICT,
 				);
-			} catch (AttachmentsPresentException $e) {
-				// **409 wie beim Versionskonflikt und aus demselben Grund:** Die
-				// Anfrage ist richtig gebaut und das Recht ist da — der Vorgang
-				// ist nur gerade in einem Zustand, in dem sie nicht geht. Die
-				// Zahl kommt mit, damit die Oberflaeche sie nicht aus der
-				// Meldung fischen muss.
-				return new JSONResponse(
-					['error' => $e->getMessage(), 'attachments' => $e->count],
-					Http::STATUS_CONFLICT,
-				);
+			} catch (NoFolderException | NotPermittedException $e) {
+				// **400 und nicht 409**, wie im AttachmentController: Es fehlt kein
+				// Recht und die Anfrage ist richtig gebaut — beim
+				// Sichtbarkeitswechsel (#185) hat die Ziel-Sichtbarkeit für die
+				// vorhandenen Anhänge nur keinen Ablageort (nach `private`,
+				// Kundenseite nach intern), oder der hinterlegte Ordner trägt nicht
+				// mehr. **Nicht 409**, weil das Frontend jedes 409 als
+				// Versionskonflikt liest („bitte neu laden") — hier soll aber die
+				// Servermeldung sprechen, die sagt, was zu tun ist.
+				return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
 			} catch (NotOwningSideException $e) {
 				// 403 und nicht 404: Der Betrachter sieht das Ticket, es steht
 				// vor ihm. Zu verbergen gibt es nichts mehr.
