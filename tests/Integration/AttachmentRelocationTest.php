@@ -22,6 +22,7 @@ use OCA\Projektwerk\Db\Member;
 use OCA\Projektwerk\Db\MemberMapper;
 use OCA\Projektwerk\Db\Ticket;
 use OCA\Projektwerk\Db\TicketMapper;
+use OCA\Projektwerk\Service\AttachmentService;
 use OCA\Projektwerk\Service\TicketService;
 use OCP\Files\Folder;
 use OCP\Files\IRootFolder;
@@ -51,7 +52,10 @@ class AttachmentRelocationTest extends IntegrationTestCase {
 	private Folder $internalFolder;
 	private ViewerContext $viewer;
 	private TicketService $service;
+	private AttachmentService $attachmentService;
 	private AttachmentMapper $attachments;
+	private int $boardId;
+	private int $columnId;
 	private int $ticketId;
 	private int $originalFileId;
 
@@ -73,6 +77,7 @@ class AttachmentRelocationTest extends IntegrationTestCase {
 		$board->setCreatedAt(new \DateTime());
 		$board->setUpdatedAt(new \DateTime());
 		$boardId = (int)Server::get(BoardMapper::class)->insert($board)->getId();
+		$this->boardId = $boardId;
 
 		$member = new Member();
 		$member->setBoardId($boardId);
@@ -88,6 +93,7 @@ class AttachmentRelocationTest extends IntegrationTestCase {
 		$column->setTitle('Offen');
 		$column->setPosition(0);
 		$columnId = (int)Server::get(ColumnMapper::class)->insert($column)->getId();
+		$this->columnId = $columnId;
 
 		$ticket = new Ticket();
 		$ticket->setBoardId($boardId);
@@ -120,6 +126,7 @@ class AttachmentRelocationTest extends IntegrationTestCase {
 
 		$this->viewer = Server::get(BoardAccess::class)->contextFor(self::UID, $boardId);
 		$this->service = Server::get(TicketService::class);
+		$this->attachmentService = Server::get(AttachmentService::class);
 	}
 
 	protected function tearDown(): void {
@@ -129,11 +136,32 @@ class AttachmentRelocationTest extends IntegrationTestCase {
 	}
 
 	private function removeFolders(): void {
-		foreach (['pwtest_public', 'pwtest_internal'] as $name) {
+		// `ProjektWerk` ist der persönliche Default-Ordner für private Anhänge
+		// (#184) — die App legt ihn beim ersten privaten Anhang selbst an.
+		foreach (['pwtest_public', 'pwtest_internal', 'ProjektWerk'] as $name) {
 			if ($this->home->nodeExists($name)) {
 				$this->home->get($name)->delete();
 			}
 		}
+	}
+
+	/** Einen privaten Vorgang derselben Person anlegen. */
+	private function insertPrivateTicket(): int {
+		$ticket = new Ticket();
+		$ticket->setBoardId($this->boardId);
+		$ticket->setColumnId($this->columnId);
+		$ticket->setNumber(2);
+		$ticket->setTitle('Privat mit Anhang');
+		$ticket->setVisibility(TicketScope::VISIBILITY_PRIVATE);
+		$ticket->setCreatorUserId(self::UID);
+		$ticket->setCreatorRole(ViewerContext::ROLE_INTERNAL);
+		$ticket->setResponsibleUserId(self::UID);
+		$ticket->setPosition(131072);
+		$ticket->setVersion(1);
+		$ticket->setCreatedAt(new \DateTime());
+		$ticket->setUpdatedAt(new \DateTime());
+
+		return (int)Server::get(TicketMapper::class)->insert($ticket)->getId();
 	}
 
 	/** Der Anhang eines Vorgangs, frisch gelesen. */
@@ -179,5 +207,37 @@ class AttachmentRelocationTest extends IntegrationTestCase {
 		$attachment = $this->attachmentOf($this->ticketId);
 		$this->assertSame(Attachment::LOCATION_PUBLIC, $attachment->getLocation());
 		$this->assertNotNull($this->home->getFirstNodeById((int)$attachment->getFileId()));
+	}
+
+	/**
+	 * **Ein privater Anhang landet im persönlichen Ordner und zieht mit** (#184).
+	 *
+	 * Der Kern von Phase B: An einem „Nur ich"-Vorgang lässt sich anhängen — die
+	 * Datei landet nicht im geteilten Team-Ordner, sondern im **persönlichen**
+	 * Ordner der anlegenden Person (`ProjektWerk`, hier beim ersten Gebrauch
+	 * angelegt). Beim Hochstufen `privat → öffentlich` zieht sie über die Grenze
+	 * persönlich↔geteilt in den Austauschordner. So bleibt der Ort immer die
+	 * Sichtbarkeit (§5.18).
+	 */
+	public function testAPrivateAttachmentLandsInThePersonalFolderAndMovesOut(): void {
+		$privateTicketId = $this->insertPrivateTicket();
+
+		// Anlegen über den Dienst — er wählt den Ordner selbst.
+		$created = $this->attachmentService->create($this->viewer, $privateTicketId, 'geheim.pdf', 'INHALT');
+
+		$this->assertSame(Attachment::LOCATION_PRIVATE, $created->getLocation());
+		$personal = $this->home->get('ProjektWerk');
+		$this->assertInstanceOf(Folder::class, $personal);
+		$this->assertTrue($personal->nodeExists($created->getFileName()), 'Der private Anhang liegt nicht im persönlichen Ordner.');
+
+		// Hochstufen: privat -> öffentlich. Die Datei zieht aus dem persönlichen
+		// Ordner in den Team-Ordner.
+		$this->service->changeVisibility($this->viewer, $privateTicketId, 1, TicketScope::VISIBILITY_PUBLIC);
+
+		$moved = $this->attachmentOf($privateTicketId);
+		$this->assertSame(Attachment::LOCATION_PUBLIC, $moved->getLocation());
+		$this->assertTrue($this->publicFolder->nodeExists($moved->getFileName()), 'Die Datei liegt nach dem Hochstufen nicht im Team-Ordner.');
+		$this->assertFalse($personal->nodeExists($moved->getFileName()), 'Die Datei liegt noch im persönlichen Ordner.');
+		$this->assertNotNull($this->home->getFirstNodeById((int)$moved->getFileId()), 'Die Datei ist nach dem Umzug nicht erreichbar.');
 	}
 }

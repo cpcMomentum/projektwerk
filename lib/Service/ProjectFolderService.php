@@ -9,14 +9,17 @@ declare(strict_types=1);
 
 namespace OCA\Projektwerk\Service;
 
+use OCA\Projektwerk\AppInfo\Application;
 use OCA\Projektwerk\Access\TicketScope;
 use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Db\Attachment;
 use OCA\Projektwerk\Db\Board;
 use OCA\Projektwerk\Db\Ticket;
+use OCP\Config\IUserConfig;
 use OCP\Files\File;
 use OCP\Files\Folder;
 use OCP\Files\IRootFolder;
+use OCP\Files\NotFoundException;
 use OCP\Files\NotPermittedException;
 
 /**
@@ -41,8 +44,19 @@ use OCP\Files\NotPermittedException;
  */
 class ProjectFolderService {
 
+	/** Einstellungs-Schlüssel des persönlichen Ordners je Person (#184). */
+	private const PRIVATE_FOLDER_KEY = 'private_attachment_folder';
+
+	/**
+	 * Der Ordner, in dem private Anhänge landen, solange die Person keinen
+	 * eigenen gewählt hat — ein Ordner in **ihren** Files, kein Team-Ordner.
+	 * Wird beim ersten privaten Anhang angelegt, falls er fehlt.
+	 */
+	public const DEFAULT_PRIVATE_FOLDER = 'ProjektWerk';
+
 	public function __construct(
 		private IRootFolder $root,
+		private IUserConfig $userConfig,
 	) {
 	}
 
@@ -82,6 +96,10 @@ class ProjectFolderService {
 			TicketScope::VISIBILITY_INTERNAL => $creatorRole === ViewerContext::ROLE_INTERNAL
 				? Attachment::LOCATION_INTERNAL
 				: null,
+			// Der private Ablageort (#184, Phase B): kein Team-Ordner, sondern
+			// der persönliche Ordner der anlegenden Person — aufgelöst über
+			// {@see privateFolderFor()}, nicht über eine Board-Ordner-ID.
+			TicketScope::VISIBILITY_PRIVATE => Attachment::LOCATION_PRIVATE,
 			default => null,
 		};
 	}
@@ -129,6 +147,72 @@ class ProjectFolderService {
 		}
 
 		return $node;
+	}
+
+	/**
+	 * Der persönliche Ordner einer Person für ihre privaten Anhänge (#184).
+	 *
+	 * Kein Team-Ordner: ein Ordner in **ihren eigenen** Files, dessen Reichweite
+	 * exakt „nur diese Person" ist — so wie es die Sichtbarkeit `private`
+	 * verlangt (§5.18). Der Pfad steht in einer Nutzereinstellung; ohne Wahl gilt
+	 * {@see DEFAULT_PRIVATE_FOLDER}. Fehlt der Ordner, wird er angelegt: Ein
+	 * privater Anhang soll ohne Vorabkonfiguration funktionieren — anders als der
+	 * Team-Ordner, den die Projektverwaltung eintragen muss.
+	 *
+	 * @throws NotPermittedException Kein Ordner, nicht erreichbar oder nicht beschreibbar.
+	 */
+	public function privateFolderFor(string $userId): Folder {
+		return $this->resolveOrCreatePrivate($userId, $this->privatePath($userId));
+	}
+
+	/**
+	 * Der eingestellte Pfad des persönlichen Ordners — oder die Vorgabe.
+	 *
+	 * @return string bereinigt, nie leer.
+	 */
+	public function privatePath(string $userId): string {
+		$raw = trim(
+			$this->userConfig->getValueString($userId, Application::APP_ID, self::PRIVATE_FOLDER_KEY, ''),
+			" \t\n\r\0\x0B/",
+		);
+
+		return $raw === '' ? self::DEFAULT_PRIVATE_FOLDER : $raw;
+	}
+
+	/**
+	 * Den persönlichen Ordner wählen — geprüft, bei Bedarf angelegt, dann gemerkt.
+	 *
+	 * Wie beim Team-Ordner ist der Pfad der Eingabeweg. Er wird sofort aufgelöst:
+	 * Ein unbeschreibbarer oder unmöglicher Ordner fällt hier auf, bei der
+	 * Person, die ihn wählt — nicht erst beim nächsten privaten Anhang.
+	 *
+	 * @throws NotPermittedException Kein Ordner, nicht erreichbar oder nicht beschreibbar.
+	 */
+	public function setPrivatePath(string $userId, string $path): void {
+		$clean = trim($path, " \t\n\r\0\x0B/");
+		if ($clean === '') {
+			$clean = self::DEFAULT_PRIVATE_FOLDER;
+		}
+
+		$this->resolveOrCreatePrivate($userId, $clean);
+		$this->userConfig->setValueString($userId, Application::APP_ID, self::PRIVATE_FOLDER_KEY, $clean);
+	}
+
+	/**
+	 * Den persönlichen Ordner unter `$clean` auflösen — oder anlegen.
+	 *
+	 * @throws NotPermittedException
+	 */
+	private function resolveOrCreatePrivate(string $userId, string $clean): Folder {
+		$home = $this->root->getUserFolder($userId);
+
+		try {
+			$node = $home->get($clean);
+		} catch (NotFoundException) {
+			$node = $home->newFolder($clean);
+		}
+
+		return $this->assertUsable($node);
 	}
 
 	/**

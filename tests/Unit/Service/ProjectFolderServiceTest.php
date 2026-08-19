@@ -15,6 +15,7 @@ use OCA\Projektwerk\Db\Attachment;
 use OCA\Projektwerk\Db\Board;
 use OCA\Projektwerk\Db\Ticket;
 use OCA\Projektwerk\Service\ProjectFolderService;
+use OCP\Config\IUserConfig;
 use OCP\Files\File;
 use OCP\Files\Folder;
 use OCP\Files\IRootFolder;
@@ -44,7 +45,7 @@ class ProjectFolderServiceTest extends TestCase {
 	protected function setUp(): void {
 		parent::setUp();
 
-		$this->service = new ProjectFolderService($this->createStub(IRootFolder::class));
+		$this->service = new ProjectFolderService($this->createStub(IRootFolder::class), $this->createStub(IUserConfig::class));
 	}
 
 	/**
@@ -103,12 +104,17 @@ class ProjectFolderServiceTest extends TestCase {
 	}
 
 	/**
-	 * **„Nur ich" bekommt keinen Ordner** — es gibt keinen dritten, und einer
-	 * der beiden vorhandenen wäre in jedem Fall zu weit offen.
+	 * **„Nur ich" bekommt seit #184 den persönlichen Ablageort.**
+	 *
+	 * Kein Team-Ordner, sondern `LOCATION_PRIVATE` — aufgelöst über den eigenen
+	 * Files-Bereich der Person ({@see ProjectFolderService::privateFolderFor()}),
+	 * unabhängig von der Erzeugerrolle: Ein privater Vorgang gehört einer Person,
+	 * nicht einer Seite.
 	 */
-	public function testPrivateTicketsGetNoFolder(): void {
+	public function testPrivateTicketsGetThePersonalLocation(): void {
 		foreach ([ViewerContext::ROLE_INTERNAL, ViewerContext::ROLE_EXTERNAL] as $role) {
-			$this->assertNull(
+			$this->assertSame(
+				Attachment::LOCATION_PRIVATE,
 				$this->service->locationFor($this->ticket(TicketScope::VISIBILITY_PRIVATE, $role)),
 				"Privater Vorgang, angelegt als $role",
 			);
@@ -160,7 +166,7 @@ class ProjectFolderServiceTest extends TestCase {
 
 		$this->expectException(NotPermittedException::class);
 		$this->expectExceptionMessage('Dieser Ordner ist nicht erreichbar.');
-		(new ProjectFolderService($root))->resolvePath('lm-intern', 'Gibt/Es/Nicht');
+		(new ProjectFolderService($root, $this->createStub(IUserConfig::class)))->resolvePath('lm-intern', 'Gibt/Es/Nicht');
 	}
 
 	/**
@@ -189,7 +195,7 @@ class ProjectFolderServiceTest extends TestCase {
 		$root->expects($this->never())->method('getUserFolder');
 
 		$this->expectException(NotPermittedException::class);
-		(new ProjectFolderService($root))->resolvePath('lm-intern', '   /  ');
+		(new ProjectFolderService($root, $this->createStub(IUserConfig::class)))->resolvePath('lm-intern', '   /  ');
 	}
 
 	/**
@@ -202,7 +208,7 @@ class ProjectFolderServiceTest extends TestCase {
 		$root = $this->createStub(IRootFolder::class);
 		$root->method('getUserFolder')->willReturn($home);
 
-		$this->assertTrue((new ProjectFolderService($root))->exists('lm-intern', 42));
+		$this->assertTrue((new ProjectFolderService($root, $this->createStub(IUserConfig::class)))->exists('lm-intern', 42));
 	}
 
 	/**
@@ -216,7 +222,7 @@ class ProjectFolderServiceTest extends TestCase {
 		$root = $this->createStub(IRootFolder::class);
 		$root->method('getUserFolder')->willReturn($home);
 
-		$this->assertFalse((new ProjectFolderService($root))->exists('lm-intern', 42));
+		$this->assertFalse((new ProjectFolderService($root, $this->createStub(IUserConfig::class)))->exists('lm-intern', 42));
 	}
 
 	/**
@@ -228,7 +234,7 @@ class ProjectFolderServiceTest extends TestCase {
 		$root = $this->createStub(IRootFolder::class);
 		$root->method('getUserFolder')->willThrowException(new NotFoundException());
 
-		$this->assertTrue((new ProjectFolderService($root))->exists('lm-intern', 42));
+		$this->assertTrue((new ProjectFolderService($root, $this->createStub(IUserConfig::class)))->exists('lm-intern', 42));
 	}
 
 	/**
@@ -249,7 +255,7 @@ class ProjectFolderServiceTest extends TestCase {
 
 		$this->assertSame(
 			'Projekte/90_Austausch',
-			(new ProjectFolderService($root))->displayPath('lm-intern', $folder),
+			(new ProjectFolderService($root, $this->createStub(IUserConfig::class)))->displayPath('lm-intern', $folder),
 		);
 	}
 
@@ -263,6 +269,6 @@ class ProjectFolderServiceTest extends TestCase {
 		$root = $this->createStub(IRootFolder::class);
 		$root->method('getUserFolder')->willReturn($home);
 
-		return new ProjectFolderService($root);
+		return new ProjectFolderService($root, $this->createStub(IUserConfig::class));
 	}
 }

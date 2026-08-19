@@ -247,13 +247,22 @@ class AttachmentService {
 		$location = $this->folders->locationForVisibility($visibility, (string)$ticket->getCreatorRole());
 
 		if ($location === null) {
-			// Zwei verschiedene Gründe, **eine** Meldung — und beide sind keine
-			// Störung, sondern die Zusage: Ein Vorgang, den nur eine Seite oder
-			// nur eine Person sieht, hat keinen Ordner, in dem die Datei
-			// genauso eng läge.
+			// Bleibt seit #184 nur noch ein Fall: der **interne** Vorgang der
+			// Kundenseite. `91_Tickets_intern` wäre genau der Ordner, den sie
+			// nicht sehen darf — ein Anhang dort wäre für sie selbst unlesbar.
+			// (Der private Vorgang hat jetzt einen Ablageort, siehe unten.)
 			throw new NoFolderException(
-				'An Vorgängen, die nur die eigene Seite oder nur Sie selbst sehen, sind keine Anhänge möglich.',
+				'An internen Vorgängen der Kundenseite sind keine Anhänge möglich.',
 			);
+		}
+
+		// **Der private Ablageort ist kein Board-Ordner** (#184, Phase B): Ein
+		// „Nur ich"-Vorgang gehört einer Person, nicht dem Board. Seine Datei
+		// liegt im persönlichen Ordner dieser Person, aufgelöst (und bei Bedarf
+		// angelegt) in ihrem eigenen Files-Bereich — nicht über eine
+		// Board-Ordner-ID.
+		if ($location === Attachment::LOCATION_PRIVATE) {
+			return $this->folders->privateFolderFor($viewer->userId);
 		}
 
 		$folderId = $this->folders->folderIdFor($this->boards->findForViewer($viewer), $location);
