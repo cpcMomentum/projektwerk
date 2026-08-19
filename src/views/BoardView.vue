@@ -167,6 +167,8 @@
 			:orgExternal="store.board?.orgExternal ?? ''"
 			:showVisibility="showVisibility"
 			:fromClientSide="!store.isInternal"
+			:githubEnabled="store.board?.githubEnabled ?? false"
+			:githubRepo="store.board?.githubRepo ?? ''"
 			:steps="openSteps"
 			:comments="openComments"
 			:attachments="openAttachments"

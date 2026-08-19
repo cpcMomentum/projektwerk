@@ -86,6 +86,8 @@ class SettingsController extends Controller {
 		?string $chatUrl = null,
 		?string $folderPublicPath = null,
 		?string $folderInternalPath = null,
+		?bool $githubEnabled = null,
+		?string $githubRepo = null,
 	): JSONResponse {
 		// **Die beiden Ordner kommen als Pfad, gespeichert wird die Datei-ID.**
 		// Der Pfad benennt den Ordner nur; was in der Datenbank landet, loest
@@ -101,6 +103,11 @@ class SettingsController extends Controller {
 			'chatUrl' => $chatUrl,
 			'folderPublicPath' => $folderPublicPath,
 			'folderInternalPath' => $folderInternalPath,
+			// Der Schalter „ist dieses Projekt ein Softwareprojekt" und das
+			// Ziel-Repo (#12). `onlyGiven` wirft `null` heraus — ein leeres Repo
+			// kommt als leerer String und wird zu „kein Ziel".
+			'githubEnabled' => $githubEnabled,
+			'githubRepo' => $githubRepo,
 		]);
 
 		return $this->write($boardId, fn (ViewerContext $viewer): mixed

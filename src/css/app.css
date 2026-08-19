@@ -823,6 +823,28 @@
 /* Der Abschließen-/Wieder-öffnen-Knopf sitzt links unter der Wartemarke (#168). */
 .app-projektwerk .pw-kopf__aktionen {
 	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+/* Der Link zum überführten GitHub-Issue (#12) — steht an der Stelle, an der
+   sonst die Überführungs-Aktion stünde. */
+.app-projektwerk .pw-github-link {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	min-height: var(--default-clickable-area, 44px);
+	padding: 0 8px;
+	color: var(--color-main-text);
+	text-decoration: none;
+	border-radius: var(--border-radius-element, var(--border-radius));
+}
+
+.app-projektwerk .pw-github-link:hover,
+.app-projektwerk .pw-github-link:focus-visible {
+	background-color: var(--color-background-hover);
+	text-decoration: underline;
 }
 
 /*
@@ -1211,6 +1233,24 @@
 .app-projektwerk .pw-settings__hint {
 	font-size: 13px;
 	color: var(--color-text-maxcontrast);
+}
+
+/* Statuszeile „ist ein Token hinterlegt" (#12) — Farbe UND Symbol UND Text
+   (§9), nie die Farbe allein. */
+.app-projektwerk .pw-settings__status {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 14px;
+}
+
+.app-projektwerk .pw-settings__status-icon {
+	color: var(--color-text-maxcontrast);
+	flex: 0 0 auto;
+}
+
+.app-projektwerk .pw-settings__status-icon--ok {
+	color: var(--color-success, var(--color-success-text));
 }
 
 /* Die bezifferte Warnung beim Entfernen eines Mitglieds (§5.29) — kräftiger,

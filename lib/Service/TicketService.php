@@ -11,6 +11,7 @@ namespace OCA\Projektwerk\Service;
 
 use OCA\Projektwerk\Access\TicketScope;
 use OCA\Projektwerk\Access\ViewerContext;
+use OCA\Projektwerk\AppInfo\Application;
 use OCA\Projektwerk\Db\BoardMapper;
 use OCA\Projektwerk\Db\ColumnMapper;
 use OCA\Projektwerk\Db\MailOutbox;
@@ -22,6 +23,7 @@ use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\DB\Exception as DbException;
 use OCP\Files\NotPermittedException;
 use OCP\IDBConnection;
+use OCP\IURLGenerator;
 
 /**
  * Der Schreibpfad am Ticket.
@@ -52,6 +54,8 @@ class TicketService {
 		private TicketScope $scope,
 		private PositionService $positions,
 		private NotificationService $notifications,
+		private GithubService $github,
+		private IURLGenerator $urls,
 	) {
 	}
 
@@ -439,6 +443,106 @@ class TicketService {
 		$this->touch($ticket, $viewer);
 
 		return $this->tickets->update($ticket);
+	}
+
+	/**
+	 * Einen Vorgang **einseitig** als GitHub-Issue anlegen (#12, Stufe 1).
+	 *
+	 * Kein Inhalts- oder Kommentar-Sync, keine Rückkopplung — nur „hin". Am
+	 * Vorgang bleiben Nummer und Adresse des Issues, damit sichtbar ist, dass er
+	 * überführt wurde und wohin.
+	 *
+	 * **Fail-closed:** Die Nummer wird erst gespeichert, nachdem GitHub das Issue
+	 * angelegt hat. Scheitert der Aufruf, wirft {@see GithubService} eine
+	 * {@see GithubTransferException} und der Vorgang bleibt unverändert — nie
+	 * entsteht ein halber Zustand.
+	 *
+	 * **Kein `version`-Parameter wie beim Sichtbarkeitswechsel:** Die Überführung
+	 * ist keine konkurrierende Feldänderung, sondern einmalig. Gegen ein zweites
+	 * Issue schützt nicht die Version, sondern die bereits gesetzte Nummer — ein
+	 * erneuter Versuch endet als 409 mit dem aktuellen Stand.
+	 *
+	 * @throws NotOwningSideException wenn ein externes Mitglied es versucht (403)
+	 * @throws ConflictException wenn der Vorgang schon überführt ist (409)
+	 * @throws GithubTransferException bei fehlendem Token, falschem Repo oder GitHub-Fehler (400)
+	 * @throws \OCP\AppFramework\Db\DoesNotExistException wenn der Vorgang nicht sichtbar ist (404)
+	 */
+	public function transferToGithub(ViewerContext $viewer, int $ticketId): Ticket {
+		// **Nur interne Mitglieder überführen** (§6.1). Externe (Kunden als
+		// Gäste) sehen die Aktion nie; hier steht die serverseitige Grenze,
+		// damit sie nicht bloß in der Oberfläche verborgen ist.
+		if (!$viewer->isInternal()) {
+			throw new NotOwningSideException(
+				'Nur interne Mitglieder können Vorgänge nach GitHub überführen.',
+			);
+		}
+
+		$ticket = $this->tickets->findVisible($viewer, $ticketId);
+
+		// **Schon überführt: kein zweites Issue.** Der aktuelle Stand trägt
+		// Nummer und Link; die Oberfläche zeigt daraufhin nur noch den Link.
+		if ($ticket->getGithubIssueNumber() !== null) {
+			throw new ConflictException($ticket);
+		}
+
+		$board = $this->boards->findForViewer($viewer);
+		if ((int)$board->getGithubEnabled() !== 1) {
+			throw new GithubTransferException(
+				'Für dieses Projekt ist die GitHub-Anbindung nicht eingeschaltet.',
+			);
+		}
+
+		$repo = trim((string)$board->getGithubRepo());
+		if ($repo === '') {
+			throw new GithubTransferException(
+				'Für dieses Projekt ist kein Ziel-Repository hinterlegt.',
+			);
+		}
+
+		$created = $this->github->createIssue(
+			$viewer->userId,
+			$repo,
+			(string)$ticket->getTitle(),
+			$this->githubIssueBody($ticket),
+		);
+
+		$ticket->setGithubIssueNumber($created['number']);
+		$ticket->setGithubIssueUrl($created['url']);
+		$this->touch($ticket, $viewer);
+
+		return $this->tickets->update($ticket);
+	}
+
+	/**
+	 * Der Rumpf des GitHub-Issues: die Beschreibung, darunter ein Rücklink auf
+	 * den Vorgang. So ist die Herkunft von beiden Seiten nachvollziehbar.
+	 */
+	private function githubIssueBody(Ticket $ticket): string {
+		$backlink = sprintf(
+			'Aus ProjektWerk überführt (Vorgang #%d): %s',
+			(int)$ticket->getNumber(),
+			$this->deepLink((int)$ticket->getId()),
+		);
+
+		$description = trim((string)$ticket->getDescription());
+
+		return $description === '' ? $backlink : $description . "\n\n" . $backlink;
+	}
+
+	/**
+	 * Fragmentfreier Deep-Link auf den Vorgang, mit derselben Gegenprobe wie im
+	 * {@see NotificationService}: Der Link muss `/t/<id>` enthalten, sonst wird
+	 * er aus dem CLI-URL zusammengesetzt.
+	 */
+	private function deepLink(int $ticketId): string {
+		$link = $this->urls->linkToRouteAbsolute(
+			Application::APP_ID . '.deepLink.ticket',
+			['ticketId' => $ticketId],
+		);
+
+		return str_contains($link, '/t/' . $ticketId)
+			? $link
+			: $this->urls->getAbsoluteURL('/index.php/apps/' . Application::APP_ID . '/t/' . $ticketId);
 	}
 
 	/**

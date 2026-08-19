@@ -38,6 +38,7 @@ use OCA\Projektwerk\Service\AttachmentService;
 use OCA\Projektwerk\Service\BoardPinService;
 use OCA\Projektwerk\Service\BoardService;
 use OCA\Projektwerk\Service\ColumnService;
+use OCA\Projektwerk\Service\GithubService;
 use OCA\Projektwerk\Service\MemberService;
 use OCA\Projektwerk\Service\NotifyPrefService;
 use OCA\Projektwerk\Service\ProjectFolderService;
@@ -287,6 +288,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'settings#memberRemovalImpact' => 'testRemovalImpactRefusesEveryoneWithoutManagementRights',
 		'notifyPref#index' => 'testEveryViewerSeesOnlyTheirOwnChannelSwitches',
 		'privateFolder#index' => 'testThePrivateFolderPathIsScopedToItsOwner',
+		'githubToken#index' => 'testTheGithubTokenPresenceIsScopedToItsOwner',
 		'task#index' => 'testTaskEndpointMatchesTheVisibleSetAcrossBoards',
 		'overview#index' => 'testOverviewEndpointMatchesTheVisibleSetAcrossBoards',
 	];
@@ -569,6 +571,27 @@ class LeakMatrixTest extends IntegrationTestCase {
 			ProjectFolderService::DEFAULT_PRIVATE_FOLDER,
 			$folders->privatePath(self::BERT),
 		);
+	}
+
+	/**
+	 * Der GitHub-Token (#12) — dieselbe Art Grenze wie beim privaten Ordner:
+	 * kein Board, keine Rolle, nur die Benutzerkennung. Jeder sieht **nur
+	 * seinen eigenen** Stand, und der Endpunkt verrät ohnehin nur, OB ein Token
+	 * hinterlegt ist, nie den Token selbst.
+	 */
+	public function testTheGithubTokenPresenceIsScopedToItsOwner(): void {
+		$github = Server::get(GithubService::class);
+
+		$github->storeToken(self::ANNA, 'ghp_anna_secret');
+
+		$this->assertTrue($github->hasToken(self::ANNA));
+		$this->assertFalse(
+			$github->hasToken(self::BERT),
+			'Bert sieht Annas Token nicht — nicht einmal, dass es ihn gibt.',
+		);
+
+		// Nicht über den Lauf hinaus stehen lassen.
+		$github->deleteToken(self::ANNA);
 	}
 
 	/**

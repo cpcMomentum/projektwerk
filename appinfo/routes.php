@@ -45,6 +45,10 @@ return [
 		['name' => 'ticket#restore', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/restore', 'verb' => 'POST'],
 		['name' => 'ticket#move', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/move', 'verb' => 'POST'],
 		['name' => 'ticket#visibility', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/visibility', 'verb' => 'PUT'],
+		// GitHub-Überführung (#12, Stufe 1) — einseitig „Vorgang → Issue". Ein
+		// Schreibweg, deshalb POST und nicht in der Leak-Matrix (die faehrt nur
+		// GET-Routen).
+		['name' => 'ticket#transferToGithub', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/github', 'verb' => 'POST'],
 
 		// Arbeitsschritte. Gelesen werden sie ueber ticket#index und
 		// ticket#show, aus derselben gefilterten Ticketmenge — deshalb stehen
@@ -91,6 +95,13 @@ return [
 		// user-scoped, ohne Board im Pfad.
 		['name' => 'privateFolder#index', 'url' => '/api/v1/my/private-folder', 'verb' => 'GET'],
 		['name' => 'privateFolder#update', 'url' => '/api/v1/my/private-folder', 'verb' => 'PUT'],
+
+		// Der eigene GitHub-Token (#12) — ebenfalls user-scoped, ohne Board im
+		// Pfad. Der GET liefert nur, OB ein Token hinterlegt ist, nie den Wert;
+		// er steht deshalb in der Leak-Matrix mit einer Owner-Scoping-Erwartung.
+		['name' => 'githubToken#index', 'url' => '/api/v1/my/github-token', 'verb' => 'GET'],
+		['name' => 'githubToken#update', 'url' => '/api/v1/my/github-token', 'verb' => 'PUT'],
+		['name' => 'githubToken#destroy', 'url' => '/api/v1/my/github-token', 'verb' => 'DELETE'],
 
 		// Board-Einstellungen. Ausschliesslich Schreibwege — gelesen wird ueber
 		// board#show, das Board, Mitglieder und Spalten in einem Zug liefert und

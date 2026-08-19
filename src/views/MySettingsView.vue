@@ -63,6 +63,47 @@
 				</section>
 
 				<!--
+					**Der eigene GitHub-Token** (#12). Wer Vorgänge nach GitHub
+					überführt, hinterlegt hier seinen persönlichen Token — je
+					Person, verschlüsselt vom Server abgelegt. Angezeigt wird nie
+					der Token selbst, nur ob einer hinterlegt ist: Ein einmal
+					gespeicherter Token kommt nicht zurück ins Feld.
+				-->
+				<section class="pw-settingspage__block">
+					<h4 class="pw-settingspage__sub">
+						{{ t('projektwerk', 'GitHub-Token') }}
+					</h4>
+					<p class="pw-settings__hint">
+						{{ t('projektwerk', 'Zum Überführen von Vorgängen nach GitHub. Empfohlen: ein fein abgestufter Token (fine-grained PAT) mit dem Recht „Issues: read and write“ auf die Ziel-Repositorys. Der Token wird verschlüsselt gespeichert und nie wieder angezeigt.') }}
+					</p>
+
+					<p class="pw-settings__status">
+						<CheckIcon v-if="githubTokenPresent" :size="18" class="pw-settings__status-icon pw-settings__status-icon--ok" />
+						<AlertIcon v-else :size="18" class="pw-settings__status-icon" />
+						{{ githubTokenPresent
+							? t('projektwerk', 'Ein Token ist hinterlegt.')
+							: t('projektwerk', 'Kein Token hinterlegt.') }}
+					</p>
+
+					<div class="pw-settings__row">
+						<NcTextField
+							v-model="githubTokenEntwurf"
+							type="password"
+							:label="t('projektwerk', 'GitHub-Token')"
+							:placeholder="githubTokenPresent ? t('projektwerk', 'Neuen Token eingeben, um den vorhandenen zu ersetzen') : ''"
+							:disabled="busy"
+							autocomplete="off"
+							@keydown.enter="githubTokenSpeichern" />
+						<NcButton :disabled="busy || githubTokenEntwurf.trim() === ''" @click="githubTokenSpeichern">
+							{{ t('projektwerk', 'Speichern') }}
+						</NcButton>
+						<NcButton :disabled="busy || !githubTokenPresent" @click="githubTokenEntfernen">
+							{{ t('projektwerk', 'Entfernen') }}
+						</NcButton>
+					</div>
+				</section>
+
+				<!--
 					**Zwei Fragen, zwei Formen.**
 
 					„Wie" ist eine Handvoll Schalter und gilt überall gleich —
@@ -190,10 +231,13 @@ import { t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
+import AlertIcon from 'vue-material-design-icons/AlertCircleOutline.vue'
 import BellIcon from 'vue-material-design-icons/BellOutline.vue'
+import CheckIcon from 'vue-material-design-icons/CheckCircleOutline.vue'
 import FolderIcon from 'vue-material-design-icons/Folder.vue'
 import FolderPicker from '@/components/FolderPicker.vue'
 import { fetchBoards } from '@/services/boards'
+import { clearGithubToken, fetchGithubTokenStatus, setGithubToken } from '@/services/github'
 import { clearNotifyOverrides, fetchNotifyPrefs, setNotifyPref } from '@/services/notifyPrefs'
 import { fetchPrivateFolder, setPrivateFolder } from '@/services/privateFolder'
 import { showError } from '@/services/toast'
@@ -218,7 +262,7 @@ import { showError } from '@/services/toast'
 export default defineComponent({
 	name: 'MySettingsView',
 
-	components: { BellIcon, FolderIcon, FolderPicker, NcButton, NcTextField },
+	components: { AlertIcon, BellIcon, CheckIcon, FolderIcon, FolderPicker, NcButton, NcTextField },
 
 	data() {
 		return {
@@ -230,6 +274,10 @@ export default defineComponent({
 			/** Der bearbeitete Pfad, bis er übernommen wird. */
 			ordnerEntwurf: '',
 			picker: { open: false, start: '' },
+			/** Ob ein GitHub-Token hinterlegt ist (#12) — nie der Token selbst. */
+			githubTokenPresent: false,
+			/** Der eingegebene Token, bis er gespeichert wird. Nach dem Speichern geleert. */
+			githubTokenEntwurf: '',
 		}
 	},
 
@@ -315,6 +363,16 @@ export default defineComponent({
 			} catch (e) {
 				showError((e as { message?: string }).message ?? t('projektwerk', 'Der Ordner für private Anhänge konnte nicht geladen werden'))
 			}
+
+			// **Der GitHub-Token getrennt** (#12), aus demselben Grund wie der
+			// private Ordner: eine Nebeneinstellung darf die übrige Seite nicht
+			// mitreißen. Scheitert der Abruf, bleibt der Rest bedienbar.
+			try {
+				const { present } = await fetchGithubTokenStatus()
+				this.githubTokenPresent = present
+			} catch (e) {
+				showError((e as { message?: string }).message ?? t('projektwerk', 'Der GitHub-Token-Status konnte nicht geladen werden'))
+			}
 		},
 
 		/** Den Wähler öffnen, ab dem aktuell gesetzten Ordner. */
@@ -346,6 +404,45 @@ export default defineComponent({
 				this.ordnerEntwurf = path
 			} catch (e) {
 				showError((e as { message?: string }).message ?? t('projektwerk', 'Ordner konnte nicht gespeichert werden'))
+			} finally {
+				this.busy = false
+			}
+		},
+
+		/**
+		 * Den eingegebenen GitHub-Token speichern (#12). Nach dem Speichern wird
+		 * das Feld geleert — der Token kommt nie wieder zurück ins Formular.
+		 */
+		async githubTokenSpeichern(): Promise<void> {
+			if (this.busy || this.githubTokenEntwurf.trim() === '') {
+				return
+			}
+
+			this.busy = true
+			try {
+				const { present } = await setGithubToken(this.githubTokenEntwurf.trim())
+				this.githubTokenPresent = present
+				this.githubTokenEntwurf = ''
+			} catch (e) {
+				showError((e as { message?: string }).message ?? t('projektwerk', 'Token konnte nicht gespeichert werden'))
+			} finally {
+				this.busy = false
+			}
+		},
+
+		/** Den hinterlegten GitHub-Token entfernen (#12). */
+		async githubTokenEntfernen(): Promise<void> {
+			if (this.busy || !this.githubTokenPresent) {
+				return
+			}
+
+			this.busy = true
+			try {
+				const { present } = await clearGithubToken()
+				this.githubTokenPresent = present
+				this.githubTokenEntwurf = ''
+			} catch (e) {
+				showError((e as { message?: string }).message ?? t('projektwerk', 'Token konnte nicht entfernt werden'))
 			} finally {
 				this.busy = false
 			}

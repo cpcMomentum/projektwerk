@@ -209,6 +209,11 @@ final class ReadPathRegistry {
 		// jeder sieht nur seinen eigenen Pfad. Erwartung:
 		// `testThePrivateFolderPathIsScopedToItsOwner`.
 		'privateFolder#index',
+		// Und derselbe Fall (#12): ob die eigene Person einen GitHub-Token
+		// hinterlegt hat. Kein Board im Pfad, die Grenze ist die Sitzung — und
+		// der Endpunkt liefert nie den Token, nur das `present`-Flag der eigenen
+		// Person. Erwartung: `testTheGithubTokenPresenceIsScopedToItsOwner`.
+		'githubToken#index',
 	];
 
 	/**

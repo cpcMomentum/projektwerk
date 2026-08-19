@@ -51,6 +51,8 @@ export async function createBoard(data: {
  * @param changes.chatUrl
  * @param changes.folderPublicPath
  * @param changes.folderInternalPath
+ * @param changes.githubEnabled
+ * @param changes.githubRepo
  */
 export async function updateBoard(boardId: number, changes: {
 	title?: string
@@ -67,6 +69,10 @@ export async function updateBoard(boardId: number, changes: {
 	 */
 	folderPublicPath?: string
 	folderInternalPath?: string
+	/** Ist dieses Projekt ein Softwareprojekt — schaltet die GitHub-Überführung frei (#12). */
+	githubEnabled?: boolean
+	/** Ziel-Repository „owner/repo"; leerer String entfernt das Ziel. */
+	githubRepo?: string | null
 }): Promise<Board> {
 	return apiPatch<Board, typeof changes>(`/boards/${boardId}`, changes)
 }

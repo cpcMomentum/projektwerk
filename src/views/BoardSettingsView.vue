@@ -63,6 +63,36 @@
 					</span>
 				</div>
 
+				<!--
+					**GitHub-Anbindung** (#12) — nur für Softwareprojekte. Der
+					Schalter blendet die Überführungs-Aktion an den Vorgängen
+					dieses Boards ein; das Repo sagt, wohin überführte Issues
+					gehen. Der persönliche Token liegt getrennt in „Meine
+					Einstellungen", nicht am Board.
+				-->
+				<div class="pw-field">
+					<label class="pw-settings__check">
+						<input
+							type="checkbox"
+							:checked="board.githubEnabled"
+							:disabled="busy"
+							@change="board.githubEnabled = ($event.target as HTMLInputElement).checked">
+						{{ t('projektwerk', 'GitHub-Anbindung für dieses Projekt') }}
+					</label>
+				</div>
+
+				<div v-if="board.githubEnabled" class="pw-field">
+					<label for="pw-set-ghrepo">{{ t('projektwerk', 'Ziel-Repository') }}</label>
+					<NcTextField
+						id="pw-set-ghrepo"
+						v-model="board.githubRepo"
+						:label="t('projektwerk', 'Ziel-Repository')"
+						placeholder="owner/repo" />
+					<span class="pw-settings__hint">
+						{{ t('projektwerk', 'Im Format „owner/repo“, z. B. „cpcMomentum/projektwerk“. Leer lassen lässt die Überführung ausgeblendet, bis ein Ziel eingetragen ist.') }}
+					</span>
+				</div>
+
 				<div class="pw-viscontrol__actions">
 					<NcButton variant="primary" :disabled="busy || board.title.trim() === ''" @click="saveBoard">
 						{{ t('projektwerk', 'Speichern') }}
@@ -524,7 +554,7 @@ export default defineComponent({
 			// Ein eigener Entwurf statt direkter Bindung an den Speicher: Sonst
 			// stuenden Tippfehler sofort in der Kopfzeile des Boards, und ein
 			// Abbruch waere nicht mehr moeglich.
-			board: { title: '', description: '', orgInternal: '', orgExternal: '', chatUrl: '' },
+			board: { title: '', description: '', orgInternal: '', orgExternal: '', chatUrl: '', githubEnabled: false, githubRepo: '' },
 			// Eigene Entwuerfe wie beim Board oben, aus demselben Grund: Der
 			// Pfad muss erst geprueft werden, und bis dahin darf er nirgends
 			// als der gespeicherte gelten.
@@ -676,6 +706,8 @@ export default defineComponent({
 				orgInternal: board.orgInternal ?? '',
 				orgExternal: board.orgExternal ?? '',
 				chatUrl: board.chatUrl ?? '',
+				githubEnabled: board.githubEnabled,
+				githubRepo: board.githubRepo ?? '',
 			}
 			this.folderDrafts = {
 				public: board.folderPublicPath ?? '',
@@ -747,6 +779,13 @@ export default defineComponent({
 					orgInternal: this.blankToNull(this.board.orgInternal),
 					orgExternal: this.blankToNull(this.board.orgExternal),
 					chatUrl: this.blankToNull(this.board.chatUrl),
+					githubEnabled: this.board.githubEnabled,
+					// **Roher String, nicht blankToNull:** Ein leeres Repo soll
+					// das Ziel entfernen (der Hinweis darunter verspricht genau
+					// das). onlyGiven wirft nur `null` heraus; der leere String
+					// kommt durch und wird serverseitig zu „kein Ziel" — dieselbe
+					// Mechanik wie bei den Ordnerpfaden.
+					githubRepo: this.board.githubRepo.trim(),
 				}),
 				t('projektwerk', 'Speichern fehlgeschlagen'),
 			)
