@@ -5,13 +5,15 @@
 		zusammen 110 px fuer eine Angabe, die §9 als Chip in der Kopfzeile fuehrt.
 
 		`--offen` bricht die Zeile auf: Solange nur der Schalter dasteht, ist er
-		ein rechtsbuendiges Element neben Nummer und Spaltenname. Sobald der
-		Widerruf oder die Anhaenge-Absage dazukommt, nimmt der Block die volle
-		Breite — ein ganzer Satz passt nicht neben `#0001`.
+		ein rechtsbuendiges Element neben Nummer und Spaltenname. Sobald die
+		Anhaenge-Absage dazukommt, nimmt der Block die volle Breite, denn ein
+		ganzer Satz passt nicht neben `#0001`.
 
-		Seit #103 ist das **nur noch** diesen beiden vorbehalten: Die Rueckfrage
-		beim Herunterstufen, fuer die der Zustand urspruenglich gebaut wurde, ist
-		weg (Axel, 2026-08-13).
+		Vorbehalten ist das jetzt allein der Anhaenge-Absage. Zwei fruehere
+		Ausloeser sind weg: die Rueckfrage beim Herunterstufen (#103) und der
+		Widerruf nach jedem Wechsel (#181). Der stets sichtbare Umschalter ist
+		selbst der Ein-Klick-Rueckweg, ein eigenes „Rueckgaengig" war redundant
+		und liess die Zeile springen (Axel, 2026-08-18).
 
 		**Der Nur-Lese-Chip haengt mit hier drin** und nicht im Elternteil: Wer
 		aendern darf, folgt aus `mayChange`, und diese Frage soll an genau einer
@@ -22,7 +24,7 @@
 	<div
 		v-if="mayChange"
 		class="pw-viscontrol"
-		:class="{ 'pw-viscontrol--offen': stage !== 'idle' || undoTo !== null }">
+		:class="{ 'pw-viscontrol--offen': stage !== 'idle' }">
 		<!--
 			Die Auswahl steht **offen und immer da**, ein Klick ist die ganze
 			Entscheidung: kein vorgeschaltetes „Ändern", kein „Übernehmen" (#75)
@@ -47,27 +49,6 @@
 				:busy="busy || stage !== 'idle'"
 				:hideHints="true"
 				@update:modelValue="choose" />
-
-			<!--
-				Der Widerruf steht hier und nicht in einer Meldung: §10 verlangt
-				„kurz widerrufbar", und `OCP.Toast` kennt kein `showUndo` — es
-				hat nur success/warning/error/info/message. Eine Meldung mit
-				verstecktem Klickziel wäre ein Widerruf, den niemand findet.
-
-				**Seit #103 nach JEDEM Wechsel, nicht nur nach dem folgenlosen.**
-				Vorher stand er genau dort, wo ohnehin nichts passieren konnte,
-				und fehlte beim Herunterstufen — dort fing die Rückfrage den
-				Fehlgriff auf. Die ist weg; damit ist der Widerruf das einzige
-				Netz, und er wird gerade für den folgenreichen Fall gebraucht.
-			-->
-			<div v-if="undoTo !== null" class="pw-viscontrol__actions">
-				<NcButton variant="tertiary" @click="undo">
-					<template #icon>
-						<UndoIcon :size="20" />
-					</template>
-					{{ t('projektwerk', 'Rückgängig') }}
-				</NcButton>
-			</div>
 		</div>
 
 		<!--
@@ -139,20 +120,9 @@ import AccountMultipleIcon from 'vue-material-design-icons/AccountMultiple.vue'
 import AlertIcon from 'vue-material-design-icons/AlertOutline.vue'
 import OfficeBuildingIcon from 'vue-material-design-icons/OfficeBuilding.vue'
 import PencilIcon from 'vue-material-design-icons/Pencil.vue'
-import UndoIcon from 'vue-material-design-icons/UndoVariant.vue'
 import VisibilityChoice from '@/components/VisibilityChoice.vue'
 import { changeVisibility } from '@/services/tickets'
 import { reportWriteError } from '@/services/writeError'
-
-/**
- * Wie lange der Widerruf nach einem Wechsel stehen bleibt.
- *
- * **30 s statt 15** (#103). Fünfzehn Sekunden reichten, um einen Fehlklick zu
- * bemerken, den man schon beim Klicken bemerkt — nicht aber, um zu merken, dass
- * man die falsche von drei Stufen erwischt hat. Dafür liest man erst die Karte
- * zu Ende. Solange die Rückfrage das Netz war, fiel das nicht ins Gewicht.
- */
-const UNDO_WINDOW_MS = 30000
 
 /**
  * Die Sichtbarkeit eines bestehenden Vorgangs ändern.
@@ -168,8 +138,11 @@ const UNDO_WINDOW_MS = 30000
  * Rückfrage, die dieselbe Auskunft ein zweites Mal gibt, erzieht dazu, sie
  * wegzuklicken (Axel, 2026-08-13).
  *
- * **Damit ist der Widerruf das einzige Netz** — und steht deshalb nach jedem
- * Wechsel, nicht mehr nur nach dem folgenlosen.
+ * **Ein eigenes „Rückgängig" gibt es seit #181 nicht mehr.** Der Umschalter
+ * steht ohnehin offen und ist Ein-Klick; zurück kommt man, indem man die
+ * vorige Stufe wieder anklickt — derselbe Datei-Rückzug, den der Widerruf
+ * machte. Er sparte nur das Merken der vorigen Stufe und liess dafür die
+ * Kopfzeile springen (Axel, 2026-08-18).
  *
  * Das Frontend kennt die Rangfolge der drei Stufen weiterhin nicht und braucht
  * sie nicht: Es wechselt, und der Server weist ab, was nicht geht. Die
@@ -179,7 +152,7 @@ const UNDO_WINDOW_MS = 30000
 export default defineComponent({
 	name: 'VisibilityControl',
 
-	components: { AccountMultipleIcon, AlertIcon, NcButton, OfficeBuildingIcon, PencilIcon, UndoIcon, VisibilityChoice },
+	components: { AccountMultipleIcon, AlertIcon, NcButton, OfficeBuildingIcon, PencilIcon, VisibilityChoice },
 
 	props: {
 		ticket: { type: Object as PropType<Ticket>, required: true },
@@ -203,9 +176,6 @@ export default defineComponent({
 			/** Wie viele Anhänge den Wechsel sperren — aus der Absage des Servers. */
 			blockedCount: 0,
 			busy: false,
-			/** Der Stand vor dem letzten Wechsel, solange widerrufbar. */
-			undoTo: null as Visibility | null,
-			undoTimer: null as ReturnType<typeof setTimeout> | null,
 		}
 	},
 
@@ -263,20 +233,14 @@ export default defineComponent({
 	},
 
 	watch: {
-		// Ein anderer Vorgang im selben Overlay: Auswahl, Rückfrage und ein noch
-		// offener Widerruf gehören zum alten Ticket und dürfen nicht stehen
-		// bleiben — ein „Rückgängig" hier setzte sonst das falsche Ticket zurück.
+		// Ein anderer Vorgang im selben Overlay: Auswahl und Anhänge-Absage
+		// gehören zum alten Ticket und dürfen nicht stehen bleiben.
 		'ticket.id': {
 			immediate: true,
 			handler() {
 				this.reset()
-				this.clearUndo()
 			},
 		},
-	},
-
-	beforeUnmount() {
-		this.clearUndo()
 	},
 
 	methods: {
@@ -300,14 +264,6 @@ export default defineComponent({
 			this.blockedCount = 0
 		},
 
-		clearUndo(): void {
-			if (this.undoTimer !== null) {
-				clearTimeout(this.undoTimer)
-				this.undoTimer = null
-			}
-			this.undoTo = null
-		},
-
 		/**
 		 * Eine Stufe wurde angeklickt — das ist die ganze Handlung.
 		 *
@@ -326,8 +282,6 @@ export default defineComponent({
 				return
 			}
 
-			const previous = this.ticket.visibility
-
 			this.busy = true
 			try {
 				const updated = await changeVisibility(
@@ -338,7 +292,6 @@ export default defineComponent({
 				)
 				this.$emit('changed', updated)
 				this.reset()
-				this.armUndo(previous)
 			} catch (e) {
 				// **Anhänge sperren den Wechsel** (§3.10 Stufe 1) — und das ist
 				// nicht derselbe Fall wie ein Versionskonflikt, obwohl der Server
@@ -357,47 +310,6 @@ export default defineComponent({
 				}
 
 				this.fail(e, t('projektwerk', 'Sichtbarkeit konnte nicht geändert werden'))
-			} finally {
-				this.busy = false
-			}
-		},
-
-		/**
-		 * @param previous Der Stand, zu dem der Widerruf zurückführt.
-		 */
-		armUndo(previous: Visibility): void {
-			this.clearUndo()
-			this.undoTo = previous
-			this.undoTimer = setTimeout(() => this.clearUndo(), UNDO_WINDOW_MS)
-		},
-
-		/**
-		 * Zurück auf den Stand von eben.
-		 *
-		 * Ohne Rückfrage, obwohl es der Richtung nach ein Herunterstufen sein
-		 * kann: Der Widerruf stellt den Zustand wieder her, den die Person
-		 * Sekunden zuvor selbst hatte. Eine Rückfrage nach Namen, die genau
-		 * dadurch wieder ausgesperrt werden, wäre eine Warnung vor dem
-		 * Rückgängigmachen einer Warnung.
-		 */
-		async undo(): Promise<void> {
-			const target = this.undoTo
-			if (target === null || this.busy) {
-				return
-			}
-
-			this.busy = true
-			try {
-				const updated = await changeVisibility(
-					this.ticket.boardId,
-					this.ticket.id,
-					this.ticket.version,
-					target,
-				)
-				this.$emit('changed', updated)
-				this.clearUndo()
-			} catch (e) {
-				this.fail(e, t('projektwerk', 'Rückgängig machen fehlgeschlagen'))
 			} finally {
 				this.busy = false
 			}

@@ -43,7 +43,6 @@
 		"zuständig": "responsible",
 		"Sichtbarkeit": "Visibility",
 		"Ändern": "Change",
-		"Rückgängig": "Undo",
 		"Auf „Nur ich\" herunterstufen kann nur die anlegende Person": "Only the person who created it can restrict it to “Only me”",
 		"_%n Kommentar_::_%n Kommentare_": [
 			"%n comment",
@@ -51,7 +50,6 @@
 		],
 		"Sichtbarkeit ändern": "Change visibility",
 		"Sichtbarkeit konnte nicht geändert werden": "Could not change visibility",
-		"Rückgängig machen fehlgeschlagen": "Undo failed",
 		"Der Vorgang wurde zwischenzeitlich geändert. Bitte neu laden.": "The item has changed in the meantime. Please reload.",
 		"Der Vorgang wurde zwischenzeitlich geändert. Der Stand wurde neu geladen.": "The item has changed in the meantime. The view has been reloaded.",
 		"Dieser Vorgang steht Ihnen nicht zur Verfügung. Fragen Sie die Projektleitung, falls Sie ihn erwartet haben.": "This item is not available to you. Ask the project lead if you expected to see it.",

@@ -43,7 +43,6 @@
 		"zuständig": "zuständig",
 		"Sichtbarkeit": "Sichtbarkeit",
 		"Ändern": "Ändern",
-		"Rückgängig": "Rückgängig",
 		"Auf „Nur ich\" herunterstufen kann nur die anlegende Person": "Auf „Nur ich\" herunterstufen kann nur die anlegende Person",
 		"_%n Kommentar_::_%n Kommentare_": [
 			"%n Kommentar",
@@ -51,7 +50,6 @@
 		],
 		"Sichtbarkeit ändern": "Sichtbarkeit ändern",
 		"Sichtbarkeit konnte nicht geändert werden": "Sichtbarkeit konnte nicht geändert werden",
-		"Rückgängig machen fehlgeschlagen": "Rückgängig machen fehlgeschlagen",
 		"Der Vorgang wurde zwischenzeitlich geändert. Bitte neu laden.": "Der Vorgang wurde zwischenzeitlich geändert. Bitte neu laden.",
 		"Der Vorgang wurde zwischenzeitlich geändert. Der Stand wurde neu geladen.": "Der Vorgang wurde zwischenzeitlich geändert. Der Stand wurde neu geladen.",
 		"Dieser Vorgang steht Ihnen nicht zur Verfügung. Fragen Sie die Projektleitung, falls Sie ihn erwartet haben.": "Dieser Vorgang steht Ihnen nicht zur Verfügung. Fragen Sie die Projektleitung, falls Sie ihn erwartet haben.",
