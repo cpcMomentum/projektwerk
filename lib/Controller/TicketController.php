@@ -377,11 +377,12 @@ class TicketController extends Controller {
 				// **400 und nicht 409**, wie im AttachmentController: Es fehlt kein
 				// Recht und die Anfrage ist richtig gebaut — beim
 				// Sichtbarkeitswechsel (#185) hat die Ziel-Sichtbarkeit für die
-				// vorhandenen Anhänge nur keinen Ablageort (nach `private`,
-				// Kundenseite nach intern), oder der hinterlegte Ordner trägt nicht
-				// mehr. **Nicht 409**, weil das Frontend jedes 409 als
-				// Versionskonflikt liest („bitte neu laden") — hier soll aber die
-				// Servermeldung sprechen, die sagt, was zu tun ist.
+				// vorhandenen Anhänge nur keinen Ablageort (Kundenseite nach
+				// intern; seit #184 Phase B nicht mehr nach `private`), oder der
+				// hinterlegte Ordner trägt nicht mehr. **Nicht 409**, weil das
+				// Frontend jedes 409 als Versionskonflikt liest („bitte neu
+				// laden") — hier soll aber die Servermeldung sprechen, die sagt,
+				// was zu tun ist.
 				return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
 			} catch (NotOwningSideException $e) {
 				// 403 und nicht 404: Der Betrachter sieht das Ticket, es steht

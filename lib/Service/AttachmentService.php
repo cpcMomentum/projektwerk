@@ -29,10 +29,11 @@ use OCP\Files\NotPermittedException;
  * zweites Mal hier.
  *
  * Daraus folgt die unbequeme Seite: **Für Vorgänge ohne Ordner gibt es keine
- * Anhänge.** Ein interner Vorgang der Kundenseite und ein „Nur ich"-Vorgang
- * haben keinen Ablageort, und einen der beiden vorhandenen zu nehmen hieße,
- * die Datei jemandem hinzulegen, der den Vorgang nicht sehen darf. Die App
- * lehnt dann ab, statt einen Ort zu raten.
+ * Anhänge.** Ein interner Vorgang der Kundenseite hat keinen Ablageort, und
+ * einen der beiden Team-Ordner zu nehmen hieße, die Datei jemandem
+ * hinzulegen, der den Vorgang nicht sehen darf. Die App lehnt dann ab, statt
+ * einen Ort zu raten. Ein „Nur ich"-Vorgang hat seit #184 (Phase B) einen
+ * eigenen Ablageort — den persönlichen Ordner der anlegenden Person.
  *
  * **Anhänge ziehen mit der Sichtbarkeit um** (#185, {@see relocate()}). Der
  * Ablageort IST die Sichtbarkeit, also wandert die Datei in den Ordner der

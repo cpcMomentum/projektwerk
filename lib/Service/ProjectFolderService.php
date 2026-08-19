@@ -64,9 +64,10 @@ class ProjectFolderService {
 	 * Der zuständige Ordner für einen Vorgang — oder `null`.
 	 *
 	 * `null` heißt **nicht** „Fehler", sondern „für diesen Vorgang gibt es
-	 * keinen Ablageort": Ein interner Vorgang der Kundenseite und ein
-	 * `private`-Vorgang haben keinen, und das ist keine Lücke, sondern die
-	 * Zusage. Für sie gibt es folgerichtig auch keine Anhänge (§3.10).
+	 * keinen Ablageort": Ein interner Vorgang der Kundenseite hat keinen, und
+	 * das ist keine Lücke, sondern die Zusage. Für ihn gibt es folgerichtig
+	 * auch keine Anhänge (§3.10). Ein `private`-Vorgang hat seit #184 (Phase B)
+	 * einen eigenen — den persönlichen Ordner der anlegenden Person.
 	 */
 	public function locationFor(Ticket $ticket): ?string {
 		return $this->locationForVisibility(

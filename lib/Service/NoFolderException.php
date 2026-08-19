@@ -15,10 +15,11 @@ namespace OCA\Projektwerk\Service;
  * Zwei Gruende, dieselbe Antwort:
  *
  * 1. **Die Sichtbarkeit gibt keinen her.** Ein interner Vorgang der Kundenseite
- *    und ein „Nur ich"-Vorgang haben keinen Ordner, in dem die Datei genauso
- *    eng laege wie der Vorgang selbst. Einen der beiden vorhandenen zu nehmen
- *    hiesse, sie jemandem hinzulegen, der den Vorgang nicht sehen darf. Das ist
- *    kein Mangel, sondern die Zusage (§3.10).
+ *    hat keinen Ordner, in dem die Datei genauso eng laege wie der Vorgang
+ *    selbst. Einen der beiden Team-Ordner zu nehmen hiesse, sie jemandem
+ *    hinzulegen, der den Vorgang nicht sehen darf. Das ist kein Mangel,
+ *    sondern die Zusage (§3.10). (Ein „Nur ich"-Vorgang hat seit #184 Phase B
+ *    einen eigenen Ablageort und faellt hier nicht mehr herein.)
  * 2. **Am Projekt ist noch keiner hinterlegt.** Ein Board ohne Ordner ist ein
  *    gueltiger Zustand — es hat dann eben keine Anhaenge. Die Meldung nennt
  *    deshalb den Weg dorthin, statt nach einem Fehler zu klingen.
