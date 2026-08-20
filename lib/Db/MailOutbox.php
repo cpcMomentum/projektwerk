@@ -112,6 +112,17 @@ class MailOutbox extends Entity {
 	/** Ein Kommentar an einem Vorgang, an dem der Empfaenger beteiligt ist. */
 	public const EVENT_COMMENT_ADDED = 'comment_added';
 
+	/**
+	 * Der Empfaenger wurde in einem Kommentar ausdruecklich erwaehnt (#202).
+	 *
+	 * Anders als {@see EVENT_COMMENT_ADDED} braucht es dafuer keine
+	 * Beteiligung: Wer @-erwaehnt wird, wird gepingt — sofern er den Vorgang
+	 * ueberhaupt sehen darf. Ein eigener Anlass, damit man Erwaehnungen getrennt
+	 * vom allgemeinen Kommentar-Rundruf schalten kann und die Drossel sie nicht
+	 * unterdrueckt.
+	 */
+	public const EVENT_COMMENT_MENTION = 'comment_mention';
+
 	/** Ein Vorgang wurde geschlossen. */
 	public const EVENT_TICKET_CLOSED = 'ticket_closed';
 

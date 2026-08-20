@@ -171,6 +171,7 @@ class NotificationService {
 				MailOutbox::EVENT_TICKET_ASSIGNED => $l->t('Vorgang #%1$s wurde Ihnen zugewiesen', [$nummer]),
 				MailOutbox::EVENT_STEP_ASSIGNED => $l->t('Arbeitsschritt in Vorgang #%1$s wurde Ihnen zugewiesen', [$nummer]),
 				MailOutbox::EVENT_COMMENT_ADDED => $l->t('Neuer Kommentar zu Vorgang #%1$s', [$nummer]),
+				MailOutbox::EVENT_COMMENT_MENTION => $l->t('Sie wurden in Vorgang #%1$s erwähnt', [$nummer]),
 				MailOutbox::EVENT_TICKET_CLOSED => $l->t('Vorgang #%1$s wurde geschlossen', [$nummer]),
 				default => $l->t('Neuer Vorgang #%1$s', [$nummer]),
 			};
@@ -183,6 +184,7 @@ class NotificationService {
 				MailOutbox::EVENT_TICKET_ASSIGNED => $l->t('Ihnen wurde der Vorgang #%1$s „%2$s“ zugewiesen.', [$nummer, $titel]),
 				MailOutbox::EVENT_STEP_ASSIGNED => $l->t('Ihnen wurde ein Arbeitsschritt im Vorgang #%1$s „%2$s“ zugewiesen.', [$nummer, $titel]),
 				MailOutbox::EVENT_COMMENT_ADDED => $l->t('Es gibt einen neuen Kommentar zum Vorgang #%1$s „%2$s“.', [$nummer, $titel]),
+				MailOutbox::EVENT_COMMENT_MENTION => $l->t('Sie wurden in einem Kommentar zum Vorgang #%1$s „%2$s“ erwähnt.', [$nummer, $titel]),
 				MailOutbox::EVENT_TICKET_CLOSED => $l->t('Der Vorgang #%1$s „%2$s“ wurde geschlossen.', [$nummer, $titel]),
 				default => $l->t('Im Projekt ist der neue Vorgang #%1$s „%2$s“ entstanden.', [$nummer, $titel]),
 			};
@@ -253,6 +255,7 @@ class NotificationService {
 			MailOutbox::EVENT_TICKET_ASSIGNED => Notifier::SUBJECT_TICKET_ASSIGNED,
 			MailOutbox::EVENT_STEP_ASSIGNED => Notifier::SUBJECT_STEP_ASSIGNED,
 			MailOutbox::EVENT_COMMENT_ADDED => Notifier::SUBJECT_COMMENT_ADDED,
+			MailOutbox::EVENT_COMMENT_MENTION => Notifier::SUBJECT_COMMENT_MENTION,
 			MailOutbox::EVENT_TICKET_CLOSED => Notifier::SUBJECT_TICKET_CLOSED,
 			default => Notifier::SUBJECT_TICKET_CREATED,
 		};

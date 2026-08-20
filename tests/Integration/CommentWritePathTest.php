@@ -12,6 +12,8 @@ namespace OCA\Projektwerk\Tests\Integration;
 use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Db\Comment;
 use OCA\Projektwerk\Db\CommentMapper;
+use OCA\Projektwerk\Db\MailOutbox;
+use OCA\Projektwerk\Db\MailOutboxMapper;
 use OCA\Projektwerk\Service\CommentService;
 use OCA\Projektwerk\Service\NotAuthorException;
 use OCP\AppFramework\Db\DoesNotExistException;
@@ -37,6 +39,36 @@ class CommentWritePathTest extends IntegrationTestCase {
 		$this->fixture = new LeakMatrixFixture();
 		$this->comments = Server::get(CommentService::class);
 		$this->mapper = Server::get(CommentMapper::class);
+	}
+
+	/**
+	 * **Eine @-Erwähnung pingt nur, wen sie sehen darf** (#202).
+	 *
+	 * Anna erwähnt Bert — der das öffentliche Ticket sieht — und `lm-fremd`, der
+	 * in keiner Mitgliederzeile steht. Bert bekommt eine `comment_mention`-Zeile;
+	 * für den Fremden entsteht nichts. Die Grenze trägt `announce()`, nicht der
+	 * Text: Eine Erwähnung ist kein Weg, jemandem die Existenz eines Vorgangs zu
+	 * verraten.
+	 */
+	public function testAMentionNotifiesAVisibleMemberButNotAnOutsider(): void {
+		$outbox = Server::get(MailOutboxMapper::class);
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+		$vergangen = (new \DateTime())->modify('-1 hour');
+
+		$this->comments->create(
+			$this->contextFor(LeakMatrixFixture::ANNA),
+			$ticketId,
+			'Bitte @lm-bert draufschauen. cc @lm-fremd',
+		);
+
+		$this->assertTrue(
+			$outbox->existsSince(LeakMatrixFixture::BERT, $ticketId, MailOutbox::EVENT_COMMENT_MENTION, $vergangen),
+			'Der sichtberechtigte, erwähnte Bert wird gepingt.',
+		);
+		$this->assertFalse(
+			$outbox->existsSince(LeakMatrixFixture::FREMD, $ticketId, MailOutbox::EVENT_COMMENT_MENTION, $vergangen),
+			'Wer den Vorgang nicht sehen darf, wird durch eine Erwähnung nicht gepingt.',
+		);
 	}
 
 	/**
