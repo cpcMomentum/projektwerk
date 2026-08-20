@@ -22,119 +22,150 @@
 			</template>
 		</NcEmptyContent>
 
-		<div v-else-if="mayManage" class="pw-settings">
-			<section class="pw-settings__block">
-				<h3 class="pw-col__head">
-					{{ t('projektwerk', 'Projekt') }}
-				</h3>
+		<div v-else-if="mayManage" class="pw-settingspage__body">
+			<!--
+				Linke Bereichs-Navigation wie in „Meine Einstellungen" (#196
+				Teil 2): dieselben `pw-subnav`/`pw-settingspage`-Klassen, damit
+				beide Einstellungsseiten gleich aussehen.
+			-->
+			<nav class="pw-subnav" :aria-label="t('projektwerk', 'Bereiche')">
+				<button
+					v-for="s in sections"
+					:key="s.key"
+					type="button"
+					class="pw-subnav__item"
+					:class="{ 'pw-subnav__item--active': activeSection === s.key }"
+					:aria-current="activeSection === s.key ? 'page' : undefined"
+					@click="activeSection = s.key">
+					{{ s.label }}
+				</button>
+			</nav>
 
-				<div class="pw-field">
-					<label for="pw-set-title">{{ t('projektwerk', 'Titel') }}</label>
-					<NcTextField id="pw-set-title" v-model="board.title" :label="t('projektwerk', 'Titel')" />
-				</div>
+			<div class="pw-settingspage__content pw-settings">
+				<section v-show="activeSection === 'projekt'" class="pw-settings__block">
+					<h3 class="pw-col__head">
+						{{ t('projektwerk', 'Projekt') }}
+					</h3>
 
-				<div class="pw-field">
-					<label for="pw-set-desc">{{ t('projektwerk', 'Beschreibung') }}</label>
-					<textarea id="pw-set-desc" v-model="board.description" rows="3" />
-				</div>
+					<div class="pw-field">
+						<label for="pw-set-title">{{ t('projektwerk', 'Titel') }}</label>
+						<NcTextField id="pw-set-title" v-model="board.title" :label="t('projektwerk', 'Titel')" />
+					</div>
 
-				<!--
+					<div class="pw-field">
+						<label for="pw-set-desc">{{ t('projektwerk', 'Beschreibung') }}</label>
+						<textarea id="pw-set-desc" v-model="board.description" rows="3" />
+					</div>
+
+					<!--
 					Beide Firmennamen stehen gleichberechtigt nebeneinander.
 					Truege nur die Kundenseite eine Firma, waere die interne
 					stumm „der Normalfall" (§8).
 				-->
-				<div class="pw-settings__pair">
-					<div class="pw-field">
-						<label for="pw-set-orgi">{{ t('projektwerk', 'Firma (eigene Seite)') }}</label>
-						<NcTextField id="pw-set-orgi" v-model="board.orgInternal" :label="t('projektwerk', 'Firma (eigene Seite)')" />
+					<div class="pw-settings__pair">
+						<div class="pw-field">
+							<label for="pw-set-orgi">{{ t('projektwerk', 'Firma (eigene Seite)') }}</label>
+							<NcTextField id="pw-set-orgi" v-model="board.orgInternal" :label="t('projektwerk', 'Firma (eigene Seite)')" />
+						</div>
+						<div class="pw-field">
+							<label for="pw-set-orge">{{ t('projektwerk', 'Firma (Kundenseite)') }}</label>
+							<NcTextField id="pw-set-orge" v-model="board.orgExternal" :label="t('projektwerk', 'Firma (Kundenseite)')" />
+						</div>
 					</div>
-					<div class="pw-field">
-						<label for="pw-set-orge">{{ t('projektwerk', 'Firma (Kundenseite)') }}</label>
-						<NcTextField id="pw-set-orge" v-model="board.orgExternal" :label="t('projektwerk', 'Firma (Kundenseite)')" />
-					</div>
-				</div>
 
-				<div class="pw-field">
-					<label for="pw-set-chat">{{ t('projektwerk', 'Adresse des Projektchats') }}</label>
-					<NcTextField id="pw-set-chat" v-model="board.chatUrl" :label="t('projektwerk', 'Adresse des Projektchats')" />
-					<!-- Ohne Adresse entfaellt der Knopf ersatzlos (§9). -->
-					<span class="pw-settings__hint">
-						{{ t('projektwerk', 'Leer lassen blendet den Knopf „Zum Projektchat“ aus.') }}
-					</span>
-				</div>
+					<div class="pw-field">
+						<label for="pw-set-chat">{{ t('projektwerk', 'Adresse des Projektchats') }}</label>
+						<NcTextField id="pw-set-chat" v-model="board.chatUrl" :label="t('projektwerk', 'Adresse des Projektchats')" />
+						<!-- Ohne Adresse entfaellt der Knopf ersatzlos (§9). -->
+						<span class="pw-settings__hint">
+							{{ t('projektwerk', 'Leer lassen blendet den Knopf „Zum Projektchat“ aus.') }}
+						</span>
+					</div>
+
+					<div class="pw-viscontrol__actions">
+						<NcButton variant="primary" :disabled="busy || board.title.trim() === ''" @click="saveBoard">
+							{{ t('projektwerk', 'Speichern') }}
+						</NcButton>
+					</div>
+				</section>
 
 				<!--
-					**GitHub-Anbindung** (#12) — nur für Softwareprojekte. Der
-					Schalter blendet die Überführungs-Aktion an den Vorgängen
-					dieses Boards ein; das Repo sagt, wohin überführte Issues
-					gehen. Der persönliche Token liegt getrennt in „Meine
-					Einstellungen", nicht am Board.
-				-->
-				<div class="pw-field">
-					<label class="pw-settings__check">
-						<input
-							type="checkbox"
-							:checked="board.githubEnabled"
-							:disabled="busy"
-							@change="board.githubEnabled = ($event.target as HTMLInputElement).checked">
-						{{ t('projektwerk', 'GitHub-Anbindung für dieses Projekt') }}
-					</label>
-				</div>
+				**GitHub-Anbindung** (#12) — eigener Bereich (#196 Teil 2), nur für
+				Softwareprojekte. Der Schalter blendet die Überführungs-Aktion an
+				den Vorgängen dieses Boards ein; das Repo sagt, wohin überführte
+				Issues gehen. Der persönliche Token liegt getrennt in „Meine
+				Einstellungen", nicht am Board.
+			-->
+				<section v-show="activeSection === 'github'" class="pw-settings__block">
+					<h3 class="pw-col__head">
+						GitHub
+					</h3>
 
-				<div v-if="board.githubEnabled" class="pw-field">
-					<label for="pw-set-ghrepo">{{ t('projektwerk', 'Ziel-Repository') }}</label>
-					<!--
+					<div class="pw-field">
+						<label class="pw-settings__check">
+							<input
+								type="checkbox"
+								:checked="board.githubEnabled"
+								:disabled="busy"
+								@change="board.githubEnabled = ($event.target as HTMLInputElement).checked">
+							{{ t('projektwerk', 'GitHub-Anbindung für dieses Projekt') }}
+						</label>
+					</div>
+
+					<div v-if="board.githubEnabled" class="pw-field">
+						<label for="pw-set-ghrepo">{{ t('projektwerk', 'Ziel-Repository') }}</label>
+						<!--
 						Tippen sucht in den Repos, auf die der eigene Token
 						Zugriff hat (#196) — die Treffer darunter zum Auswählen.
 						Das Feld bleibt zugleich der Wert: Wer den Namen kennt oder
 						keinen Token hinterlegt hat, tippt „owner/repo" von Hand.
 					-->
-					<!--
+						<!--
 						`@focusin` (nicht `@focus`) am Wrapper: Der Fokus liegt am
 						inneren Input von NcTextField; `focusin` bubbelt zuverlässig
 						hoch, `focus` nicht. Beim Reinklicken erscheinen so gleich
 						die ersten Repos — ohne dass man erst tippen muss (#196).
 					-->
-					<div @focusin="repoFokus">
-						<NcTextField
-							id="pw-set-ghrepo"
-							v-model="board.githubRepo"
-							:label="t('projektwerk', 'Ziel-Repository')"
-							placeholder="owner/repo"
-							@update:modelValue="repoSuchen" />
+						<div @focusin="repoFokus">
+							<NcTextField
+								id="pw-set-ghrepo"
+								v-model="board.githubRepo"
+								:label="t('projektwerk', 'Ziel-Repository')"
+								placeholder="owner/repo"
+								@update:modelValue="repoSuchen" />
+						</div>
+
+						<div v-if="repoHits.length > 0" class="pw-settings__hits">
+							<button
+								v-for="repo in repoHits"
+								:key="repo"
+								type="button"
+								class="pw-settings__hit"
+								:aria-pressed="board.githubRepo === repo"
+								@click="repoWaehlen(repo)">
+								<span class="pw-person__name">{{ repo }}</span>
+							</button>
+						</div>
+						<span v-if="repoSuchtLaeuft" class="pw-settings__hint">
+							{{ t('projektwerk', 'Suche läuft…') }}
+						</span>
+						<span v-else-if="repoSuchFehler !== ''" class="pw-settings__hint">
+							{{ repoSuchFehler }}
+						</span>
+
+						<span class="pw-settings__hint">
+							{{ t('projektwerk', 'Im Format „owner/repo“, z. B. „cpcMomentum/projektwerk“. Tippen sucht in Ihren GitHub-Repositorys — dazu muss ein Token in „Meine Einstellungen“ hinterlegt sein. Leer lassen lässt die Überführung ausgeblendet, bis ein Ziel eingetragen ist.') }}
+						</span>
 					</div>
 
-					<div v-if="repoHits.length > 0" class="pw-settings__hits">
-						<button
-							v-for="repo in repoHits"
-							:key="repo"
-							type="button"
-							class="pw-settings__hit"
-							:aria-pressed="board.githubRepo === repo"
-							@click="repoWaehlen(repo)">
-							<span class="pw-person__name">{{ repo }}</span>
-						</button>
+					<div class="pw-viscontrol__actions">
+						<NcButton variant="primary" :disabled="busy || board.title.trim() === ''" @click="saveBoard">
+							{{ t('projektwerk', 'Speichern') }}
+						</NcButton>
 					</div>
-					<span v-if="repoSuchtLaeuft" class="pw-settings__hint">
-						{{ t('projektwerk', 'Suche läuft…') }}
-					</span>
-					<span v-else-if="repoSuchFehler !== ''" class="pw-settings__hint">
-						{{ repoSuchFehler }}
-					</span>
+				</section>
 
-					<span class="pw-settings__hint">
-						{{ t('projektwerk', 'Im Format „owner/repo“, z. B. „cpcMomentum/projektwerk“. Tippen sucht in Ihren GitHub-Repositorys — dazu muss ein Token in „Meine Einstellungen“ hinterlegt sein. Leer lassen lässt die Überführung ausgeblendet, bis ein Ziel eingetragen ist.') }}
-					</span>
-				</div>
-
-				<div class="pw-viscontrol__actions">
-					<NcButton variant="primary" :disabled="busy || board.title.trim() === ''" @click="saveBoard">
-						{{ t('projektwerk', 'Speichern') }}
-					</NcButton>
-				</div>
-			</section>
-
-			<!--
+				<!--
 				Dateiablage.
 
 				**Der Ablageort IST die Sichtbarkeit** (§5.18) — deshalb zwei
@@ -147,58 +178,58 @@
 				Einen Ordner auszuwählen ist bereits die Bestätigung, ein
 				„Speichern" danach wäre eine zweite für dieselbe Entscheidung.
 			-->
-			<section class="pw-settings__block">
-				<h3 class="pw-col__head">
-					{{ t('projektwerk', 'Dateiablage') }}
-				</h3>
+				<section v-show="activeSection === 'dateiablage'" class="pw-settings__block">
+					<h3 class="pw-col__head">
+						{{ t('projektwerk', 'Dateiablage') }}
+					</h3>
 
-				<p class="pw-settings__hint">
-					{{ t('projektwerk', 'Anhänge an Vorgängen landen in diesen Ordnern. Ohne Ordner sind an den betreffenden Vorgängen keine Anhänge möglich.') }}
-				</p>
+					<p class="pw-settings__hint">
+						{{ t('projektwerk', 'Anhänge an Vorgängen landen in diesen Ordnern. Ohne Ordner sind an den betreffenden Vorgängen keine Anhänge möglich.') }}
+					</p>
 
-				<div v-for="slot in folderSlots" :key="slot.key" class="pw-settings__row">
-					<div class="pw-field pw-field--grow">
-						<label :for="`pw-set-${slot.key}`">{{ slot.label }}</label>
-						<NcTextField
-							:id="`pw-set-${slot.key}`"
-							v-model="folderDrafts[slot.key]"
-							:label="slot.label"
-							:placeholder="slot.placeholder"
-							:disabled="busy || !mayManage"
-							@keydown.enter="saveFolder(slot.key)" />
-						<span class="pw-settings__hint">{{ slot.hint }}</span>
-					</div>
+					<div v-for="slot in folderSlots" :key="slot.key" class="pw-settings__row">
+						<div class="pw-field pw-field--grow">
+							<label :for="`pw-set-${slot.key}`">{{ slot.label }}</label>
+							<NcTextField
+								:id="`pw-set-${slot.key}`"
+								v-model="folderDrafts[slot.key]"
+								:label="slot.label"
+								:placeholder="slot.placeholder"
+								:disabled="busy || !mayManage"
+								@keydown.enter="saveFolder(slot.key)" />
+							<span class="pw-settings__hint">{{ slot.hint }}</span>
+						</div>
 
-					<!--
+						<!--
 						Der Wähler ist der eigentliche Weg (#139): auswählen oder
 						anlegen, ohne einen Pfad abzutippen. Das Textfeld bleibt
 						daneben stehen — es zeigt den gesetzten Ordner und dient
 						als Rückfallweg.
 					-->
-					<NcButton
-						:disabled="busy || !mayManage"
-						@click="openPicker(slot.key)">
-						<template #icon>
-							<FolderIcon :size="20" />
-						</template>
-						{{ t('projektwerk', 'Ordner wählen') }}
-					</NcButton>
+						<NcButton
+							:disabled="busy || !mayManage"
+							@click="openPicker(slot.key)">
+							<template #icon>
+								<FolderIcon :size="20" />
+							</template>
+							{{ t('projektwerk', 'Ordner wählen') }}
+						</NcButton>
 
-					<NcButton
-						:disabled="busy || !mayManage || folderDrafts[slot.key] === slot.path"
-						@click="saveFolder(slot.key)">
-						{{ t('projektwerk', 'Übernehmen') }}
-					</NcButton>
-				</div>
-			</section>
+						<NcButton
+							:disabled="busy || !mayManage || folderDrafts[slot.key] === slot.path"
+							@click="saveFolder(slot.key)">
+							{{ t('projektwerk', 'Übernehmen') }}
+						</NcButton>
+					</div>
+				</section>
 
-			<section class="pw-settings__block">
-				<h3 class="pw-col__head">
-					{{ t('projektwerk', 'Spalten') }}
-				</h3>
+				<section v-show="activeSection === 'spalten'" class="pw-settings__block">
+					<h3 class="pw-col__head">
+						{{ t('projektwerk', 'Spalten') }}
+					</h3>
 
-				<div v-for="(column, index) in store.columns" :key="column.id" class="pw-settings__row">
-					<!--
+					<div v-for="(column, index) in store.columns" :key="column.id" class="pw-settings__row">
+						<!--
 						Ein Entwurf je Spalte, gespeichert erst bei Enter oder
 						beim Verlassen des Feldes. Direkt am Tastendruck zu
 						speichern hiesse ein PATCH je Zeichen — und weil
@@ -206,184 +237,184 @@
 						verwirft, gingen Anschlaege verloren und das Feld spraenge
 						auf den zuletzt gespeicherten Stand zurueck.
 					-->
-					<NcTextField
-						:modelValue="draftFor(column)"
-						:label="t('projektwerk', 'Name der Spalte')"
-						@update:modelValue="columnDrafts[column.id] = $event"
-						@keydown.enter="commitColumn(column)"
-						@blur="commitColumn(column)" />
-					<!--
+						<NcTextField
+							:modelValue="draftFor(column)"
+							:label="t('projektwerk', 'Name der Spalte')"
+							@update:modelValue="columnDrafts[column.id] = $event"
+							@keydown.enter="commitColumn(column)"
+							@blur="commitColumn(column)" />
+						<!--
 						Hoch und runter statt Ziehen: Jede Zieh-Geste braucht eine
 						Alternative ohne Ziehen, und hier ist sie der einzige Weg
 						— Tastatur und Screenreader sind Abnahmekriterium.
 					-->
-					<NcButton
-						:disabled="busy || index === 0"
-						:aria-label="t('projektwerk', 'Spalte nach oben')"
-						@click="moveColumn(index, -1)">
-						<template #icon>
-							<ArrowUpIcon :size="20" />
-						</template>
-					</NcButton>
-					<NcButton
-						:disabled="busy || index === store.columns.length - 1"
-						:aria-label="t('projektwerk', 'Spalte nach unten')"
-						@click="moveColumn(index, 1)">
-						<template #icon>
-							<ArrowDownIcon :size="20" />
-						</template>
-					</NcButton>
-					<!--
+						<NcButton
+							:disabled="busy || index === 0"
+							:aria-label="t('projektwerk', 'Spalte nach oben')"
+							@click="moveColumn(index, -1)">
+							<template #icon>
+								<ArrowUpIcon :size="20" />
+							</template>
+						</NcButton>
+						<NcButton
+							:disabled="busy || index === store.columns.length - 1"
+							:aria-label="t('projektwerk', 'Spalte nach unten')"
+							@click="moveColumn(index, 1)">
+							<template #icon>
+								<ArrowDownIcon :size="20" />
+							</template>
+						</NcButton>
+						<!--
 						Nur der Eigentuemer, nicht jeder mit Verwaltungsrecht:
 						Der Vorgang fasst Daten aller Beteiligten an, auch die
 						hier unsichtbaren. Die letzte Spalte bleibt stehen — es
 						gaebe kein Ziel.
 					-->
-					<!--
+						<!--
 						Der Name gehoert in die Beschriftung: Ohne ihn stehen
 						sechs Knoepfe „Spalte entfernen" untereinander, und wer
 						die Seite hoert statt sieht, kann sie nicht
 						auseinanderhalten — bei einem Knopf, der eine Spalte
 						abraeumt, ist das keine Feinheit.
 					-->
-					<NcButton
-						v-if="mayRemoveColumns"
-						:disabled="busy || store.columns.length < 2"
-						:aria-label="removeLabelFor(column)"
-						@click="askRemoveColumn(column)">
-						<template #icon>
-							<DeleteIcon :size="20" />
-						</template>
-					</NcButton>
-				</div>
+						<NcButton
+							v-if="mayRemoveColumns"
+							:disabled="busy || store.columns.length < 2"
+							:aria-label="removeLabelFor(column)"
+							@click="askRemoveColumn(column)">
+							<template #icon>
+								<DeleteIcon :size="20" />
+							</template>
+						</NcButton>
+					</div>
 
-				<div class="pw-settings__row">
-					<NcTextField
-						v-model="newColumn"
-						:label="t('projektwerk', 'Neue Spalte')"
-						@keydown.enter="addColumn" />
-					<NcButton :disabled="busy || newColumn.trim() === ''" @click="addColumn">
-						{{ t('projektwerk', 'Hinzufügen') }}
-					</NcButton>
-				</div>
-			</section>
+					<div class="pw-settings__row">
+						<NcTextField
+							v-model="newColumn"
+							:label="t('projektwerk', 'Neue Spalte')"
+							@keydown.enter="addColumn" />
+						<NcButton :disabled="busy || newColumn.trim() === ''" @click="addColumn">
+							{{ t('projektwerk', 'Hinzufügen') }}
+						</NcButton>
+					</div>
+				</section>
 
-			<section class="pw-settings__block">
-				<h3 class="pw-col__head">
-					{{ t('projektwerk', 'Mitglieder') }}
-				</h3>
+				<section v-show="activeSection === 'mitglieder'" class="pw-settings__block">
+					<h3 class="pw-col__head">
+						{{ t('projektwerk', 'Mitglieder') }}
+					</h3>
 
-				<div v-for="member in store.members" :key="member.userId" class="pw-settings__member">
-					<NcAvatar
-						:user="member.userId"
-						:displayName="member.resolvedName"
-						:size="32"
-						:disableMenu="true"
-						:hideStatus="true" />
+					<div v-for="member in store.members" :key="member.userId" class="pw-settings__member">
+						<NcAvatar
+							:user="member.userId"
+							:displayName="member.resolvedName"
+							:size="32"
+							:disableMenu="true"
+							:hideStatus="true" />
 
-					<span class="pw-person__body">
-						<span class="pw-person__name">{{ member.resolvedName }}</span>
-						<!--
+						<span class="pw-person__body">
+							<span class="pw-person__name">{{ member.resolvedName }}</span>
+							<!--
 							Die Kennung als Zweitzeile hilft, gleichnamige Personen
 							zu unterscheiden — aber nur, wenn sie lesbar ist. Ein
 							Gast-Konto trägt als Kennung einen 64-stelligen Hash;
 							der sagt niemandem etwas und wird deshalb weggelassen.
 							Der Anzeigename oben steht ohnehin (resolvedName).
 						-->
-						<span v-if="handleFor(member) !== ''" class="pw-person__org">{{ handleFor(member) }}</span>
-					</span>
+							<span v-if="handleFor(member) !== ''" class="pw-person__org">{{ handleFor(member) }}</span>
+						</span>
 
-					<select
-						:value="member.role"
-						:aria-label="t('projektwerk', 'Rolle')"
-						:disabled="busy || isOwner(member)"
-						@change="changeRole(member, $event)">
-						<option value="internal">
-							{{ t('projektwerk', 'Intern') }}
-						</option>
-						<option value="external">
-							{{ t('projektwerk', 'Kundenseite') }}
-						</option>
-					</select>
+						<select
+							:value="member.role"
+							:aria-label="t('projektwerk', 'Rolle')"
+							:disabled="busy || isOwner(member)"
+							@change="changeRole(member, $event)">
+							<option value="internal">
+								{{ t('projektwerk', 'Intern') }}
+							</option>
+							<option value="external">
+								{{ t('projektwerk', 'Kundenseite') }}
+							</option>
+						</select>
 
-					<!--
+						<!--
 						Das Verwaltungsrecht gibt es nur fuer interne Mitglieder,
 						und der Eigentuemer behaelt es immer (§8). Beides steht
 						auch im Dienst — hier faellt nur der Schalter weg.
 					-->
-					<label class="pw-settings__check">
-						<input
-							type="checkbox"
-							:checked="member.isManager"
-							:disabled="busy || member.role === 'external' || isOwner(member)"
-							@change="changeManager(member, $event)">
-						{{ t('projektwerk', 'Verwaltung') }}
-					</label>
+						<label class="pw-settings__check">
+							<input
+								type="checkbox"
+								:checked="member.isManager"
+								:disabled="busy || member.role === 'external' || isOwner(member)"
+								@change="changeManager(member, $event)">
+							{{ t('projektwerk', 'Verwaltung') }}
+						</label>
 
-					<!--
+						<!--
 						Entfernen (§5.29): Der Eigentuemer laesst sich nicht
 						entfernen (er behaelt das Verwaltungsrecht). Die
 						Rueckfrage nennt die Zahl der privaten Vorgaenge, die
 						dabei geloescht werden.
 					-->
-					<NcButton
-						variant="tertiary"
-						:disabled="busy || isOwner(member)"
-						:aria-label="t('projektwerk', 'Mitglied entfernen')"
-						@click="askRemoveMember(member)">
-						<template #icon>
-							<DeleteIcon :size="20" />
-						</template>
-					</NcButton>
-				</div>
+						<NcButton
+							variant="tertiary"
+							:disabled="busy || isOwner(member)"
+							:aria-label="t('projektwerk', 'Mitglied entfernen')"
+							@click="askRemoveMember(member)">
+							<template #icon>
+								<DeleteIcon :size="20" />
+							</template>
+						</NcButton>
+					</div>
 
-				<div class="pw-settings__row">
-					<!--
+					<div class="pw-settings__row">
+						<!--
 						Eigener Endpunkt statt Nextclouds Personensuche: Die
 						liefert in Gast-Sitzungen eine leere Liste, und ein
 						Aufruf mit dieser Eigenschaft waere irgendwann an einer
 						Stelle kopiert, wo Gaeste hinkommen.
 					-->
-					<NcTextField
-						v-model="memberSearch"
-						:label="t('projektwerk', 'Person suchen')"
-						@update:modelValue="searchPeople" />
-					<select v-model="newMemberRole" :aria-label="t('projektwerk', 'Rolle')">
-						<option value="internal">
-							{{ t('projektwerk', 'Intern') }}
-						</option>
-						<option value="external">
-							{{ t('projektwerk', 'Kundenseite') }}
-						</option>
-					</select>
-					<NcButton :disabled="busy || newMember === ''" @click="addMemberToBoard">
-						{{ t('projektwerk', 'Hinzufügen') }}
-					</NcButton>
-				</div>
+						<NcTextField
+							v-model="memberSearch"
+							:label="t('projektwerk', 'Person suchen')"
+							@update:modelValue="searchPeople" />
+						<select v-model="newMemberRole" :aria-label="t('projektwerk', 'Rolle')">
+							<option value="internal">
+								{{ t('projektwerk', 'Intern') }}
+							</option>
+							<option value="external">
+								{{ t('projektwerk', 'Kundenseite') }}
+							</option>
+						</select>
+						<NcButton :disabled="busy || newMember === ''" @click="addMemberToBoard">
+							{{ t('projektwerk', 'Hinzufügen') }}
+						</NcButton>
+					</div>
 
-				<div v-if="candidates.length > 0" class="pw-settings__hits">
-					<button
-						v-for="person in candidates"
-						:key="person.userId"
-						type="button"
-						class="pw-settings__hit"
-						:aria-pressed="newMember === person.userId"
-						@click="newMember = person.userId">
-						<!--
+					<div v-if="candidates.length > 0" class="pw-settings__hits">
+						<button
+							v-for="person in candidates"
+							:key="person.userId"
+							type="button"
+							class="pw-settings__hit"
+							:aria-pressed="newMember === person.userId"
+							@click="newMember = person.userId">
+							<!--
 							Name UND Kennung: Zwei Konten mit gleichem
 							Anzeigenamen waeren sonst nicht unterscheidbar.
 						-->
-						<span class="pw-person__name">{{ person.displayName }}</span>
-						<span class="pw-person__org" :title="person.userId">{{ person.userId }}</span>
-					</button>
-				</div>
-				<span v-else-if="memberSearch.trim() !== '' && !searching" class="pw-settings__hint">
-					{{ t('projektwerk', 'Keine passenden Konten gefunden.') }}
-				</span>
-				<span class="pw-settings__hint">
-					{{ t('projektwerk', 'Personenweise, keine Gruppen — die Rolle hängt an der Mitgliedschaft, nicht am Nextcloud-Konto.') }}
-				</span>
-				<!--
+							<span class="pw-person__name">{{ person.displayName }}</span>
+							<span class="pw-person__org" :title="person.userId">{{ person.userId }}</span>
+						</button>
+					</div>
+					<span v-else-if="memberSearch.trim() !== '' && !searching" class="pw-settings__hint">
+						{{ t('projektwerk', 'Keine passenden Konten gefunden.') }}
+					</span>
+					<span class="pw-settings__hint">
+						{{ t('projektwerk', 'Personenweise, keine Gruppen — die Rolle hängt an der Mitgliedschaft, nicht am Nextcloud-Konto.') }}
+					</span>
+					<!--
 					Die Suche findet nur bestehende Konten. Ohne diesen Satz
 					sucht jemand eine Kundin, die es in Nextcloud noch gar nicht
 					gibt, bekommt „Keine passenden Konten gefunden." und raet,
@@ -391,24 +422,25 @@
 					haengt an keiner anderen App —, aber sie kann sagen, wo sie
 					herkommen (#74).
 				-->
-				<span class="pw-settings__hint">
-					{{ t('projektwerk', 'Gefunden werden nur bestehende Nextcloud-Konten. Wer noch keines hat — etwa auf Kundenseite — braucht zuerst eines: Die Administration legt es an, als Gastzugang oder als Vollkonto.') }}
-				</span>
-			</section>
+					<span class="pw-settings__hint">
+						{{ t('projektwerk', 'Gefunden werden nur bestehende Nextcloud-Konten. Wer noch keines hat — etwa auf Kundenseite — braucht zuerst eines: Die Administration legt es an, als Gastzugang oder als Vollkonto.') }}
+					</span>
+				</section>
 
-			<section class="pw-settings__block">
-				<h3 class="pw-col__head">
-					{{ t('projektwerk', 'Archiv') }}
-				</h3>
-				<span class="pw-settings__hint">
-					{{ t('projektwerk', 'Ein archiviertes Projekt bleibt lesbar und verschwindet aus der Projektliste.') }}
-				</span>
-				<div class="pw-viscontrol__actions">
-					<NcButton :disabled="busy" @click="toggleArchived">
-						{{ store.board?.archived ? t('projektwerk', 'Aus dem Archiv holen') : t('projektwerk', 'Archivieren') }}
-					</NcButton>
-				</div>
-			</section>
+				<section v-show="activeSection === 'archiv'" class="pw-settings__block">
+					<h3 class="pw-col__head">
+						{{ t('projektwerk', 'Archiv') }}
+					</h3>
+					<span class="pw-settings__hint">
+						{{ t('projektwerk', 'Ein archiviertes Projekt bleibt lesbar und verschwindet aus der Projektliste.') }}
+					</span>
+					<div class="pw-viscontrol__actions">
+						<NcButton :disabled="busy" @click="toggleArchived">
+							{{ store.board?.archived ? t('projektwerk', 'Aus dem Archiv holen') : t('projektwerk', 'Archivieren') }}
+						</NcButton>
+					</div>
+				</section>
+			</div>
 		</div>
 
 		<!--
@@ -604,6 +636,8 @@ export default defineComponent({
 			folderDrafts: { public: '', internal: '' } as Record<'public' | 'internal', string>,
 			// Der Ordner-Wähler (#139) und für welchen der beiden Slots er offen ist.
 			picker: { open: false, slot: 'public' as 'public' | 'internal', start: '' },
+			// Der aktive Bereich der linken Navigation (#196 Teil 2).
+			activeSection: 'projekt',
 		}
 	},
 
@@ -615,6 +649,21 @@ export default defineComponent({
 		/** §8: Pflegen darf nur ein internes Mitglied mit Verwaltungsrecht. */
 		mayManage(): boolean {
 			return this.store.viewer?.isManager === true
+		},
+
+		/**
+		 * Die Bereiche der linken Navigation (#196 Teil 2) — wie in „Meine
+		 * Einstellungen". „GitHub" ist ein Eigenname und bleibt unübersetzt.
+		 */
+		sections(): { key: string, label: string }[] {
+			return [
+				{ key: 'projekt', label: t('projektwerk', 'Projekt') },
+				{ key: 'github', label: 'GitHub' },
+				{ key: 'dateiablage', label: t('projektwerk', 'Dateiablage') },
+				{ key: 'spalten', label: t('projektwerk', 'Spalten') },
+				{ key: 'mitglieder', label: t('projektwerk', 'Mitglieder') },
+				{ key: 'archiv', label: t('projektwerk', 'Archiv') },
+			]
 		},
 
 		/**
