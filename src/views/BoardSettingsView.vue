@@ -83,13 +83,39 @@
 
 				<div v-if="board.githubEnabled" class="pw-field">
 					<label for="pw-set-ghrepo">{{ t('projektwerk', 'Ziel-Repository') }}</label>
+					<!--
+						Tippen sucht in den Repos, auf die der eigene Token
+						Zugriff hat (#196) — die Treffer darunter zum Auswählen.
+						Das Feld bleibt zugleich der Wert: Wer den Namen kennt oder
+						keinen Token hinterlegt hat, tippt „owner/repo" von Hand.
+					-->
 					<NcTextField
 						id="pw-set-ghrepo"
 						v-model="board.githubRepo"
 						:label="t('projektwerk', 'Ziel-Repository')"
-						placeholder="owner/repo" />
+						placeholder="owner/repo"
+						@update:modelValue="repoSuchen" />
+
+					<div v-if="repoHits.length > 0" class="pw-settings__hits">
+						<button
+							v-for="repo in repoHits"
+							:key="repo"
+							type="button"
+							class="pw-settings__hit"
+							:aria-pressed="board.githubRepo === repo"
+							@click="repoWaehlen(repo)">
+							<span class="pw-person__name">{{ repo }}</span>
+						</button>
+					</div>
+					<span v-if="repoSuchtLaeuft" class="pw-settings__hint">
+						{{ t('projektwerk', 'Suche läuft…') }}
+					</span>
+					<span v-else-if="repoSuchFehler !== ''" class="pw-settings__hint">
+						{{ repoSuchFehler }}
+					</span>
+
 					<span class="pw-settings__hint">
-						{{ t('projektwerk', 'Im Format „owner/repo“, z. B. „cpcMomentum/projektwerk“. Leer lassen lässt die Überführung ausgeblendet, bis ein Ziel eingetragen ist.') }}
+						{{ t('projektwerk', 'Im Format „owner/repo“, z. B. „cpcMomentum/projektwerk“. Tippen sucht in Ihren GitHub-Repositorys — dazu muss ein Token in „Meine Einstellungen“ hinterlegt sein. Leer lassen lässt die Überführung ausgeblendet, bis ein Ziel eingetragen ist.') }}
 					</span>
 				</div>
 
@@ -497,6 +523,7 @@ import DeleteIcon from 'vue-material-design-icons/DeleteOutline.vue'
 import FolderIcon from 'vue-material-design-icons/Folder.vue'
 import LockIcon from 'vue-material-design-icons/Lock.vue'
 import FolderPicker from '@/components/FolderPicker.vue'
+import { searchGithubRepos } from '@/services/github'
 import {
 	addMember,
 	createColumn,
@@ -543,6 +570,14 @@ export default defineComponent({
 			searchTimer: null as ReturnType<typeof setTimeout> | null,
 			searchToken: 0,
 			newMemberRole: 'external' as MemberRole,
+			// Repo-Live-Suche (#196) — eigener Such-State, damit die
+			// Mitglieder-Suche darüber unberührt bleibt.
+			repoHits: [] as string[],
+			repoSuchtLaeuft: false,
+			/** Servermeldung, wenn die Suche scheitert (z. B. kein Token). */
+			repoSuchFehler: '',
+			repoSuchTimer: null as ReturnType<typeof setTimeout> | null,
+			repoSuchToken: 0,
 			/** Die Spalte, über deren Entfernen gerade zurückgefragt wird. */
 			removing: null as Column | null,
 			/** Pflichtangabe, deshalb ohne Vorbelegung. */
@@ -1074,6 +1109,60 @@ export default defineComponent({
 					}
 				}
 			}, 300)
+		},
+
+		/**
+		 * Repos suchen, während getippt wird (#196) — gedrosselt und rennfest,
+		 * wie die Personensuche darüber. Der Suchbegriff ist der aktuelle
+		 * Feldinhalt; scheitert die Suche (kein Token, GitHub-Fehler), bleibt das
+		 * Feld als Freitext bedienbar und die Meldung sagt, woran es liegt.
+		 */
+		repoSuchen() {
+			if (this.repoSuchTimer !== null) {
+				clearTimeout(this.repoSuchTimer)
+			}
+			this.repoSuchFehler = ''
+			this.repoSuchToken += 1
+
+			const begriff = this.board.githubRepo.trim()
+			if (begriff === '') {
+				this.repoHits = []
+				this.repoSuchtLaeuft = false
+
+				return
+			}
+
+			this.repoSuchtLaeuft = true
+			const token = this.repoSuchToken
+			this.repoSuchTimer = setTimeout(async () => {
+				try {
+					const { repos } = await searchGithubRepos(begriff)
+					if (token === this.repoSuchToken) {
+						// Den exakt schon eingetragenen Namen nicht noch einmal als
+						// Vorschlag anbieten.
+						this.repoHits = repos.filter((r) => r !== this.board.githubRepo)
+					}
+				} catch (e) {
+					if (token === this.repoSuchToken) {
+						this.repoHits = []
+						this.repoSuchFehler = (e as { message?: string }).message
+							?? t('projektwerk', 'Repositorys konnten nicht geladen werden')
+					}
+				} finally {
+					if (token === this.repoSuchToken) {
+						this.repoSuchtLaeuft = false
+					}
+				}
+			}, 300)
+		},
+
+		/**
+		 * @param repo Der gewählte Repo-Name „owner/repo".
+		 */
+		repoWaehlen(repo: string) {
+			this.board.githubRepo = repo
+			this.repoHits = []
+			this.repoSuchFehler = ''
 		},
 
 		addMemberToBoard() {

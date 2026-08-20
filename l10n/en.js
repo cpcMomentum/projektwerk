@@ -295,7 +295,6 @@ OC.L10N.register(
     "Überführung nach GitHub fehlgeschlagen" : "Transfer to GitHub failed",
     "GitHub-Anbindung für dieses Projekt" : "GitHub integration for this project",
     "Ziel-Repository" : "Target repository",
-    "Im Format „owner/repo“, z. B. „cpcMomentum/projektwerk“. Leer lassen lässt die Überführung ausgeblendet, bis ein Ziel eingetragen ist." : "In the format “owner/repo”, e.g. “cpcMomentum/projektwerk”. Leaving it empty keeps the transfer hidden until a target is entered.",
     "GitHub-Token" : "GitHub token",
     "Ein Token ist hinterlegt." : "A token is stored.",
     "Kein Token hinterlegt." : "No token stored.",
@@ -303,6 +302,9 @@ OC.L10N.register(
     "Der GitHub-Token-Status konnte nicht geladen werden" : "The GitHub token status could not be loaded",
     "Token konnte nicht gespeichert werden" : "Token could not be saved",
     "Token konnte nicht entfernt werden" : "Token could not be removed",
-    "Zum Überführen von Vorgängen nach GitHub. Empfohlen: ein fein abgestufter Token (fine-grained PAT) mit dem Recht „Issues: read and write“ auf die Ziel-Repositorys. Der Token wird verschlüsselt gespeichert und nie wieder angezeigt." : "For transferring items to GitHub. Recommended: a fine-grained token (PAT) with the “Issues: read and write” permission on the target repositories. The token is stored encrypted and never shown again."
+    "Zum Überführen von Vorgängen nach GitHub. Empfohlen: ein fein abgestufter Token (fine-grained PAT) mit dem Recht „Issues: read and write“ auf die Ziel-Repositorys. Der Token wird verschlüsselt gespeichert und nie wieder angezeigt." : "For transferring items to GitHub. Recommended: a fine-grained token (PAT) with the “Issues: read and write” permission on the target repositories. The token is stored encrypted and never shown again.",
+    "Suche läuft…" : "Searching…",
+    "Im Format „owner/repo“, z. B. „cpcMomentum/projektwerk“. Tippen sucht in Ihren GitHub-Repositorys — dazu muss ein Token in „Meine Einstellungen“ hinterlegt sein. Leer lassen lässt die Überführung ausgeblendet, bis ein Ziel eingetragen ist." : "In the format “owner/repo”, e.g. “cpcMomentum/projektwerk”. Typing searches your GitHub repositories — this requires a token stored in “My settings”. Leaving it empty keeps the transfer hidden until a target is entered.",
+    "Repositorys konnten nicht geladen werden" : "Repositories could not be loaded"
 },
 "nplurals=2; plural=(n != 1);");
