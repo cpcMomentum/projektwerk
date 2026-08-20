@@ -111,15 +111,22 @@ class CommentService {
 		// Außenstehenden sonst und verriete ihm die Existenz des Vorgangs. Eigener
 		// Anlass, deshalb nicht von der Kommentar-Drossel betroffen: Eine direkte
 		// Erwähnung soll ankommen.
-		$sichtbar = $this->steps->assignableFor($viewer, $ticketId);
+		//
+		// `assignableFor()` laedt Mitgliederliste und Ticket erneut — das lohnt
+		// sich nur, wenn ueberhaupt eine Erwaehnung im Text steht. Der weit
+		// haeufigere Kommentar ohne `@` bekommt so keine zusaetzliche Abfrage.
+		$erwaehnte = $this->mentionsAus($text);
 		$erwaehnt = [];
-		foreach (array_intersect($this->mentionsAus($text), $sichtbar) as $uid) {
-			$erwaehnt = [...$erwaehnt, ...$this->notifications->announce(
-				$ticket,
-				$uid,
-				$viewer->userId,
-				MailOutbox::EVENT_COMMENT_MENTION,
-			)];
+		if ($erwaehnte !== []) {
+			$sichtbar = $this->steps->assignableFor($viewer, $ticketId);
+			foreach (array_intersect($erwaehnte, $sichtbar) as $uid) {
+				$erwaehnt = [...$erwaehnt, ...$this->notifications->announce(
+					$ticket,
+					$uid,
+					$viewer->userId,
+					MailOutbox::EVENT_COMMENT_MENTION,
+				)];
+			}
 		}
 		$this->notifications->deliver($erwaehnt, $ticket);
 
