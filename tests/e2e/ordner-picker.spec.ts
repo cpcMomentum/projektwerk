@@ -35,6 +35,9 @@ test('legt über den Wähler einen Ordner an und übernimmt ihn in die Dateiabla
 
 	await page.goto(APP_PFAD + '#/boards/' + projekt.boardId + '/settings')
 
+	// Die Dateiablage liegt seit #196 Teil 2 hinter ihrem eigenen Nav-Punkt.
+	await page.getByRole('button', { name: 'Dateiablage' }).click()
+
 	// Der erste „Ordner wählen"-Knopf gehört zum Austausch-Ordner.
 	await page.getByRole('button', { name: 'Ordner wählen' }).first().click()
 
