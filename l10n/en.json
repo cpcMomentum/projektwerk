@@ -342,7 +342,8 @@
 		"Ihnen wurde ein Arbeitsschritt im Vorgang #%1$s „%2$s“ zugewiesen.": "A work step in ticket #%1$s “%2$s” has been assigned to you.",
 		"Es gibt einen neuen Kommentar zum Vorgang #%1$s „%2$s“.": "There is a new comment on ticket #%1$s “%2$s”.",
 		"Der Vorgang #%1$s „%2$s“ wurde geschlossen.": "Ticket #%1$s “%2$s” has been closed.",
-		"Im Projekt ist der neue Vorgang #%1$s „%2$s“ entstanden.": "A new ticket #%1$s “%2$s” has been created in the project."
+		"Im Projekt ist der neue Vorgang #%1$s „%2$s“ entstanden.": "A new ticket #%1$s “%2$s” has been created in the project.",
+		"Dateien": "Files"
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }

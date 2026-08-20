@@ -28,18 +28,10 @@
 				Teil 2): dieselben `pw-subnav`/`pw-settingspage`-Klassen, damit
 				beide Einstellungsseiten gleich aussehen.
 			-->
-			<nav class="pw-subnav" :aria-label="t('projektwerk', 'Bereiche')">
-				<button
-					v-for="s in sections"
-					:key="s.key"
-					type="button"
-					class="pw-subnav__item"
-					:class="{ 'pw-subnav__item--active': activeSection === s.key }"
-					:aria-current="activeSection === s.key ? 'page' : undefined"
-					@click="activeSection = s.key">
-					{{ s.label }}
-				</button>
-			</nav>
+			<PwSettingsNav
+				:sections="sections"
+				:modelValue="activeSection"
+				@update:modelValue="activeSection = $event" />
 
 			<div class="pw-settingspage__content pw-settings">
 				<section v-show="activeSection === 'projekt'" class="pw-settings__block">
@@ -563,6 +555,7 @@ import DeleteIcon from 'vue-material-design-icons/DeleteOutline.vue'
 import FolderIcon from 'vue-material-design-icons/Folder.vue'
 import LockIcon from 'vue-material-design-icons/Lock.vue'
 import FolderPicker from '@/components/FolderPicker.vue'
+import PwSettingsNav from '@/components/PwSettingsNav.vue'
 import { searchGithubRepos } from '@/services/github'
 import {
 	addMember,
@@ -591,7 +584,7 @@ import { useBoardStore } from '@/stores/boardStore'
 export default defineComponent({
 	name: 'BoardSettingsView',
 
-	components: { ArrowDownIcon, ArrowUpIcon, DeleteIcon, FolderIcon, FolderPicker, LockIcon, NcAvatar, NcButton, NcDialog, NcEmptyContent, NcTextField },
+	components: { ArrowDownIcon, ArrowUpIcon, DeleteIcon, FolderIcon, FolderPicker, LockIcon, NcAvatar, NcButton, NcDialog, NcEmptyContent, NcTextField, PwSettingsNav },
 
 	setup() {
 		return { store: useBoardStore() }
