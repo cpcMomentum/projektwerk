@@ -15,6 +15,7 @@ use OCA\Projektwerk\Service\GithubTransferException;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
+use OCP\AppFramework\Http\Attribute\UserRateLimit;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\IRequest;
 
@@ -98,6 +99,7 @@ class GithubTokenController extends Controller {
 	 * @param string $search Tippsuche; leer liefert die erste Handvoll Repos.
 	 */
 	#[NoAdminRequired]
+	#[UserRateLimit(limit: 30, period: 60)]
 	public function repos(string $search = ''): JSONResponse {
 		if ($this->userId === null) {
 			return new JSONResponse([], Http::STATUS_UNAUTHORIZED);
