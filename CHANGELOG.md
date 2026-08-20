@@ -6,6 +6,35 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.4.7] - 2026-08-20
+
+### Added
+
+- **GitHub-Überführung** (#12). Ein Vorgang lässt sich als GitHub-Issue anlegen („Nach GitHub
+  überführen"); Nummer und Link bleiben am Vorgang. Der persönliche GitHub-Token wird verschlüsselt
+  in „Meine Einstellungen" hinterlegt, das Ziel-Repository je Projekt in den Projekteinstellungen —
+  dort per **Live-Suche** aus den zugänglichen Repositorys. Einseitig, kein Inhalts- oder
+  Kommentar-Sync.
+- **@-Erwähnungen in Kommentaren** (#202). Wer in einem Kommentar erwähnt wird, wird benachrichtigt
+  — auch ohne vorherige Beteiligung, aber nur, wenn er den Vorgang sehen darf. Eigener, getrennt
+  schaltbarer Anlass „Erwähnung" in „Meine Einstellungen".
+- **Arbeitsschritte löschen** (#203). Ein Arbeitsschritt lässt sich über einen Papierkorb mit
+  kurzer Rückfrage entfernen.
+- **Anhänge ziehen mit der Sichtbarkeit um** (#185, #184). Beim Sichtbarkeitswechsel wandern die
+  Anhänge in den passenden Ordner mit, statt den Wechsel zu blockieren; „Nur ich"-Vorgänge bekommen
+  Anhänge im persönlichen Files-Bereich, dessen Ordner sich in „Meine Einstellungen" wählen lässt (#191).
+
+### Changed
+
+- **Einstellungsseiten mit linker Bereichs-Navigation** (#195, #196). „Meine Einstellungen" und die
+  Projekteinstellungen sind in Bereiche gegliedert (gemeinsames Bauteil), statt alles in einer
+  langen Spalte zu stapeln.
+- **Benachrichtigungs-Mails aufgewertet** (#189). NC-gestyltes HTML mit Überschrift, Kontext und
+  „Zum Vorgang"-Knopf; in der Empfängerzeile steht der Anzeigename statt der rohen Kennung.
+- **Bearbeit-Ergonomie im Vorgang** (#200). Der Titel öffnet mit einem Klick; der
+  Beschreibungs-Editor ist größer, setzt den Cursor ans Textende und scrollt ans untere Ende; der
+  Stift steht rechts neben dem Text.
+
 ## [0.4.6] - 2026-08-18
 
 ### Added
