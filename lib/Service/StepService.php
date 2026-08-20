@@ -131,6 +131,23 @@ class StepService {
 	}
 
 	/**
+	 * Einen Arbeitsschritt löschen (#203).
+	 *
+	 * Wie beim Ändern trägt die **Sichtbarkeit des Vorgangs** die Berechtigung:
+	 * `findVisibleStep()` wirft, wenn der Betrachter den Vorgang nicht sehen
+	 * darf — dann gibt es den Schritt für ihn nicht. Kein Autor-Check wie beim
+	 * Kommentar: Ein Arbeitsschritt ist ein Werkzeug des Vorgangs, keine Äußerung
+	 * einer Person. Hart gelöscht; einen Papierkorb gibt es nicht.
+	 *
+	 * @throws \OCP\AppFramework\Db\DoesNotExistException Schritt (bzw. Vorgang) nicht sichtbar
+	 */
+	public function delete(ViewerContext $viewer, int $stepId): Step {
+		$step = $this->findVisibleStep($viewer, $stepId);
+
+		return $this->steps->delete($step);
+	}
+
+	/**
 	 * Die Zuweisung eines Schritts ankuendigen — **nach** dem Schreiben.
 	 *
 	 * Steht als eigene Methode da, weil `create()` und `update()` sie beide

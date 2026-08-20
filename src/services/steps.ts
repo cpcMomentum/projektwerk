@@ -11,7 +11,7 @@
 
 import type { Step } from '@/types/ticket'
 
-import { apiGet, apiPatch, apiPost } from '@/services/api'
+import { apiDelete, apiGet, apiPatch, apiPost } from '@/services/api'
 
 /**
  * Wem an diesem Ticket ein Schritt gegeben werden darf.
@@ -86,4 +86,14 @@ export async function updateStep(boardId: number, stepId: number, changes: {
 	done?: boolean
 }): Promise<Step> {
 	return apiPatch<Step, typeof changes>(`/boards/${boardId}/steps/${stepId}`, changes)
+}
+
+/**
+ * Einen Arbeitsschritt löschen (#203) — hart, ohne Papierkorb.
+ *
+ * @param boardId Kennung des Projekts.
+ * @param stepId Kennung des Arbeitsschritts.
+ */
+export async function deleteStep(boardId: number, stepId: number): Promise<Step> {
+	return apiDelete<Step>(`/boards/${boardId}/steps/${stepId}`)
 }

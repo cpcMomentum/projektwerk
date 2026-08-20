@@ -334,7 +334,9 @@
 		"Zum Überführen von Vorgängen nach GitHub. Empfohlen: ein fein abgestufter Token (fine-grained PAT) mit dem Recht „Issues: read and write“ auf die Ziel-Repositorys. Der Token wird verschlüsselt gespeichert und nie wieder angezeigt.": "For transferring items to GitHub. Recommended: a fine-grained token (PAT) with the “Issues: read and write” permission on the target repositories. The token is stored encrypted and never shown again.",
 		"Suche läuft…": "Searching…",
 		"Im Format „owner/repo“, z. B. „cpcMomentum/projektwerk“. Tippen sucht in Ihren GitHub-Repositorys — dazu muss ein Token in „Meine Einstellungen“ hinterlegt sein. Leer lassen lässt die Überführung ausgeblendet, bis ein Ziel eingetragen ist.": "In the format “owner/repo”, e.g. “cpcMomentum/projektwerk”. Typing searches your GitHub repositories — this requires a token stored in “My settings”. Leaving it empty keeps the transfer hidden until a target is entered.",
-		"Repositorys konnten nicht geladen werden": "Repositories could not be loaded"
+		"Repositorys konnten nicht geladen werden": "Repositories could not be loaded",
+		"Arbeitsschritt entfernen?": "Remove work step?",
+		"Arbeitsschritt löschen: {title}": "Delete work step: {title}"
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }
