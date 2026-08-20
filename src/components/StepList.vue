@@ -342,6 +342,7 @@ export default defineComponent({
 				this.newAssignee = null
 				this.newDueDate = null
 				this.editing = null
+				this.removing = null
 			},
 		},
 

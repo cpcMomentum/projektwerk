@@ -1429,6 +1429,11 @@
 	font-weight: 400;
 }
 
+.app-projektwerk .pw-step__confirm {
+	font-size: 13px;
+	color: var(--color-text-maxcontrast);
+}
+
 /*
  * Beim Bearbeiten teilen sich Personenauswahl und Datum die Zeile. Die Auswahl
  * schrumpft, das Datum nicht: Ihm Breite zu nehmen entfernt keine Zeichen,
