@@ -53,6 +53,11 @@ class CommentService {
 		private CommentMapper $comments,
 		private TicketMapper $tickets,
 		private NotificationService $notifications,
+		// **Für die Erwähnungen** (#202): `assignableFor()` ist die eine Stelle,
+		// die „wer darf diesen Vorgang sehen" beantwortet. Eine zweite Fassung
+		// derselben Regel hier wäre genau der zweite Ort, an dem sie stimmen
+		// müsste — und der, der irgendwann nicht mehr stimmt.
+		private StepService $steps,
 	) {
 	}
 
@@ -98,14 +103,17 @@ class CommentService {
 		$this->notifications->deliver($vorgemerkt, $ticket);
 
 		// **@-Erwähnungen** (#202): Wer im Text ausdrücklich genannt wird, wird
-		// gepingt — auch wenn er nicht beteiligt ist. **Die Sichtbarkeit trägt
-		// `announce()`, nicht diese Stelle:** Eine Erwähnung einer Person, die
-		// den Vorgang nicht sehen darf, erzeugt schlicht nichts — ein
-		// `@fremde-kennung` verrät nichts und pingt niemanden. Eigener Anlass,
-		// deshalb nicht von der Drossel des allgemeinen Kommentar-Rundrufs
-		// betroffen: Eine direkte Erwähnung soll ankommen.
+		// gepingt — auch wenn er nicht beteiligt ist. Aber **nur, wer den Vorgang
+		// sehen darf:** Die genannten Kennungen werden gegen die sichtbare Menge
+		// geschnitten, bevor irgendetwas entsteht. `announce()` blockt zwar
+		// Privates und die eigene Handlung, prüft bei einem öffentlichen Vorgang
+		// aber nicht die Mitgliedschaft — ein `@fremde-kennung` erreichte einen
+		// Außenstehenden sonst und verriete ihm die Existenz des Vorgangs. Eigener
+		// Anlass, deshalb nicht von der Kommentar-Drossel betroffen: Eine direkte
+		// Erwähnung soll ankommen.
+		$sichtbar = $this->steps->assignableFor($viewer, $ticketId);
 		$erwaehnt = [];
-		foreach ($this->mentionsAus($text) as $uid) {
+		foreach (array_intersect($this->mentionsAus($text), $sichtbar) as $uid) {
 			$erwaehnt = [...$erwaehnt, ...$this->notifications->announce(
 				$ticket,
 				$uid,
