@@ -65,8 +65,8 @@
 					<!--
 						Der Titel ist bearbeitbar wie Beschreibung und Zuständige
 						(#169) — bis dahin die einzige Angabe im Detail, die nur
-						dastand. Stift oder Doppelklick öffnen das Feld; der Titel ist
-						Pflicht, ein leerer wird nicht gespeichert.
+						dastand. Stift oder Klick öffnen das Feld (#200); der Titel
+						ist Pflicht, ein leerer wird nicht gespeichert.
 					-->
 					<template v-if="!editingTitle">
 						<div class="pw-detail__titelzeile">
