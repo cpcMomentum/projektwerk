@@ -69,6 +69,15 @@ class NotifyPref extends Entity {
 	public const EVENT_COMMENT_ADDED = 'comment_added';
 
 	/**
+	 * Ich werde in einem Kommentar ausdruecklich erwaehnt (#202).
+	 *
+	 * Getrennt vom allgemeinen Kommentar-Anlass: Eine direkte @-Erwaehnung ist
+	 * gezielter als der Rundruf und darf einen auch dann erreichen, wenn man den
+	 * allgemeinen Kommentar-Anlass leiser gestellt hat.
+	 */
+	public const EVENT_COMMENT_MENTION = 'comment_mention';
+
+	/**
 	 * Ein Vorgang wurde geschlossen.
 	 *
 	 * Eine Nachricht pro Vorgangsleben und das Gegenstueck zum Rundruf —
@@ -103,6 +112,7 @@ class NotifyPref extends Entity {
 		self::EVENT_STEP_ASSIGNED,
 		self::EVENT_TICKET_CREATED,
 		self::EVENT_COMMENT_ADDED,
+		self::EVENT_COMMENT_MENTION,
 		self::EVENT_TICKET_CLOSED,
 	];
 

@@ -24,7 +24,7 @@ import { apiDelete, apiGet, apiPut } from '@/services/api'
 export type Channel = 'bell' | 'mail'
 
 /** Die fünf Anlässe — drei aus §21 der Produktbeschreibung, zwei aus #98. */
-export type NotifyEvent = 'ticket_assigned' | 'step_assigned' | 'ticket_created' | 'comment_added' | 'ticket_closed'
+export type NotifyEvent = 'ticket_assigned' | 'step_assigned' | 'ticket_created' | 'comment_added' | 'comment_mention' | 'ticket_closed'
 
 /** Was in einer Zeile der Tabelle steht — Anlass oder Kanal. */
 export type PrefKey = Channel | NotifyEvent

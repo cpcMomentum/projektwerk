@@ -314,6 +314,11 @@ OC.L10N.register(
     "Es gibt einen neuen Kommentar zum Vorgang #%1$s „%2$s“." : "There is a new comment on ticket #%1$s “%2$s”.",
     "Der Vorgang #%1$s „%2$s“ wurde geschlossen." : "Ticket #%1$s “%2$s” has been closed.",
     "Im Projekt ist der neue Vorgang #%1$s „%2$s“ entstanden." : "A new ticket #%1$s “%2$s” has been created in the project.",
-    "Dateien" : "Files"
+    "Dateien" : "Files",
+    "Erwähnung" : "Mention",
+    "Ich werde in einem Kommentar erwähnt" : "I am mentioned in a comment",
+    "Sie wurden erwähnt: #%1$s %2$s" : "You were mentioned: #%1$s %2$s",
+    "Sie wurden in Vorgang #%1$s erwähnt" : "You were mentioned in ticket #%1$s",
+    "Sie wurden in einem Kommentar zum Vorgang #%1$s „%2$s“ erwähnt." : "You were mentioned in a comment on ticket #%1$s “%2$s”."
 },
 "nplurals=2; plural=(n != 1);");

@@ -335,6 +335,11 @@ export default defineComponent({
 					lang: t('projektwerk', 'Jemand kommentiert einen Vorgang, an dem ich beteiligt bin'),
 				},
 				{
+					key: 'comment_mention',
+					label: t('projektwerk', 'Erwähnung'),
+					lang: t('projektwerk', 'Ich werde in einem Kommentar erwähnt'),
+				},
+				{
 					key: 'ticket_closed',
 					label: t('projektwerk', 'Abschluss'),
 					lang: t('projektwerk', 'Ein Vorgang, an dem ich beteiligt bin, wird geschlossen'),
