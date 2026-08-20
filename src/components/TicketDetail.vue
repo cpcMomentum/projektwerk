@@ -65,12 +65,17 @@
 					<!--
 						Der Titel ist bearbeitbar wie Beschreibung und Zuständige
 						(#169) — bis dahin die einzige Angabe im Detail, die nur
-						dastand. Stift oder Doppelklick öffnen das Feld; der Titel ist
-						Pflicht, ein leerer wird nicht gespeichert.
+						dastand. Stift oder Klick öffnen das Feld (#200); der Titel
+						ist Pflicht, ein leerer wird nicht gespeichert.
 					-->
 					<template v-if="!editingTitle">
 						<div class="pw-detail__titelzeile">
-							<h2 :id="titleId" class="pw-detail__title" @dblclick="startEditTitle">
+							<!--
+								Ein Klick genügt (#200). Anders als die Beschreibung
+								ist der Titel reiner Text — kein Markdown, keine Links,
+								keine Auswahl, die ein Klick zerstören könnte.
+							-->
+							<h2 :id="titleId" class="pw-detail__title" @click="startEditTitle">
 								{{ ticket.title }}
 							</h2>
 							<NcButton
@@ -202,36 +207,54 @@
 				-->
 				<div class="pw-beschreibung">
 					<template v-if="!editingText">
-						<div
-							ref="textbereich"
-							class="pw-beschreibung__text"
-							:class="{ 'pw-beschreibung__text--offen': textOffen }"
-							@dblclick="startEditText">
-							<NcRichText
+						<!--
+							Text und Stift in einer Zeile — der Stift rechts daneben
+							(#200), wie beim Titel ({@see pw-detail__titelzeile}),
+							statt darunter. Spart eine Zeile und ist konsistent.
+						-->
+						<div class="pw-beschreibung__zeile">
+							<div
+								ref="textbereich"
+								class="pw-beschreibung__text"
+								:class="{ 'pw-beschreibung__text--offen': textOffen }"
+								@dblclick="startEditText">
+								<NcRichText
+									v-if="ticket.description"
+									:text="ticket.description"
+									:useMarkdown="true"
+									:useExtendedMarkdown="true"
+									:interactive="false" />
+								<!--
+									Sprechender Leerzustand (§9) — und er bietet gleich
+									den Weg an, statt nur festzustellen, dass nichts da
+									ist.
+								-->
+								<NcButton v-else variant="tertiary" @click="startEditText">
+									<template #icon>
+										<PlusIcon :size="20" />
+									</template>
+									{{ t('projektwerk', 'Beschreibung hinzufügen') }}
+								</NcButton>
+								<!--
+									Der Verlauf verblasst nur, wenn wirklich etwas unter
+									dem Deckel liegt (#163). Sonst blendete er die letzte
+									Zeile eines vollstaendig sichtbaren Textes aus — es sah
+									abgeschnitten aus, obwohl der „Mehr anzeigen"-Knopf
+									(gleiche Bedingung) fehlte, weil nichts verborgen war.
+								-->
+								<span v-if="textZuHoch" class="pw-beschreibung__deckel" aria-hidden="true" />
+							</div>
+
+							<NcButton
 								v-if="ticket.description"
-								:text="ticket.description"
-								:useMarkdown="true"
-								:useExtendedMarkdown="true"
-								:interactive="false" />
-							<!--
-								Sprechender Leerzustand (§9) — und er bietet gleich
-								den Weg an, statt nur festzustellen, dass nichts da
-								ist.
-							-->
-							<NcButton v-else variant="tertiary" @click="startEditText">
+								variant="tertiary"
+								class="pw-beschreibung__stift"
+								:ariaLabel="t('projektwerk', 'Beschreibung bearbeiten')"
+								@click="startEditText">
 								<template #icon>
-									<PlusIcon :size="20" />
+									<PencilOutlineIcon :size="20" />
 								</template>
-								{{ t('projektwerk', 'Beschreibung hinzufügen') }}
 							</NcButton>
-							<!--
-								Der Verlauf verblasst nur, wenn wirklich etwas unter
-								dem Deckel liegt (#163). Sonst blendete er die letzte
-								Zeile eines vollstaendig sichtbaren Textes aus — es sah
-								abgeschnitten aus, obwohl der „Mehr anzeigen"-Knopf
-								(gleiche Bedingung) fehlte, weil nichts verborgen war.
-							-->
-							<span v-if="textZuHoch" class="pw-beschreibung__deckel" aria-hidden="true" />
 						</div>
 
 						<NcButton
@@ -245,24 +268,15 @@
 							</template>
 							{{ textOffen ? t('projektwerk', 'Weniger anzeigen') : t('projektwerk', 'Mehr anzeigen') }}
 						</NcButton>
-
-						<NcButton
-							v-if="ticket.description"
-							variant="tertiary"
-							class="pw-beschreibung__stift"
-							:ariaLabel="t('projektwerk', 'Beschreibung bearbeiten')"
-							@click="startEditText">
-							<template #icon>
-								<PencilOutlineIcon :size="20" />
-							</template>
-						</NcButton>
 					</template>
 
 					<div v-else class="pw-beschreibung__edit">
 						<NcTextArea
+							ref="texteditor"
 							v-model="textEntwurf"
 							:label="t('projektwerk', 'Beschreibung')"
 							:disabled="busy"
+							:rows="10"
 							resize="vertical"
 							@keydown.esc.stop="cancelEditText"
 							@keydown.enter.ctrl.exact="saveText"
@@ -810,6 +824,20 @@ export default defineComponent({
 		startEditText(): void {
 			this.textEntwurf = this.ticket?.description ?? ''
 			this.editingText = true
+
+			// **Cursor ans Ende, ans untere Ende gescrollt** (#200): Wer eine
+			// Beschreibung erweitert, will unten weiterschreiben — nicht erst
+			// oben landen und nach unten scrollen. Nach dem Rendern des Editors.
+			this.$nextTick(() => {
+				const wrapper = this.$refs.texteditor as { $el?: HTMLElement } | undefined
+				const feld = wrapper?.$el?.querySelector('textarea')
+				if (feld instanceof HTMLTextAreaElement) {
+					feld.focus()
+					const ende = feld.value.length
+					feld.setSelectionRange(ende, ende)
+					feld.scrollTop = feld.scrollHeight
+				}
+			})
 		},
 
 		cancelEditText(): void {
