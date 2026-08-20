@@ -24,66 +24,94 @@
 			</NcCheckboxRadioSwitch>
 
 			<div class="pw-step__rechts">
-				<template v-if="editing === step.id">
-					<label class="hidden-visually" :for="'pw-step-user-' + step.id">
-						{{ t('projektwerk', 'Zuständig') }}
-					</label>
-					<NcSelectUsers
-						class="pw-step__picker"
-						:options="options"
-						:modelValue="optionFor(step.assignedUserId)"
-						:inputId="'pw-step-user-' + step.id"
-						:labelOutside="true"
-						:disabled="busy"
-						:placeholder="t('projektwerk', 'Niemand')"
-						@update:modelValue="assign(step, $event)" />
-
-					<NcDateTimePicker
-						type="date"
-						class="pw-step__datum"
-						:modelValue="asDate(step.dueDate)"
-						:clearable="true"
-						:appendToBody="true"
-						:ariaLabel="t('projektwerk', 'Fälligkeit')"
-						:placeholder="t('projektwerk', 'Fälligkeit')"
-						:disabled="busy"
-						@update:modelValue="setDue(step, $event)" />
-
-					<NcButton variant="tertiary" :ariaLabel="t('projektwerk', 'Fertig')" @click="editing = null">
-						<template #icon>
-							<CheckIcon :size="20" />
-						</template>
+				<!--
+					**Löschen: leichte Rückfrage in der Zeile** (#203), wie beim
+					Kommentar. Hart gelöscht, keinen Papierkorb — deshalb kurz
+					nachgefragt, statt einen schweren Dialog aufzuziehen.
+				-->
+				<template v-if="removing === step.id">
+					<span class="pw-step__confirm">{{ t('projektwerk', 'Arbeitsschritt entfernen?') }}</span>
+					<NcButton :disabled="busy" @click="removeStep(step)">
+						{{ t('projektwerk', 'Löschen') }}
+					</NcButton>
+					<NcButton :disabled="busy" @click="removing = null">
+						{{ t('projektwerk', 'Abbrechen') }}
 					</NcButton>
 				</template>
 
-				<template v-else-if="step.assignedUserId || step.dueDate">
-					<span class="pw-step__info">
-						<NcAvatar
-							v-if="step.assignedUserId"
-							:user="step.assignedUserId"
-							:displayName="nameOf(step.assignedUserId)"
-							:size="24"
-							:disableMenu="true"
-							:hideStatus="true" />
-						{{ infoFor(step) }}
-					</span>
+				<template v-else>
+					<template v-if="editing === step.id">
+						<label class="hidden-visually" :for="'pw-step-user-' + step.id">
+							{{ t('projektwerk', 'Zuständig') }}
+						</label>
+						<NcSelectUsers
+							class="pw-step__picker"
+							:options="options"
+							:modelValue="optionFor(step.assignedUserId)"
+							:inputId="'pw-step-user-' + step.id"
+							:labelOutside="true"
+							:disabled="busy"
+							:placeholder="t('projektwerk', 'Niemand')"
+							@update:modelValue="assign(step, $event)" />
+
+						<NcDateTimePicker
+							type="date"
+							class="pw-step__datum"
+							:modelValue="asDate(step.dueDate)"
+							:clearable="true"
+							:appendToBody="true"
+							:ariaLabel="t('projektwerk', 'Fälligkeit')"
+							:placeholder="t('projektwerk', 'Fälligkeit')"
+							:disabled="busy"
+							@update:modelValue="setDue(step, $event)" />
+
+						<NcButton variant="tertiary" :ariaLabel="t('projektwerk', 'Fertig')" @click="editing = null">
+							<template #icon>
+								<CheckIcon :size="20" />
+							</template>
+						</NcButton>
+					</template>
+
+					<template v-else-if="step.assignedUserId || step.dueDate">
+						<span class="pw-step__info">
+							<NcAvatar
+								v-if="step.assignedUserId"
+								:user="step.assignedUserId"
+								:displayName="nameOf(step.assignedUserId)"
+								:size="24"
+								:disableMenu="true"
+								:hideStatus="true" />
+							{{ infoFor(step) }}
+						</span>
+						<NcButton
+							variant="tertiary"
+							:ariaLabel="t('projektwerk', 'Zuweisung und Fälligkeit ändern: {title}', { title: step.title })"
+							@click="editing = step.id">
+							<template #icon>
+								<PencilOutlineIcon :size="20" />
+							</template>
+						</NcButton>
+					</template>
+
 					<NcButton
+						v-else
 						variant="tertiary"
-						:ariaLabel="t('projektwerk', 'Zuweisung und Fälligkeit ändern: {title}', { title: step.title })"
+						class="pw-step__flach"
 						@click="editing = step.id">
+						{{ t('projektwerk', 'Zuweisen oder Frist setzen') }}
+					</NcButton>
+
+					<!-- Der Papierkorb — nicht während des Bearbeitens, sonst wird die Zeile eng. -->
+					<NcButton
+						v-if="editing !== step.id"
+						variant="tertiary"
+						:ariaLabel="t('projektwerk', 'Arbeitsschritt löschen: {title}', { title: step.title })"
+						@click="removing = step.id">
 						<template #icon>
-							<PencilOutlineIcon :size="20" />
+							<DeleteOutlineIcon :size="20" />
 						</template>
 					</NcButton>
 				</template>
-
-				<NcButton
-					v-else
-					variant="tertiary"
-					class="pw-step__flach"
-					@click="editing = step.id">
-					{{ t('projektwerk', 'Zuweisen oder Frist setzen') }}
-				</NcButton>
 			</div>
 		</div>
 
@@ -174,9 +202,10 @@ import NcDateTimePicker from '@nextcloud/vue/components/NcDateTimePicker'
 import NcSelectUsers from '@nextcloud/vue/components/NcSelectUsers'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
 import CheckIcon from 'vue-material-design-icons/Check.vue'
+import DeleteOutlineIcon from 'vue-material-design-icons/DeleteOutline.vue'
 import PencilOutlineIcon from 'vue-material-design-icons/PencilOutline.vue'
 import PlusIcon from 'vue-material-design-icons/Plus.vue'
-import { createStep, fetchAssignable, updateStep } from '@/services/steps'
+import { createStep, deleteStep, fetchAssignable, updateStep } from '@/services/steps'
 import { showError } from '@/services/toast'
 
 interface PersonOption {
@@ -223,7 +252,7 @@ function alsIsoTag(date: Date | null): string | null {
 export default defineComponent({
 	name: 'StepList',
 
-	components: { CheckIcon, NcAvatar, NcButton, NcCheckboxRadioSwitch, NcDateTimePicker, NcSelectUsers, NcTextField, PencilOutlineIcon, PlusIcon },
+	components: { CheckIcon, DeleteOutlineIcon, NcAvatar, NcButton, NcCheckboxRadioSwitch, NcDateTimePicker, NcSelectUsers, NcTextField, PencilOutlineIcon, PlusIcon },
 
 	props: {
 		boardId: { type: Number, required: true },
@@ -253,6 +282,8 @@ export default defineComponent({
 			 * Formularfeldern, die Variante C abgeraeumt hat.
 			 */
 			editing: null as number | null,
+			/** Der Schritt, dessen Löschen gerade zur Rückfrage offensteht (#203). */
+			removing: null as number | null,
 			/**
 			 * Wohin der Fokus nach dem Anlegen gehört.
 			 *
@@ -498,6 +529,21 @@ export default defineComponent({
 				() => updateStep(this.boardId, step.id, { done: !step.done }),
 				t('projektwerk', 'Ändern fehlgeschlagen'),
 			)
+		},
+
+		/**
+		 * Einen Arbeitsschritt löschen (#203) — nach der Rückfrage. Der Server
+		 * prüft die Sichtbarkeit; danach lädt der Vorgang neu (`changed`), der
+		 * Schritt ist weg.
+		 *
+		 * @param step Der zu löschende Arbeitsschritt.
+		 */
+		async removeStep(step: Step): Promise<void> {
+			await this.write(
+				() => deleteStep(this.boardId, step.id),
+				t('projektwerk', 'Löschen fehlgeschlagen'),
+			)
+			this.removing = null
 		},
 
 		/**

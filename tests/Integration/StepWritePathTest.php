@@ -14,6 +14,7 @@ use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Controller\StepController;
 use OCA\Projektwerk\Db\Step;
 use OCA\Projektwerk\Service\StepService;
+use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
 use OCP\IRequest;
 use OCP\Server;
@@ -208,6 +209,22 @@ class StepWritePathTest extends IntegrationTestCase {
 			null,
 			'12.06.2026',
 		);
+	}
+
+	/**
+	 * Ein Arbeitsschritt lässt sich löschen (#203) — hart, und danach ist er weg.
+	 */
+	public function testAStepCanBeDeleted(): void {
+		$viewer = $this->owner();
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+		$step = $this->steps->create($viewer, $ticketId, 'Wegwerf-Schritt');
+
+		$geloescht = $this->steps->delete($viewer, (int)$step->getId());
+		$this->assertSame('Wegwerf-Schritt', $geloescht->getTitle());
+
+		// Danach gibt es ihn nicht mehr: der nächste Zugriff wirft.
+		$this->expectException(DoesNotExistException::class);
+		$this->steps->update($viewer, (int)$step->getId(), ['title' => 'geht nicht mehr']);
 	}
 
 	private function owner(): ViewerContext {

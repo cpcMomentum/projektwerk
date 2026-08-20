@@ -62,6 +62,7 @@ return [
 		['name' => 'step#assignableForNew', 'url' => '/api/v1/boards/{boardId}/assignable-new', 'verb' => 'GET'],
 		['name' => 'step#create', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/steps', 'verb' => 'POST'],
 		['name' => 'step#update', 'url' => '/api/v1/boards/{boardId}/steps/{stepId}', 'verb' => 'PATCH'],
+		['name' => 'step#destroy', 'url' => '/api/v1/boards/{boardId}/steps/{stepId}', 'verb' => 'DELETE'],
 
 		// Kommentare. Wie die Arbeitsschritte nur Schreibwege — gelesen werden
 		// sie ueber ticket#show aus der gefilterten Ticketmenge. Sie haben keine
