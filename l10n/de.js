@@ -307,6 +307,12 @@ OC.L10N.register(
     "Im Format „owner/repo“, z. B. „cpcMomentum/projektwerk“. Tippen sucht in Ihren GitHub-Repositorys — dazu muss ein Token in „Meine Einstellungen“ hinterlegt sein. Leer lassen lässt die Überführung ausgeblendet, bis ein Ziel eingetragen ist." : "Im Format „owner/repo“, z. B. „cpcMomentum/projektwerk“. Tippen sucht in Ihren GitHub-Repositorys — dazu muss ein Token in „Meine Einstellungen“ hinterlegt sein. Leer lassen lässt die Überführung ausgeblendet, bis ein Ziel eingetragen ist.",
     "Repositorys konnten nicht geladen werden" : "Repositorys konnten nicht geladen werden",
     "Arbeitsschritt entfernen?" : "Arbeitsschritt entfernen?",
-    "Arbeitsschritt löschen: {title}" : "Arbeitsschritt löschen: {title}"
+    "Arbeitsschritt löschen: {title}" : "Arbeitsschritt löschen: {title}",
+    "Zum Vorgang" : "Zum Vorgang",
+    "Ihnen wurde der Vorgang #%1$s „%2$s“ zugewiesen." : "Ihnen wurde der Vorgang #%1$s „%2$s“ zugewiesen.",
+    "Ihnen wurde ein Arbeitsschritt im Vorgang #%1$s „%2$s“ zugewiesen." : "Ihnen wurde ein Arbeitsschritt im Vorgang #%1$s „%2$s“ zugewiesen.",
+    "Es gibt einen neuen Kommentar zum Vorgang #%1$s „%2$s“." : "Es gibt einen neuen Kommentar zum Vorgang #%1$s „%2$s“.",
+    "Der Vorgang #%1$s „%2$s“ wurde geschlossen." : "Der Vorgang #%1$s „%2$s“ wurde geschlossen.",
+    "Im Projekt ist der neue Vorgang #%1$s „%2$s“ entstanden." : "Im Projekt ist der neue Vorgang #%1$s „%2$s“ entstanden."
 },
 "nplurals=2; plural=(n != 1);");
