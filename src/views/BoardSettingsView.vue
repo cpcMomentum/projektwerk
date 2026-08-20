@@ -89,12 +89,20 @@
 						Das Feld bleibt zugleich der Wert: Wer den Namen kennt oder
 						keinen Token hinterlegt hat, tippt „owner/repo" von Hand.
 					-->
-					<NcTextField
-						id="pw-set-ghrepo"
-						v-model="board.githubRepo"
-						:label="t('projektwerk', 'Ziel-Repository')"
-						placeholder="owner/repo"
-						@update:modelValue="repoSuchen" />
+					<!--
+						`@focusin` (nicht `@focus`) am Wrapper: Der Fokus liegt am
+						inneren Input von NcTextField; `focusin` bubbelt zuverlässig
+						hoch, `focus` nicht. Beim Reinklicken erscheinen so gleich
+						die ersten Repos — ohne dass man erst tippen muss (#196).
+					-->
+					<div @focusin="repoFokus">
+						<NcTextField
+							id="pw-set-ghrepo"
+							v-model="board.githubRepo"
+							:label="t('projektwerk', 'Ziel-Repository')"
+							placeholder="owner/repo"
+							@update:modelValue="repoSuchen" />
+					</div>
 
 					<div v-if="repoHits.length > 0" class="pw-settings__hits">
 						<button
@@ -1113,28 +1121,45 @@ export default defineComponent({
 
 		/**
 		 * Repos suchen, während getippt wird (#196) — gedrosselt und rennfest,
-		 * wie die Personensuche darüber. Der Suchbegriff ist der aktuelle
-		 * Feldinhalt; scheitert die Suche (kein Token, GitHub-Fehler), bleibt das
-		 * Feld als Freitext bedienbar und die Meldung sagt, woran es liegt.
+		 * wie die Personensuche darüber. Ein **leerer** Feldinhalt liefert die
+		 * ersten Repos (Dropdown-Gefühl), statt die Liste zu leeren.
 		 */
 		repoSuchen() {
+			this.repoFetch(this.board.githubRepo.trim(), false)
+		},
+
+		/**
+		 * Beim Reinklicken/Fokussieren gleich die ersten Repos zeigen (#196) —
+		 * nur wenn noch keine Treffer stehen, damit ein zweiter Klick nichts
+		 * neu lädt. Sofort, ohne die Tipp-Drosselung.
+		 */
+		repoFokus() {
+			// Leerer Begriff = die ersten Repos zum Browsen; Tippen filtert
+			// danach. Sonst würde ein bereits eingetragener voller Name sofort
+			// „keine Treffer" zeigen.
+			if (this.repoHits.length === 0 && !this.repoSuchtLaeuft) {
+				this.repoFetch('', true)
+			}
+		},
+
+		/**
+		 * Die eigentliche Suche. Scheitert sie (kein Token, GitHub-Fehler),
+		 * bleibt das Feld als Freitext bedienbar und die Meldung sagt, woran es
+		 * liegt.
+		 *
+		 * @param begriff Suchbegriff; leer liefert die ersten Repos.
+		 * @param sofort Ohne Drosselung laden (beim Fokus), sonst mit 300 ms.
+		 */
+		repoFetch(begriff: string, sofort: boolean) {
 			if (this.repoSuchTimer !== null) {
 				clearTimeout(this.repoSuchTimer)
 			}
 			this.repoSuchFehler = ''
 			this.repoSuchToken += 1
-
-			const begriff = this.board.githubRepo.trim()
-			if (begriff === '') {
-				this.repoHits = []
-				this.repoSuchtLaeuft = false
-
-				return
-			}
-
 			this.repoSuchtLaeuft = true
 			const token = this.repoSuchToken
-			this.repoSuchTimer = setTimeout(async () => {
+
+			const laden = async () => {
 				try {
 					const { repos } = await searchGithubRepos(begriff)
 					if (token === this.repoSuchToken) {
@@ -1153,7 +1178,13 @@ export default defineComponent({
 						this.repoSuchtLaeuft = false
 					}
 				}
-			}, 300)
+			}
+
+			if (sofort) {
+				laden()
+			} else {
+				this.repoSuchTimer = setTimeout(laden, 300)
+			}
 		},
 
 		/**
