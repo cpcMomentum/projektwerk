@@ -164,9 +164,10 @@ class MailDispatcher {
 	 *
 	 * @param MailOutbox $zeile Was {@see queue()} vorgemerkt hat.
 	 * @param string $betreff Fertiger Betreff in der Sprache der Zeile.
-	 * @param string $text Fertiger Textkörper.
+	 * @param string $einleitung Fertiger Einleitungssatz für den Rumpf.
+	 * @param string $link Deep-Link zum Vorgang; leer heißt: kein „Zum Vorgang"-Knopf.
 	 */
-	public function flush(MailOutbox $zeile, string $betreff, string $text): MailOutbox {
+	public function flush(MailOutbox $zeile, string $betreff, string $einleitung, string $link = ''): MailOutbox {
 		$adresse = $this->adresseVon((string)$zeile->getRecipientUid());
 
 		if ($adresse === null) {
@@ -181,10 +182,26 @@ class MailDispatcher {
 
 		$zeile->setAttempts((int)$zeile->getAttempts() + 1);
 
+		// **NC-gestyltes HTML statt nacktem Text** (#189): dieselbe Optik wie
+		// jede andere Nextcloud-Mail, mit Überschrift, Satz und — sofern ein
+		// Link vorliegt — einem „Zum Vorgang"-Knopf. Das Template rendert Text
+		// **und** HTML; ein Client ohne HTML bekommt weiter eine lesbare Mail.
+		$template = $this->mailer->createEMailTemplate('projektwerk.notification');
+		$template->setSubject($betreff);
+		$template->addHeading($betreff);
+		$template->addBodyText($einleitung);
+		if ($link !== '') {
+			$l = $this->l10nFactory->get(Application::APP_ID, (string)$zeile->getLang());
+			$template->addBodyButton($l->t('Zum Vorgang'), $link);
+		}
+
 		$nachricht = $this->mailer->createMessage();
-		$nachricht->setTo([$adresse => (string)$zeile->getRecipientUid()]);
+		// **Der Anzeigename ist der Name der Person, nicht ihre Kennung** (#189).
+		// Gastkonten tragen als Kennung einen Hash; stünde der als Anzeigename in
+		// der An-Zeile, läse die Mail sich für den Empfänger wie Spam.
+		$nachricht->setTo($this->empfaenger($adresse, (string)$zeile->getRecipientUid()));
 		$nachricht->setSubject($betreff);
-		$nachricht->setPlainBody($text);
+		$nachricht->useTemplate($template);
 
 		try {
 			// **Hier steht die Auswertung, um die es geht.** `send()` wirft bei
@@ -223,6 +240,42 @@ class MailDispatcher {
 		$adresse = $this->users->get($userId)?->getEMailAddress();
 
 		return $adresse === null || trim($adresse) === '' ? null : $adresse;
+	}
+
+	/**
+	 * Der `setTo`-Wert: Adresse mit Anzeigenamen, oder — wenn es keinen
+	 * brauchbaren gibt — nur die Adresse.
+	 *
+	 * @param string $adresse Die E-Mail-Adresse.
+	 * @param string $userId Kennung der Person.
+	 *
+	 * @return array<string, string>|string[]
+	 */
+	private function empfaenger(string $adresse, string $userId): array {
+		$name = $this->nameVon($userId);
+
+		return $name === null ? [$adresse] : [$adresse => $name];
+	}
+
+	/**
+	 * Der Anzeigename einer Person, oder `null`.
+	 *
+	 * **Ein Hash ist kein Name** (#189): Gastkonten tragen als Kennung eine
+	 * lange Zeichenkette, und manche Backends geben genau die als Anzeigenamen
+	 * zurück. Ist der Name leer oder identisch mit der Kennung, gilt „keiner" —
+	 * dann steht in der An-Zeile nur die Adresse statt eines kryptischen Hashes.
+	 *
+	 * @param string $userId Kennung der Person.
+	 */
+	private function nameVon(string $userId): ?string {
+		$name = $this->users->get($userId)?->getDisplayName();
+		if ($name === null) {
+			return null;
+		}
+
+		$name = trim($name);
+
+		return ($name === '' || $name === $userId) ? null : $name;
 	}
 
 	/**

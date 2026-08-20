@@ -336,7 +336,13 @@
 		"Im Format „owner/repo“, z. B. „cpcMomentum/projektwerk“. Tippen sucht in Ihren GitHub-Repositorys — dazu muss ein Token in „Meine Einstellungen“ hinterlegt sein. Leer lassen lässt die Überführung ausgeblendet, bis ein Ziel eingetragen ist.": "In the format “owner/repo”, e.g. “cpcMomentum/projektwerk”. Typing searches your GitHub repositories — this requires a token stored in “My settings”. Leaving it empty keeps the transfer hidden until a target is entered.",
 		"Repositorys konnten nicht geladen werden": "Repositories could not be loaded",
 		"Arbeitsschritt entfernen?": "Remove work step?",
-		"Arbeitsschritt löschen: {title}": "Delete work step: {title}"
+		"Arbeitsschritt löschen: {title}": "Delete work step: {title}",
+		"Zum Vorgang": "Go to the ticket",
+		"Ihnen wurde der Vorgang #%1$s „%2$s“ zugewiesen.": "Ticket #%1$s “%2$s” has been assigned to you.",
+		"Ihnen wurde ein Arbeitsschritt im Vorgang #%1$s „%2$s“ zugewiesen.": "A work step in ticket #%1$s “%2$s” has been assigned to you.",
+		"Es gibt einen neuen Kommentar zum Vorgang #%1$s „%2$s“.": "There is a new comment on ticket #%1$s “%2$s”.",
+		"Der Vorgang #%1$s „%2$s“ wurde geschlossen.": "Ticket #%1$s “%2$s” has been closed.",
+		"Im Projekt ist der neue Vorgang #%1$s „%2$s“ entstanden.": "A new ticket #%1$s “%2$s” has been created in the project."
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }
