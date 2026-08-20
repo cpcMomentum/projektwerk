@@ -38,6 +38,24 @@ export function clearGithubToken(): Promise<GithubTokenStatus> {
 	return apiDelete<GithubTokenStatus>('/my/github-token')
 }
 
+export interface GithubRepoList {
+	/** `owner/repo`, gefiltert nach dem Suchbegriff, gedeckelt. */
+	repos: string[]
+}
+
+/**
+ * Die Repositorys suchen, auf die der eigene Token Zugriff hat (#196).
+ *
+ * Für die Live-Auswahl des Ziel-Repos. Braucht einen hinterlegten Token; ohne
+ * Token oder bei GitHub-Fehlern kommt eine Servermeldung, auf die das Frontend
+ * mit dem Freitext-Feld zurückfallen kann.
+ *
+ * @param search Tippsuche; leer liefert die erste Handvoll Repos.
+ */
+export function searchGithubRepos(search: string): Promise<GithubRepoList> {
+	return apiGet<GithubRepoList>(`/my/github-repos?search=${encodeURIComponent(search)}`)
+}
+
 /**
  * Einen Vorgang nach GitHub überführen. Legt ein Issue im am Board hinterlegten
  * Repository an und gibt den aktualisierten Vorgang zurück — mit Nummer und

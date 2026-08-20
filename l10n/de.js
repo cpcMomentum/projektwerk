@@ -295,7 +295,6 @@ OC.L10N.register(
     "Überführung nach GitHub fehlgeschlagen" : "Überführung nach GitHub fehlgeschlagen",
     "GitHub-Anbindung für dieses Projekt" : "GitHub-Anbindung für dieses Projekt",
     "Ziel-Repository" : "Ziel-Repository",
-    "Im Format „owner/repo“, z. B. „cpcMomentum/projektwerk“. Leer lassen lässt die Überführung ausgeblendet, bis ein Ziel eingetragen ist." : "Im Format „owner/repo“, z. B. „cpcMomentum/projektwerk“. Leer lassen lässt die Überführung ausgeblendet, bis ein Ziel eingetragen ist.",
     "GitHub-Token" : "GitHub-Token",
     "Ein Token ist hinterlegt." : "Ein Token ist hinterlegt.",
     "Kein Token hinterlegt." : "Kein Token hinterlegt.",
@@ -303,6 +302,9 @@ OC.L10N.register(
     "Der GitHub-Token-Status konnte nicht geladen werden" : "Der GitHub-Token-Status konnte nicht geladen werden",
     "Token konnte nicht gespeichert werden" : "Token konnte nicht gespeichert werden",
     "Token konnte nicht entfernt werden" : "Token konnte nicht entfernt werden",
-    "Zum Überführen von Vorgängen nach GitHub. Empfohlen: ein fein abgestufter Token (fine-grained PAT) mit dem Recht „Issues: read and write“ auf die Ziel-Repositorys. Der Token wird verschlüsselt gespeichert und nie wieder angezeigt." : "Zum Überführen von Vorgängen nach GitHub. Empfohlen: ein fein abgestufter Token (fine-grained PAT) mit dem Recht „Issues: read and write“ auf die Ziel-Repositorys. Der Token wird verschlüsselt gespeichert und nie wieder angezeigt."
+    "Zum Überführen von Vorgängen nach GitHub. Empfohlen: ein fein abgestufter Token (fine-grained PAT) mit dem Recht „Issues: read and write“ auf die Ziel-Repositorys. Der Token wird verschlüsselt gespeichert und nie wieder angezeigt." : "Zum Überführen von Vorgängen nach GitHub. Empfohlen: ein fein abgestufter Token (fine-grained PAT) mit dem Recht „Issues: read and write“ auf die Ziel-Repositorys. Der Token wird verschlüsselt gespeichert und nie wieder angezeigt.",
+    "Suche läuft…" : "Suche läuft…",
+    "Im Format „owner/repo“, z. B. „cpcMomentum/projektwerk“. Tippen sucht in Ihren GitHub-Repositorys — dazu muss ein Token in „Meine Einstellungen“ hinterlegt sein. Leer lassen lässt die Überführung ausgeblendet, bis ein Ziel eingetragen ist." : "Im Format „owner/repo“, z. B. „cpcMomentum/projektwerk“. Tippen sucht in Ihren GitHub-Repositorys — dazu muss ein Token in „Meine Einstellungen“ hinterlegt sein. Leer lassen lässt die Überführung ausgeblendet, bis ein Ziel eingetragen ist.",
+    "Repositorys konnten nicht geladen werden" : "Repositorys konnten nicht geladen werden"
 },
 "nplurals=2; plural=(n != 1);");

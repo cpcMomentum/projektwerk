@@ -163,6 +163,51 @@ class GithubServiceTest extends TestCase {
 		$this->service->createIssue('anna', 'acme/app', 'Titel', 'Rumpf');
 	}
 
+	public function testSearchReposWithoutATokenExplainsWhere(): void {
+		$this->credentials->method('retrieve')->willReturn(null);
+		$this->client->expects($this->never())->method('get');
+
+		$this->expectException(GithubTransferException::class);
+		$this->expectExceptionMessage('Meine Einstellungen');
+		$this->service->searchRepos('anna', '');
+	}
+
+	public function testSearchReposReturnsFullNamesFilteredByQuery(): void {
+		$this->givenToken('anna', 'ghp_secret');
+		$this->client->method('get')->willReturn($this->response(200, (string)json_encode([
+			['full_name' => 'acme/app'],
+			['full_name' => 'acme/website'],
+			['full_name' => 'other/tool'],
+		])));
+
+		// Leerer Suchbegriff: alles (bis zum Deckel).
+		$this->assertSame(['acme/app', 'acme/website', 'other/tool'], $this->service->searchRepos('anna', ''));
+
+		// Mit Suchbegriff: Teilstring, Groß-/Kleinschreibung egal.
+		$this->assertSame(['acme/app', 'acme/website'], $this->service->searchRepos('anna', 'ACME'));
+		$this->assertSame(['acme/website'], $this->service->searchRepos('anna', 'web'));
+	}
+
+	public function testSearchReposMapsAnErrorStatus(): void {
+		$this->givenToken('anna', 'ghp_secret');
+		$this->client->method('get')->willReturn($this->response(401, '{}'));
+
+		$this->expectException(GithubTransferException::class);
+		$this->expectExceptionMessage('ungültig');
+		$this->service->searchRepos('anna', '');
+	}
+
+	public function testSearchReposSurvivesEntriesWithoutAFullName(): void {
+		$this->givenToken('anna', 'ghp_secret');
+		$this->client->method('get')->willReturn($this->response(200, (string)json_encode([
+			['full_name' => 'acme/app'],
+			['id' => 7],
+			'nonsense',
+		])));
+
+		$this->assertSame(['acme/app'], $this->service->searchRepos('anna', ''));
+	}
+
 	private function givenToken(string $userId, string $token): void {
 		$this->credentials->method('retrieve')
 			->with($userId, GithubService::TOKEN_ID)

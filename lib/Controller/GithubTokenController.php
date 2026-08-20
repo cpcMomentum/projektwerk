@@ -11,9 +11,11 @@ namespace OCA\Projektwerk\Controller;
 
 use OCA\Projektwerk\AppInfo\Application;
 use OCA\Projektwerk\Service\GithubService;
+use OCA\Projektwerk\Service\GithubTransferException;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
+use OCP\AppFramework\Http\Attribute\UserRateLimit;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\IRequest;
 
@@ -84,5 +86,29 @@ class GithubTokenController extends Controller {
 		$this->github->deleteToken($this->userId);
 
 		return new JSONResponse(['present' => false]);
+	}
+
+	/**
+	 * Die Repositorys, auf die der eigene Token Zugriff hat — für die
+	 * Live-Auswahl des Ziel-Repos in den Projekteinstellungen (#196).
+	 *
+	 * Nutzt den Token der angemeldeten Person; ohne Token oder bei einem
+	 * GitHub-Fehler kommt die Meldung als 400 zurück, damit das Frontend auf
+	 * das Freitextfeld zurückfallen und den Grund zeigen kann.
+	 *
+	 * @param string $search Tippsuche; leer liefert die erste Handvoll Repos.
+	 */
+	#[NoAdminRequired]
+	#[UserRateLimit(limit: 30, period: 60)]
+	public function repos(string $search = ''): JSONResponse {
+		if ($this->userId === null) {
+			return new JSONResponse([], Http::STATUS_UNAUTHORIZED);
+		}
+
+		try {
+			return new JSONResponse(['repos' => $this->github->searchRepos($this->userId, $search)]);
+		} catch (GithubTransferException $e) {
+			return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+		}
 	}
 }

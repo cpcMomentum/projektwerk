@@ -229,6 +229,14 @@ final class ReadPathRegistry {
 	public const ROUTES_WITHOUT_DATA = [
 		'page#index' => 'Liefert die Vue-Huelle aus, keine Ticketdaten. '
 			. 'Alle Daten kommen ueber die API-Routen, die einzeln registriert sind.',
+		// Die Repo-Auswahl (#196) liefert **externe GitHub-Repo-Namen**, keine
+		// ProjektWerk-Daten — Board, Rolle und Sichtbarkeit spielen hier keine
+		// Rolle. Die Grenze ist der Token der Sitzung (jeder sieht nur, was sein
+		// eigener Token freigibt, kein userId im Pfad); ein Leak-Vektor auf
+		// fremde Projekt-/Vorgangsdaten existiert nicht. Gegen echtes GitHub
+		// laesst sich die Route zudem nicht integrationstesten.
+		'githubToken#repos' => 'Liefert externe GitHub-Repo-Namen (keine ProjektWerk-Daten), '
+			. 'token-scoped an die Sitzung. Kein Zugriff auf Board-/Vorgangsdaten.',
 	];
 
 	/**

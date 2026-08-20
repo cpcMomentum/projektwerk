@@ -40,6 +40,12 @@ class GithubService {
 
 	private const API_BASE = 'https://api.github.com';
 
+	/** Höchstens so viele Seiten à 100 Repos holen wir für die Auswahl (#196). */
+	private const REPO_PAGES = 2;
+
+	/** Höchstens so viele Treffer gehen an das Tippfeld zurück. */
+	private const REPO_LIMIT = 30;
+
 	public function __construct(
 		private ICredentialsManager $credentials,
 		private IClientService $clientService,
@@ -141,10 +147,95 @@ class GithubService {
 	}
 
 	/**
+	 * Die Repositorys, auf die der Token einer Person Zugriff hat — für die
+	 * Live-Auswahl des Ziel-Repos (#196).
+	 *
+	 * Fragt `GET /user/repos` (die Menge, die der Token freigibt — bei einem auf
+	 * eine Organisation ausgestellten Token also deren Repos) und filtert
+	 * serverseitig nach dem Suchbegriff. Bewusst **kein** Aufruf der Such-API:
+	 * Die hat eine eigene, strengere Ratengrenze und müsste den Eigentümer des
+	 * Tokens erst ermitteln; die Repo-Liste des Tokens ist die genauere Menge.
+	 *
+	 * Gedeckelt auf {@see self::REPO_PAGES} Seiten à 100 und {@see self::REPO_LIMIT}
+	 * Treffer — ein Tippfeld braucht keine vollständige Liste, und eine
+	 * Organisation mit sehr vielen Repos soll die Anfrage nicht sprengen.
+	 *
+	 * @return list<string> `owner/repo`, alphabetisch, höchstens {@see self::REPO_LIMIT}
+	 *
+	 * @throws GithubTransferException bei fehlendem Token oder GitHub-Fehler
+	 */
+	public function searchRepos(string $userId, string $query): array {
+		$token = $this->tokenOf($userId);
+		if ($token === null) {
+			throw new GithubTransferException(
+				'Kein GitHub-Token hinterlegt. Bitte in „Meine Einstellungen" einen Token eintragen.',
+			);
+		}
+
+		$client = $this->clientService->newClient();
+		$names = [];
+
+		for ($page = 1; $page <= self::REPO_PAGES; $page++) {
+			$url = self::API_BASE . '/user/repos?' . http_build_query([
+				'per_page' => 100,
+				'page' => $page,
+				'sort' => 'full_name',
+			]);
+
+			try {
+				$response = $client->get($url, [
+					'headers' => [
+						'Authorization' => 'Bearer ' . $token,
+						'Accept' => 'application/vnd.github+json',
+						'X-GitHub-Api-Version' => '2022-11-28',
+						'User-Agent' => 'ProjektWerk',
+					],
+					'http_errors' => false,
+					'timeout' => 10,
+				]);
+			} catch (\Throwable $e) {
+				$this->logger->warning('GitHub-Repos: Verbindung fehlgeschlagen', ['exception' => $e]);
+				throw new GithubTransferException('GitHub war nicht erreichbar. Bitte später erneut versuchen.');
+			}
+
+			if ($response->getStatusCode() !== 200) {
+				throw new GithubTransferException($this->messageForStatus($response->getStatusCode()));
+			}
+
+			$data = json_decode((string)$response->getBody(), true);
+			if (!is_array($data) || $data === []) {
+				break;
+			}
+
+			foreach ($data as $repo) {
+				if (is_array($repo) && isset($repo['full_name']) && is_string($repo['full_name'])) {
+					$names[] = $repo['full_name'];
+				}
+			}
+
+			// Weniger als eine volle Seite heißt: das war die letzte.
+			if (count($data) < 100) {
+				break;
+			}
+		}
+
+		$needle = trim($query);
+		if ($needle !== '') {
+			$lc = mb_strtolower($needle);
+			$names = array_values(array_filter(
+				$names,
+				static fn (string $name): bool => str_contains(mb_strtolower($name), $lc),
+			));
+		}
+
+		return array_slice($names, 0, self::REPO_LIMIT);
+	}
+
+	/**
 	 * Den Token einer Person lesen — oder `null`, wenn keiner hinterlegt ist.
 	 *
 	 * Bleibt privat: Der Token verlässt diesen Dienst ausschließlich als
-	 * `Authorization`-Kopfzeile in {@see createIssue()}.
+	 * `Authorization`-Kopfzeile in {@see createIssue()} und {@see searchRepos()}.
 	 */
 	private function tokenOf(string $userId): ?string {
 		$stored = $this->credentials->retrieve($userId, self::TOKEN_ID);

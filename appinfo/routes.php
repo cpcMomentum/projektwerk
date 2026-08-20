@@ -102,6 +102,10 @@ return [
 		['name' => 'githubToken#index', 'url' => '/api/v1/my/github-token', 'verb' => 'GET'],
 		['name' => 'githubToken#update', 'url' => '/api/v1/my/github-token', 'verb' => 'PUT'],
 		['name' => 'githubToken#destroy', 'url' => '/api/v1/my/github-token', 'verb' => 'DELETE'],
+		// Die Repos, auf die der eigene Token Zugriff hat — für die Live-Auswahl
+		// des Ziel-Repos (#196). Liefert externe GitHub-Daten (keine
+		// ProjektWerk-Daten), token-scoped an die Sitzung → in ROUTES_WITHOUT_DATA.
+		['name' => 'githubToken#repos', 'url' => '/api/v1/my/github-repos', 'verb' => 'GET'],
 
 		// Board-Einstellungen. Ausschliesslich Schreibwege — gelesen wird ueber
 		// board#show, das Board, Mitglieder und Spalten in einem Zug liefert und
