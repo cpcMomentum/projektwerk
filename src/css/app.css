@@ -955,11 +955,22 @@
  * `display: table` nicht. Er versagte genau bei dem Inhalt, fuer den der Deckel
  * da ist.
  */
+/* Text und Stift nebeneinander (#200) — der Stift rechts, wie beim Titel. */
+.app-projektwerk .pw-beschreibung__zeile {
+	display: flex;
+	align-items: flex-start;
+	gap: 4px;
+}
+
+.app-projektwerk .pw-beschreibung__zeile .pw-beschreibung__text {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
 .app-projektwerk .pw-beschreibung__text {
 	position: relative;
 	max-height: 150px;
 	overflow: hidden;
-	padding-inline-end: 42px;
 	line-height: 1.55;
 	overflow-wrap: anywhere;
 }
@@ -1016,9 +1027,8 @@
 }
 
 .app-projektwerk .pw-beschreibung__stift {
-	position: absolute;
-	top: 0;
-	inset-inline-end: 0;
+	flex: 0 0 auto;
+	margin-block-start: 2px;
 }
 
 .app-projektwerk .pw-beschreibung__edit {
