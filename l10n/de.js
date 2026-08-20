@@ -313,6 +313,7 @@ OC.L10N.register(
     "Ihnen wurde ein Arbeitsschritt im Vorgang #%1$s „%2$s“ zugewiesen." : "Ihnen wurde ein Arbeitsschritt im Vorgang #%1$s „%2$s“ zugewiesen.",
     "Es gibt einen neuen Kommentar zum Vorgang #%1$s „%2$s“." : "Es gibt einen neuen Kommentar zum Vorgang #%1$s „%2$s“.",
     "Der Vorgang #%1$s „%2$s“ wurde geschlossen." : "Der Vorgang #%1$s „%2$s“ wurde geschlossen.",
-    "Im Projekt ist der neue Vorgang #%1$s „%2$s“ entstanden." : "Im Projekt ist der neue Vorgang #%1$s „%2$s“ entstanden."
+    "Im Projekt ist der neue Vorgang #%1$s „%2$s“ entstanden." : "Im Projekt ist der neue Vorgang #%1$s „%2$s“ entstanden.",
+    "Dateien" : "Dateien"
 },
 "nplurals=2; plural=(n != 1);");
