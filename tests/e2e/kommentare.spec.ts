@@ -146,6 +146,50 @@ test.describe('Dienstleisterseite', () => {
 		await expect(page.getByText(nachher)).toHaveCount(0)
 	})
 
+	/**
+	 * Die @-Erwähnung von der Auswahl bis zur Anzeige (#202, Teil 2).
+	 *
+	 * Getippt wird `@` und ein Stück des Namens, aus der Auswahl kommt die
+	 * Person, gespeichert wird die **Kennung** (`@pw-e2e-kunde`) — genau das
+	 * Format, das der Server parst. In der Anzeige darf keine rohe Kennung
+	 * stehen: `renderBody` löst sie zum hervorgehobenen Namen auf.
+	 *
+	 * Die Auswahl speist sich aus der sichtbarkeitsgefilterten Menge; am
+	 * öffentlichen Vorgang gehört die Kundenseite dazu. Die Leak-Seite der
+	 * Regel prüft `CommentWritePathTest` am Dienst — hier steht der sichtbare
+	 * Weg durch die Oberfläche.
+	 */
+	test('erwaehnt jemanden ueber die Auswahl und zeigt den Namen statt der Kennung', async ({ page }) => {
+		await page.goto(`${APP_PFAD}#/boards/${projekt.boardId}`)
+		await expect(page.getByText(projekt.oeffentlich.title)).toBeVisible({ timeout: 30_000 })
+		await page.getByText(projekt.oeffentlich.title).click()
+
+		const feld = page.locator('.pw-comment-new').getByRole('textbox')
+		await feld.click()
+		// `@` öffnet die Auswahl, der Namensteil grenzt sie ein.
+		await feld.pressSequentially('@Kunden')
+
+		// Die Auswahl hängt (wie in NcRichContenteditable üblich) am `body`, nicht
+		// im Overlay — deshalb ohne Eingrenzung auf `.pw-comment-new`.
+		const vorschlag = page.getByRole('option', { name: /E2E Kundenseite/ })
+		await expect(vorschlag).toBeVisible({ timeout: 10_000 })
+		await vorschlag.click()
+
+		await page.getByRole('button', { name: 'Kommentieren' }).click()
+
+		await expect(page.locator('.pw-comment')).toHaveCount(2)
+		const eigener = page.locator('.pw-comment').last()
+
+		// Angezeigt wird der Name, hervorgehoben — nicht die Kennung.
+		await expect(eigener.locator('.pw-comment__text strong')).toContainText('@E2E Kundenseite')
+		await expect(eigener.locator('.pw-comment__text')).not.toContainText('pw-e2e-kunde')
+
+		// Aufraeumen, damit der Zaehler-Test wieder von genau einem Kommentar ausgeht.
+		await eigener.getByRole('button', { name: 'Löschen', exact: true }).click()
+		await eigener.getByRole('button', { name: 'Löschen', exact: true }).click()
+		await expect(page.locator('.pw-comment')).toHaveCount(1)
+	})
+
 	test('der Zaehler auf der Karte zieht mit', async ({ page }) => {
 		// Der Zaehler steht auf der Karte, nicht im Overlay — er kommt aus
 		// `ticket#index` und nicht aus `ticket#show`. Ohne diesen Test bliebe
@@ -215,11 +259,25 @@ test.describe('Dienstleisterseite', () => {
 		await expect(page.getByText(projekt.oeffentlich.title)).toBeVisible({ timeout: 30_000 })
 		await page.getByText(projekt.oeffentlich.title).click()
 
-		const tabellentext = '| Position | Bezeichnung | Menge | Einzelpreis | Gesamt |\n'
-			+ '|---|---|---:|---:|---:|\n'
-			+ '| 1 | Standortanalyse inklusive Begehung | 1 | 2.400,00 | 2.400,00 |'
-
-		await page.locator('.pw-comment-new').getByRole('textbox').fill(tabellentext)
+		// **Zeilenweise mit Enter statt `fill()` mit `\n`.** Das Eingabefeld ist
+		// seit den @-Erwähnungen (#202) ein `contenteditable`, kein `textarea`.
+		// Playwrights `fill()` schreibt ein `\n` dort als nichts — der Umbruch
+		// geht verloren und die Tabelle bliebe eine Zeile. Ein Mensch tippt (oder
+		// fügt ein) mit echten Umbrüchen; die entstehen nur über Enter. Erst so
+		// steht der Umbruch im Wert und die Tabelle rendert (empirisch geprüft).
+		const tabellenzeilen = [
+			'| Position | Bezeichnung | Menge | Einzelpreis | Gesamt |',
+			'|---|---|---:|---:|---:|',
+			'| 1 | Standortanalyse inklusive Begehung | 1 | 2.400,00 | 2.400,00 |',
+		]
+		const feld = page.locator('.pw-comment-new').getByRole('textbox')
+		await feld.click()
+		for (let i = 0; i < tabellenzeilen.length; i++) {
+			await feld.pressSequentially(tabellenzeilen[i])
+			if (i < tabellenzeilen.length - 1) {
+				await page.keyboard.press('Enter')
+			}
+		}
 		await page.getByRole('button', { name: 'Kommentieren' }).click()
 
 		const tabelle = page.locator('.pw-comment__text table')

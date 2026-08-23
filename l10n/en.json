@@ -348,7 +348,8 @@
 		"Ich werde in einem Kommentar erwähnt": "I am mentioned in a comment",
 		"Sie wurden erwähnt: #%1$s %2$s": "You were mentioned: #%1$s %2$s",
 		"Sie wurden in Vorgang #%1$s erwähnt": "You were mentioned in ticket #%1$s",
-		"Sie wurden in einem Kommentar zum Vorgang #%1$s „%2$s“ erwähnt.": "You were mentioned in a comment on ticket #%1$s “%2$s”."
+		"Sie wurden in einem Kommentar zum Vorgang #%1$s „%2$s“ erwähnt.": "You were mentioned in a comment on ticket #%1$s “%2$s”.",
+		"Mit „@“ jemanden erwähnen": "Mention someone with “@”"
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }

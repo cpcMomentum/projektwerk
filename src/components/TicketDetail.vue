@@ -447,6 +447,8 @@
 					:comments="comments"
 					:members="members"
 					:viewer="viewer"
+					:orgInternal="orgInternal"
+					:orgExternal="orgExternal"
 					@changed="$emit('commentsChanged')" />
 			</div>
 		</div>

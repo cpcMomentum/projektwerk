@@ -53,7 +53,7 @@
 				<NcRichText
 					v-if="editing !== comment.id"
 					class="pw-comment__text"
-					:text="comment.body"
+					:text="renderBody(comment.body)"
 					:useMarkdown="true"
 					:useExtendedMarkdown="true"
 					:interactive="false" />
@@ -65,11 +65,17 @@
 					wie in VisibilityControl).
 				-->
 				<div v-else class="pw-comment__edit">
-					<NcTextArea
+					<NcRichContenteditable
 						v-model="draft"
 						:label="t('projektwerk', 'Kommentar ändern')"
+						:multiline="true"
+						:emojiAutocomplete="false"
+						:linkAutocomplete="false"
+						:autoComplete="mentionAutoComplete"
+						:userData="mentionUserData"
+						:menuContainer="menuContainer"
 						:disabled="busy"
-						resize="vertical" />
+						@submit="saveEdit(comment)" />
 					<div class="pw-comment__actions">
 						<NcButton :disabled="busy" @click="cancel">
 							{{ t('projektwerk', 'Abbrechen') }}
@@ -136,11 +142,28 @@
 			:class="{ 'pw-comment-new--aktiv': fokusImFeld || newBody !== '' }"
 			@focusin="fokusImFeld = true"
 			@focusout="fokusImFeld = false">
-			<NcTextArea
+			<!--
+				**@-Erwähnungen** (#202, Teil 2). Die Auswahl kommt aus
+				`assignable` — der sichtbarkeitsgefilterten Menge, dieselbe wie
+				bei der Schritt-Zuweisung — NICHT aus Nextclouds Personensuche
+				(leer in Gast-Sitzungen) und NICHT aus `members` (weiter gefasst,
+				als das einzelne Ticket sehen darf). Emoji- und Link-Vervoll-
+				ständigung sind aus: Es geht nur um `@`, und die App baut bewusst
+				keine Link-Vorschaukacheln.
+			-->
+			<NcRichContenteditable
+				id="pw-comment-new-input"
 				v-model="newBody"
 				:label="t('projektwerk', 'Neuer Kommentar')"
+				:placeholder="t('projektwerk', 'Mit „@“ jemanden erwähnen')"
+				:multiline="true"
+				:emojiAutocomplete="false"
+				:linkAutocomplete="false"
+				:autoComplete="mentionAutoComplete"
+				:userData="mentionUserData"
+				:menuContainer="menuContainer"
 				:disabled="busy"
-				resize="vertical" />
+				@submit="add" />
 			<div v-if="fokusImFeld || newBody !== ''" class="pw-comment__actions">
 				<NcButton
 					variant="primary"
@@ -163,9 +186,10 @@ import { defineComponent } from 'vue'
 import NcAvatar from '@nextcloud/vue/components/NcAvatar'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcDateTime from '@nextcloud/vue/components/NcDateTime'
+import NcRichContenteditable from '@nextcloud/vue/components/NcRichContenteditable'
 import NcRichText from '@nextcloud/vue/components/NcRichText'
-import NcTextArea from '@nextcloud/vue/components/NcTextArea'
 import { createComment, deleteComment, updateComment } from '@/services/comments'
+import { fetchAssignable } from '@/services/steps'
 import { showError } from '@/services/toast'
 
 /**
@@ -189,16 +213,20 @@ import { showError } from '@/services/toast'
 export default defineComponent({
 	name: 'CommentList',
 
-	components: { NcAvatar, NcButton, NcDateTime, NcRichText, NcTextArea },
+	components: { NcAvatar, NcButton, NcDateTime, NcRichContenteditable, NcRichText },
 
 	props: {
 		boardId: { type: Number, required: true },
 		ticketId: { type: Number, required: true },
 		comments: { type: Array as PropType<Comment[]>, default: () => [] },
-		/** Nur zur Anzeige der Namen. */
+		/** Nur zur Anzeige der Namen und zum Auflösen der Erwähnungen. */
 		members: { type: Array as PropType<Member[]>, default: () => [] },
 		/** Wer gerade schaut — entscheidet, wo Ändern und Löschen erscheinen. */
 		viewer: { type: Object as PropType<ViewerInfo | null>, default: null },
+		/** Für die Zweitzeile in der Erwähnungs-Auswahl. */
+		orgInternal: { type: String, default: '' },
+		/** Für die Zweitzeile in der Erwähnungs-Auswahl. */
+		orgExternal: { type: String, default: '' },
 	},
 
 	emits: ['changed'],
@@ -207,6 +235,28 @@ export default defineComponent({
 		return {
 			busy: false,
 			newBody: '',
+			/**
+			 * Wohin das Erwähnungs-Popup gehängt wird.
+			 *
+			 * Standardmäßig hängt `NcRichContenteditable` es an den `body` — und
+			 * dort liegt es mit `z-index: 9000` **hinter** dem Vorgangs-Modal
+			 * (`9998`), unklickbar. Der Kommentarbereich lebt immer in diesem
+			 * Modal; deshalb hängt das Popup in dessen Container und teilt sich
+			 * seinen Stapelkontext. (Empirisch gefunden: erst der Klick auf einen
+			 * Vorschlag im e2e fiel ins Leere, weil das Modal ihn abfing.)
+			 */
+			menuContainer: '.modal-container',
+			/**
+			 * Wen man in diesem Vorgang erwähnen darf.
+			 *
+			 * Die sichtbarkeitsgefilterte Menge vom Server (`step#assignable`),
+			 * dieselbe Quelle wie bei der Schritt-Zuweisung. Eine Erwähnung darf
+			 * die Sichtbarkeitszusage nie aushebeln — deshalb kommt die Auswahl
+			 * NICHT aus `members` und nicht aus Nextclouds Personensuche. Der
+			 * Server prüft beim Speichern ohnehin erneut; das hier hält nur die
+			 * Auswahlliste ehrlich.
+			 */
+			assignable: [] as string[],
 			/**
 			 * Der Fokus steht im neuen Kommentarfeld oder auf seinem Knopf.
 			 *
@@ -231,14 +281,39 @@ export default defineComponent({
 		}
 	},
 
+	computed: {
+		/**
+		 * Wie `NcRichContenteditable` die Erwähnungen darstellt.
+		 *
+		 * Eine Map `Kennung → Anzeigedaten`, an der die Komponente sowohl frisch
+		 * eingefügte als auch bereits im Text stehende `@kennung` zu einer
+		 * Bubble auflöst. Aus `members` (breiter als `assignable`), damit auch
+		 * eine historisch erwähnte Person mit Namen erscheint, die diesen
+		 * Vorgang heute nicht mehr zugewiesen bekäme — angezeigt wird ohnehin
+		 * nur, was schon im gespeicherten Text steht.
+		 */
+		mentionUserData(): Record<string, { id: string, label: string, icon: string, source: string }> {
+			const map: Record<string, { id: string, label: string, icon: string, source: string }> = {}
+			for (const m of this.members) {
+				map[m.userId] = { id: m.userId, label: m.resolvedName, icon: 'icon-user', source: 'users' }
+			}
+			return map
+		},
+	},
+
 	watch: {
 		// Beim Wechsel des Vorgangs alles Angefangene fallen lassen: Sonst
 		// stünde der Entwurf zum Kommentar des vorigen Tickets unter dem neuen.
-		ticketId() {
-			this.newBody = ''
-			this.cancel()
-			this.removing = null
-			this.fokusZiel = null
+		// `immediate`, damit die Erwähnungs-Menge schon beim ersten Öffnen steht.
+		ticketId: {
+			immediate: true,
+			handler() {
+				this.loadAssignable()
+				this.newBody = ''
+				this.cancel()
+				this.removing = null
+				this.fokusZiel = null
+			},
 		},
 
 		/**
@@ -278,6 +353,81 @@ export default defineComponent({
 		 */
 		nameOf(userId: string): string {
 			return this.members.find((m) => m.userId === userId)?.resolvedName ?? userId
+		},
+
+		/**
+		 * @param userId Kennung der Person.
+		 */
+		roleOf(userId: string): string {
+			return this.members.find((m) => m.userId === userId)?.role ?? 'internal'
+		},
+
+		/**
+		 * Die Firma für die Zweitzeile im Vorschlag.
+		 *
+		 * @param userId Kennung der Person.
+		 */
+		orgOf(userId: string): string {
+			return this.roleOf(userId) === 'internal' ? this.orgInternal : this.orgExternal
+		},
+
+		/**
+		 * Vorschläge für die `@`-Erwähnung.
+		 *
+		 * Speist sich aus `assignable`, der sichtbarkeitsgefilterten Menge —
+		 * nicht aus `members`. Gefiltert wird nach Name und Kennung, damit auch
+		 * das Tippen der Kennung trifft.
+		 *
+		 * @param search Was nach dem `@` schon getippt wurde.
+		 * @param callback Nimmt die Trefferliste entgegen.
+		 */
+		mentionAutoComplete(search: string, callback: (items: object[]) => void): void {
+			const term = (search ?? '').toLowerCase()
+			const items = this.assignable
+				.filter((userId) => term === ''
+					|| this.nameOf(userId).toLowerCase().includes(term)
+					|| userId.toLowerCase().includes(term))
+				.map((userId) => ({
+					id: userId,
+					label: this.nameOf(userId),
+					icon: 'icon-user',
+					source: 'users',
+					subline: this.orgOf(userId) || null,
+				}))
+			callback(items)
+		},
+
+		/**
+		 * Erwähnungen für die Anzeige auflösen: `@kennung` → **@Name**.
+		 *
+		 * Nur wirklich bekannte Personen werden ersetzt und dabei hervorgehoben;
+		 * alles andere (etwa das `@` einer E-Mail-Adresse) bleibt unangetastet.
+		 * Das Muster spiegelt die serverseitige Erkennung in `CommentService`,
+		 * damit Anzeige und Benachrichtigung dieselbe Stelle meinen.
+		 *
+		 * @param body Der gespeicherte Kommentartext.
+		 */
+		renderBody(body: string): string {
+			return body.replace(/@(?:"([^"]+)"|([a-zA-Z0-9_.@-]+))/g, (whole, quoted, bare) => {
+				const uid = (quoted ?? '') !== '' ? quoted : (bare ?? '')
+				const member = this.members.find((m) => m.userId === uid)
+				return member ? `**@${member.resolvedName}**` : whole
+			})
+		},
+
+		/**
+		 * Die erwähnbare Menge für diesen Vorgang holen.
+		 *
+		 * Scheitert der Abruf, bleibt die Liste leer: Dann gibt es nur keine
+		 * Vorschläge, tippen lässt sich die Erwähnung trotzdem — der Server
+		 * entscheidet ohnehin, wer benachrichtigt wird.
+		 */
+		async loadAssignable(): Promise<void> {
+			try {
+				this.assignable = await fetchAssignable(this.boardId, this.ticketId)
+			} catch {
+				this.assignable = []
+			}
 		},
 
 		/**
@@ -341,7 +491,7 @@ export default defineComponent({
 					this.newBody = ''
 					// Zurück ins Eingabefeld, nicht auf den `body`: Wer eben
 					// geschrieben hat, schreibt oft gleich weiter.
-					this.fokusZiel = '.pw-comment-new textarea'
+					this.fokusZiel = '#pw-comment-new-input'
 				},
 				t('projektwerk', 'Kommentar konnte nicht gespeichert werden'),
 			)
@@ -378,7 +528,7 @@ export default defineComponent({
 					this.removing = null
 					// Der Kommentar, auf dem der Fokus stand, ist weg. Das
 					// Eingabefeld ist die nächstliegende Stelle, die bleibt.
-					this.fokusZiel = '.pw-comment-new textarea'
+					this.fokusZiel = '#pw-comment-new-input'
 				},
 				t('projektwerk', 'Löschen fehlgeschlagen'),
 			)
