@@ -405,14 +405,29 @@ export default defineComponent({
 		 * Das Muster spiegelt die serverseitige Erkennung in `CommentService`,
 		 * damit Anzeige und Benachrichtigung dieselbe Stelle meinen.
 		 *
+		 * Der Name wird vor dem Einsetzen maskiert (`escapeMarkdown`): Er kommt
+		 * von der erwähnten Person selbst, nicht von der Autorin des Kommentars.
+		 * Ein Name wie `[Klick hier](https://…)` würde sonst zu einem echten
+		 * Link — eingeschleust über den Anzeigenamen, nicht über den Kommentar.
+		 *
 		 * @param body Der gespeicherte Kommentartext.
 		 */
 		renderBody(body: string): string {
 			return body.replace(/@(?:"([^"]+)"|([a-zA-Z0-9_.@-]+))/g, (whole, quoted, bare) => {
 				const uid = (quoted ?? '') !== '' ? quoted : (bare ?? '')
 				const member = this.members.find((m) => m.userId === uid)
-				return member ? `**@${member.resolvedName}**` : whole
+				return member ? `**@${this.escapeMarkdown(member.resolvedName)}**` : whole
 			})
+		},
+
+		/**
+		 * Markdown-Sonderzeichen entschärfen, bevor fremder Text in
+		 * eingesetztes Markdown wandert (siehe {@link renderBody}).
+		 *
+		 * @param text Der zu entschärfende Text.
+		 */
+		escapeMarkdown(text: string): string {
+			return text.replace(/[\\`*_[\]()#+.!|>~-]/g, '\\$&')
 		},
 
 		/**
