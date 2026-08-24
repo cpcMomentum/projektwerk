@@ -53,6 +53,13 @@ class ArchitectureTest extends TestCase {
 			// und hat keine oeffentliche Lesemethode. Genau das trennt sie von
 			// dem zweiten Lesepfad, gegen den dieser Waechter gerichtet ist.
 			'Service/MemberLifecycleService.php',
+			// **Dritte namentliche Ausnahme, gleiche Form.** Der Reparaturschritt
+			// fuer abgebrochene Anhang-Umzuege (#188) muss auch einen internen
+			// Anhang finden, der an den falschen Ort geriet — obwohl ihn kein
+			// Betrachter saehe. Er laeuft ohne Betrachterkontext (beim Upgrade
+			// bzw. per occ) und beschraenkt sich auf eine lesende Join-Abfrage;
+			// das Verschieben und jeder Schreibzugriff laufen ueber den Mapper.
+			'Repair/RelocateAttachments.php',
 		];
 
 		$offenders = [];

@@ -154,19 +154,59 @@ class AttachmentService {
 		$location = (string)$this->folders->locationForVisibility($targetVisibility, (string)$ticket->getCreatorRole());
 
 		foreach ($attachments as $attachment) {
-			$file = $this->folders->resolveFile($viewer->userId, (int)$attachment->getFileId());
-			$name = $this->freeMoveName($target, $attachment->getFileName());
-
-			$file->move($target->getPath() . '/' . $name);
-
-			// Die ID am **Ziel** neu lesen, nicht die alte glauben — siehe oben.
-			$moved = $target->get($name);
-			$attachment->setFileId($moved->getId());
-			$attachment->setFileName($name);
-			$attachment->setFilePath($this->folders->displayPath($viewer->userId, $target) . '/' . $name);
-			$attachment->setLocation($location);
-			$this->attachments->update($attachment);
+			$this->moveAttachmentTo($viewer, $attachment, $target, $location);
 		}
+	}
+
+	/**
+	 * Einen einzelnen Anhang an den Ort ziehen, den die **aktuelle** Sichtbarkeit
+	 * seines Vorgangs vorschreibt — der Reparaturweg zu #185 (#188).
+	 *
+	 * Selbstheilung, kein Sichtbarkeitswechsel: Der Vorgang steht bereits richtig,
+	 * nur Datei und `location` hängen hinterher (ein zwischen Datei-Move und
+	 * DB-Schreiben abgebrochener Umzug). Zielort ist deshalb
+	 * `ticket->getVisibility()`, nicht eine gedachte Ziel-Sichtbarkeit. Ob ein
+	 * Anhang überhaupt fehlplatziert ist, entscheidet der aufrufende
+	 * Reparaturschritt ({@see \OCA\Projektwerk\Repair\RelocateAttachments}); hier
+	 * wird nur gezogen.
+	 *
+	 * @throws NoFolderException      Der Vorgang hat keinen Ablageort
+	 * @throws NotPermittedException  Datei oder Zielordner nicht erreichbar
+	 */
+	public function reconcileOne(ViewerContext $viewer, Ticket $ticket, Attachment $attachment): void {
+		$visibility = (string)$ticket->getVisibility();
+		$target = $this->folderForVisibility($viewer, $ticket, $visibility);
+		$location = (string)$this->folders->locationForVisibility($visibility, (string)$ticket->getCreatorRole());
+
+		$this->moveAttachmentTo($viewer, $attachment, $target, $location);
+	}
+
+	/**
+	 * Eine Datei in den Zielordner ziehen und den Anhang nachführen.
+	 *
+	 * Die **eine** Move-Implementierung hinter {@see relocate()} (Sichtbarkeits-
+	 * wechsel) und {@see reconcileOne()} (Reparatur).
+	 *
+	 * **Die Datei-ID wird nach dem Umzug am Zielknoten neu gelesen.** Ein
+	 * Verschieben innerhalb derselben Storage erhält die ID; über Storage-Grenzen
+	 * ist es intern ein Kopieren-und-Löschen und vergibt eine neue. Beide Fälle
+	 * sind so abgedeckt, ohne sich auf einen zu verlassen. Anzeigepfad und Name
+	 * folgen dem neuen Ort.
+	 *
+	 * @throws NotPermittedException  Datei oder Zielordner nicht erreichbar
+	 */
+	private function moveAttachmentTo(ViewerContext $viewer, Attachment $attachment, Folder $target, string $location): void {
+		$file = $this->folders->resolveFile($viewer->userId, (int)$attachment->getFileId());
+		$name = $this->freeMoveName($target, $attachment->getFileName());
+
+		$file->move($target->getPath() . '/' . $name);
+
+		$moved = $target->get($name);
+		$attachment->setFileId($moved->getId());
+		$attachment->setFileName($name);
+		$attachment->setFilePath($this->folders->displayPath($viewer->userId, $target) . '/' . $name);
+		$attachment->setLocation($location);
+		$this->attachments->update($attachment);
 	}
 
 	/**
