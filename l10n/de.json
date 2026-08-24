@@ -349,7 +349,10 @@
 		"Sie wurden erwähnt: #%1$s %2$s": "Sie wurden erwähnt: #%1$s %2$s",
 		"Sie wurden in Vorgang #%1$s erwähnt": "Sie wurden in Vorgang #%1$s erwähnt",
 		"Sie wurden in einem Kommentar zum Vorgang #%1$s „%2$s“ erwähnt.": "Sie wurden in einem Kommentar zum Vorgang #%1$s „%2$s“ erwähnt.",
-		"Mit „@“ jemanden erwähnen": "Mit „@“ jemanden erwähnen"
+		"Mit „@“ jemanden erwähnen": "Mit „@“ jemanden erwähnen",
+		"Fett": "Fett",
+		"Aufzählung": "Aufzählung",
+		"Nummerierte Liste": "Nummerierte Liste"
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }

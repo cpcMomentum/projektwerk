@@ -1027,6 +1027,13 @@
 	overflow-y: auto;
 }
 
+/* Die Markdown-Bedienhilfe (#161): eine schmale Knopfzeile über dem Feld. */
+.app-projektwerk .pw-beschreibung__toolbar {
+	display: flex;
+	gap: 2px;
+	margin-block-end: 4px;
+}
+
 .app-projektwerk .pw-beschreibung__text > :first-child {
 	margin-block-start: 0;
 }

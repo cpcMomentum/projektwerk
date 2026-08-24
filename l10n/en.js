@@ -320,6 +320,9 @@ OC.L10N.register(
     "Sie wurden erwähnt: #%1$s %2$s" : "You were mentioned: #%1$s %2$s",
     "Sie wurden in Vorgang #%1$s erwähnt" : "You were mentioned in ticket #%1$s",
     "Sie wurden in einem Kommentar zum Vorgang #%1$s „%2$s“ erwähnt." : "You were mentioned in a comment on ticket #%1$s “%2$s”.",
-    "Mit „@“ jemanden erwähnen" : "Mention someone with “@”"
+    "Mit „@“ jemanden erwähnen" : "Mention someone with “@”",
+    "Fett" : "Bold",
+    "Aufzählung" : "Bullet list",
+    "Nummerierte Liste" : "Numbered list"
 },
 "nplurals=2; plural=(n != 1);");

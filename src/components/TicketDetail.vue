@@ -272,6 +272,46 @@
 
 					<div v-else class="pw-beschreibung__edit">
 						<!--
+							**Bedien-Hilfe für das Markdown** (#161). Die Beschreibung
+							wird ohnehin als Markdown gerendert; fett, Aufzählung und
+							nummerierte Liste funktionieren beim Tippen längst. Die
+							Knöpfe fügen nur die Syntax an der Cursorstelle ein, für
+							alle, die sie nicht auswendig kennen — kein zweiter
+							Editor, keine zweite Wahrheit über den Text.
+						-->
+						<div class="pw-beschreibung__toolbar">
+							<NcButton
+								variant="tertiary"
+								:disabled="busy"
+								:ariaLabel="t('projektwerk', 'Fett')"
+								:title="t('projektwerk', 'Fett')"
+								@click="applyFormat('bold')">
+								<template #icon>
+									<FormatBoldIcon :size="20" />
+								</template>
+							</NcButton>
+							<NcButton
+								variant="tertiary"
+								:disabled="busy"
+								:ariaLabel="t('projektwerk', 'Aufzählung')"
+								:title="t('projektwerk', 'Aufzählung')"
+								@click="applyFormat('bullet')">
+								<template #icon>
+									<FormatListBulletedIcon :size="20" />
+								</template>
+							</NcButton>
+							<NcButton
+								variant="tertiary"
+								:disabled="busy"
+								:ariaLabel="t('projektwerk', 'Nummerierte Liste')"
+								:title="t('projektwerk', 'Nummerierte Liste')"
+								@click="applyFormat('ordered')">
+								<template #icon>
+									<FormatListNumberedIcon :size="20" />
+								</template>
+							</NcButton>
+						</div>
+						<!--
 							**Das Feld wächst mit dem Inhalt** (#160): eine kurze
 							Beschreibung bekommt ein kompaktes Feld, eine lange
 							eines, das mitwächst — bis zur Obergrenze aus der CSS,
@@ -486,6 +526,9 @@ import ChevronDownIcon from 'vue-material-design-icons/ChevronDown.vue'
 import ChevronUpIcon from 'vue-material-design-icons/ChevronUp.vue'
 import CloseIcon from 'vue-material-design-icons/Close.vue'
 import DeleteOutlineIcon from 'vue-material-design-icons/DeleteOutline.vue'
+import FormatBoldIcon from 'vue-material-design-icons/FormatBold.vue'
+import FormatListBulletedIcon from 'vue-material-design-icons/FormatListBulleted.vue'
+import FormatListNumberedIcon from 'vue-material-design-icons/FormatListNumbered.vue'
 import GithubIcon from 'vue-material-design-icons/Github.vue'
 import PencilOutlineIcon from 'vue-material-design-icons/PencilOutline.vue'
 import PlusIcon from 'vue-material-design-icons/Plus.vue'
@@ -514,7 +557,7 @@ interface PersonOption {
 export default defineComponent({
 	name: 'TicketDetail',
 
-	components: { AccountPlusIcon, AttachmentList, CalendarIcon, CalendarAlertIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, CloseIcon, CommentList, DeleteOutlineIcon, GithubIcon, NcAvatar, NcButton, NcDateTimePicker, NcModal, NcRichText, NcSelectUsers, NcTextArea, NcTextField, PencilOutlineIcon, PlusIcon, RestoreIcon, StepList, VisibilityControl, WaitBadge },
+	components: { AccountPlusIcon, AttachmentList, CalendarIcon, CalendarAlertIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, CloseIcon, CommentList, DeleteOutlineIcon, FormatBoldIcon, FormatListBulletedIcon, FormatListNumberedIcon, GithubIcon, NcAvatar, NcButton, NcDateTimePicker, NcModal, NcRichText, NcSelectUsers, NcTextArea, NcTextField, PencilOutlineIcon, PlusIcon, RestoreIcon, StepList, VisibilityControl, WaitBadge },
 
 	props: {
 		ticket: { type: Object as PropType<Ticket | null>, default: null },
@@ -883,6 +926,72 @@ export default defineComponent({
 			}
 			feld.style.height = 'auto'
 			feld.style.height = feld.scrollHeight + 'px'
+		},
+
+		/**
+		 * Markdown an der Cursorstelle einfügen (#161).
+		 *
+		 * Kein zweiter Editor: Die Knöpfe schreiben genau die Syntax, die man
+		 * sonst selbst tippt, in denselben Text. `bold` klammert die Auswahl
+		 * (oder setzt ein leeres Paar und stellt den Cursor hinein);
+		 * `bullet`/`ordered` stellen jeder berührten Zeile ihr Zeichen voran.
+		 *
+		 * @param art Welche Formatierung eingefügt wird.
+		 */
+		applyFormat(art: 'bold' | 'bullet' | 'ordered'): void {
+			const feld = this.textareaEl()
+			if (feld === null) {
+				return
+			}
+			const wert = this.textEntwurf
+			const start = feld.selectionStart
+			const ende = feld.selectionEnd
+
+			if (art === 'bold') {
+				const auswahl = wert.slice(start, ende)
+				if (auswahl === '') {
+					this.replaceRange(feld, start, ende, '****', start + 2, start + 2)
+				} else {
+					this.replaceRange(feld, start, ende, `**${auswahl}**`, start + 2, ende + 2)
+				}
+
+				return
+			}
+
+			// Zeilenweise: die Auswahl auf ganze Zeilen ausdehnen, dann jeder
+			// berührten Zeile ihr Präfix voranstellen.
+			const zeilenAnfang = wert.lastIndexOf('\n', start - 1) + 1
+			const block = wert.slice(zeilenAnfang, ende)
+			let nummer = 0
+			const ersetzt = block.split('\n').map((zeile) => {
+				nummer++
+
+				return (art === 'bullet' ? '- ' : `${nummer}. `) + zeile
+			}).join('\n')
+
+			this.replaceRange(feld, zeilenAnfang, ende, ersetzt, zeilenAnfang, zeilenAnfang + ersetzt.length)
+		},
+
+		/**
+		 * Einen Bereich des Entwurfs ersetzen und danach Auswahl, Fokus und Höhe
+		 * nachführen — der gemeinsame Weg aller Toolbar-Knöpfe.
+		 *
+		 * @param feld Das Eingabefeld.
+		 * @param von Beginn des zu ersetzenden Bereichs.
+		 * @param bis Ende des zu ersetzenden Bereichs.
+		 * @param text Der einzusetzende Text.
+		 * @param auswahlVon Wohin die Auswahl danach beginnt.
+		 * @param auswahlBis Wohin die Auswahl danach endet.
+		 */
+		replaceRange(feld: HTMLTextAreaElement, von: number, bis: number, text: string, auswahlVon: number, auswahlBis: number): void {
+			const wert = this.textEntwurf
+			this.textEntwurf = wert.slice(0, von) + text + wert.slice(bis)
+
+			this.$nextTick(() => {
+				feld.focus()
+				feld.setSelectionRange(auswahlVon, auswahlBis)
+				this.autoGrowText()
+			})
 		},
 
 		cancelEditText(): void {
