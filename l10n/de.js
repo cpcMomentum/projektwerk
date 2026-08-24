@@ -319,6 +319,7 @@ OC.L10N.register(
     "Ich werde in einem Kommentar erwähnt" : "Ich werde in einem Kommentar erwähnt",
     "Sie wurden erwähnt: #%1$s %2$s" : "Sie wurden erwähnt: #%1$s %2$s",
     "Sie wurden in Vorgang #%1$s erwähnt" : "Sie wurden in Vorgang #%1$s erwähnt",
-    "Sie wurden in einem Kommentar zum Vorgang #%1$s „%2$s“ erwähnt." : "Sie wurden in einem Kommentar zum Vorgang #%1$s „%2$s“ erwähnt."
+    "Sie wurden in einem Kommentar zum Vorgang #%1$s „%2$s“ erwähnt." : "Sie wurden in einem Kommentar zum Vorgang #%1$s „%2$s“ erwähnt.",
+    "Mit „@“ jemanden erwähnen" : "Mit „@“ jemanden erwähnen"
 },
 "nplurals=2; plural=(n != 1);");
