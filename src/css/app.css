@@ -1014,6 +1014,19 @@
 	text-underline-offset: 2px;
 }
 
+/*
+ * **Das Bearbeiten-Feld waechst mit dem Inhalt** (#160). Die Hoehe selbst
+ * setzt `autoGrowText()` in TicketDetail.vue je Tastendruck; hier stehen nur
+ * Unter- und Obergrenze. `min-height` haelt auch ein kurzer Text ein
+ * grosszuegiges Feld, `max-height` deckelt eine sehr lange Beschreibung, damit
+ * sie das Modal nicht sprengt — jenseits davon scrollt das Feld selbst.
+ */
+.app-projektwerk .pw-beschreibung__edit textarea {
+	min-height: 7.5rem;
+	max-height: 50vh;
+	overflow-y: auto;
+}
+
 .app-projektwerk .pw-beschreibung__text > :first-child {
 	margin-block-start: 0;
 }

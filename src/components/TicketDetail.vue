@@ -271,13 +271,21 @@
 					</template>
 
 					<div v-else class="pw-beschreibung__edit">
+						<!--
+							**Das Feld wächst mit dem Inhalt** (#160): eine kurze
+							Beschreibung bekommt ein kompaktes Feld, eine lange
+							eines, das mitwächst — bis zur Obergrenze aus der CSS,
+							ab der es selbst scrollt (sonst sprengte eine sehr lange
+							Beschreibung das Modal). `resize="none"`, weil das
+							Mitwachsen die Höhe ohnehin führt; eine von Hand gezogene
+							Höhe würde beim nächsten Tastendruck wieder überschrieben.
+						-->
 						<NcTextArea
 							ref="texteditor"
 							v-model="textEntwurf"
 							:label="t('projektwerk', 'Beschreibung')"
 							:disabled="busy"
-							:rows="10"
-							resize="vertical"
+							resize="none"
 							@keydown.esc.stop="cancelEditText"
 							@keydown.enter.ctrl.exact="saveText"
 							@keydown.enter.meta.exact="saveText" />
@@ -695,6 +703,13 @@ export default defineComponent({
 				this.$nextTick(() => this.messenDeckel())
 			},
 		},
+
+		/** Beim Tippen mitwachsen (#160) — nach dem Rendern des neuen Werts. */
+		textEntwurf() {
+			if (this.editingText) {
+				this.$nextTick(() => this.autoGrowText())
+			}
+		},
 	},
 
 	mounted() {
@@ -831,15 +846,43 @@ export default defineComponent({
 			// Beschreibung erweitert, will unten weiterschreiben — nicht erst
 			// oben landen und nach unten scrollen. Nach dem Rendern des Editors.
 			this.$nextTick(() => {
-				const wrapper = this.$refs.texteditor as { $el?: HTMLElement } | undefined
-				const feld = wrapper?.$el?.querySelector('textarea')
-				if (feld instanceof HTMLTextAreaElement) {
-					feld.focus()
-					const ende = feld.value.length
-					feld.setSelectionRange(ende, ende)
-					feld.scrollTop = feld.scrollHeight
+				const feld = this.textareaEl()
+				if (feld === null) {
+					return
 				}
+				// Erst auf die Inhaltshöhe bringen (#160), dann Cursor und Blick
+				// ans Ende — sonst maße die Höhe an einem noch leeren Feld.
+				this.autoGrowText()
+				feld.focus()
+				const ende = feld.value.length
+				feld.setSelectionRange(ende, ende)
+				feld.scrollTop = feld.scrollHeight
 			})
+		},
+
+		/** Das innere `textarea` des Beschreibungs-Editors, sofern gerendert. */
+		textareaEl(): HTMLTextAreaElement | null {
+			const wrapper = this.$refs.texteditor as { $el?: HTMLElement } | undefined
+			const feld = wrapper?.$el?.querySelector('textarea')
+
+			return feld instanceof HTMLTextAreaElement ? feld : null
+		},
+
+		/**
+		 * Das Eingabefeld auf die Höhe seines Inhalts bringen (#160).
+		 *
+		 * Erst `auto`, damit `scrollHeight` die **tatsächliche** Inhaltshöhe misst
+		 * und nicht die zuletzt gesetzte; dann diese Höhe fest. Die Ober- und
+		 * Untergrenze stehen in der CSS — jenseits der Obergrenze deckelt
+		 * `max-height` und das Feld scrollt selbst.
+		 */
+		autoGrowText(): void {
+			const feld = this.textareaEl()
+			if (feld === null) {
+				return
+			}
+			feld.style.height = 'auto'
+			feld.style.height = feld.scrollHeight + 'px'
 		},
 
 		cancelEditText(): void {
