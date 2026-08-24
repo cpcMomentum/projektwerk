@@ -17,8 +17,10 @@ use OCA\Projektwerk\Db\Ticket;
 use OCA\Projektwerk\Service\AttachmentService;
 use OCA\Projektwerk\Service\NoFolderException;
 use OCA\Projektwerk\Service\ProjectFolderService;
+use OCP\Files\NotEnoughSpaceException;
 use OCP\Files\NotPermittedException;
 use OCP\IDBConnection;
+use OCP\Lock\LockedException;
 use OCP\Migration\IOutput;
 use OCP\Migration\IRepairStep;
 use Psr\Log\LoggerInterface;
@@ -106,7 +108,12 @@ class RelocateAttachments implements IRepairStep {
 				$viewer = $this->access->contextFor((string)$row['uploaded_by'], (int)$row['board_id']);
 				$this->attachmentService->reconcileOne($viewer, $ticket, $attachment);
 				$healed++;
-			} catch (NotAMemberException | NoFolderException | NotPermittedException $e) {
+			} catch (NotAMemberException | NoFolderException | NotPermittedException | LockedException | NotEnoughSpaceException $e) {
+				// LockedException und NotEnoughSpaceException erben NICHT von
+				// NotPermittedException (siehe AttachmentController::run()) —
+				// ohne den eigenen Fang schlaegt eine gerade gesperrte Datei
+				// oder ein volles Konto ungefangen durch und reisst den ganzen
+				// Lauf ab, statt nur diesen einen Anhang zu ueberspringen.
 				$this->logger->warning(
 					'ProjektWerk: Anhang {att} an Vorgang {ticket} liess sich nicht nachziehen — bitte von Hand pruefen.',
 					[
