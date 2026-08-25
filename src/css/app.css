@@ -745,6 +745,17 @@
 	gap: 2px;
 }
 
+/*
+ * Im Vorgang (`--knapp`) **ohne** Schienen-Polster: Die 34-px-Zeile hat kein
+ * Budget für die 2×3 px, sonst wächst der Schalter auf 40 px, die Beschriftung
+ * bricht um und er wird zweizeilig (karte-mobil.spec). Die graue Schiene bleibt
+ * trotzdem sichtbar — hinter den transparenten inaktiven Segmenten und in den
+ * Lücken. Das großzügigere Polster gilt nur im Anlege-Dialog/Wizard.
+ */
+.app-projektwerk .pw-vischoice--knapp [class*='_ncFormBox_row'] {
+	padding: 0;
+}
+
 .app-projektwerk .pw-vischoice [class*='_radioGroupButton_'] {
 	background: none;
 	border: none;
