@@ -185,26 +185,31 @@
 			</NcActionButton>
 
 			<!--
-				**Ein Hauptwort, kein Handlungssatz.** „Verschieben nach …" las
-				sich wie ein Knopf — und weil Ueberschriften in
-				Nextcloud-Menues grau sind, wie ein **gesperrter**. Axel hat
-				beim Geraetetest darauf getippt und daraus geschlossen, das
-				Verschieben ginge nicht. „Zielspalte" laesst sich nicht fuer
-				eine Handlung halten; die Handlung sind die Zeilen darunter.
+				**„Verschieben nach …" als Untermenü** (#176). Vorher stand hier
+				eine Überschrift „Zielspalte" und darunter je Spalte eine Zeile —
+				ein großer gleichförmiger Block, der die beiden Aktionen
+				(Abschließen, Löschen) auseinanderriss. Als Untermenü wird aus dem
+				Block **eine** Zeile, und die Aktionen rücken zusammen.
+
+				Jetzt trägt der Eintrag ein Verb („Verschieben nach …") und liest
+				sich als Handlung — die frühere Sorge, eine graue Überschrift werde
+				für einen gesperrten Knopf gehalten (Axels Gerätetest), entfällt
+				damit von selbst.
 			-->
-			<template v-if="otherColumns.length > 0">
-				<NcActionCaption :name="t('projektwerk', 'Zielspalte')" />
+			<NcActions
+				v-if="otherColumns.length > 0"
+				:menuName="t('projektwerk', 'Verschieben nach …')">
+				<template #icon>
+					<ArrowRightIcon :size="20" />
+				</template>
 				<NcActionButton
 					v-for="column in otherColumns"
 					:key="column.id"
 					:closeAfterClick="true"
 					@click="$emit('move', { ticket, columnId: column.id })">
-					<template #icon>
-						<ArrowRightIcon :size="20" />
-					</template>
 					{{ column.title }}
 				</NcActionButton>
-			</template>
+			</NcActions>
 
 			<!--
 				Löschen als letzter Eintrag (#167) — weich und über den Undo-Toast
@@ -230,7 +235,6 @@ import type { Ticket, WaitState } from '@/types/ticket'
 import { n, t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
 import NcActionButton from '@nextcloud/vue/components/NcActionButton'
-import NcActionCaption from '@nextcloud/vue/components/NcActionCaption'
 import NcActions from '@nextcloud/vue/components/NcActions'
 import NcAvatar from '@nextcloud/vue/components/NcAvatar'
 import ArrowRightIcon from 'vue-material-design-icons/ArrowRight.vue'
@@ -261,7 +265,6 @@ export default defineComponent({
 		DeleteOutlineIcon,
 		FormatListChecksIcon,
 		NcActionButton,
-		NcActionCaption,
 		NcActions,
 		NcAvatar,
 		OfficeBuildingIcon,

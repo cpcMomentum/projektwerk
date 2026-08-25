@@ -354,7 +354,8 @@
 		"Aufzählung": "Aufzählung",
 		"Nummerierte Liste": "Nummerierte Liste",
 		"Als erledigt abschließen": "Als erledigt abschließen",
-		"Als verworfen abschließen": "Als verworfen abschließen"
+		"Als verworfen abschließen": "Als verworfen abschließen",
+		"Verschieben nach …": "Verschieben nach …"
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }
