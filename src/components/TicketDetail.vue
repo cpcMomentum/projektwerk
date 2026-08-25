@@ -63,6 +63,88 @@
 							:viewer="viewer"
 							:showChip="showVisibility"
 							@changed="$emit('changed', $event)" />
+
+						<!--
+							**Kopf-Aktionen in der Steuerungs-Zeile** (#182, verfeinert):
+							Sichtbarkeit („wer sieht das") und Lebenszyklus („was
+							passiert damit") stehen zusammen auf einer Zeile, rechts
+							neben der Sichtbarkeit. Der Titel-Stift bleibt an der
+							Überschrift. Abschließen bleibt die Wahl erledigt/verworfen
+							(#171) als Icon mit Tooltip; das Ergebnis steht nach dem
+							Schließen beschriftet im Kopf und auf der Karte. Löschen
+							bekommt einen sichtbaren Hintergrund (secondary statt
+							tertiär), damit es in der dichteren Zeile nicht untergeht;
+							die GitHub-Überführung als Icon mit der Issue-Nummer im
+							Tooltip.
+						-->
+						<div class="pw-detail__kopfaktionen">
+							<template v-if="!ticket.closedAt">
+								<NcButton
+									variant="primary"
+									:disabled="busy"
+									:ariaLabel="t('projektwerk', 'Als erledigt abschließen')"
+									:title="t('projektwerk', 'Als erledigt abschließen')"
+									@click="closeWith('done')">
+									<template #icon>
+										<CheckIcon :size="20" />
+									</template>
+								</NcButton>
+								<NcButton
+									variant="secondary"
+									:disabled="busy"
+									:ariaLabel="t('projektwerk', 'Als verworfen abschließen')"
+									:title="t('projektwerk', 'Als verworfen abschließen')"
+									@click="closeWith('discarded')">
+									<template #icon>
+										<CancelIcon :size="20" />
+									</template>
+								</NcButton>
+							</template>
+							<NcButton
+								v-else
+								variant="secondary"
+								:disabled="busy"
+								:ariaLabel="t('projektwerk', 'Wieder öffnen')"
+								:title="t('projektwerk', 'Wieder öffnen')"
+								@click="reopen">
+								<template #icon>
+									<RestoreIcon :size="20" />
+								</template>
+							</NcButton>
+
+							<NcButton
+								variant="secondary"
+								:disabled="busy"
+								:ariaLabel="t('projektwerk', 'Löschen')"
+								:title="t('projektwerk', 'Löschen')"
+								@click="$emit('delete', ticket)">
+								<template #icon>
+									<DeleteOutlineIcon :size="20" />
+								</template>
+							</NcButton>
+
+							<a
+								v-if="ticket.githubIssueNumber"
+								class="pw-github-link pw-github-link--icon"
+								:href="ticket.githubIssueUrl ?? undefined"
+								target="_blank"
+								rel="noopener noreferrer"
+								:title="t('projektwerk', 'GitHub-Issue #{number}', { number: ticket.githubIssueNumber })"
+								:aria-label="t('projektwerk', 'GitHub-Issue #{number}', { number: ticket.githubIssueNumber })">
+								<GithubIcon :size="20" />
+							</a>
+							<NcButton
+								v-else-if="canTransferToGithub"
+								variant="tertiary"
+								:disabled="busy"
+								:ariaLabel="t('projektwerk', 'Nach GitHub überführen')"
+								:title="t('projektwerk', 'Nach GitHub überführen')"
+								@click="transferToGithub">
+								<template #icon>
+									<GithubIcon :size="20" />
+								</template>
+							</NcButton>
+						</div>
 					</div>
 
 					<!--
@@ -90,91 +172,6 @@
 									<PencilOutlineIcon :size="20" />
 								</template>
 							</NcButton>
-
-							<!--
-								**Kopf-Aktionen als Icons in der Titelzeile** (#182) —
-								die eigene Aktionszeile entfällt und gibt eine ganze
-								Zeile frei. Abschließen bleibt prominent (primär,
-								sichtbar für Gäste, #168); das Ergebnis wählt man
-								weiterhin (erledigt/verworfen, #171), nur als Icon mit
-								Tooltip statt als Text — beschriftet steht es nach dem
-								Schließen ohnehin im Kopf und auf der Karte. Löschen
-								bleibt leise (tertiär).
-							-->
-							<div class="pw-detail__kopfaktionen">
-								<template v-if="!ticket.closedAt">
-									<NcButton
-										variant="primary"
-										:disabled="busy"
-										:ariaLabel="t('projektwerk', 'Als erledigt abschließen')"
-										:title="t('projektwerk', 'Als erledigt abschließen')"
-										@click="closeWith('done')">
-										<template #icon>
-											<CheckIcon :size="20" />
-										</template>
-									</NcButton>
-									<NcButton
-										variant="secondary"
-										:disabled="busy"
-										:ariaLabel="t('projektwerk', 'Als verworfen abschließen')"
-										:title="t('projektwerk', 'Als verworfen abschließen')"
-										@click="closeWith('discarded')">
-										<template #icon>
-											<CancelIcon :size="20" />
-										</template>
-									</NcButton>
-								</template>
-								<NcButton
-									v-else
-									variant="secondary"
-									:disabled="busy"
-									:ariaLabel="t('projektwerk', 'Wieder öffnen')"
-									:title="t('projektwerk', 'Wieder öffnen')"
-									@click="reopen">
-									<template #icon>
-										<RestoreIcon :size="20" />
-									</template>
-								</NcButton>
-
-								<NcButton
-									variant="tertiary"
-									:disabled="busy"
-									:ariaLabel="t('projektwerk', 'Löschen')"
-									:title="t('projektwerk', 'Löschen')"
-									@click="$emit('delete', ticket)">
-									<template #icon>
-										<DeleteOutlineIcon :size="20" />
-									</template>
-								</NcButton>
-
-								<!--
-									**GitHub-Überführung** (#12) — einseitig, einmalig.
-									Ist der Vorgang schon überführt, führt das Icon zum
-									Issue (Nummer im Tooltip); sonst nur für interne
-									Betrachter an Boards mit hinterlegtem Repo.
-								-->
-								<a
-									v-if="ticket.githubIssueNumber"
-									class="pw-github-link pw-github-link--icon"
-									:href="ticket.githubIssueUrl ?? undefined"
-									target="_blank"
-									rel="noopener noreferrer"
-									:title="t('projektwerk', 'GitHub-Issue #{number}', { number: ticket.githubIssueNumber })"
-									:aria-label="t('projektwerk', 'GitHub-Issue #{number}', { number: ticket.githubIssueNumber })">
-									<GithubIcon :size="20" />
-								</a>
-								<NcButton
-									v-else-if="canTransferToGithub"
-									variant="tertiary"
-									:disabled="busy"
-									:ariaLabel="t('projektwerk', 'Nach GitHub überführen')"
-									:title="t('projektwerk', 'Nach GitHub überführen')"
-									@click="transferToGithub">
-									<template #icon>
-										<GithubIcon :size="20" />
-									</template>
-								</NcButton>
-							</div>
 						</div>
 					</template>
 
