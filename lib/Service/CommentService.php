@@ -53,6 +53,11 @@ class CommentService {
 		private CommentMapper $comments,
 		private TicketMapper $tickets,
 		private NotificationService $notifications,
+		// **Für die Erwähnungen** (#202): `assignableFor()` ist die eine Stelle,
+		// die „wer darf diesen Vorgang sehen" beantwortet. Eine zweite Fassung
+		// derselben Regel hier wäre genau der zweite Ort, an dem sie stimmen
+		// müsste — und der, der irgendwann nicht mehr stimmt.
+		private StepService $steps,
 	) {
 	}
 
@@ -97,7 +102,61 @@ class CommentService {
 		);
 		$this->notifications->deliver($vorgemerkt, $ticket);
 
+		// **@-Erwähnungen** (#202): Wer im Text ausdrücklich genannt wird, wird
+		// gepingt — auch wenn er nicht beteiligt ist. Aber **nur, wer den Vorgang
+		// sehen darf:** Die genannten Kennungen werden gegen die sichtbare Menge
+		// geschnitten, bevor irgendetwas entsteht. `announce()` blockt zwar
+		// Privates und die eigene Handlung, prüft bei einem öffentlichen Vorgang
+		// aber nicht die Mitgliedschaft — ein `@fremde-kennung` erreichte einen
+		// Außenstehenden sonst und verriete ihm die Existenz des Vorgangs. Eigener
+		// Anlass, deshalb nicht von der Kommentar-Drossel betroffen: Eine direkte
+		// Erwähnung soll ankommen.
+		//
+		// `assignableFor()` laedt Mitgliederliste und Ticket erneut — das lohnt
+		// sich nur, wenn ueberhaupt eine Erwaehnung im Text steht. Der weit
+		// haeufigere Kommentar ohne `@` bekommt so keine zusaetzliche Abfrage.
+		$erwaehnte = $this->mentionsAus($text);
+		$erwaehnt = [];
+		if ($erwaehnte !== []) {
+			$sichtbar = $this->steps->assignableFor($viewer, $ticketId);
+			foreach (array_intersect($erwaehnte, $sichtbar) as $uid) {
+				$erwaehnt = [...$erwaehnt, ...$this->notifications->announce(
+					$ticket,
+					$uid,
+					$viewer->userId,
+					MailOutbox::EVENT_COMMENT_MENTION,
+				)];
+			}
+		}
+		$this->notifications->deliver($erwaehnt, $ticket);
+
 		return $gespeichert;
+	}
+
+	/**
+	 * Die @-Erwähnungen aus einem Kommentartext (#202) — die reinen Kennungen,
+	 * eindeutig.
+	 *
+	 * `NcRichContenteditable` schreibt eine Erwähnung als `@kennung` oder, wenn
+	 * die Kennung Sonderzeichen enthält, als `@"kennung"`. Beide Formen werden
+	 * hier gelesen. **Ob die Kennung ein sichtberechtigtes Mitglied ist,
+	 * entscheidet nicht diese Methode**, sondern `announce()` beim
+	 * Benachrichtigen — hier wird nur gelesen, was dasteht.
+	 *
+	 * @return string[] Eindeutige Kennungen
+	 */
+	private function mentionsAus(string $text): array {
+		preg_match_all('/@(?:"([^"]+)"|([a-zA-Z0-9_.@-]+))/', $text, $treffer, PREG_SET_ORDER);
+
+		$uids = [];
+		foreach ($treffer as $t) {
+			$uid = ($t[1] ?? '') !== '' ? $t[1] : ($t[2] ?? '');
+			if ($uid !== '') {
+				$uids[] = $uid;
+			}
+		}
+
+		return array_values(array_unique($uids));
 	}
 
 	/**

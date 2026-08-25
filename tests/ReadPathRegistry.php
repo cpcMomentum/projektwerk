@@ -204,6 +204,16 @@ final class ReadPathRegistry {
 		// Sie hier wegzulassen hiesse, eine Leseroute ohne Erwartung zu haben —
 		// genau das, was der Vollstaendigkeitstest verhindert.
 		'notifyPref#index',
+		// Derselbe Fall (#184): der eigene Ordner fuer private Anhaenge, kein
+		// Board im Pfad. Die Grenze ist die Benutzerkennung aus der Sitzung —
+		// jeder sieht nur seinen eigenen Pfad. Erwartung:
+		// `testThePrivateFolderPathIsScopedToItsOwner`.
+		'privateFolder#index',
+		// Und derselbe Fall (#12): ob die eigene Person einen GitHub-Token
+		// hinterlegt hat. Kein Board im Pfad, die Grenze ist die Sitzung — und
+		// der Endpunkt liefert nie den Token, nur das `present`-Flag der eigenen
+		// Person. Erwartung: `testTheGithubTokenPresenceIsScopedToItsOwner`.
+		'githubToken#index',
 	];
 
 	/**
@@ -219,6 +229,14 @@ final class ReadPathRegistry {
 	public const ROUTES_WITHOUT_DATA = [
 		'page#index' => 'Liefert die Vue-Huelle aus, keine Ticketdaten. '
 			. 'Alle Daten kommen ueber die API-Routen, die einzeln registriert sind.',
+		// Die Repo-Auswahl (#196) liefert **externe GitHub-Repo-Namen**, keine
+		// ProjektWerk-Daten — Board, Rolle und Sichtbarkeit spielen hier keine
+		// Rolle. Die Grenze ist der Token der Sitzung (jeder sieht nur, was sein
+		// eigener Token freigibt, kein userId im Pfad); ein Leak-Vektor auf
+		// fremde Projekt-/Vorgangsdaten existiert nicht. Gegen echtes GitHub
+		// laesst sich die Route zudem nicht integrationstesten.
+		'githubToken#repos' => 'Liefert externe GitHub-Repo-Namen (keine ProjektWerk-Daten), '
+			. 'token-scoped an die Sitzung. Kein Zugriff auf Board-/Vorgangsdaten.',
 	];
 
 	/**

@@ -43,8 +43,11 @@
 						<span class="pw-num">#{{ paddedNumber }}</span>
 						<span class="pw-meta__sep" aria-hidden="true">·</span>
 						<span class="pw-meta__column">{{ columnTitle }}</span>
-						<span v-if="ticket.closedAt" class="pw-meta__closed">
-							{{ t('projektwerk', 'Geschlossen') }}
+						<span
+							v-if="ticket.closedAt"
+							class="pw-meta__closed"
+							:class="{ 'pw-meta__closed--discarded': ticket.closedOutcome === 'discarded' }">
+							{{ closedLabel }}
 						</span>
 
 						<!--
@@ -60,17 +63,104 @@
 							:viewer="viewer"
 							:showChip="showVisibility"
 							@changed="$emit('changed', $event)" />
+
+						<!--
+							**Kopf-Aktionen in der Steuerungs-Zeile** (#182, verfeinert):
+							Sichtbarkeit („wer sieht das") und Lebenszyklus („was
+							passiert damit") stehen zusammen auf einer Zeile, rechts
+							neben der Sichtbarkeit. Der Titel-Stift bleibt an der
+							Überschrift. Abschließen bleibt die Wahl erledigt/verworfen
+							(#171) als Icon mit Tooltip; das Ergebnis steht nach dem
+							Schließen beschriftet im Kopf und auf der Karte. Löschen
+							bekommt einen sichtbaren Hintergrund (secondary statt
+							tertiär), damit es in der dichteren Zeile nicht untergeht;
+							die GitHub-Überführung als Icon mit der Issue-Nummer im
+							Tooltip.
+						-->
+						<div class="pw-detail__kopfaktionen">
+							<template v-if="!ticket.closedAt">
+								<NcButton
+									variant="primary"
+									:disabled="busy"
+									:ariaLabel="t('projektwerk', 'Als erledigt abschließen')"
+									:title="t('projektwerk', 'Als erledigt abschließen')"
+									@click="closeWith('done')">
+									<template #icon>
+										<CheckIcon :size="20" />
+									</template>
+								</NcButton>
+								<NcButton
+									variant="secondary"
+									:disabled="busy"
+									:ariaLabel="t('projektwerk', 'Als verworfen abschließen')"
+									:title="t('projektwerk', 'Als verworfen abschließen')"
+									@click="closeWith('discarded')">
+									<template #icon>
+										<CancelIcon :size="20" />
+									</template>
+								</NcButton>
+							</template>
+							<NcButton
+								v-else
+								variant="secondary"
+								:disabled="busy"
+								:ariaLabel="t('projektwerk', 'Wieder öffnen')"
+								:title="t('projektwerk', 'Wieder öffnen')"
+								@click="reopen">
+								<template #icon>
+									<RestoreIcon :size="20" />
+								</template>
+							</NcButton>
+
+							<NcButton
+								variant="secondary"
+								:disabled="busy"
+								:ariaLabel="t('projektwerk', 'Löschen')"
+								:title="t('projektwerk', 'Löschen')"
+								@click="$emit('delete', ticket)">
+								<template #icon>
+									<DeleteOutlineIcon :size="20" />
+								</template>
+							</NcButton>
+
+							<a
+								v-if="ticket.githubIssueNumber"
+								class="pw-github-link pw-github-link--icon"
+								:href="ticket.githubIssueUrl ?? undefined"
+								target="_blank"
+								rel="noopener noreferrer"
+								:title="t('projektwerk', 'GitHub-Issue #{number}', { number: ticket.githubIssueNumber })"
+								:aria-label="t('projektwerk', 'GitHub-Issue #{number}', { number: ticket.githubIssueNumber })">
+								<GithubIcon :size="20" />
+							</a>
+							<NcButton
+								v-else-if="canTransferToGithub"
+								variant="tertiary"
+								:disabled="busy"
+								:ariaLabel="t('projektwerk', 'Nach GitHub überführen')"
+								:title="t('projektwerk', 'Nach GitHub überführen')"
+								@click="transferToGithub">
+								<template #icon>
+									<GithubIcon :size="20" />
+								</template>
+							</NcButton>
+						</div>
 					</div>
 
 					<!--
 						Der Titel ist bearbeitbar wie Beschreibung und Zuständige
 						(#169) — bis dahin die einzige Angabe im Detail, die nur
-						dastand. Stift oder Doppelklick öffnen das Feld; der Titel ist
-						Pflicht, ein leerer wird nicht gespeichert.
+						dastand. Stift oder Klick öffnen das Feld (#200); der Titel
+						ist Pflicht, ein leerer wird nicht gespeichert.
 					-->
 					<template v-if="!editingTitle">
 						<div class="pw-detail__titelzeile">
-							<h2 :id="titleId" class="pw-detail__title" @dblclick="startEditTitle">
+							<!--
+								Ein Klick genügt (#200). Anders als die Beschreibung
+								ist der Titel reiner Text — kein Markdown, keine Links,
+								keine Auswahl, die ein Klick zerstören könnte.
+							-->
+							<h2 :id="titleId" class="pw-detail__title" @click="startEditTitle">
 								{{ ticket.title }}
 							</h2>
 							<NcButton
@@ -119,44 +209,6 @@
 						beantwortet der Personen-Block zwei Zeilen weiter.
 					-->
 					<WaitBadge :state="waiting" :fromClientSide="fromClientSide" :names="memberNames" />
-
-					<!--
-						Abschließen ist eine bewusste Handlung (#168, §9) und braucht
-						darum einen deutlichen Ort im Kopf, nicht nur einen Menüpunkt —
-						zumal Kunden Gäste sind und die Aktion sehen sollen. Der Knopf
-						ist zugleich das Archiv: abgeschlossen klappt unter „Ältere
-						anzeigen" weg. Das Ergebnis (erledigt vs. verworfen) kommt
-						getrennt (#171); hier geht es nur um offen/geschlossen.
-					-->
-					<div class="pw-kopf__aktionen">
-						<NcButton
-							:variant="ticket.closedAt ? 'secondary' : 'primary'"
-							:disabled="busy"
-							@click="toggleClosed">
-							<template #icon>
-								<CheckIcon v-if="!ticket.closedAt" :size="20" />
-								<RestoreIcon v-else :size="20" />
-							</template>
-							{{ ticket.closedAt ? t('projektwerk', 'Wieder öffnen') : t('projektwerk', 'Abschließen') }}
-						</NcButton>
-
-						<!--
-							Löschen ist weich und über den Undo-Toast sofort umkehrbar
-							(#167), deshalb ohne schwere Rückfrage — tertiär und leiser
-							als der Abschließen-Knopf. Der eigentliche Löschvorgang
-							läuft in BoardView, damit Toast und Neuladen an einer
-							Stelle liegen (wie beim Karten-Menü).
-						-->
-						<NcButton
-							variant="tertiary"
-							:disabled="busy"
-							@click="$emit('delete', ticket)">
-							<template #icon>
-								<DeleteOutlineIcon :size="20" />
-							</template>
-							{{ t('projektwerk', 'Löschen') }}
-						</NcButton>
-					</div>
 				</header>
 
 				<!--
@@ -176,36 +228,54 @@
 				-->
 				<div class="pw-beschreibung">
 					<template v-if="!editingText">
-						<div
-							ref="textbereich"
-							class="pw-beschreibung__text"
-							:class="{ 'pw-beschreibung__text--offen': textOffen }"
-							@dblclick="startEditText">
-							<NcRichText
+						<!--
+							Text und Stift in einer Zeile — der Stift rechts daneben
+							(#200), wie beim Titel ({@see pw-detail__titelzeile}),
+							statt darunter. Spart eine Zeile und ist konsistent.
+						-->
+						<div class="pw-beschreibung__zeile">
+							<div
+								ref="textbereich"
+								class="pw-beschreibung__text"
+								:class="{ 'pw-beschreibung__text--offen': textOffen }"
+								@dblclick="startEditText">
+								<NcRichText
+									v-if="ticket.description"
+									:text="ticket.description"
+									:useMarkdown="true"
+									:useExtendedMarkdown="true"
+									:interactive="false" />
+								<!--
+									Sprechender Leerzustand (§9) — und er bietet gleich
+									den Weg an, statt nur festzustellen, dass nichts da
+									ist.
+								-->
+								<NcButton v-else variant="tertiary" @click="startEditText">
+									<template #icon>
+										<PlusIcon :size="20" />
+									</template>
+									{{ t('projektwerk', 'Beschreibung hinzufügen') }}
+								</NcButton>
+								<!--
+									Der Verlauf verblasst nur, wenn wirklich etwas unter
+									dem Deckel liegt (#163). Sonst blendete er die letzte
+									Zeile eines vollstaendig sichtbaren Textes aus — es sah
+									abgeschnitten aus, obwohl der „Mehr anzeigen"-Knopf
+									(gleiche Bedingung) fehlte, weil nichts verborgen war.
+								-->
+								<span v-if="textZuHoch" class="pw-beschreibung__deckel" aria-hidden="true" />
+							</div>
+
+							<NcButton
 								v-if="ticket.description"
-								:text="ticket.description"
-								:useMarkdown="true"
-								:useExtendedMarkdown="true"
-								:interactive="false" />
-							<!--
-								Sprechender Leerzustand (§9) — und er bietet gleich
-								den Weg an, statt nur festzustellen, dass nichts da
-								ist.
-							-->
-							<NcButton v-else variant="tertiary" @click="startEditText">
+								variant="tertiary"
+								class="pw-beschreibung__stift"
+								:ariaLabel="t('projektwerk', 'Beschreibung bearbeiten')"
+								@click="startEditText">
 								<template #icon>
-									<PlusIcon :size="20" />
+									<PencilOutlineIcon :size="20" />
 								</template>
-								{{ t('projektwerk', 'Beschreibung hinzufügen') }}
 							</NcButton>
-							<!--
-								Der Verlauf verblasst nur, wenn wirklich etwas unter
-								dem Deckel liegt (#163). Sonst blendete er die letzte
-								Zeile eines vollstaendig sichtbaren Textes aus — es sah
-								abgeschnitten aus, obwohl der „Mehr anzeigen"-Knopf
-								(gleiche Bedingung) fehlte, weil nichts verborgen war.
-							-->
-							<span v-if="textZuHoch" class="pw-beschreibung__deckel" aria-hidden="true" />
 						</div>
 
 						<NcButton
@@ -219,25 +289,64 @@
 							</template>
 							{{ textOffen ? t('projektwerk', 'Weniger anzeigen') : t('projektwerk', 'Mehr anzeigen') }}
 						</NcButton>
-
-						<NcButton
-							v-if="ticket.description"
-							variant="tertiary"
-							class="pw-beschreibung__stift"
-							:ariaLabel="t('projektwerk', 'Beschreibung bearbeiten')"
-							@click="startEditText">
-							<template #icon>
-								<PencilOutlineIcon :size="20" />
-							</template>
-						</NcButton>
 					</template>
 
 					<div v-else class="pw-beschreibung__edit">
+						<!--
+							**Bedien-Hilfe für das Markdown** (#161). Die Beschreibung
+							wird ohnehin als Markdown gerendert; fett, Aufzählung und
+							nummerierte Liste funktionieren beim Tippen längst. Die
+							Knöpfe fügen nur die Syntax an der Cursorstelle ein, für
+							alle, die sie nicht auswendig kennen — kein zweiter
+							Editor, keine zweite Wahrheit über den Text.
+						-->
+						<div class="pw-beschreibung__toolbar">
+							<NcButton
+								variant="tertiary"
+								:disabled="busy"
+								:ariaLabel="t('projektwerk', 'Fett')"
+								:title="t('projektwerk', 'Fett')"
+								@click="applyFormat('bold')">
+								<template #icon>
+									<FormatBoldIcon :size="20" />
+								</template>
+							</NcButton>
+							<NcButton
+								variant="tertiary"
+								:disabled="busy"
+								:ariaLabel="t('projektwerk', 'Aufzählung')"
+								:title="t('projektwerk', 'Aufzählung')"
+								@click="applyFormat('bullet')">
+								<template #icon>
+									<FormatListBulletedIcon :size="20" />
+								</template>
+							</NcButton>
+							<NcButton
+								variant="tertiary"
+								:disabled="busy"
+								:ariaLabel="t('projektwerk', 'Nummerierte Liste')"
+								:title="t('projektwerk', 'Nummerierte Liste')"
+								@click="applyFormat('ordered')">
+								<template #icon>
+									<FormatListNumberedIcon :size="20" />
+								</template>
+							</NcButton>
+						</div>
+						<!--
+							**Das Feld wächst mit dem Inhalt** (#160): eine kurze
+							Beschreibung bekommt ein kompaktes Feld, eine lange
+							eines, das mitwächst — bis zur Obergrenze aus der CSS,
+							ab der es selbst scrollt (sonst sprengte eine sehr lange
+							Beschreibung das Modal). `resize="none"`, weil das
+							Mitwachsen die Höhe ohnehin führt; eine von Hand gezogene
+							Höhe würde beim nächsten Tastendruck wieder überschrieben.
+						-->
 						<NcTextArea
+							ref="texteditor"
 							v-model="textEntwurf"
 							:label="t('projektwerk', 'Beschreibung')"
 							:disabled="busy"
-							resize="vertical"
+							resize="none"
 							@keydown.esc.stop="cancelEditText"
 							@keydown.enter.ctrl.exact="saveText"
 							@keydown.enter.meta.exact="saveText" />
@@ -407,6 +516,8 @@
 					:comments="comments"
 					:members="members"
 					:viewer="viewer"
+					:orgInternal="orgInternal"
+					:orgExternal="orgExternal"
 					@changed="$emit('commentsChanged')" />
 			</div>
 		</div>
@@ -431,11 +542,16 @@ import NcTextField from '@nextcloud/vue/components/NcTextField'
 import AccountPlusIcon from 'vue-material-design-icons/AccountPlusOutline.vue'
 import CalendarAlertIcon from 'vue-material-design-icons/CalendarAlert.vue'
 import CalendarIcon from 'vue-material-design-icons/CalendarOutline.vue'
+import CancelIcon from 'vue-material-design-icons/Cancel.vue'
 import CheckIcon from 'vue-material-design-icons/Check.vue'
 import ChevronDownIcon from 'vue-material-design-icons/ChevronDown.vue'
 import ChevronUpIcon from 'vue-material-design-icons/ChevronUp.vue'
 import CloseIcon from 'vue-material-design-icons/Close.vue'
 import DeleteOutlineIcon from 'vue-material-design-icons/DeleteOutline.vue'
+import FormatBoldIcon from 'vue-material-design-icons/FormatBold.vue'
+import FormatListBulletedIcon from 'vue-material-design-icons/FormatListBulleted.vue'
+import FormatListNumberedIcon from 'vue-material-design-icons/FormatListNumbered.vue'
+import GithubIcon from 'vue-material-design-icons/Github.vue'
 import PencilOutlineIcon from 'vue-material-design-icons/PencilOutline.vue'
 import PlusIcon from 'vue-material-design-icons/Plus.vue'
 import RestoreIcon from 'vue-material-design-icons/Restore.vue'
@@ -444,6 +560,7 @@ import CommentList from '@/components/CommentList.vue'
 import StepList from '@/components/StepList.vue'
 import VisibilityControl from '@/components/VisibilityControl.vue'
 import WaitBadge from '@/components/WaitBadge.vue'
+import { transferTicketToGithub } from '@/services/github'
 import { fetchAssignable } from '@/services/steps'
 import { updateTicket } from '@/services/tickets'
 import { reportWriteError } from '@/services/writeError'
@@ -462,7 +579,7 @@ interface PersonOption {
 export default defineComponent({
 	name: 'TicketDetail',
 
-	components: { AccountPlusIcon, AttachmentList, CalendarIcon, CalendarAlertIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, CloseIcon, CommentList, DeleteOutlineIcon, NcAvatar, NcButton, NcDateTimePicker, NcModal, NcRichText, NcSelectUsers, NcTextArea, NcTextField, PencilOutlineIcon, PlusIcon, RestoreIcon, StepList, VisibilityControl, WaitBadge },
+	components: { AccountPlusIcon, AttachmentList, CalendarIcon, CalendarAlertIcon, CancelIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, CloseIcon, CommentList, DeleteOutlineIcon, FormatBoldIcon, FormatListBulletedIcon, FormatListNumberedIcon, GithubIcon, NcAvatar, NcButton, NcDateTimePicker, NcModal, NcRichText, NcSelectUsers, NcTextArea, NcTextField, PencilOutlineIcon, PlusIcon, RestoreIcon, StepList, VisibilityControl, WaitBadge },
 
 	props: {
 		ticket: { type: Object as PropType<Ticket | null>, default: null },
@@ -479,6 +596,10 @@ export default defineComponent({
 		waiting: { type: Object as PropType<WaitState | null>, default: null },
 		/** Aus Sicht der Kundenseite formuliert. */
 		fromClientSide: { type: Boolean, default: false },
+		/** Ob dieses Board die GitHub-Überführung anbietet (#12). */
+		githubEnabled: { type: Boolean, default: false },
+		/** Das am Board hinterlegte Ziel-Repository „owner/repo" (#12). */
+		githubRepo: { type: String, default: '' },
 	},
 
 	emits: ['close', 'changed', 'delete', 'stepsChanged', 'commentsChanged', 'attachmentsChanged'],
@@ -517,6 +638,21 @@ export default defineComponent({
 	computed: {
 		paddedNumber(): string {
 			return String(this.ticket?.number ?? 0).padStart(4, '0')
+		},
+
+		/**
+		 * Ob die Überführungs-Aktion angeboten wird (#12): nur intern, nur wenn
+		 * das Board sie eingeschaltet und ein Repo hinterlegt hat, und nur
+		 * solange der Vorgang noch nicht überführt ist. Externe (Kunden als
+		 * Gäste) sehen sie nie — die serverseitige Grenze steht zusätzlich im
+		 * TicketService.
+		 */
+		canTransferToGithub(): boolean {
+			return this.viewer?.role === 'internal'
+				&& this.githubEnabled
+				&& this.githubRepo.trim() !== ''
+				&& this.ticket !== null
+				&& !this.ticket.githubIssueNumber
 		},
 
 		/** Die Fälligkeit als `Date` für den Datumswähler, oder null. */
@@ -592,6 +728,22 @@ export default defineComponent({
 		},
 
 		/**
+		 * Wie der Abschluss im Kopf steht (#171): das Ergebnis, wenn eines
+		 * vermerkt ist, sonst das neutrale „Geschlossen" — so lesen sich auch die
+		 * vor #171 geschlossenen Vorgänge ohne hinterlegtes Ergebnis richtig.
+		 */
+		closedLabel(): string {
+			if (this.ticket?.closedOutcome === 'discarded') {
+				return t('projektwerk', 'Verworfen')
+			}
+			if (this.ticket?.closedOutcome === 'done') {
+				return t('projektwerk', 'Erledigt')
+			}
+
+			return t('projektwerk', 'Geschlossen')
+		},
+
+		/**
 		 * Kennung auf Anzeigenamen, wie `WaitBadge` sie erwartet.
 		 *
 		 * **Der Server löst die Namen auf** (`resolvedName`) — im Browser
@@ -631,6 +783,13 @@ export default defineComponent({
 			handler() {
 				this.$nextTick(() => this.messenDeckel())
 			},
+		},
+
+		/** Beim Tippen mitwachsen (#160) — nach dem Rendern des neuen Werts. */
+		textEntwurf() {
+			if (this.editingText) {
+				this.$nextTick(() => this.autoGrowText())
+			}
 		},
 	},
 
@@ -674,25 +833,68 @@ export default defineComponent({
 		 * Benachrichtigungen. Über `changed` läuft der frische Stand zurück, sodass
 		 * Kopf (Knopf, „Geschlossen") und Karte gleich mitgehen.
 		 */
-		async toggleClosed(): Promise<void> {
+		/**
+		 * Abschließen mit Ergebnis (#171).
+		 *
+		 * @param outcome `'done'` (erledigt) oder `'discarded'` (verworfen).
+		 */
+		closeWith(outcome: 'done' | 'discarded'): Promise<void> {
+			return this.setClosed(true, outcome)
+		},
+
+		reopen(): Promise<void> {
+			return this.setClosed(false)
+		},
+
+		/**
+		 * Den offen/geschlossen-Zustand schreiben; das Ergebnis begleitet nur das
+		 * Abschließen. Der Server löscht es beim Wieder-öffnen ohnehin — hier wird
+		 * es dann gar nicht erst mitgeschickt.
+		 *
+		 * @param schliessen Ob geschlossen (true) oder wieder geöffnet (false).
+		 * @param outcome Beim Schließen das gewählte Ergebnis.
+		 */
+		async setClosed(schliessen: boolean, outcome?: 'done' | 'discarded'): Promise<void> {
 			if (this.ticket === null || this.busy) {
 				return
 			}
 
-			const schliessen = this.ticket.closedAt === null
 			this.busy = true
 			try {
 				const updated = await updateTicket(
 					this.ticket.boardId,
 					this.ticket.id,
 					this.ticket.version,
-					{ closed: schliessen },
+					schliessen ? { closed: true, outcome } : { closed: false },
 				)
 				this.$emit('changed', updated)
 			} catch (e) {
 				reportWriteError(e, schliessen
 					? t('projektwerk', 'Abschließen fehlgeschlagen')
 					: t('projektwerk', 'Wieder öffnen fehlgeschlagen'))
+			} finally {
+				this.busy = false
+			}
+		},
+
+		/**
+		 * Den Vorgang nach GitHub überführen (#12) — einseitig, einmalig. Bei
+		 * Erfolg trägt der aktualisierte Vorgang Nummer und Adresse des Issues;
+		 * die Aktion weicht dann dem Link. Fehler (kein Token, falsches Repo,
+		 * GitHub nicht erreichbar) kommen als Servermeldung; der Vorgang bleibt
+		 * unverändert.
+		 */
+		async transferToGithub(): Promise<void> {
+			if (this.ticket === null || this.busy) {
+				return
+			}
+
+			this.busy = true
+			try {
+				const updated = await transferTicketToGithub(this.ticket.boardId, this.ticket.id)
+				this.$emit('changed', updated)
+			} catch (e) {
+				reportWriteError(e, t('projektwerk', 'Überführung nach GitHub fehlgeschlagen'))
 			} finally {
 				this.busy = false
 			}
@@ -740,6 +942,114 @@ export default defineComponent({
 		startEditText(): void {
 			this.textEntwurf = this.ticket?.description ?? ''
 			this.editingText = true
+
+			// **Cursor ans Ende, ans untere Ende gescrollt** (#200): Wer eine
+			// Beschreibung erweitert, will unten weiterschreiben — nicht erst
+			// oben landen und nach unten scrollen. Nach dem Rendern des Editors.
+			this.$nextTick(() => {
+				const feld = this.textareaEl()
+				if (feld === null) {
+					return
+				}
+				// Erst auf die Inhaltshöhe bringen (#160), dann Cursor und Blick
+				// ans Ende — sonst maße die Höhe an einem noch leeren Feld.
+				this.autoGrowText()
+				feld.focus()
+				const ende = feld.value.length
+				feld.setSelectionRange(ende, ende)
+				feld.scrollTop = feld.scrollHeight
+			})
+		},
+
+		/** Das innere `textarea` des Beschreibungs-Editors, sofern gerendert. */
+		textareaEl(): HTMLTextAreaElement | null {
+			const wrapper = this.$refs.texteditor as { $el?: HTMLElement } | undefined
+			const feld = wrapper?.$el?.querySelector('textarea')
+
+			return feld instanceof HTMLTextAreaElement ? feld : null
+		},
+
+		/**
+		 * Das Eingabefeld auf die Höhe seines Inhalts bringen (#160).
+		 *
+		 * Erst `auto`, damit `scrollHeight` die **tatsächliche** Inhaltshöhe misst
+		 * und nicht die zuletzt gesetzte; dann diese Höhe fest. Die Ober- und
+		 * Untergrenze stehen in der CSS — jenseits der Obergrenze deckelt
+		 * `max-height` und das Feld scrollt selbst.
+		 */
+		autoGrowText(): void {
+			const feld = this.textareaEl()
+			if (feld === null) {
+				return
+			}
+			feld.style.height = 'auto'
+			feld.style.height = feld.scrollHeight + 'px'
+		},
+
+		/**
+		 * Markdown an der Cursorstelle einfügen (#161).
+		 *
+		 * Kein zweiter Editor: Die Knöpfe schreiben genau die Syntax, die man
+		 * sonst selbst tippt, in denselben Text. `bold` klammert die Auswahl
+		 * (oder setzt ein leeres Paar und stellt den Cursor hinein);
+		 * `bullet`/`ordered` stellen jeder berührten Zeile ihr Zeichen voran.
+		 *
+		 * @param art Welche Formatierung eingefügt wird.
+		 */
+		applyFormat(art: 'bold' | 'bullet' | 'ordered'): void {
+			const feld = this.textareaEl()
+			if (feld === null) {
+				return
+			}
+			const wert = this.textEntwurf
+			const start = feld.selectionStart
+			const ende = feld.selectionEnd
+
+			if (art === 'bold') {
+				const auswahl = wert.slice(start, ende)
+				if (auswahl === '') {
+					this.replaceRange(feld, start, ende, '****', start + 2, start + 2)
+				} else {
+					this.replaceRange(feld, start, ende, `**${auswahl}**`, start + 2, ende + 2)
+				}
+
+				return
+			}
+
+			// Zeilenweise: die Auswahl auf ganze Zeilen ausdehnen, dann jeder
+			// berührten Zeile ihr Präfix voranstellen.
+			const zeilenAnfang = wert.lastIndexOf('\n', start - 1) + 1
+			const block = wert.slice(zeilenAnfang, ende)
+			let nummer = 0
+			const ersetzt = block.split('\n').map((zeile) => {
+				nummer++
+
+				return (art === 'bullet' ? '- ' : `${nummer}. `) + zeile
+			}).join('\n')
+
+			this.replaceRange(feld, zeilenAnfang, ende, ersetzt, zeilenAnfang, zeilenAnfang + ersetzt.length)
+		},
+
+		/**
+		 * Einen Bereich des Entwurfs ersetzen und danach Auswahl, Fokus und Höhe
+		 * nachführen — der gemeinsame Weg aller Toolbar-Knöpfe.
+		 *
+		 * @param feld Das Eingabefeld.
+		 * @param von Beginn des zu ersetzenden Bereichs.
+		 * @param bis Ende des zu ersetzenden Bereichs.
+		 * @param text Der einzusetzende Text.
+		 * @param auswahlVon Wohin die Auswahl danach beginnt.
+		 * @param auswahlBis Wohin die Auswahl danach endet.
+		 */
+		replaceRange(feld: HTMLTextAreaElement, von: number, bis: number, text: string, auswahlVon: number, auswahlBis: number): void {
+			const wert = this.textEntwurf
+			this.textEntwurf = wert.slice(0, von) + text + wert.slice(bis)
+
+			this.$nextTick(() => {
+				feld.focus()
+				feld.setSelectionRange(auswahlVon, auswahlBis)
+				this.autoGrowText()
+			})
 		},
 
 		cancelEditText(): void {

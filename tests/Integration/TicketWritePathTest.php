@@ -12,8 +12,9 @@ namespace OCA\Projektwerk\Tests\Integration;
 use OCA\Projektwerk\Access\TicketScope;
 use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Db\AttachmentMapper;
+use OCA\Projektwerk\Db\Ticket;
 use OCA\Projektwerk\Db\TicketMapper;
-use OCA\Projektwerk\Service\AttachmentsPresentException;
+use OCA\Projektwerk\Service\NoFolderException;
 use OCA\Projektwerk\Service\ConflictException;
 use OCA\Projektwerk\Service\NotOwningSideException;
 use OCA\Projektwerk\Service\PositionService;
@@ -476,29 +477,33 @@ class TicketWritePathTest extends IntegrationTestCase {
 	}
 
 	/**
-	 * **Ein Vorgang mit Anhängen lässt sich nicht umstellen** (§3.10 Stufe 1).
+	 * **Fehlt der Zielordner, bleibt der Vorgang unverändert** (#185).
 	 *
-	 * Das ist der einzige Punkt, an dem ein Leck physisch würde: Läge die Datei
-	 * erst in `90_Austausch`, hätte die Kundenseite sie gesehen, und keine
-	 * spätere Codekorrektur nähme das zurück. Solange der Umzug nicht
-	 * transaktional zur Datenbank ist (§11.3, Spike S2 offen), wird deshalb gar
-	 * nicht erst verschoben.
+	 * Seit #185 zieht ein Anhang mit der Sichtbarkeit um, statt den Wechsel zu
+	 * sperren. Das setzt aber einen Ablageort in der Zielstufe voraus. Die
+	 * Fixture hat für dieses Board **keine** Ordner hinterlegt — also lehnt
+	 * `assertRelocatable` den Wechsel ab, **bevor** irgendetwas geschrieben oder
+	 * eine Datei bewegt ist. Das ist der fail-safe Rand: Ein abgewiesener
+	 * Versuch darf nichts halb erledigt hinterlassen.
+	 *
+	 * (Dass der Umzug **mit** hinterlegtem Ordner tatsächlich läuft, prüft die
+	 * Oberfläche gegen ein echtes Board mit echten Ordnern — die Fixture-Nutzer
+	 * hier haben keinen Dateibaum, in dem ein Ordner läge.)
 	 */
-	public function testATicketWithAttachmentsKeepsItsVisibility(): void {
+	public function testAVisibilityChangeIsRejectedWhenTheTargetHasNoFolder(): void {
 		$anna = $this->viewer(LeakMatrixFixture::ANNA);
 		$ticketId = $this->fixture->ticketIds['public/anna'];
 
-		// Die Fixture hat einen Anhang daran — hier ausdrücklich **nicht**
-		// gelöst.
+		// Die Fixture hat einen Anhang daran, aber keinen internen Ordner am
+		// Board — der Umzug hat kein Ziel.
 		try {
 			$this->service->changeVisibility($anna, $ticketId, 1, TicketScope::VISIBILITY_INTERNAL);
-			$this->fail('Die Sichtbarkeit ließ sich trotz Anhang ändern.');
-		} catch (AttachmentsPresentException $e) {
-			$this->assertSame(1, $e->count, 'Die Meldung nennt die Zahl, weil sie die Handlung bestimmt.');
+			$this->fail('Die Sichtbarkeit ließ sich trotz fehlendem Zielordner ändern.');
+		} catch (NoFolderException) {
+			$this->addToAssertionCount(1);
 		}
 
-		// Und der Vorgang steht unverändert da: Ein abgewiesener Versuch darf
-		// nichts halb erledigt hinterlassen.
+		// Und der Vorgang steht unverändert da.
 		$ticket = $this->tickets->findVisible($anna, $ticketId);
 		$this->assertSame(TicketScope::VISIBILITY_PUBLIC, $ticket->getVisibility());
 		$this->assertSame(1, (int)$ticket->getVersion());
@@ -913,6 +918,44 @@ class TicketWritePathTest extends IntegrationTestCase {
 			$this->geschlossenZeilen($ticketId),
 			'Ein zweites „closed: true" ist kein Uebergang und darf nicht erneut ausloesen.',
 		);
+	}
+
+	/**
+	 * **Das Abschluss-Ergebnis begleitet den Abschluss** (#171): beim Schliessen
+	 * gewaehlt, beim Wieder-oeffnen geloescht. Ein offener Vorgang traegt kein
+	 * Ergebnis — sonst gaebe es einen dritten Zustand neben offen und zu.
+	 */
+	public function testClosingRecordsTheChosenOutcomeAndReopeningClearsIt(): void {
+		$bert = $this->viewer(LeakMatrixFixture::BERT);
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+
+		$erledigt = $this->service->update($bert, $ticketId, 1, ['closed' => true, 'outcome' => 'done']);
+		$this->assertSame(Ticket::OUTCOME_DONE, $erledigt->getClosedOutcome(), 'Erledigt muss vermerkt sein.');
+
+		$offen = $this->service->update($bert, $ticketId, (int)$erledigt->getVersion(), ['closed' => false]);
+		$this->assertNull($offen->getClosedOutcome(), 'Ein wieder geoeffneter Vorgang hat kein Ergebnis.');
+
+		$verworfen = $this->service->update($bert, $ticketId, (int)$offen->getVersion(), ['closed' => true, 'outcome' => 'discarded']);
+		$this->assertSame(Ticket::OUTCOME_DISCARDED, $verworfen->getClosedOutcome(), 'Verworfen muss vermerkt sein.');
+	}
+
+	/**
+	 * **Kein Drittzustand durch die Hintertuer** (#171): Eine fehlende oder
+	 * unbekannte Ergebnisangabe faellt auf „erledigt" zurueck — der haeufige,
+	 * positive Fall ist zugleich der sichere. So hat ein Abschluss immer ein
+	 * Vorzeichen, ohne dass ein leerer Wert etwas Eigenes bedeutet.
+	 */
+	public function testClosingWithMissingOrUnknownOutcomeDefaultsToDone(): void {
+		$bert = $this->viewer(LeakMatrixFixture::BERT);
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+
+		$ohne = $this->service->update($bert, $ticketId, 1, ['closed' => true]);
+		$this->assertSame(Ticket::OUTCOME_DONE, $ohne->getClosedOutcome(), 'Ohne Angabe gilt „erledigt".');
+
+		$auf = $this->service->update($bert, $ticketId, (int)$ohne->getVersion(), ['closed' => false]);
+
+		$quatsch = $this->service->update($bert, $ticketId, (int)$auf->getVersion(), ['closed' => true, 'outcome' => 'bogus']);
+		$this->assertSame(Ticket::OUTCOME_DONE, $quatsch->getClosedOutcome(), 'Ein unbekannter Wert faellt auf „erledigt".');
 	}
 
 	/**

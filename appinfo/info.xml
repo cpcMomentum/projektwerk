@@ -23,7 +23,7 @@ Der eigentliche Zweck ist nicht das Board, sondern die **sichtbare Zustaendigkei
 - **Kunden ohne Fremdkonto** — Zusammenarbeit auf der eigenen Nextcloud, wahlweise per Gastzugang
     ]]></description>
 
-    <version>0.4.6</version>
+    <version>0.4.8</version>
     <licence>AGPL-3.0-or-later</licence>
 
     <author mail="axel.deffner@cpcmomentum.com" homepage="https://github.com/cpcMomentum">Axel Deffner</author>
@@ -68,6 +68,18 @@ Der eigentliche Zweck ist nicht das Board, sondern die **sichtbare Zustaendigkei
         <job>OCA\Projektwerk\BackgroundJob\MailRetryJob</job>
     </background-jobs>
 
+    <!--
+        Das Netz fuer einen abgebrochenen Anhang-Umzug (#188): Bricht ein
+        Sichtbarkeitswechsel zwischen Datei-Move und DB-Schreiben ab, zeigt der
+        Anhang „fehlt", bis er nachgezogen wird. Der Schritt heilt das beim
+        Upgrade; von Hand geht es ueber `projektwerk:attachments:relocate`.
+    -->
+    <repair-steps>
+        <post-migration>
+            <step>OCA\Projektwerk\Repair\RelocateAttachments</step>
+        </post-migration>
+    </repair-steps>
+
     <navigations>
         <navigation>
             <name>ProjektWerk</name>
@@ -84,5 +96,6 @@ Der eigentliche Zweck ist nicht das Board, sondern die **sichtbare Zustaendigkei
 	-->
 	<commands>
 		<command>OCA\Projektwerk\Command\TicketRestore</command>
+		<command>OCA\Projektwerk\Command\AttachmentsRelocate</command>
 	</commands>
 </info>

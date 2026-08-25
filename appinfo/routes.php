@@ -45,6 +45,10 @@ return [
 		['name' => 'ticket#restore', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/restore', 'verb' => 'POST'],
 		['name' => 'ticket#move', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/move', 'verb' => 'POST'],
 		['name' => 'ticket#visibility', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/visibility', 'verb' => 'PUT'],
+		// GitHub-Überführung (#12, Stufe 1) — einseitig „Vorgang → Issue". Ein
+		// Schreibweg, deshalb POST und nicht in der Leak-Matrix (die faehrt nur
+		// GET-Routen).
+		['name' => 'ticket#transferToGithub', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/github', 'verb' => 'POST'],
 
 		// Arbeitsschritte. Gelesen werden sie ueber ticket#index und
 		// ticket#show, aus derselben gefilterten Ticketmenge — deshalb stehen
@@ -58,6 +62,7 @@ return [
 		['name' => 'step#assignableForNew', 'url' => '/api/v1/boards/{boardId}/assignable-new', 'verb' => 'GET'],
 		['name' => 'step#create', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/steps', 'verb' => 'POST'],
 		['name' => 'step#update', 'url' => '/api/v1/boards/{boardId}/steps/{stepId}', 'verb' => 'PATCH'],
+		['name' => 'step#destroy', 'url' => '/api/v1/boards/{boardId}/steps/{stepId}', 'verb' => 'DELETE'],
 
 		// Kommentare. Wie die Arbeitsschritte nur Schreibwege — gelesen werden
 		// sie ueber ticket#show aus der gefilterten Ticketmenge. Sie haben keine
@@ -87,6 +92,22 @@ return [
 		['name' => 'notifyPref#update', 'url' => '/api/v1/notify-prefs', 'verb' => 'PUT'],
 		['name' => 'notifyPref#clearOverrides', 'url' => '/api/v1/notify-prefs/overrides', 'verb' => 'DELETE'],
 
+		// Der eigene Ordner fuer private Anhaenge (#184, Phase B) — ebenfalls
+		// user-scoped, ohne Board im Pfad.
+		['name' => 'privateFolder#index', 'url' => '/api/v1/my/private-folder', 'verb' => 'GET'],
+		['name' => 'privateFolder#update', 'url' => '/api/v1/my/private-folder', 'verb' => 'PUT'],
+
+		// Der eigene GitHub-Token (#12) — ebenfalls user-scoped, ohne Board im
+		// Pfad. Der GET liefert nur, OB ein Token hinterlegt ist, nie den Wert;
+		// er steht deshalb in der Leak-Matrix mit einer Owner-Scoping-Erwartung.
+		['name' => 'githubToken#index', 'url' => '/api/v1/my/github-token', 'verb' => 'GET'],
+		['name' => 'githubToken#update', 'url' => '/api/v1/my/github-token', 'verb' => 'PUT'],
+		['name' => 'githubToken#destroy', 'url' => '/api/v1/my/github-token', 'verb' => 'DELETE'],
+		// Die Repos, auf die der eigene Token Zugriff hat — für die Live-Auswahl
+		// des Ziel-Repos (#196). Liefert externe GitHub-Daten (keine
+		// ProjektWerk-Daten), token-scoped an die Sitzung → in ROUTES_WITHOUT_DATA.
+		['name' => 'githubToken#repos', 'url' => '/api/v1/my/github-repos', 'verb' => 'GET'],
+
 		// Board-Einstellungen. Ausschliesslich Schreibwege — gelesen wird ueber
 		// board#show, das Board, Mitglieder und Spalten in einem Zug liefert und
 		// in der Leak-Matrix registriert ist.
@@ -96,6 +117,7 @@ return [
 
 		['name' => 'settings#createColumn', 'url' => '/api/v1/boards/{boardId}/columns', 'verb' => 'POST'],
 		['name' => 'settings#renameColumn', 'url' => '/api/v1/boards/{boardId}/columns/{columnId}', 'verb' => 'PATCH'],
+		['name' => 'settings#setColumnOutcome', 'url' => '/api/v1/boards/{boardId}/columns/{columnId}/final-outcome', 'verb' => 'PATCH'],
 		['name' => 'settings#reorderColumns', 'url' => '/api/v1/boards/{boardId}/columns/order', 'verb' => 'PUT'],
 		// Entfernen heisst hier verschieben: Die Zielspalte ist Pflicht, und
 		// alle Vorgaenge wandern dorthin — auch die, die der Loeschende nicht

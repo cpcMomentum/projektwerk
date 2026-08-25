@@ -109,11 +109,12 @@ test('das Herunterstufen entzieht den Zugriff — ohne Rueckfrage', async ({ bro
 		// darauf, dass gespeichert wurde.
 		await expect(seite.locator('.pw-viscontrol input[type="radio"]:checked')).toHaveValue('internal')
 
-		// **Und der Widerruf steht auch hier** (#103). Vorher gab es ihn genau
-		// beim folgenlosen Wechsel — also dort, wo ohnehin nichts passieren
-		// konnte. Jetzt ist er das einzige Netz, und dies ist der Fall, fuer den
-		// er gebraucht wird.
-		await expect(seite.getByRole('button', { name: 'Rückgängig' })).toBeVisible()
+		// **Kein „Rückgängig" mehr** (#181). Der Widerruf ist entfernt: Der
+		// Umschalter steht ohnehin offen und ist der Ein-Klick-Rückweg (vorige
+		// Stufe erneut anklicken). Ein eigener Knopf war redundant und liess die
+		// Kopfzeile springen. Nach dem Wechsel darf er deshalb nicht erscheinen.
+		await expect(seite.getByRole('button', { name: 'Rückgängig' })).toHaveCount(0)
+		await expect(seite.locator('.pw-viscontrol--offen')).toHaveCount(0)
 	} finally {
 		await innen.close()
 	}

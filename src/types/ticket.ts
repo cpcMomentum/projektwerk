@@ -28,6 +28,13 @@ export interface Ticket {
 	/** „Bis wann ist die Sache fertig" (#72). `JJJJ-MM-TT` ohne Uhrzeit, oder `null`. */
 	dueDate: string | null
 	closedAt: string | null
+	/**
+	 * Das Abschluss-Ergebnis (#171): `'done'` (erledigt) oder `'discarded'`
+	 * (verworfen). `null` an einem offenen Vorgang und an einem vor #171 ohne
+	 * vermerktes Ergebnis geschlossenen. Die deutschen Texte stehen nur in der
+	 * Anzeige.
+	 */
+	closedOutcome: 'done' | 'discarded' | null
 	/** Für die Konflikterkennung; unverändert zurückschicken. */
 	version: number
 	/**

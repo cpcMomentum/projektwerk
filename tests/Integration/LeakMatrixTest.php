@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OCA\Projektwerk\Tests\Integration;
 
 use OCA\Projektwerk\Access\BoardAccess;
+use OCA\Projektwerk\Access\ChangeHighlighter;
 use OCA\Projektwerk\Access\TicketScope;
 use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Access\WaitStateCalculator;
@@ -38,13 +39,17 @@ use OCA\Projektwerk\Service\AttachmentService;
 use OCA\Projektwerk\Service\BoardPinService;
 use OCA\Projektwerk\Service\BoardService;
 use OCA\Projektwerk\Service\ColumnService;
+use OCA\Projektwerk\Service\GithubService;
 use OCA\Projektwerk\Service\MemberService;
 use OCA\Projektwerk\Service\NotifyPrefService;
+use OCA\Projektwerk\Service\ProjectFolderService;
 use OCA\Projektwerk\Service\StepService;
 use OCA\Projektwerk\Service\TicketService;
 use OCA\Projektwerk\Tests\ReadPathRegistry;
+use OCA\Projektwerk\AppInfo\Application;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
+use OCP\Config\IUserConfig;
 use OCP\IConfig;
 use OCP\IRequest;
 use OCP\IUserManager;
@@ -283,6 +288,8 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'memberSearch#search' => 'testMemberSearchRefusesEveryoneWithoutManagementRights',
 		'settings#memberRemovalImpact' => 'testRemovalImpactRefusesEveryoneWithoutManagementRights',
 		'notifyPref#index' => 'testEveryViewerSeesOnlyTheirOwnChannelSwitches',
+		'privateFolder#index' => 'testThePrivateFolderPathIsScopedToItsOwner',
+		'githubToken#index' => 'testTheGithubTokenPresenceIsScopedToItsOwner',
 		'task#index' => 'testTaskEndpointMatchesTheVisibleSetAcrossBoards',
 		'overview#index' => 'testOverviewEndpointMatchesTheVisibleSetAcrossBoards',
 	];
@@ -536,6 +543,56 @@ class LeakMatrixTest extends IntegrationTestCase {
 			$service->forUser(LeakMatrixFixture::CARLA)['global'],
 			'Die globale Zeile ist der Rueckfallwert, keine der Ausnahmen — sie bleibt stehen.',
 		);
+	}
+
+	/**
+	 * **Der eigene Ordner für private Anhänge ist an die Person gebunden** (#184).
+	 *
+	 * Wie die Kanalschalter: kein Board im Pfad, die Grenze ist die
+	 * Benutzerkennung. Jede Person liest nur ihren eigenen Pfad; wer keinen
+	 * gewählt hat, bekommt die Vorgabe — nie den Ordner einer anderen.
+	 *
+	 * Gesetzt wird direkt über `IUserConfig`, nicht über `setPrivatePath()`: Das
+	 * legte einen echten Ordner im Dateibaum an, den die Fixture-Mitglieder gar
+	 * nicht haben. Geprüft wird die **Zuordnung** des Werts zur Person, nicht die
+	 * Ordner-Auflösung — die steht im AttachmentRelocationTest gegen echte Ordner.
+	 */
+	public function testThePrivateFolderPathIsScopedToItsOwner(): void {
+		$folders = Server::get(ProjectFolderService::class);
+		$config = Server::get(IUserConfig::class);
+
+		$config->setValueString(self::ANNA, Application::APP_ID, 'private_attachment_folder', 'Anna/Privat');
+		$config->setValueString(self::CARLA, Application::APP_ID, 'private_attachment_folder', 'Carla/Geheim');
+
+		$this->assertSame('Anna/Privat', $folders->privatePath(self::ANNA));
+		$this->assertSame('Carla/Geheim', $folders->privatePath(self::CARLA), 'Carla sieht ihren eigenen Pfad, nicht Annas.');
+
+		// Bert hat nichts gesetzt — die Vorgabe, nicht der Ordner einer anderen.
+		$this->assertSame(
+			ProjectFolderService::DEFAULT_PRIVATE_FOLDER,
+			$folders->privatePath(self::BERT),
+		);
+	}
+
+	/**
+	 * Der GitHub-Token (#12) — dieselbe Art Grenze wie beim privaten Ordner:
+	 * kein Board, keine Rolle, nur die Benutzerkennung. Jeder sieht **nur
+	 * seinen eigenen** Stand, und der Endpunkt verrät ohnehin nur, OB ein Token
+	 * hinterlegt ist, nie den Token selbst.
+	 */
+	public function testTheGithubTokenPresenceIsScopedToItsOwner(): void {
+		$github = Server::get(GithubService::class);
+
+		$github->storeToken(self::ANNA, 'ghp_anna_secret');
+
+		$this->assertTrue($github->hasToken(self::ANNA));
+		$this->assertFalse(
+			$github->hasToken(self::BERT),
+			'Bert sieht Annas Token nicht — nicht einmal, dass es ihn gibt.',
+		);
+
+		// Nicht über den Lauf hinaus stehen lassen.
+		$github->deleteToken(self::ANNA);
 	}
 
 	/**
@@ -1820,32 +1877,30 @@ class LeakMatrixTest extends IntegrationTestCase {
 	}
 
 	/**
-	 * **Die Anhaenge-Absage nennt ihre Zahl im Rumpf** (§3.10 Stufe 1).
+	 * **Fehlt der Zielordner, kommt die Absage als 400 mit Meldung über die
+	 * Leitung** (#185).
 	 *
-	 * Steht hier als Ersatz fuer `testVisibilityImpactNamesWhoLosesAccess`, das
-	 * mit `visibility-impact` weggefallen ist (#103). Der Lesepfad, der die
-	 * Anhaenge vorab zaehlte, ist aufgegeben — die Oberflaeche erfaehrt den Fall
-	 * seither allein aus dieser Antwort.
-	 *
-	 * **Geprueft wird die Form, nicht nur die Ablehnung.** Der Server
-	 * beantwortet zwei verschiedene Faelle mit 409: den Versionskonflikt und
-	 * diesen. Wer sie unterscheiden will, hat nur das Feld `attachments` — faellt
-	 * es weg, meldet die Oberflaeche der Person mit Anhaengen „bitte neu laden",
-	 * und Neuladen hilft nichts. `TicketWritePathTest` prueft die Ausnahme am
-	 * Dienst; hier steht, was ueber die Leitung geht.
+	 * Seit #185 zieht ein Anhang mit der Sichtbarkeit um, statt den Wechsel zu
+	 * sperren. Geht das nicht — die Zielstufe hat keinen Ablageort, hier weil das
+	 * Fixture-Board keine Ordner hinterlegt hat —, weist der Server mit **400**
+	 * ab und legt die Meldung bei. **Nicht 409**: Ein 409 läse die Oberfläche als
+	 * Versionskonflikt („bitte neu laden") und verschluckte die eigentliche
+	 * Meldung. Und **kein** `attachments`-Feld mehr — die alte Zahl-im-Rumpf-Form
+	 * ist mit der Sperre weg. `TicketWritePathTest` prüft die Ausnahme am Dienst;
+	 * hier steht, was über die Leitung geht.
 	 */
-	public function testTheAttachmentRefusalCarriesItsCountOverTheWire(): void {
+	public function testAVisibilityChangeWithoutATargetFolderIsRefusedOverTheWire(): void {
 		$controller = $this->ticketController(self::ANNA);
 		$boardId = $this->fixture->boardId;
 		$publicAnna = $this->fixture->ticketIds['public/anna'];
 
-		// Die Fixture haengt genau einen Anhang an dieses Ticket.
+		// Die Fixture haengt genau einen Anhang an dieses Ticket, das Board hat
+		// aber keinen internen Ordner — der Umzug hat kein Ziel.
 		$response = $controller->visibility($boardId, $publicAnna, 1, 'internal');
 
-		$this->assertSame(Http::STATUS_CONFLICT, $response->getStatus());
+		$this->assertSame(Http::STATUS_BAD_REQUEST, $response->getStatus());
 		$daten = $response->getData();
-		$this->assertArrayHasKey('attachments', $daten, 'Ohne die Zahl ist die Absage vom Versionskonflikt nicht zu trennen.');
-		$this->assertSame(1, $daten['attachments']);
+		$this->assertArrayNotHasKey('attachments', $daten, 'Die Zahl-im-Rumpf-Form ist mit der Sperre weg (#185).');
 		$this->assertNotSame('', (string)($daten['error'] ?? ''));
 
 		// Und der Vorgang steht unveraendert da.
@@ -1991,6 +2046,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 			Server::get(TicketService::class),
 			Server::get(AttachmentService::class),
 			Server::get(WaitStateCalculator::class),
+			Server::get(ChangeHighlighter::class),
 			Server::get(BoardAccess::class),
 			$userId,
 		);

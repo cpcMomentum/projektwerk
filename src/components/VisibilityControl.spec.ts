@@ -14,9 +14,10 @@
  * fahren beide Richtungen — public → internal und internal → public — und
  * erwarten in beiden dasselbe: sofort, ohne Zwischenschritt.
  *
- * **Und sie trennen die beiden 409er.** Versionskonflikt und Anhänge-Sperre
- * kommen mit demselben Status; das einzige Merkmal ist das Feld `attachments`
- * im Rumpf. Wer es überliest, meldet der Person mit Anhängen „bitte neu laden".
+ * **Anhänge sperren den Wechsel nicht mehr** (#185): Die Datei zieht mit der
+ * Sichtbarkeit um. Geht das nicht, kommt die Absage als **400** mit Meldung —
+ * bewusst nicht als 409, das `reportWriteError` als Versionskonflikt läse und
+ * die eigentliche Meldung verschluckte.
  */
 
 import type { ViewerInfo, Visibility } from '@/types/board'
@@ -69,6 +70,7 @@ function ticketOf(overrides: Partial<Ticket> = {}): Ticket {
 		responsibleUserId: null,
 		dueDate: null,
 		closedAt: null,
+		closedOutcome: null,
 		version: 5,
 		lastEditorUserId: null,
 		githubIssueNumber: null,
@@ -206,15 +208,13 @@ describe('VisibilityControl', () => {
 	 * Ein Klick auf die geltende Stufe ist keine Änderung.
 	 *
 	 * Ohne diese Sperre schriebe jeder Klick auf die bereits markierte Stufe
-	 * denselben Wert noch einmal — und stellte danach einen Widerruf auf einen
-	 * Wechsel, der keiner war.
+	 * denselben Wert noch einmal — ein Netzaufruf ohne Wirkung.
 	 */
 	it('tut nichts, wenn die geltende Stufe angeklickt wird', async () => {
 		const wrapper = mountControl(ticketOf({ visibility: 'public' }), viewerOf())
 		await choose(wrapper, 'public')
 
 		expect(changeVisibility).not.toHaveBeenCalled()
-		expect(wrapper.findAll('button').find((b) => b.text() === 'Rückgängig')).toBeUndefined()
 	})
 
 	/**
@@ -251,69 +251,44 @@ describe('VisibilityControl', () => {
 	})
 
 	/**
-	 * **Anhänge sperren den Wechsel** (§3.10 Stufe 1) — und die Absage kommt
-	 * seit #103 vom Server, nicht mehr aus einer Vorabprüfung.
+	 * **Der Umzug ersetzt die Sperre** (#185). Ein Wechsel mit Anhang wird nicht
+	 * mehr blockiert — die Datei zieht mit der Sichtbarkeit um. Geht das
+	 * ausnahmsweise nicht (die Zielstufe hat keinen Ablageort), weist der Server
+	 * mit **400** und einer Meldung ab, und die erscheint als Fehler.
 	 *
-	 * Kein „Trotzdem": Es gibt nichts, was die App an dieser Stelle tun könnte,
-	 * solange der Dateiumzug nicht transaktional zur Datenbank ist.
+	 * **400 und nicht 409**: Ein 409 läse `reportWriteError` als Versionskonflikt
+	 * („bitte neu laden") und verschluckte die eigentliche Meldung. Der Test
+	 * hält fest, dass die Servermeldung durchkommt — und dass es keinen eigenen
+	 * Warnblock mehr gibt.
 	 */
-	it('spricht die Anhänge-Absage des Servers', async () => {
+	it('zeigt die Servermeldung, wenn der Umzug nicht geht — ohne Warnblock', async () => {
 		changeVisibility.mockRejectedValue({
-			status: 409,
-			message: 'Bitte die 2 Anhänge zuerst vom Vorgang lösen.',
-			data: { attachments: 2 },
+			status: 400,
+			message: 'Für dieses Projekt ist noch kein Ordner hinterlegt. Die Projektverwaltung trägt ihn in den Einstellungen ein.',
 		})
 
 		const wrapper = mountControl(ticketOf({ visibility: 'public' }), viewerOf())
 		await choose(wrapper, 'internal')
 
-		const warn = wrapper.find('.pw-viscontrol__warn')
-		expect(warn.text()).toContain('2 Anhänge')
-		expect(warn.text()).toContain('lösen')
-
-		// **Nicht die Konfliktmeldung.** Beide Fälle sind 409; wer sie nicht
-		// trennt, schickt hier „bitte neu laden" los, und Neuladen hilft nicht.
-		expect(showError).not.toHaveBeenCalled()
+		expect(showError).toHaveBeenCalledWith('Für dieses Projekt ist noch kein Ordner hinterlegt. Die Projektverwaltung trägt ihn in den Einstellungen ein.')
+		expect(wrapper.find('.pw-viscontrol__warn').exists()).toBe(false)
 	})
 
 	/**
-	 * Bei genau einem Anhang steht dort kein „1 Anhänge".
+	 * **Kein „Rückgängig" nach einem Wechsel** (#181).
 	 *
-	 * Gebeugt wird im Browser und nicht vom Server: Dessen Satz in
-	 * `AttachmentsPresentException` läuft ohne `t()` und käme auf Englisch
-	 * gedachtem Deutsch heraus, sobald jemand die Oberfläche umstellt.
+	 * Der Widerruf ist entfernt: Der Umschalter steht ohnehin offen und ist der
+	 * Ein-Klick-Rückweg. Ein eigener Knopf war redundant und liess die Kopfzeile
+	 * springen (`pw-viscontrol--offen`). Nach einem erfolgreichen Wechsel darf
+	 * deshalb weder ein „Rückgängig" erscheinen noch die Zeile umbrechen.
 	 */
-	it('beugt die Zahl in der Sperre', async () => {
-		changeVisibility.mockRejectedValue({ status: 409, message: 'egal', data: { attachments: 1 } })
-
+	it('stellt nach einem Wechsel kein „Rückgängig" auf und bricht die Zeile nicht um', async () => {
 		const wrapper = mountControl(ticketOf({ visibility: 'public' }), viewerOf())
 		await choose(wrapper, 'internal')
 
-		const text = wrapper.find('.pw-viscontrol__warn').text()
-		expect(text).toContain('1 Anhang')
-		expect(text).not.toContain('1 Anhänge')
-	})
-
-	/**
-	 * **Der Widerruf steht nach JEDEM Wechsel** (#103).
-	 *
-	 * Vorher nur nach dem folgenlosen — also genau dort, wo ohnehin nichts
-	 * passieren konnte. Seit die Rückfrage weg ist, ist er das einzige Netz und
-	 * wird gerade für den folgenreichen Fall gebraucht. Der Test stuft deshalb
-	 * **herunter**: der Fall, der früher keinen Widerruf bekam.
-	 */
-	it('lässt auch ein Herunterstufen widerrufen', async () => {
-		const wrapper = mountControl(ticketOf({ visibility: 'public' }), viewerOf())
-		await choose(wrapper, 'internal')
-
-		const undo = wrapper.findAll('button').find((b) => b.text() === 'Rückgängig')
-		expect(undo).toBeDefined()
-
-		await undo?.trigger('click')
-		await wrapper.vm.$nextTick()
-
-		// Zurück auf den Stand von eben.
-		expect(changeVisibility).toHaveBeenLastCalledWith(7, 42, 5, 'public')
+		expect(changeVisibility).toHaveBeenCalledWith(7, 42, 5, 'internal')
+		expect(wrapper.findAll('button').find((b) => b.text() === 'Rückgängig')).toBeUndefined()
+		expect(wrapper.find('.pw-viscontrol--offen').exists()).toBe(false)
 	})
 
 	it('meldet einen Konflikt als solchen statt als allgemeinen Fehler', async () => {

@@ -66,6 +66,9 @@ test.afterAll(async ({ browser }) => {
 test('traegt einen Ordner ein und gibt den aufgeloesten Pfad zurueck', async ({ page }) => {
 	await page.goto(`${APP_PFAD}#/boards/${projekt.boardId}/settings`)
 
+	// Die Dateiablage liegt seit #196 Teil 2 hinter ihrem eigenen Nav-Punkt.
+	await page.getByRole('button', { name: 'Dateiablage' }).click()
+
 	const feld = page.locator('#pw-set-public')
 	await expect(feld).toBeVisible({ timeout: 30_000 })
 	await expect(feld, 'Ein neues Projekt hat noch keinen Ordner').toHaveValue('')
@@ -94,6 +97,9 @@ test('traegt einen Ordner ein und gibt den aufgeloesten Pfad zurueck', async ({ 
 test('weist einen unbekannten Pfad ab, ohne den bisherigen zu verlieren', async ({ page }) => {
 	await page.goto(`${APP_PFAD}#/boards/${projekt.boardId}/settings`)
 
+	// Die Dateiablage liegt seit #196 Teil 2 hinter ihrem eigenen Nav-Punkt.
+	await page.getByRole('button', { name: 'Dateiablage' }).click()
+
 	const feld = page.locator('#pw-set-public')
 	await expect(feld).toHaveValue(ORDNER, { timeout: 30_000 })
 
@@ -110,6 +116,9 @@ test('weist einen unbekannten Pfad ab, ohne den bisherigen zu verlieren', async 
 
 test('ein leeres Feld entfernt die Zuordnung', async ({ page }) => {
 	await page.goto(`${APP_PFAD}#/boards/${projekt.boardId}/settings`)
+
+	// Die Dateiablage liegt seit #196 Teil 2 hinter ihrem eigenen Nav-Punkt.
+	await page.getByRole('button', { name: 'Dateiablage' }).click()
 
 	const feld = page.locator('#pw-set-public')
 	await expect(feld).toHaveValue(ORDNER, { timeout: 30_000 })

@@ -120,6 +120,7 @@ class SettingsWritePathTest extends IntegrationTestCase {
 			fn () => $this->boardService->setArchived($bert, true),
 			fn () => $this->columnService->create($bert, 'Neue Spalte'),
 			fn () => $this->columnService->rename($bert, $this->columnId(LeakMatrixFixture::COLUMN_A), 'Anders'),
+			fn () => $this->columnService->setFinalOutcome($bert, $this->columnId(LeakMatrixFixture::COLUMN_A), 'done'),
 			fn () => $this->columnService->reorder($bert, []),
 			// Das Entfernen sitzt sogar enger — nur der Eigentuemer. Hier steht
 			// es trotzdem, weil die Verwaltungssperre die erste ist, die greift.
@@ -147,7 +148,7 @@ class SettingsWritePathTest extends IntegrationTestCase {
 			}
 		}
 
-		$this->assertSame(10, $refused);
+		$this->assertSame(11, $refused);
 	}
 
 	/**
@@ -299,6 +300,24 @@ class SettingsWritePathTest extends IntegrationTestCase {
 
 		$renamed = $this->columnService->rename($manager, (int)$created->getId(), 'Abgestimmt');
 		$this->assertSame('Abgestimmt', $renamed->getTitle());
+	}
+
+	/**
+	 * **Eine Spalte lässt sich als Endspalte markieren** (#172) — mit Ergebnis,
+	 * und die Markierung lässt sich wieder nehmen (`null`). Ein unbekannter Wert
+	 * wird abgewiesen, nicht still gedeutet: An der Spalte ist es eine
+	 * ausdrückliche Einstellung, kein Nebenprodukt einer Handlung.
+	 */
+	public function testAColumnCanBeMarkedAsFinalAndCleared(): void {
+		$manager = $this->manager();
+		$columnId = (int)$this->columnService->create($manager, 'Verworfen')->getId();
+
+		$this->assertSame('discarded', $this->columnService->setFinalOutcome($manager, $columnId, 'discarded')->getFinalOutcome());
+		$this->assertSame('done', $this->columnService->setFinalOutcome($manager, $columnId, 'done')->getFinalOutcome());
+		$this->assertNull($this->columnService->setFinalOutcome($manager, $columnId, null)->getFinalOutcome(), 'null nimmt die Markierung.');
+
+		$this->expectException(\InvalidArgumentException::class);
+		$this->columnService->setFinalOutcome($manager, $columnId, 'bogus');
 	}
 
 	/**

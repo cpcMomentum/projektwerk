@@ -67,6 +67,8 @@ use OCP\DB\Types;
  * @method void setPosition(int $position)
  * @method ?DateTime getClosedAt()
  * @method void setClosedAt(?DateTime $closedAt)
+ * @method ?string getClosedOutcome()
+ * @method void setClosedOutcome(?string $closedOutcome)
  * @method ?DateTime getDeletedAt()
  * @method void setDeletedAt(?DateTime $deletedAt)
  * @method int getVersion()
@@ -83,6 +85,15 @@ use OCP\DB\Types;
  * @method void setUpdatedAt(DateTime $updatedAt)
  */
 class Ticket extends Entity implements JsonSerializable {
+
+	/**
+	 * Das Ergebnis eines Abschlusses (#171): positiv erledigt oder negativ
+	 * verworfen. ASCII/englisch wie `visibility`; die deutschen Texte stehen nur
+	 * in der Anzeige. `null` an einem offenen Vorgang und an einem vor #171
+	 * geschlossenen ohne vermerktes Ergebnis.
+	 */
+	public const OUTCOME_DONE = 'done';
+	public const OUTCOME_DISCARDED = 'discarded';
 
 	protected ?int $boardId = null;
 	protected ?int $columnId = null;
@@ -112,6 +123,7 @@ class Ticket extends Entity implements JsonSerializable {
 	protected ?DateTime $dueDate = null;
 	protected ?int $position = null;
 	protected ?DateTime $closedAt = null;
+	protected ?string $closedOutcome = null;
 	/**
 	 * Weich geloescht.
 	 *
@@ -141,6 +153,7 @@ class Ticket extends Entity implements JsonSerializable {
 		$this->addType('dueDate', Types::DATE);
 		$this->addType('position', Types::INTEGER);
 		$this->addType('closedAt', Types::DATETIME);
+		$this->addType('closedOutcome', Types::STRING);
 		$this->addType('deletedAt', Types::DATETIME);
 		$this->addType('version', Types::INTEGER);
 		$this->addType('lastEditorUserId', Types::STRING);
@@ -203,6 +216,7 @@ class Ticket extends Entity implements JsonSerializable {
 			'dueDate' => $this->getDueDate()?->format('Y-m-d'),
 			// `position` fehlt hier absichtlich — siehe Methodenkommentar.
 			'closedAt' => $this->getClosedAt()?->format(DateTime::ATOM),
+			'closedOutcome' => $this->getClosedOutcome(),
 			'version' => $this->getVersion(),
 			// NULL heisst: seit dem Anlegen unveraendert.
 			'lastEditorUserId' => $this->getLastEditorUserId(),

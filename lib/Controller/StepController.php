@@ -124,6 +124,16 @@ class StepController extends Controller {
 	}
 
 	/**
+	 * Einen Arbeitsschritt löschen (#203). Wer den Vorgang bearbeiten darf,
+	 * darf auch seine Schritte entfernen — dieselbe Grenze wie beim Ändern.
+	 */
+	#[NoAdminRequired]
+	public function destroy(int $boardId, int $stepId): JSONResponse {
+		return $this->run($boardId, fn (ViewerContext $viewer): mixed
+			=> $this->service->delete($viewer, $stepId));
+	}
+
+	/**
 	 * @param callable(ViewerContext): mixed $write
 	 */
 	private function run(int $boardId, callable $write, int $status = Http::STATUS_OK): JSONResponse {

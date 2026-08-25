@@ -726,6 +726,59 @@
 	min-height: 0;
 }
 
+/*
+ * **Segment-Look wie WorkTime** (#219): weiße, leicht erhabene Aktiv-Kachel auf
+ * grauer Schiene statt des voll-blauen NC-Defaults — der iOS-Stil aus WorkTimes
+ * Genehmigungen (`layout-seg`/`seg-btn`). `NcRadioGroup` bleibt und mit ihm die
+ * Radio-Semantik, die Pfeiltasten und der Fokusring; hier liegt **nur die
+ * Optik** darüber. Greift über die Namensteile der CSS-Module-Klassen (der Hash
+ * wechselt je @nextcloud/vue-Fassung, der Name davor nicht) — bricht eine weg,
+ * fällt der Schalter sichtbar auf den Plattform-Look zurück, nicht kaputt.
+ *
+ * Gilt für alle drei Einsatzorte (Detail, Anlege-Dialog, Wizard); die
+ * Größen-Feinheiten oben bleiben auf `--knapp` beschränkt.
+ */
+.app-projektwerk .pw-vischoice [class*='_ncFormBox_row'] {
+	background: var(--color-background-dark);
+	border-radius: var(--border-radius-element, 8px);
+	padding: 3px;
+	gap: 2px;
+}
+
+/*
+ * Im Vorgang (`--knapp`) **ohne** Schienen-Polster: Die 34-px-Zeile hat kein
+ * Budget für die 2×3 px, sonst wächst der Schalter auf 40 px, die Beschriftung
+ * bricht um und er wird zweizeilig (karte-mobil.spec). Die graue Schiene bleibt
+ * trotzdem sichtbar — hinter den transparenten inaktiven Segmenten und in den
+ * Lücken. Das großzügigere Polster gilt nur im Anlege-Dialog/Wizard.
+ */
+.app-projektwerk .pw-vischoice--knapp [class*='_ncFormBox_row'] {
+	padding: 0;
+}
+
+.app-projektwerk .pw-vischoice [class*='_radioGroupButton_'] {
+	background: none;
+	border: none;
+	border-radius: var(--border-radius-element, 8px);
+	color: var(--color-text-maxcontrast);
+	box-shadow: none;
+}
+
+.app-projektwerk .pw-vischoice [class*='_radioGroupButton_']:hover {
+	background: var(--color-background-hover);
+}
+
+/*
+ * Das aktive Segment nach dem allgemeinen — gleiche Selektor-Stärke, also
+ * gewinnt die Reihenfolge: weiße Kachel, blaue Schrift, zarter Schatten.
+ */
+.app-projektwerk .pw-vischoice [class*='_radioGroupButton_active'],
+.app-projektwerk .pw-vischoice [class*='_radioGroupButton_active']:hover {
+	background: var(--color-main-background);
+	color: var(--color-primary-element);
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
 .app-projektwerk .pw-vishint {
 	margin: 0;
 	font-size: 13px;
@@ -759,12 +812,6 @@
 	margin-inline-start: auto;
 	width: fit-content;
 	max-width: 100%;
-}
-
-.app-projektwerk .pw-viscontrol--offen {
-	flex: 1 1 100%;
-	width: 100%;
-	margin-inline-start: 0;
 }
 
 /* ---- Ticket-Detail ------------------------------------------------------ */
@@ -827,8 +874,31 @@
 }
 
 /* Der Abschließen-/Wieder-öffnen-Knopf sitzt links unter der Wartemarke (#168). */
-.app-projektwerk .pw-kopf__aktionen {
-	display: flex;
+/* Der Link zum überführten GitHub-Issue (#12) — jetzt als Icon im
+   Kopf-Aktions-Cluster (#182), Nummer im Tooltip. */
+.app-projektwerk .pw-github-link {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	min-height: var(--default-clickable-area, 44px);
+	padding: 0 8px;
+	color: var(--color-main-text);
+	text-decoration: none;
+	border-radius: var(--border-radius-element, var(--border-radius));
+}
+
+/* Reine Icon-Variante (#182): quadratisch wie ein Icon-Knopf, ohne Textabstand. */
+.app-projektwerk .pw-github-link--icon {
+	justify-content: center;
+	min-width: var(--default-clickable-area, 44px);
+	padding: 0;
+	gap: 0;
+}
+
+.app-projektwerk .pw-github-link:hover,
+.app-projektwerk .pw-github-link:focus-visible {
+	background-color: var(--color-background-hover);
+	text-decoration: underline;
 }
 
 /*
@@ -880,6 +950,27 @@
 	color: var(--color-text-maxcontrast);
 }
 
+/*
+ * Verworfen (#171) hebt sich farblich ab — der Text „Verworfen" trägt die
+ * Aussage ohnehin, die Farbe verstärkt sie nur (kein farb-alleiniges Signal).
+ * Erledigt bleibt im neutralen Ton, wie ein sauber abgeschlossener Vorgang.
+ */
+.app-projektwerk .pw-meta__closed--discarded {
+	color: var(--color-error);
+}
+
+/* Das Ergebnis-Abzeichen auf einer geschlossenen Karte (#171) — klein, damit
+ * das Board erledigt von verworfen auf einen Blick unterscheidet. */
+.app-projektwerk .pw-card__outcome {
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-card__outcome--discarded {
+	color: var(--color-error);
+}
+
 .app-projektwerk .pw-detail__title {
 	margin: 0;
 	font-size: 24px;
@@ -899,13 +990,37 @@
 	gap: 4px;
 }
 
+/*
+ * Der Titel wächst nicht mehr in die ganze Breite (#182): Er nimmt seine
+ * Inhaltsbreite und lässt den Stift direkt daneben statt am rechten Rand der
+ * Zeile. `min-width: 0` hält den Umbruch langer Titel in der Flex-Zeile.
+ */
 .app-projektwerk .pw-detail__titelzeile .pw-detail__title {
-	flex: 1 1 auto;
+	flex: 0 1 auto;
+	min-width: 0;
 }
 
 .app-projektwerk .pw-detail__title-stift {
 	flex: 0 0 auto;
 	margin-block-start: 2px;
+}
+
+/*
+ * Kopf-Aktionen (#182, verfeinert): Icon-Knöpfe in der Steuerungs-Zeile, dicht
+ * gesetzt, direkt rechts neben der Sichtbarkeit. **Kein eigenes
+ * `margin-inline-start: auto`** — das trägt bereits `.pw-viscontrol`, das die
+ * Gruppe (Sichtbarkeit + Aktionen) gemeinsam an den rechten Rand schiebt. Ein
+ * zweites Auto risse die beiden auseinander.
+ */
+.app-projektwerk .pw-detail__kopfaktionen {
+	display: flex;
+	align-items: center;
+	flex: 0 0 auto;
+	gap: 2px;
+	/* Deutlicher Abstand zum Sichtbarkeits-Block, damit „wer sieht das" und
+	   „was passiert damit" als zwei Gruppen lesbar bleiben (kommt zum 8-px-Gap
+	   der Meta-Zeile hinzu). */
+	margin-inline-start: 16px;
 }
 
 .app-projektwerk .pw-detail__title-edit {
@@ -939,11 +1054,22 @@
  * `display: table` nicht. Er versagte genau bei dem Inhalt, fuer den der Deckel
  * da ist.
  */
+/* Text und Stift nebeneinander (#200) — der Stift rechts, wie beim Titel. */
+.app-projektwerk .pw-beschreibung__zeile {
+	display: flex;
+	align-items: flex-start;
+	gap: 4px;
+}
+
+.app-projektwerk .pw-beschreibung__zeile .pw-beschreibung__text {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
 .app-projektwerk .pw-beschreibung__text {
 	position: relative;
 	max-height: 150px;
 	overflow: hidden;
-	padding-inline-end: 42px;
 	line-height: 1.55;
 	overflow-wrap: anywhere;
 }
@@ -987,6 +1113,26 @@
 	text-underline-offset: 2px;
 }
 
+/*
+ * **Das Bearbeiten-Feld waechst mit dem Inhalt** (#160). Die Hoehe selbst
+ * setzt `autoGrowText()` in TicketDetail.vue je Tastendruck; hier stehen nur
+ * Unter- und Obergrenze. `min-height` haelt auch ein kurzer Text ein
+ * grosszuegiges Feld, `max-height` deckelt eine sehr lange Beschreibung, damit
+ * sie das Modal nicht sprengt — jenseits davon scrollt das Feld selbst.
+ */
+.app-projektwerk .pw-beschreibung__edit textarea {
+	min-height: 7.5rem;
+	max-height: 50vh;
+	overflow-y: auto;
+}
+
+/* Die Markdown-Bedienhilfe (#161): eine schmale Knopfzeile über dem Feld. */
+.app-projektwerk .pw-beschreibung__toolbar {
+	display: flex;
+	gap: 2px;
+	margin-block-end: 4px;
+}
+
 .app-projektwerk .pw-beschreibung__text > :first-child {
 	margin-block-start: 0;
 }
@@ -1000,9 +1146,8 @@
 }
 
 .app-projektwerk .pw-beschreibung__stift {
-	position: absolute;
-	top: 0;
-	inset-inline-end: 0;
+	flex: 0 0 auto;
+	margin-block-start: 2px;
 }
 
 .app-projektwerk .pw-beschreibung__edit {
@@ -1141,8 +1286,7 @@
 	gap: 10px;
 }
 
-.app-projektwerk .pw-viscontrol__edit,
-.app-projektwerk .pw-viscontrol__warn {
+.app-projektwerk .pw-viscontrol__edit {
 	display: flex;
 	flex-direction: column;
 	gap: 10px;
@@ -1154,35 +1298,6 @@
 	align-items: center;
 	justify-content: flex-end;
 	gap: 8px;
-}
-
-/*
- * Der Warnblock trägt Farbe UND Symbol UND Text (§9, „nie allein über Farbe").
- * Der Rand steht links, weil der Blick beim Lesen dort ankommt.
- *
- * Er traegt seit #103 nur noch die Anhaenge-Absage; die Rueckfrage beim
- * Herunterstufen ist weg.
- */
-.app-projektwerk .pw-viscontrol__warn {
-	padding: 10px 12px;
-	gap: 6px;
-	border-inline-start: 4px solid var(--color-warning, var(--color-error));
-	border-radius: var(--border-radius-large);
-	background: var(--color-background-hover);
-}
-
-/* Der Satz neben dem Warnsymbol — keine eigene Optik, nur kein Ueberlauf. */
-.app-projektwerk .pw-viscontrol__target {
-	min-width: 0;
-}
-
-.app-projektwerk .pw-viscontrol__lead {
-	display: flex;
-	align-items: flex-start;
-	gap: 8px;
-	margin: 0;
-	font-weight: 600;
-	line-height: 1.45;
 }
 
 /* ---- Projekteinstellungen ------------------------------------------------ */
@@ -1199,12 +1314,26 @@
 	max-width: 820px;
 }
 
+/* Das Endspalten-Auswahlfeld je Spalte (#172) — schlichtes natives Select im
+   NC-Rahmen, weil es genau drei feste Zustaende sind. */
+.app-projektwerk .pw-col__outcome {
+	min-height: var(--default-clickable-area, 34px);
+	padding: 0 8px;
+	border: 2px solid var(--color-border-maxcontrast, var(--color-border-dark));
+	border-radius: var(--border-radius-element, var(--border-radius));
+	background-color: var(--color-main-background);
+	color: var(--color-main-text);
+}
+
 .app-projektwerk .pw-settings__block {
 	display: flex;
 	flex-direction: column;
 	gap: 10px;
-	padding-top: 10px;
-	border-top: 1px solid var(--color-border);
+	/*
+	 * Seit #196 Teil 2 wird je Bereichs-Navigationspunkt genau EIN Block
+	 * gezeigt (v-show), nicht mehr gestapelt — die frühere Trennlinie
+	 * (`border-top`) darüber wäre jetzt eine ziellose Linie am Seitenkopf.
+	 */
 }
 
 .app-projektwerk .pw-settings__pair {
@@ -1247,6 +1376,24 @@
 .app-projektwerk .pw-settings__hint {
 	font-size: 13px;
 	color: var(--color-text-maxcontrast);
+}
+
+/* Statuszeile „ist ein Token hinterlegt" (#12) — Farbe UND Symbol UND Text
+   (§9), nie die Farbe allein. */
+.app-projektwerk .pw-settings__status {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 14px;
+}
+
+.app-projektwerk .pw-settings__status-icon {
+	color: var(--color-text-maxcontrast);
+	flex: 0 0 auto;
+}
+
+.app-projektwerk .pw-settings__status-icon--ok {
+	color: var(--color-success, var(--color-success-text));
 }
 
 /* Die bezifferte Warnung beim Entfernen eines Mitglieds (§5.29) — kräftiger,
@@ -1410,6 +1557,11 @@
 .app-projektwerk .pw-step__flach {
 	color: var(--color-text-maxcontrast);
 	font-weight: 400;
+}
+
+.app-projektwerk .pw-step__confirm {
+	font-size: 13px;
+	color: var(--color-text-maxcontrast);
 }
 
 /*

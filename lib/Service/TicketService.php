@@ -11,7 +11,7 @@ namespace OCA\Projektwerk\Service;
 
 use OCA\Projektwerk\Access\TicketScope;
 use OCA\Projektwerk\Access\ViewerContext;
-use OCA\Projektwerk\Db\AttachmentMapper;
+use OCA\Projektwerk\AppInfo\Application;
 use OCA\Projektwerk\Db\BoardMapper;
 use OCA\Projektwerk\Db\ColumnMapper;
 use OCA\Projektwerk\Db\MailOutbox;
@@ -21,7 +21,9 @@ use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Db\TicketReadMapper;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\DB\Exception as DbException;
+use OCP\Files\NotPermittedException;
 use OCP\IDBConnection;
+use OCP\IURLGenerator;
 
 /**
  * Der Schreibpfad am Ticket.
@@ -47,11 +49,13 @@ class TicketService {
 		private BoardMapper $boards,
 		private ColumnMapper $columns,
 		private MemberMapper $members,
-		private AttachmentMapper $attachments,
+		private AttachmentService $attachmentService,
 		private TicketReadMapper $reads,
 		private TicketScope $scope,
 		private PositionService $positions,
 		private NotificationService $notifications,
+		private GithubService $github,
+		private IURLGenerator $urls,
 	) {
 	}
 
@@ -193,7 +197,7 @@ class TicketService {
 	 * Update, das ein Feld anders behandelt als die übrigen, wäre die Stelle,
 	 * an der die Regel beim nächsten Feld vergessen wird.
 	 *
-	 * @param array{title?: string, description?: ?string, responsibleUserId?: ?string, dueDate?: ?string, closed?: bool} $changes
+	 * @param array{title?: string, description?: ?string, responsibleUserId?: ?string, dueDate?: ?string, closed?: bool, outcome?: ?string} $changes
 	 * @throws DoesNotExistException Ticket nicht sichtbar
 	 * @throws ConflictException     zwischenzeitlich geändert
 	 */
@@ -265,8 +269,13 @@ class TicketService {
 		$frischGeschlossen = false;
 		if (array_key_exists('closed', $changes)) {
 			$warOffen = $ticket->getClosedAt() === null;
-			$frischGeschlossen = $warOffen && (bool)$changes['closed'];
-			$ticket->setClosedAt($changes['closed'] ? new \DateTime() : null);
+			$schliessen = (bool)$changes['closed'];
+			$frischGeschlossen = $warOffen && $schliessen;
+			$ticket->setClosedAt($schliessen ? new \DateTime() : null);
+			// **Das Ergebnis begleitet den Abschluss** (#171): beim Schliessen
+			// gewaehlt, beim Wieder-oeffnen geloescht — ein offener Vorgang hat
+			// kein Ergebnis. Kein Drittzustand, nur ein Vorzeichen am Abschluss.
+			$ticket->setClosedOutcome($schliessen ? $this->pruefeOutcome($changes['outcome'] ?? null) : null);
 		}
 
 		$this->touch($ticket, $viewer);
@@ -367,6 +376,21 @@ class TicketService {
 	}
 
 	/**
+	 * Das Abschluss-Ergebnis auf einen erlaubten Wert bringen (#171).
+	 *
+	 * Nur `verworfen` (negativ) muss ausdrücklich gewählt werden; alles andere —
+	 * eine fehlende oder unbekannte Angabe — gilt als `erledigt`. Ein Abschluss
+	 * hat damit immer ein Vorzeichen, ohne dass ein leerer Wert einen dritten
+	 * Zustand aufmacht. Der häufige, positive Fall ist zugleich der sichere
+	 * Rückfall.
+	 */
+	private function pruefeOutcome(?string $outcome): string {
+		return $outcome === Ticket::OUTCOME_DISCARDED
+			? Ticket::OUTCOME_DISCARDED
+			: Ticket::OUTCOME_DONE;
+	}
+
+	/**
 	 * Die Sichtbarkeit ändern — die einzige Schreibregel, die §7 formuliert.
 	 *
 	 * Zwei Sätze, wörtlich: „Ändern darf die Sichtbarkeit nur die Seite, der das
@@ -378,16 +402,22 @@ class TicketService {
 	 * Kundenticket so herunterstufen, dass er selbst den Zugriff verliert — ein
 	 * Vorgang, der danach für niemanden mehr erreichbar wäre.
 	 *
-	 * **Ein Vorgang mit Anhängen lässt sich nicht umstellen** (§3.10 Stufe 1).
-	 * Die Begründung steht bei {@see AttachmentsPresentException}; kurz: Der
-	 * Ablageort ist die Sichtbarkeit, ein Umzug der Dateien ist nicht
-	 * transaktional zur Datenbank, und ein halb gelungener Umzug wäre ein Leck,
-	 * das keine spätere Codekorrektur heilt.
+	 * **Anhänge ziehen mit** (#185) statt den Wechsel zu blockieren. Der
+	 * Ablageort IST die Sichtbarkeit (§5.18), also wandert die Datei in den
+	 * Ordner der Ziel-Sichtbarkeit. Die Reihenfolge relativ zum Schreiben hält
+	 * die Datei dabei nie offener als den Vorgang (siehe unten); die Bewegung
+	 * selbst macht {@see AttachmentService::relocate()}.
 	 *
-	 * @throws DoesNotExistException       Ticket nicht sichtbar
-	 * @throws ConflictException           zwischenzeitlich geändert
-	 * @throws NotOwningSideException      die andere Seite besitzt dieses Ticket
-	 * @throws AttachmentsPresentException es hängen noch Anhänge daran
+	 * Für intern↔öffentlich geht das immer — beide haben einen Ordner. Fehlt der
+	 * Zielordner (nach `private`, Kundenseite nach intern), lehnt
+	 * {@see AttachmentService::assertRelocatable()} den Wechsel ab, **bevor**
+	 * geschrieben ist. Der private Ablageort kommt mit Phase B (#184).
+	 *
+	 * @throws DoesNotExistException   Ticket nicht sichtbar
+	 * @throws ConflictException       zwischenzeitlich geändert
+	 * @throws NotOwningSideException  die andere Seite besitzt dieses Ticket
+	 * @throws NoFolderException       die Zielsichtbarkeit hat keinen Ablageort für die vorhandenen Anhänge
+	 * @throws NotPermittedException   Anhang oder Zielordner beim Umzug nicht erreichbar/beschreibbar
 	 */
 	public function changeVisibility(ViewerContext $viewer, int $ticketId, int $version, string $visibility): Ticket {
 		$this->assertKnownVisibility($visibility);
@@ -397,19 +427,159 @@ class TicketService {
 
 		$this->assertOwningSide($viewer, $ticket, $visibility);
 
-		// **„Darf ich" steht vor „geht es".** Wer die Seite nicht besitzt, darf
-		// ohnehin nicht umstellen und bekommt deshalb auch keine Zahl über die
-		// Anhänge zu sehen. Und nur bei einer echten Änderung: Dieselbe Stufe
-		// noch einmal zu wählen bewegt keine Datei und darf an einem Anhang
-		// nicht scheitern.
-		if ($visibility !== (string)$ticket->getVisibility()) {
-			$this->assertNoAttachments($ticketId);
+		$current = (string)$ticket->getVisibility();
+
+		// Dieselbe Stufe noch einmal zu wählen bewegt nichts — keine Datei, kein
+		// Schreiben. „Darf ich" (oben) steht dabei vor „geht es".
+		if ($visibility === $current) {
+			return $ticket;
 		}
 
+		// **Anhänge ziehen mit** (#185) statt den Wechsel zu blockieren — der
+		// Ablageort IST die Sichtbarkeit (§5.18). Erst prüfen, ob die
+		// Zielsichtbarkeit überhaupt einen Ablageort hat, solange ein Anhang
+		// daranhängt: Fehlt er (nach `private`; Kundenseite nach intern), wird
+		// der Wechsel abgelehnt, **bevor** irgendetwas geschrieben ist.
+		$this->attachmentService->assertRelocatable($viewer, $ticket, $visibility);
+
+		// **Die Reihenfolge hält die Datei nie offener als den Vorgang.**
+		// Hochstufen: erst Sichtbarkeit, dann Datei in den offeneren Ordner —
+		// klemmt der Umzug, ist der Vorgang schon offen, die Datei aber noch im
+		// engeren Ordner und erscheint als „fehlt", nie offener. Herabstufen:
+		// erst Datei in den engeren Ordner, dann Sichtbarkeit. Ein abgebrochener
+		// Umzug degradiert so zu „Anhang fehlt", nie zu einem Leck; der
+		// Reparaturschritt (RelocateAttachments) zieht ihn nach.
+		if ($this->opennessRank($visibility) > $this->opennessRank($current)) {
+			$ticket->setVisibility($visibility);
+			$this->touch($ticket, $viewer);
+			$saved = $this->tickets->update($ticket);
+			$this->attachmentService->relocate($viewer, $saved, $visibility);
+
+			return $saved;
+		}
+
+		$this->attachmentService->relocate($viewer, $ticket, $visibility);
 		$ticket->setVisibility($visibility);
 		$this->touch($ticket, $viewer);
 
 		return $this->tickets->update($ticket);
+	}
+
+	/**
+	 * Einen Vorgang **einseitig** als GitHub-Issue anlegen (#12, Stufe 1).
+	 *
+	 * Kein Inhalts- oder Kommentar-Sync, keine Rückkopplung — nur „hin". Am
+	 * Vorgang bleiben Nummer und Adresse des Issues, damit sichtbar ist, dass er
+	 * überführt wurde und wohin.
+	 *
+	 * **Fail-closed:** Die Nummer wird erst gespeichert, nachdem GitHub das Issue
+	 * angelegt hat. Scheitert der Aufruf, wirft {@see GithubService} eine
+	 * {@see GithubTransferException} und der Vorgang bleibt unverändert — nie
+	 * entsteht ein halber Zustand.
+	 *
+	 * **Kein `version`-Parameter wie beim Sichtbarkeitswechsel:** Die Überführung
+	 * ist keine konkurrierende Feldänderung, sondern einmalig. Gegen ein zweites
+	 * Issue schützt nicht die Version, sondern die bereits gesetzte Nummer — ein
+	 * erneuter Versuch endet als 409 mit dem aktuellen Stand.
+	 *
+	 * @throws NotOwningSideException wenn ein externes Mitglied es versucht (403)
+	 * @throws ConflictException wenn der Vorgang schon überführt ist (409)
+	 * @throws GithubTransferException bei fehlendem Token, falschem Repo oder GitHub-Fehler (400)
+	 * @throws \OCP\AppFramework\Db\DoesNotExistException wenn der Vorgang nicht sichtbar ist (404)
+	 */
+	public function transferToGithub(ViewerContext $viewer, int $ticketId): Ticket {
+		// **Nur interne Mitglieder überführen** (§6.1). Externe (Kunden als
+		// Gäste) sehen die Aktion nie; hier steht die serverseitige Grenze,
+		// damit sie nicht bloß in der Oberfläche verborgen ist.
+		if (!$viewer->isInternal()) {
+			throw new NotOwningSideException(
+				'Nur interne Mitglieder können Vorgänge nach GitHub überführen.',
+			);
+		}
+
+		$ticket = $this->tickets->findVisible($viewer, $ticketId);
+
+		// **Schon überführt: kein zweites Issue.** Der aktuelle Stand trägt
+		// Nummer und Link; die Oberfläche zeigt daraufhin nur noch den Link.
+		if ($ticket->getGithubIssueNumber() !== null) {
+			throw new ConflictException($ticket);
+		}
+
+		$board = $this->boards->findForViewer($viewer);
+		if ((int)$board->getGithubEnabled() !== 1) {
+			throw new GithubTransferException(
+				'Für dieses Projekt ist die GitHub-Anbindung nicht eingeschaltet.',
+			);
+		}
+
+		$repo = trim((string)$board->getGithubRepo());
+		if ($repo === '') {
+			throw new GithubTransferException(
+				'Für dieses Projekt ist kein Ziel-Repository hinterlegt.',
+			);
+		}
+
+		$created = $this->github->createIssue(
+			$viewer->userId,
+			$repo,
+			(string)$ticket->getTitle(),
+			$this->githubIssueBody($ticket),
+		);
+
+		$ticket->setGithubIssueNumber($created['number']);
+		$ticket->setGithubIssueUrl($created['url']);
+		$this->touch($ticket, $viewer);
+
+		return $this->tickets->update($ticket);
+	}
+
+	/**
+	 * Der Rumpf des GitHub-Issues: die Beschreibung, darunter ein Rücklink auf
+	 * den Vorgang. So ist die Herkunft von beiden Seiten nachvollziehbar.
+	 */
+	private function githubIssueBody(Ticket $ticket): string {
+		$backlink = sprintf(
+			'Aus ProjektWerk überführt (Vorgang #%d): %s',
+			(int)$ticket->getNumber(),
+			$this->deepLink((int)$ticket->getId()),
+		);
+
+		$description = trim((string)$ticket->getDescription());
+
+		return $description === '' ? $backlink : $description . "\n\n" . $backlink;
+	}
+
+	/**
+	 * Fragmentfreier Deep-Link auf den Vorgang, mit derselben Gegenprobe wie im
+	 * {@see NotificationService}: Der Link muss `/t/<id>` enthalten, sonst wird
+	 * er aus dem CLI-URL zusammengesetzt.
+	 */
+	private function deepLink(int $ticketId): string {
+		$link = $this->urls->linkToRouteAbsolute(
+			Application::APP_ID . '.deepLink.ticket',
+			['ticketId' => $ticketId],
+		);
+
+		return str_contains($link, '/t/' . $ticketId)
+			? $link
+			: $this->urls->getAbsoluteURL('/index.php/apps/' . Application::APP_ID . '/t/' . $ticketId);
+	}
+
+	/**
+	 * Wie offen eine Sichtbarkeit ist — je größer, desto mehr Menschen sehen den
+	 * Vorgang (`private` < `internal` < `public`).
+	 *
+	 * **Nur für die Richtung eines Wechsels** (#185), nicht für die
+	 * Sichtbarkeitsregel: Die steht als eine Bedingung an einer Stelle in
+	 * `TicketScope`; diese Ordnung entscheidet keinen Zugriff, sie bestimmt nur,
+	 * ob beim Umzug erst die Datei oder erst die Sichtbarkeit dran ist.
+	 */
+	private function opennessRank(string $visibility): int {
+		return match ($visibility) {
+			TicketScope::VISIBILITY_PUBLIC => 3,
+			TicketScope::VISIBILITY_INTERNAL => 2,
+			default => 1,
+		};
 	}
 
 	/**
@@ -628,43 +798,6 @@ class TicketService {
 			throw new NotOwningSideException(
 				'Auf „privat" herunterstufen kann nur die anlegende Person selbst.',
 			);
-		}
-	}
-
-	/**
-	 * Der Riegel aus §3.10 Stufe 1.
-	 *
-	 * **Die Filterung ist schon passiert, nicht hier.** Gezählt wird über eine
-	 * Einermenge auf dem Mapper; die Sichtbarkeit steckt darin, dass diese
-	 * `$ticketId` aus {@see TicketMapper::findVisible()} kommt und der Aufrufer
-	 * sie nicht anders bekommt. Ein `ViewerContext` als Parameter täuschte hier
-	 * eine zweite Prüfung vor, die es nicht gibt — und eine vorgetäuschte
-	 * Prüfung ist schlechter als gar keine, weil man sich auf sie verlässt.
-	 *
-	 * **Bekanntes, enges Zeitfenster.** Zwischen dieser Zählung und dem
-	 * `update()` liegt keine Sperre: Wer in genau diesen Millisekunden einen
-	 * Anhang hochlädt, käme mit dem Wechsel noch durch. Das ist dasselbe
-	 * optimistische Muster wie im Rest der Klasse — und anders als dort wäre die
-	 * Folge hier eine Datei im falschen Ordner, also der Fall, den §3.10 gerade
-	 * verhindern soll.
-	 *
-	 * Warum trotzdem keine Sperre: Sie müsste die Anhangzeilen **und** die
-	 * Ticketzeile über die Transaktion halten, und der einzige realistische
-	 * Ausloeser ist eine Person, die im selben Augenblick anhängt, während eine
-	 * andere umstellt. Aufgeschrieben statt behoben, damit es beim Auto-Move aus
-	 * Phase 7b — wo die Datei dann wirklich bewegt wird — nicht neu entdeckt
-	 * werden muss. Dort gehört es zusammen mit `verify-after-move` gelöst.
-	 *
-	 * @throws AttachmentsPresentException
-	 */
-	private function assertNoAttachments(int $ticketId): void {
-		$count = $this->attachments->countForTickets([$ticketId])[$ticketId] ?? 0;
-
-		if ($count > 0) {
-			// Die Zahl steht in der Meldung, weil sie die Handlung bestimmt:
-			// „Bitte den Anhang zuerst entfernen" ist eine andere Aufgabe als
-			// dieselbe Bitte für sieben.
-			throw new AttachmentsPresentException($count);
 		}
 	}
 

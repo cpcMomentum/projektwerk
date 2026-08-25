@@ -51,6 +51,8 @@ export async function createBoard(data: {
  * @param changes.chatUrl
  * @param changes.folderPublicPath
  * @param changes.folderInternalPath
+ * @param changes.githubEnabled
+ * @param changes.githubRepo
  */
 export async function updateBoard(boardId: number, changes: {
 	title?: string
@@ -67,6 +69,10 @@ export async function updateBoard(boardId: number, changes: {
 	 */
 	folderPublicPath?: string
 	folderInternalPath?: string
+	/** Ist dieses Projekt ein Softwareprojekt — schaltet die GitHub-Überführung frei (#12). */
+	githubEnabled?: boolean
+	/** Ziel-Repository „owner/repo"; leerer String entfernt das Ziel. */
+	githubRepo?: string | null
 }): Promise<Board> {
 	return apiPatch<Board, typeof changes>(`/boards/${boardId}`, changes)
 }
@@ -99,6 +105,20 @@ export async function createColumn(boardId: number, title: string, color?: strin
  */
 export async function renameColumn(boardId: number, columnId: number, title: string): Promise<Column> {
 	return apiPatch<Column, { title: string }>(`/boards/${boardId}/columns/${columnId}`, { title })
+}
+
+/**
+ * Eine Spalte als Endspalte markieren (#172).
+ *
+ * @param boardId Kennung des Projekts.
+ * @param columnId Kennung der Spalte.
+ * @param finalOutcome `'done'` / `'discarded'` macht sie zur Endspalte mit diesem Ergebnis, `null` nimmt die Markierung.
+ */
+export async function setColumnFinalOutcome(boardId: number, columnId: number, finalOutcome: 'done' | 'discarded' | null): Promise<Column> {
+	return apiPatch<Column, { finalOutcome: 'done' | 'discarded' | null }>(
+		`/boards/${boardId}/columns/${columnId}/final-outcome`,
+		{ finalOutcome },
+	)
 }
 
 /**

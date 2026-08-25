@@ -47,6 +47,12 @@ class Attachment extends Entity implements JsonSerializable {
 
 	public const LOCATION_PUBLIC = 'public';
 	public const LOCATION_INTERNAL = 'internal';
+	// Der persönliche Ablageort eines „Nur ich"-Vorgangs (#184, Phase B): nicht
+	// im geteilten Team-Ordner, sondern im eigenen Files-Bereich der anlegenden
+	// Person — der einzige Ort, dessen Reichweite exakt „nur diese eine Person"
+	// ist. Aufgelöst wird er nicht über eine Board-Ordner-ID, sondern über
+	// ProjectFolderService::privateFolderFor().
+	public const LOCATION_PRIVATE = 'private';
 
 	protected ?int $ticketId = null;
 	protected ?int $fileId = null;

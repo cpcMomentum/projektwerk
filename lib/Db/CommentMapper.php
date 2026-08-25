@@ -46,7 +46,7 @@ class CommentMapper extends TicketChildMapper {
 	 * `testNewestCommentFollowsTheFilteredTicketSet`.
 	 *
 	 * @param int[] $ticketIds Die bereits sichtbaren Vorgänge.
-	 * @return array<int, string> ticketId => created_at als ATOM-Zeitstempel.
+	 * @return array<int, array{at: string, author: string}> ticketId => jüngster Kommentar (ATOM-Zeit und Autor, #175).
 	 */
 	public function findNewestForTickets(array $ticketIds): array {
 		$ids = $this->normalizeIds($ticketIds);
@@ -57,18 +57,35 @@ class CommentMapper extends TicketChildMapper {
 		$newest = [];
 		foreach (array_chunk($ids, self::CHUNK_SIZE) as $chunk) {
 			$qb = $this->db->getQueryBuilder();
-			$qb->select('ticket_id')
-				->selectAlias($qb->func()->max('created_at'), 'newest')
+			// **Nicht mehr nur `MAX(created_at)`, sondern auch der Autor** (#175):
+			// Der „geändert seit deinem Blick"-Punkt soll nicht am eigenen
+			// Kommentar leuchten, und dafür muss die auslesende Person wissen,
+			// von wem der jüngste Kommentar stammt. Statt eines Aggregats deshalb
+			// nach Vorgang und Zeit absteigend sortiert und je Vorgang die erste
+			// Zeile genommen; `id` als Tiebreak für zwei Kommentare derselben
+			// Sekunde. Bei der Größenordnung dieser App (ein Team, ein Board)
+			// wiegt die Sortierung nichts gegen die gewonnene Auskunft.
+			$qb->select('ticket_id', 'created_at', 'author_user_id')
 				->from($this->tableName)
 				->where($qb->expr()->in(
 					'ticket_id',
 					$qb->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY),
 				))
-				->groupBy('ticket_id');
+				->orderBy('ticket_id')
+				->addOrderBy('created_at', 'DESC')
+				->addOrderBy('id', 'DESC');
 
 			$result = $qb->executeQuery();
 			while ($row = $result->fetch()) {
-				$newest[(int)$row['ticket_id']] = (new \DateTime((string)$row['newest']))->format(\DateTime::ATOM);
+				$id = (int)$row['ticket_id'];
+				// Die erste Zeile je Vorgang ist die jüngste — spätere übergehen.
+				if (isset($newest[$id])) {
+					continue;
+				}
+				$newest[$id] = [
+					'at' => (new \DateTime((string)$row['created_at']))->format(\DateTime::ATOM),
+					'author' => (string)$row['author_user_id'],
+				];
 			}
 			$result->closeCursor();
 		}

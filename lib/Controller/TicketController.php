@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OCA\Projektwerk\Controller;
 
 use OCA\Projektwerk\Access\BoardAccess;
+use OCA\Projektwerk\Access\ChangeHighlighter;
 use OCA\Projektwerk\Access\NotAMemberException;
 use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Access\WaitStateCalculator;
@@ -21,8 +22,9 @@ use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Db\TicketReadMapper;
 use OCA\Projektwerk\Db\TicketUserMapper;
 use OCA\Projektwerk\Service\AttachmentService;
-use OCA\Projektwerk\Service\AttachmentsPresentException;
 use OCA\Projektwerk\Service\ConflictException;
+use OCA\Projektwerk\Service\GithubTransferException;
+use OCA\Projektwerk\Service\NoFolderException;
 use OCA\Projektwerk\Service\NotOwningSideException;
 use OCA\Projektwerk\Service\TicketService;
 use OCP\AppFramework\Controller;
@@ -31,6 +33,7 @@ use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\UserRateLimit;
 use OCP\AppFramework\Http\JSONResponse;
+use OCP\Files\NotPermittedException;
 use OCP\IRequest;
 
 /**
@@ -57,6 +60,7 @@ class TicketController extends Controller {
 		private TicketService $service,
 		private AttachmentService $attachmentService,
 		private WaitStateCalculator $waitState,
+		private ChangeHighlighter $highlighter,
 		private BoardAccess $access,
 		private ?string $userId,
 	) {
@@ -94,10 +98,10 @@ class TicketController extends Controller {
 					'attachments' => $this->attachments->countForTickets($ids),
 					'collaborators' => $this->ticketUsers->countForTickets($ids),
 				],
-				// „Seit deinem Blick geändert" (#79) — nur für Vorgänge, die
-				// dieser Betrachter schon einmal geöffnet hat. Aus **seinem**
-				// Lesestand und der Bewegung (Ticket-Änderung oder neuer
-				// Kommentar), beides über die bereits gefilterte Menge.
+				// „Neu oder seit deinem Blick geändert" (#79, #175) — aus **seinem**
+				// Lesestand und der Bewegung (fremde Ticket-Änderung oder fremder
+				// Kommentar), beides über die bereits gefilterte Menge. Auch ein
+				// fremd angelegter, noch ungesehener Vorgang leuchtet (#175).
 				'changed' => $this->changedSince($viewer, $tickets, $ids),
 			]);
 		});
@@ -205,11 +209,15 @@ class TicketController extends Controller {
 		?string $responsibleUserId = null,
 		?string $dueDate = null,
 		?bool $closed = null,
+		?string $outcome = null,
 	): JSONResponse {
 		// Nur das übernehmen, was tatsächlich geschickt wurde: Ein
 		// nicht genanntes Feld darf nicht auf null zurückfallen. Das Loeschen
 		// einer Faelligkeit reist deshalb als Leerstring, nicht als `null` — der
 		// waere hier nicht von „nicht geschickt" zu unterscheiden.
+		//
+		// `outcome` (#171) begleitet `closed: true`; beim Wieder-oeffnen bleibt
+		// es weg und der Dienst loescht das Ergebnis ohnehin.
 		$changes = array_filter(
 			[
 				'title' => $title,
@@ -217,6 +225,7 @@ class TicketController extends Controller {
 				'responsibleUserId' => $responsibleUserId,
 				'dueDate' => $dueDate,
 				'closed' => $closed,
+				'outcome' => $outcome,
 			],
 			static fn ($value): bool => $value !== null,
 		);
@@ -259,6 +268,21 @@ class TicketController extends Controller {
 	public function visibility(int $boardId, int $ticketId, int $version, string $visibility): JSONResponse {
 		return $this->write($boardId, fn (ViewerContext $viewer): mixed
 			=> $this->service->changeVisibility($viewer, $ticketId, $version, $visibility));
+	}
+
+	/**
+	 * Einen Vorgang nach GitHub überführen (#12, Stufe 1) — einseitig, einmalig.
+	 *
+	 * Legt ein Issue im am Board hinterlegten Repository an und speichert Nummer
+	 * und Adresse am Vorgang. Ohne `version`: Die Überführung ist keine
+	 * konkurrierende Feldänderung; gegen ein zweites Issue schützt die bereits
+	 * gesetzte Nummer (409 mit dem aktuellen Stand), nicht der Versionsvergleich.
+	 */
+	#[NoAdminRequired]
+	#[UserRateLimit(limit: 60, period: 3600)]
+	public function transferToGithub(int $boardId, int $ticketId): JSONResponse {
+		return $this->write($boardId, fn (ViewerContext $viewer): mixed
+			=> $this->service->transferToGithub($viewer, $ticketId));
 	}
 
 	/**
@@ -310,49 +334,29 @@ class TicketController extends Controller {
 	}
 
 	/**
-	 * „Seit deinem Blick geändert" je Vorgang (#79) — nur die geänderten stehen
-	 * drin, wie beim Wartezustand.
+	 * „Neu oder seit deinem Blick geändert" je Vorgang (#79, #175) — nur die
+	 * hervorzuhebenden stehen drin, wie beim Wartezustand.
 	 *
-	 * **Nur für schon einmal geöffnete Vorgänge.** Ein nie geöffneter bekommt
-	 * keinen Punkt: „seit du zuletzt draufgeschaut hast" setzt ein Draufschauen
-	 * voraus, und am ersten Tag trüge sonst jede Karte einen. Neue Zuweisungen
-	 * fangen Glocke, Mail und „Meine Vorgänge" ab.
-	 *
-	 * **Bewegung heisst Ticket-Änderung oder neuer Kommentar.** Beide über die
-	 * bereits gefilterte Menge — der Lesestand nach `user_id`, der jüngste
-	 * Kommentar über dieselben sichtbaren IDs. Verglichen wird über Zeitstempel,
-	 * nicht über die ISO-Zeichenkette: Deren Reihenfolge stimmt nur bei gleichem
-	 * Zeitzonenversatz, und daran soll die Rechnung nicht hängen.
+	 * **Die Regel steht im {@see ChangeHighlighter}**, eine reine Berechnung.
+	 * Hier werden nur die beiden Zutaten beigebracht, beide über die bereits
+	 * gefilterte Menge: der eigene Lesestand (nach `user_id`) und der jüngste
+	 * Kommentar je Vorgang (mit Autor, damit der eigene nicht leuchtet, #175).
+	 * Seit #175 leuchtet auch ein fremd angelegter, noch ungesehener Vorgang.
 	 *
 	 * @param \OCA\Projektwerk\Db\Ticket[] $tickets
 	 * @param int[] $ids
-	 * @return array<int, true> Nur die geänderten Vorgänge.
+	 * @return array<int, true> Nur die hervorzuhebenden Vorgänge.
 	 */
 	private function changedSince(ViewerContext $viewer, array $tickets, array $ids): array {
-		$seen = $this->reads->findSeenForTickets($viewer->userId, $ids);
-		if ($seen === []) {
-			return [];
-		}
-
-		$newestComment = $this->comments->findNewestForTickets($ids);
-
-		$changed = [];
-		foreach ($tickets as $ticket) {
-			$id = (int)$ticket->getId();
-			if (!isset($seen[$id])) {
-				continue;
-			}
-
-			$seenTs = (int)strtotime($seen[$id]);
-			$activityTs = $ticket->getUpdatedAt()?->getTimestamp() ?? 0;
-			$commentTs = isset($newestComment[$id]) ? (int)strtotime($newestComment[$id]) : 0;
-
-			if (max($activityTs, $commentTs) > $seenTs) {
-				$changed[$id] = true;
-			}
-		}
-
-		return $changed;
+		// Die Regel selbst steht im {@see ChangeHighlighter} — hier werden nur
+		// der eigene Lesestand und der jüngste Kommentar je Vorgang beigebracht,
+		// beides über die bereits gefilterte Menge.
+		return $this->highlighter->detect(
+			$tickets,
+			$this->reads->findSeenForTickets($viewer->userId, $ids),
+			$this->comments->findNewestForTickets($ids),
+			$viewer->userId,
+		);
 	}
 
 	/**
@@ -372,16 +376,24 @@ class TicketController extends Controller {
 					['error' => $e->getMessage(), 'current' => $e->current],
 					Http::STATUS_CONFLICT,
 				);
-			} catch (AttachmentsPresentException $e) {
-				// **409 wie beim Versionskonflikt und aus demselben Grund:** Die
-				// Anfrage ist richtig gebaut und das Recht ist da — der Vorgang
-				// ist nur gerade in einem Zustand, in dem sie nicht geht. Die
-				// Zahl kommt mit, damit die Oberflaeche sie nicht aus der
-				// Meldung fischen muss.
-				return new JSONResponse(
-					['error' => $e->getMessage(), 'attachments' => $e->count],
-					Http::STATUS_CONFLICT,
-				);
+			} catch (NoFolderException | NotPermittedException $e) {
+				// **400 und nicht 409**, wie im AttachmentController: Es fehlt kein
+				// Recht und die Anfrage ist richtig gebaut — beim
+				// Sichtbarkeitswechsel (#185) hat die Ziel-Sichtbarkeit für die
+				// vorhandenen Anhänge nur keinen Ablageort (Kundenseite nach
+				// intern; seit #184 Phase B nicht mehr nach `private`), oder der
+				// hinterlegte Ordner trägt nicht mehr. **Nicht 409**, weil das
+				// Frontend jedes 409 als Versionskonflikt liest („bitte neu
+				// laden") — hier soll aber die Servermeldung sprechen, die sagt,
+				// was zu tun ist.
+				return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+			} catch (GithubTransferException $e) {
+				// **400 wie NoFolderException:** Es fehlt kein Recht und die
+				// Anfrage ist richtig gebaut — es hakt an der Einrichtung (kein
+				// Token, falsches Repo) oder an GitHub selbst. Die Meldung ist
+				// schon kundentauglich formuliert und soll unverändert sprechen;
+				// ein 409 läse das Frontend als Versionskonflikt.
+				return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
 			} catch (NotOwningSideException $e) {
 				// 403 und nicht 404: Der Betrachter sieht das Ticket, es steht
 				// vor ihm. Zu verbergen gibt es nichts mehr.

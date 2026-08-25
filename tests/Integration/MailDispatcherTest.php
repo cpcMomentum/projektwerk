@@ -17,6 +17,7 @@ use OCA\Projektwerk\Service\MailDispatcher;
 use OCP\IUser;
 use OCP\IUserManager;
 use OCP\L10N\IFactory;
+use OCP\Mail\IEMailTemplate;
 use OCP\Mail\IMailer;
 use OCP\Mail\IMessage;
 use OCP\Server;
@@ -65,6 +66,9 @@ class MailDispatcherTest extends IntegrationTestCase {
 
 		$mailer = $this->createStub(IMailer::class);
 		$mailer->method('createMessage')->willReturn($nachricht);
+		// Seit #189 baut flush ein NC-HTML-Template — der Mailer-Doppel muss es
+		// liefern, sonst fiele createEMailTemplate auf null.
+		$mailer->method('createEMailTemplate')->willReturn($this->createStub(IEMailTemplate::class));
 		if ($ergebnis instanceof \Throwable) {
 			$mailer->method('send')->willThrowException($ergebnis);
 		} else {
