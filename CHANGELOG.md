@@ -6,6 +6,49 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.4.8] - 2026-08-25
+
+### Added
+
+- **@-Erwähnungen mit Autovervollständigung** (#202). Beim Tippen von `@` im Kommentarfeld
+  erscheint eine Vorschlagsliste der Projektmitglieder; ein Klick oder die Eingabetaste
+  fügt die Person ein. Die Liste kommt aus den ohnehin geladenen Projektdaten, nicht aus
+  Nextclouds Personensuche, und funktioniert damit auch in Gast-Sitzungen.
+- **Abschluss mit Ergebnis: erledigt oder verworfen** (#171). Ein Vorgang wird nicht mehr nur
+  „geschlossen", sondern mit einem Ergebnis abgeschlossen. Karte und Detailansicht zeigen, ob
+  er erledigt oder verworfen wurde.
+- **„Auch abschließen?" beim Verschieben in eine Endspalte** (#172). Eine Spalte lässt sich in
+  den Projekteinstellungen als Endspalte mit Ergebnis („erledigt"/„verworfen") markieren. Wird
+  ein Vorgang dorthin verschoben, bietet die App an, ihn gleich mit diesem Ergebnis
+  abzuschließen. Verschieben und Abschließen bleiben getrennte Handlungen; automatisch schließt
+  die App nie.
+- **„Verschieben nach …" im Karten-Menü** (#176). Neben Ziehen gibt es jetzt einen Menüweg, um
+  einen Vorgang in eine andere Spalte zu verschieben. Tastatur und Screenreader kommen damit
+  ohne Zieh-Geste aus.
+- **Markdown-Werkzeugleiste über dem Beschreibungs-Editor** (#161). Fett, kursiv, Listen und
+  Links per Knopf, statt die Zeichen von Hand zu setzen.
+- **Reparaturschritt für abgebrochene Anhang-Umzüge** (#188). Blieb bei einem
+  Sichtbarkeitswechsel ein Anhang im alten Ordner zurück (etwa weil er zwischenzeitlich
+  gesperrt war), räumt ein Reparaturlauf das nach — automatisch beim App-Update und von Hand
+  über `occ projektwerk:attachments:relocate`.
+
+### Changed
+
+- **Sichtbarkeits-Schalter im Segment-Look** (#219). Der Umschalter „Alle/Intern/Nur ich" im
+  Vorgang folgt jetzt dem Segment-Stil aus WorkTime (graue Schiene, weiß hervorgehobenes
+  aktives Feld). Erster Schritt der schrittweisen Annäherung an das WorkTime-Design.
+- **Kopf des Vorgangs aufgeräumt** (#182). Die Aktions-Symbole (abschließen, löschen) sitzen
+  jetzt in der Sichtbarkeits-Zeile; die Titelzeile trägt nur noch Titel und Stift.
+- **Beschreibungs-Editor wächst mit dem Inhalt** (#160). Das Feld dehnt sich beim Tippen aus,
+  statt in einem kleinen Kasten zu scrollen.
+
+### Fixed
+
+- **Eigene Bewegungen leuchten nicht mehr** (#175). Die Hervorhebung „seit deinem letzten Blick
+  geändert" reagiert nicht mehr auf eigene Änderungen und Kommentare; neue, noch ungesehene
+  fremde Vorgänge werden weiterhin markiert.
+
+
 ## [0.4.7] - 2026-08-20
 
 ### Added
