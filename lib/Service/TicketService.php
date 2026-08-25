@@ -197,7 +197,7 @@ class TicketService {
 	 * Update, das ein Feld anders behandelt als die übrigen, wäre die Stelle,
 	 * an der die Regel beim nächsten Feld vergessen wird.
 	 *
-	 * @param array{title?: string, description?: ?string, responsibleUserId?: ?string, dueDate?: ?string, closed?: bool} $changes
+	 * @param array{title?: string, description?: ?string, responsibleUserId?: ?string, dueDate?: ?string, closed?: bool, outcome?: ?string} $changes
 	 * @throws DoesNotExistException Ticket nicht sichtbar
 	 * @throws ConflictException     zwischenzeitlich geändert
 	 */
