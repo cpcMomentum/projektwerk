@@ -325,6 +325,7 @@ OC.L10N.register(
     "Aufzählung" : "Bullet list",
     "Nummerierte Liste" : "Numbered list",
     "Als erledigt abschließen" : "Close as done",
-    "Als verworfen abschließen" : "Close as discarded"
+    "Als verworfen abschließen" : "Close as discarded",
+    "Verschieben nach …" : "Move to …"
 },
 "nplurals=2; plural=(n != 1);");

@@ -43,6 +43,11 @@ test('verschiebt einen Vorgang in eine andere Spalte', async ({ page }) => {
 	await expect(spalte(quelle.title).getByText(titel)).toBeVisible({ timeout: 30_000 })
 
 	await page.getByRole('button', { name: `Aktionen für ${titel}` }).click()
+	// Seit #176 liegen die Zielspalten in einem Untermenü „Verschieben nach …"
+	// — erst aufklappen, dann die Spalte wählen. Das bündelt den Block zu einer
+	// Zeile; die Handlung selbst (`move`) ist unverändert. Der Untermenü-Öffner
+	// ist ein Knopf (kein `menuitem`), die Spalten darin sind `menuitem`.
+	await page.getByRole('button', { name: /Verschieben nach/ }).click()
 	await page.getByRole('menuitem', { name: ziel.title }).click()
 
 	await expect(spalte(ziel.title).getByText(titel)).toBeVisible()
