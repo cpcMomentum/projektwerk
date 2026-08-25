@@ -70,6 +70,7 @@ function ticketOf(overrides: Partial<Ticket> = {}): Ticket {
 		responsibleUserId: null,
 		dueDate: null,
 		closedAt: null,
+		closedOutcome: null,
 		version: 5,
 		lastEditorUserId: null,
 		githubIssueNumber: null,
