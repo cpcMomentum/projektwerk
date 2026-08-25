@@ -28,6 +28,8 @@ use OCP\DB\Types;
  * @method void setPosition(int $position)
  * @method ?string getColor()
  * @method void setColor(?string $color)
+ * @method ?string getFinalOutcome()
+ * @method void setFinalOutcome(?string $finalOutcome)
  */
 class Column extends Entity implements JsonSerializable {
 
@@ -35,12 +37,15 @@ class Column extends Entity implements JsonSerializable {
 	protected ?string $title = null;
 	protected ?int $position = null;
 	protected ?string $color = null;
+	/** Endspalten-Ergebnis (#172): null | 'done' | 'discarded'. Nur die besitzende Seite setzt es. */
+	protected ?string $finalOutcome = null;
 
 	public function __construct() {
 		$this->addType('boardId', Types::INTEGER);
 		$this->addType('title', Types::STRING);
 		$this->addType('position', Types::INTEGER);
 		$this->addType('color', Types::STRING);
+		$this->addType('finalOutcome', Types::STRING);
 	}
 
 	public function jsonSerialize(): array {
@@ -50,6 +55,7 @@ class Column extends Entity implements JsonSerializable {
 			'title' => $this->getTitle(),
 			'position' => $this->getPosition(),
 			'color' => $this->getColor(),
+			'finalOutcome' => $this->getFinalOutcome(),
 		];
 	}
 }

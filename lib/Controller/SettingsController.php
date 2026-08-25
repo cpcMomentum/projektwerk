@@ -133,6 +133,16 @@ class SettingsController extends Controller {
 	}
 
 	/**
+	 * Eine Spalte als Endspalte markieren (#172): `finalOutcome` ist `done`,
+	 * `discarded` oder `null` (keine Endspalte).
+	 */
+	#[NoAdminRequired]
+	public function setColumnOutcome(int $boardId, int $columnId, ?string $finalOutcome = null): JSONResponse {
+		return $this->write($boardId, fn (ViewerContext $viewer): mixed
+			=> $this->columnService->setFinalOutcome($viewer, $columnId, $finalOutcome));
+	}
+
+	/**
 	 * @param int[] $columnIds alle Spalten des Boards in Sollreihenfolge
 	 */
 	#[NoAdminRequired]

@@ -12,6 +12,7 @@ namespace OCA\Projektwerk\Service;
 use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Db\BoardMapper;
 use OCA\Projektwerk\Db\Column;
+use OCA\Projektwerk\Db\Ticket;
 use OCA\Projektwerk\Db\ColumnMapper;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCP\AppFramework\Db\DoesNotExistException;
@@ -71,6 +72,32 @@ class ColumnService {
 
 		$column = $this->findInBoard($viewer, $columnId);
 		$column->setTitle(trim($title));
+
+		return $this->columns->update($column);
+	}
+
+	/**
+	 * Eine Spalte als Endspalte markieren (oder die Markierung nehmen) (#172).
+	 *
+	 * `null` heißt „keine Endspalte", `done`/`discarded` „Endspalte mit diesem
+	 * Ergebnis". Ein unbekannter Wert wird abgewiesen statt still gedeutet — im
+	 * Gegensatz zum Abschließen selbst ({@see TicketService}), wo eine fehlende
+	 * Angabe bewusst auf „erledigt" fällt: Hier ist es eine ausdrückliche
+	 * Einstellung, kein Nebenprodukt einer Handlung.
+	 *
+	 * @param ?string $outcome null | 'done' | 'discarded'
+	 * @throws NotManagerException
+	 * @throws \InvalidArgumentException unbekanntes Ergebnis
+	 */
+	public function setFinalOutcome(ViewerContext $viewer, int $columnId, ?string $outcome): Column {
+		$this->assertManager($viewer);
+
+		if ($outcome !== null && $outcome !== Ticket::OUTCOME_DONE && $outcome !== Ticket::OUTCOME_DISCARDED) {
+			throw new \InvalidArgumentException('Unbekanntes Endspalten-Ergebnis: ' . $outcome);
+		}
+
+		$column = $this->findInBoard($viewer, $columnId);
+		$column->setFinalOutcome($outcome);
 
 		return $this->columns->update($column);
 	}

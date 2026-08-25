@@ -117,6 +117,7 @@ return [
 
 		['name' => 'settings#createColumn', 'url' => '/api/v1/boards/{boardId}/columns', 'verb' => 'POST'],
 		['name' => 'settings#renameColumn', 'url' => '/api/v1/boards/{boardId}/columns/{columnId}', 'verb' => 'PATCH'],
+		['name' => 'settings#setColumnOutcome', 'url' => '/api/v1/boards/{boardId}/columns/{columnId}/final-outcome', 'verb' => 'PATCH'],
 		['name' => 'settings#reorderColumns', 'url' => '/api/v1/boards/{boardId}/columns/order', 'verb' => 'PUT'],
 		// Entfernen heisst hier verschieben: Die Zielspalte ist Pflicht, und
 		// alle Vorgaenge wandern dorthin — auch die, die der Loeschende nicht

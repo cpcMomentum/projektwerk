@@ -162,6 +162,17 @@ export class Api {
 	}
 
 	/**
+	 * Eine Spalte als Endspalte markieren (#172).
+	 *
+	 * @param boardId Kennung des Projekts.
+	 * @param columnId Kennung der Spalte.
+	 * @param finalOutcome `'done'` / `'discarded'` / `null`.
+	 */
+	async spalteEndergebnis(boardId: number, columnId: number, finalOutcome: 'done' | 'discarded' | null): Promise<any> {
+		return this.schreiben('patch', `/api/v1/boards/${boardId}/columns/${columnId}/final-outcome`, { finalOutcome })
+	}
+
+	/**
 	 * Den Austauschordner eines Projekts hinterlegen.
 	 *
 	 * Ueber den Pfad, wie die Oberflaeche auch — der Server loest ihn zur

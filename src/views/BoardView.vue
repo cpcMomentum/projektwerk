@@ -189,6 +189,32 @@
 			:orgExternal="store.board?.orgExternal ?? ''"
 			@update:open="creating = $event"
 			@create="create" />
+
+		<!--
+			**„Auch abschließen?" beim Ziehen in eine Endspalte** (#172). Kein
+			automatisches Schließen — Verschieben und Abschließen bleiben zwei
+			Handlungen; die App fragt nur kurz. Fängt die Gastfalle ab: Wer die
+			Karte nach „Erledigt" zieht, denkt, sie sei fertig, obwohl der Vorgang
+			noch offen ist. Das Ergebnis kommt aus der Spalte (#171).
+		-->
+		<NcDialog
+			v-if="finalPrompt"
+			:open="true"
+			:name="t('projektwerk', 'Auch abschließen?')"
+			size="normal"
+			@update:open="finalPrompt = null">
+			<div class="app-projektwerk">
+				<p class="pw-detail__empty">{{ finalPromptText }}</p>
+			</div>
+			<template #actions>
+				<NcButton @click="finalPrompt = null">
+					{{ t('projektwerk', 'Nur verschieben') }}
+				</NcButton>
+				<NcButton variant="primary" @click="confirmFinalClose">
+					{{ t('projektwerk', 'Abschließen') }}
+				</NcButton>
+			</template>
+		</NcDialog>
 	</div>
 </template>
 
@@ -199,6 +225,7 @@ import type { Attachment, Comment, Step, Ticket } from '@/types/ticket'
 import { n, t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
+import NcDialog from '@nextcloud/vue/components/NcDialog'
 import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
 import ClockAlertIcon from 'vue-material-design-icons/ClockAlertOutline.vue'
 import CogIcon from 'vue-material-design-icons/Cog.vue'
@@ -229,7 +256,7 @@ interface ColumnView {
 export default defineComponent({
 	name: 'BoardView',
 
-	components: { BoardDragLayer, ClockAlertIcon, CogIcon, CreateTicketDialog, FolderMultipleIcon, NcButton, NcEmptyContent, PlusIcon, TicketDetail },
+	components: { BoardDragLayer, ClockAlertIcon, CogIcon, CreateTicketDialog, FolderMultipleIcon, NcButton, NcDialog, NcEmptyContent, PlusIcon, TicketDetail },
 
 	setup() {
 		return { store: useBoardStore() }
@@ -246,12 +273,22 @@ export default defineComponent({
 			// und ihr Ablauf-Timer — beides rein lokal und vergänglich.
 			highlightId: null as number | null,
 			highlightTimer: null as number | null,
+			// Der „Auch abschließen?"-Prompt (#172): steht, wenn eine Karte gerade
+			// in eine Endspalte gezogen/verschoben wurde und noch offen ist.
+			finalPrompt: null as { ticket: Ticket, outcome: 'done' | 'discarded' } | null,
 		}
 	},
 
 	computed: {
 		boardId(): number {
 			return Number(this.$route.params.boardId)
+		},
+
+		/** Der Text des „Auch abschließen?"-Prompts (#172) — nach dem Ergebnis der Endspalte. */
+		finalPromptText(): string {
+			return this.finalPrompt?.outcome === 'discarded'
+				? t('projektwerk', 'Diesen Vorgang auch als verworfen abschließen?')
+				: t('projektwerk', 'Diesen Vorgang auch als erledigt abschließen?')
 		},
 
 		/**
@@ -346,6 +383,7 @@ export default defineComponent({
 
 			try {
 				await this.store.moveTicket(payload.ticket.id, payload.columnId, last, null)
+				this.promptCloseIfFinal(payload.ticket.id, payload.columnId)
 			} catch (e) {
 				// Beim Konflikt wird nachgeladen statt zum Neuladen aufgefordert:
 				// Hier liegt das ganze Board im Speicher, und ein veralteter
@@ -376,6 +414,7 @@ export default defineComponent({
 		async moved(payload: { ticketId: number, targetColumnId: number, beforeId: number | null, afterId: number | null }) {
 			try {
 				await this.store.moveTicket(payload.ticketId, payload.targetColumnId, payload.beforeId, payload.afterId)
+				this.promptCloseIfFinal(payload.ticketId, payload.targetColumnId)
 			} catch (e) {
 				if (isConflict(e)) {
 					await this.store.open(this.boardId)
@@ -514,6 +553,46 @@ export default defineComponent({
 					? t('projektwerk', 'Abschließen fehlgeschlagen')
 					: t('projektwerk', 'Wieder öffnen fehlgeschlagen'), isConflict(e))
 			}
+		},
+
+		/**
+		 * Nach dem Verschieben in eine Endspalte „Auch abschließen?" anbieten (#172).
+		 *
+		 * Nur wenn die Zielspalte ein Ergebnis trägt **und** der Vorgang noch
+		 * offen ist — ein bereits geschlossener wird nicht erneut gefragt. Kein
+		 * automatisches Schließen: Der Prompt ist ein Angebot, kein Vollzug.
+		 *
+		 * @param ticketId Der verschobene Vorgang.
+		 * @param targetColumnId Die Zielspalte.
+		 */
+		promptCloseIfFinal(ticketId: number, targetColumnId: number) {
+			const column = this.store.columns.find((c) => c.id === targetColumnId)
+			if (!column?.finalOutcome) {
+				return
+			}
+
+			const ticket = this.store.tickets.get(ticketId)
+			if (ticket === undefined || ticket.closedAt !== null) {
+				return
+			}
+
+			this.finalPrompt = { ticket, outcome: column.finalOutcome }
+		},
+
+		/**
+		 * Den Vorgang aus dem Prompt heraus mit dem Ergebnis der Endspalte
+		 * abschließen (#172). Den frischen Stand aus dem Speicher nehmen, damit
+		 * die `version` nach dem Verschieben stimmt.
+		 */
+		async confirmFinalClose() {
+			const prompt = this.finalPrompt
+			this.finalPrompt = null
+			if (prompt === null) {
+				return
+			}
+
+			const ticket = this.store.tickets.get(prompt.ticket.id) ?? prompt.ticket
+			await this.toggleClosed(ticket, prompt.outcome)
 		},
 
 		/**
