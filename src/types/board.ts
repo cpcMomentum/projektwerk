@@ -91,6 +91,13 @@ export interface Column {
 	title: string
 	position: number
 	color: string | null
+	/**
+	 * Endspalten-Ergebnis (#172): `'done'` (erledigt) oder `'discarded'`
+	 * (verworfen) markiert die Spalte als Endspalte mit diesem Ergebnis; `null`
+	 * heißt „keine Endspalte". Zieht man eine Karte hinein, bietet die App
+	 * „Auch abschließen?" an.
+	 */
+	finalOutcome: 'done' | 'discarded' | null
 }
 
 /**

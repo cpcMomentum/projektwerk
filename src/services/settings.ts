@@ -108,6 +108,20 @@ export async function renameColumn(boardId: number, columnId: number, title: str
 }
 
 /**
+ * Eine Spalte als Endspalte markieren (#172).
+ *
+ * @param boardId Kennung des Projekts.
+ * @param columnId Kennung der Spalte.
+ * @param finalOutcome `'done'` / `'discarded'` macht sie zur Endspalte mit diesem Ergebnis, `null` nimmt die Markierung.
+ */
+export async function setColumnFinalOutcome(boardId: number, columnId: number, finalOutcome: 'done' | 'discarded' | null): Promise<Column> {
+	return apiPatch<Column, { finalOutcome: 'done' | 'discarded' | null }>(
+		`/boards/${boardId}/columns/${columnId}/final-outcome`,
+		{ finalOutcome },
+	)
+}
+
+/**
  * Die Reihenfolge neu setzen — mit **allen** Spalten des Boards.
  *
  * Eine unvollständige Liste wird abgewiesen. Sonst entschiede über die nicht

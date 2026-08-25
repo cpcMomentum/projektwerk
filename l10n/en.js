@@ -326,6 +326,15 @@ OC.L10N.register(
     "Nummerierte Liste" : "Numbered list",
     "Als erledigt abschließen" : "Close as done",
     "Als verworfen abschließen" : "Close as discarded",
-    "Verschieben nach …" : "Move to …"
+    "Verschieben nach …" : "Move to …",
+    "Endspalte" : "End column",
+    "Keine Endspalte" : "Not an end column",
+    "Endspalte: erledigt" : "End column: done",
+    "Endspalte: verworfen" : "End column: discarded",
+    "Endspalte konnte nicht gesetzt werden" : "Could not set the end column",
+    "Auch abschließen?" : "Also close?",
+    "Nur verschieben" : "Just move",
+    "Diesen Vorgang auch als verworfen abschließen?" : "Also close this ticket as discarded?",
+    "Diesen Vorgang auch als erledigt abschließen?" : "Also close this ticket as done?"
 },
 "nplurals=2; plural=(n != 1);");

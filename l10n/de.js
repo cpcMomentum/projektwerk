@@ -326,6 +326,15 @@ OC.L10N.register(
     "Nummerierte Liste" : "Nummerierte Liste",
     "Als erledigt abschließen" : "Als erledigt abschließen",
     "Als verworfen abschließen" : "Als verworfen abschließen",
-    "Verschieben nach …" : "Verschieben nach …"
+    "Verschieben nach …" : "Verschieben nach …",
+    "Endspalte" : "Endspalte",
+    "Keine Endspalte" : "Keine Endspalte",
+    "Endspalte: erledigt" : "Endspalte: erledigt",
+    "Endspalte: verworfen" : "Endspalte: verworfen",
+    "Endspalte konnte nicht gesetzt werden" : "Endspalte konnte nicht gesetzt werden",
+    "Auch abschließen?" : "Auch abschließen?",
+    "Nur verschieben" : "Nur verschieben",
+    "Diesen Vorgang auch als verworfen abschließen?" : "Diesen Vorgang auch als verworfen abschließen?",
+    "Diesen Vorgang auch als erledigt abschließen?" : "Diesen Vorgang auch als erledigt abschließen?"
 },
 "nplurals=2; plural=(n != 1);");

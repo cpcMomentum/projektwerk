@@ -236,6 +236,31 @@
 							@keydown.enter="commitColumn(column)"
 							@blur="commitColumn(column)" />
 						<!--
+							**Endspalte** (#172): Trägt die Spalte ein Ergebnis, bietet
+							die App beim Hineinziehen einer Karte „Auch abschließen?" an.
+							Ein schlichtes Auswahlfeld — keine/erledigt/verworfen —, weil
+							es genau drei feste Zustände sind.
+						-->
+						<label class="hidden-visually" :for="'pw-col-outcome-' + column.id">
+							{{ t('projektwerk', 'Endspalte') }}
+						</label>
+						<select
+							:id="'pw-col-outcome-' + column.id"
+							class="pw-col__outcome"
+							:value="column.finalOutcome ?? ''"
+							:disabled="busy"
+							@change="setColumnOutcome(column, $event)">
+							<option value="">
+								{{ t('projektwerk', 'Keine Endspalte') }}
+							</option>
+							<option value="done">
+								{{ t('projektwerk', 'Endspalte: erledigt') }}
+							</option>
+							<option value="discarded">
+								{{ t('projektwerk', 'Endspalte: verworfen') }}
+							</option>
+						</select>
+						<!--
 						Hoch und runter statt Ziehen: Jede Zieh-Geste braucht eine
 						Alternative ohne Ziehen, und hier ist sie der einzige Weg
 						— Tastatur und Screenreader sind Abnahmekriterium.
@@ -567,6 +592,7 @@ import {
 	reorderColumns,
 	searchCandidates,
 	setBoardArchived,
+	setColumnFinalOutcome,
 	updateBoard,
 	updateMember,
 } from '@/services/settings'
@@ -971,6 +997,22 @@ export default defineComponent({
 			return this.write(
 				() => renameColumn(this.boardId, column.id, title),
 				t('projektwerk', 'Umbenennen fehlgeschlagen'),
+			)
+		},
+
+		/**
+		 * Die Spalte als Endspalte markieren (#172).
+		 *
+		 * @param column Die Spalte.
+		 * @param event Das change-Ereignis des Auswahlfelds.
+		 */
+		setColumnOutcome(column: Column, event: Event) {
+			const wert = (event.target as HTMLSelectElement).value
+			const outcome = wert === '' ? null : (wert as 'done' | 'discarded')
+
+			return this.write(
+				() => setColumnFinalOutcome(this.boardId, column.id, outcome),
+				t('projektwerk', 'Endspalte konnte nicht gesetzt werden'),
 			)
 		},
 

@@ -1314,6 +1314,17 @@
 	max-width: 820px;
 }
 
+/* Das Endspalten-Auswahlfeld je Spalte (#172) — schlichtes natives Select im
+   NC-Rahmen, weil es genau drei feste Zustaende sind. */
+.app-projektwerk .pw-col__outcome {
+	min-height: var(--default-clickable-area, 34px);
+	padding: 0 8px;
+	border: 2px solid var(--color-border-maxcontrast, var(--color-border-dark));
+	border-radius: var(--border-radius-element, var(--border-radius));
+	background-color: var(--color-main-background);
+	color: var(--color-main-text);
+}
+
 .app-projektwerk .pw-settings__block {
 	display: flex;
 	flex-direction: column;
