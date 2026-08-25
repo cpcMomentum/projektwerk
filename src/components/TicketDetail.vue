@@ -43,8 +43,11 @@
 						<span class="pw-num">#{{ paddedNumber }}</span>
 						<span class="pw-meta__sep" aria-hidden="true">·</span>
 						<span class="pw-meta__column">{{ columnTitle }}</span>
-						<span v-if="ticket.closedAt" class="pw-meta__closed">
-							{{ t('projektwerk', 'Geschlossen') }}
+						<span
+							v-if="ticket.closedAt"
+							class="pw-meta__closed"
+							:class="{ 'pw-meta__closed--discarded': ticket.closedOutcome === 'discarded' }">
+							{{ closedLabel }}
 						</span>
 
 						<!--
@@ -130,19 +133,39 @@
 						darum einen deutlichen Ort im Kopf, nicht nur einen Menüpunkt —
 						zumal Kunden Gäste sind und die Aktion sehen sollen. Der Knopf
 						ist zugleich das Archiv: abgeschlossen klappt unter „Ältere
-						anzeigen" weg. Das Ergebnis (erledigt vs. verworfen) kommt
-						getrennt (#171); hier geht es nur um offen/geschlossen.
+						anzeigen" weg.
+
+						**Das Ergebnis wird beim Abschließen gewählt** (#171): erledigt
+						(positiv) oder verworfen (negativ) — zwei sichtbare Knöpfe statt
+						eines versteckten Menüs, damit auch die Gästeseite den
+						Unterschied sieht und nicht ein „Verworfen" für ein „Fertig"
+						hält. Wieder-öffnen bleibt eine einzelne Handlung; ein offener
+						Vorgang hat kein Ergebnis.
 					-->
 					<div class="pw-kopf__aktionen">
+						<template v-if="!ticket.closedAt">
+							<NcButton variant="primary" :disabled="busy" @click="closeWith('done')">
+								<template #icon>
+									<CheckIcon :size="20" />
+								</template>
+								{{ t('projektwerk', 'Erledigt') }}
+							</NcButton>
+							<NcButton variant="secondary" :disabled="busy" @click="closeWith('discarded')">
+								<template #icon>
+									<CancelIcon :size="20" />
+								</template>
+								{{ t('projektwerk', 'Verworfen') }}
+							</NcButton>
+						</template>
 						<NcButton
-							:variant="ticket.closedAt ? 'secondary' : 'primary'"
+							v-else
+							variant="secondary"
 							:disabled="busy"
-							@click="toggleClosed">
+							@click="reopen">
 							<template #icon>
-								<CheckIcon v-if="!ticket.closedAt" :size="20" />
-								<RestoreIcon v-else :size="20" />
+								<RestoreIcon :size="20" />
 							</template>
-							{{ ticket.closedAt ? t('projektwerk', 'Wieder öffnen') : t('projektwerk', 'Abschließen') }}
+							{{ t('projektwerk', 'Wieder öffnen') }}
 						</NcButton>
 
 						<!--
@@ -521,6 +544,7 @@ import NcTextField from '@nextcloud/vue/components/NcTextField'
 import AccountPlusIcon from 'vue-material-design-icons/AccountPlusOutline.vue'
 import CalendarAlertIcon from 'vue-material-design-icons/CalendarAlert.vue'
 import CalendarIcon from 'vue-material-design-icons/CalendarOutline.vue'
+import CancelIcon from 'vue-material-design-icons/Cancel.vue'
 import CheckIcon from 'vue-material-design-icons/Check.vue'
 import ChevronDownIcon from 'vue-material-design-icons/ChevronDown.vue'
 import ChevronUpIcon from 'vue-material-design-icons/ChevronUp.vue'
@@ -557,7 +581,7 @@ interface PersonOption {
 export default defineComponent({
 	name: 'TicketDetail',
 
-	components: { AccountPlusIcon, AttachmentList, CalendarIcon, CalendarAlertIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, CloseIcon, CommentList, DeleteOutlineIcon, FormatBoldIcon, FormatListBulletedIcon, FormatListNumberedIcon, GithubIcon, NcAvatar, NcButton, NcDateTimePicker, NcModal, NcRichText, NcSelectUsers, NcTextArea, NcTextField, PencilOutlineIcon, PlusIcon, RestoreIcon, StepList, VisibilityControl, WaitBadge },
+	components: { AccountPlusIcon, AttachmentList, CalendarIcon, CalendarAlertIcon, CancelIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, CloseIcon, CommentList, DeleteOutlineIcon, FormatBoldIcon, FormatListBulletedIcon, FormatListNumberedIcon, GithubIcon, NcAvatar, NcButton, NcDateTimePicker, NcModal, NcRichText, NcSelectUsers, NcTextArea, NcTextField, PencilOutlineIcon, PlusIcon, RestoreIcon, StepList, VisibilityControl, WaitBadge },
 
 	props: {
 		ticket: { type: Object as PropType<Ticket | null>, default: null },
@@ -706,6 +730,22 @@ export default defineComponent({
 		},
 
 		/**
+		 * Wie der Abschluss im Kopf steht (#171): das Ergebnis, wenn eines
+		 * vermerkt ist, sonst das neutrale „Geschlossen" — so lesen sich auch die
+		 * vor #171 geschlossenen Vorgänge ohne hinterlegtes Ergebnis richtig.
+		 */
+		closedLabel(): string {
+			if (this.ticket?.closedOutcome === 'discarded') {
+				return t('projektwerk', 'Verworfen')
+			}
+			if (this.ticket?.closedOutcome === 'done') {
+				return t('projektwerk', 'Erledigt')
+			}
+
+			return t('projektwerk', 'Geschlossen')
+		},
+
+		/**
 		 * Kennung auf Anzeigenamen, wie `WaitBadge` sie erwartet.
 		 *
 		 * **Der Server löst die Namen auf** (`resolvedName`) — im Browser
@@ -795,19 +835,39 @@ export default defineComponent({
 		 * Benachrichtigungen. Über `changed` läuft der frische Stand zurück, sodass
 		 * Kopf (Knopf, „Geschlossen") und Karte gleich mitgehen.
 		 */
-		async toggleClosed(): Promise<void> {
+		/**
+		 * Abschließen mit Ergebnis (#171).
+		 *
+		 * @param outcome `'done'` (erledigt) oder `'discarded'` (verworfen).
+		 */
+		closeWith(outcome: 'done' | 'discarded'): Promise<void> {
+			return this.setClosed(true, outcome)
+		},
+
+		reopen(): Promise<void> {
+			return this.setClosed(false)
+		},
+
+		/**
+		 * Den offen/geschlossen-Zustand schreiben; das Ergebnis begleitet nur das
+		 * Abschließen. Der Server löscht es beim Wieder-öffnen ohnehin — hier wird
+		 * es dann gar nicht erst mitgeschickt.
+		 *
+		 * @param schliessen Ob geschlossen (true) oder wieder geöffnet (false).
+		 * @param outcome Beim Schließen das gewählte Ergebnis.
+		 */
+		async setClosed(schliessen: boolean, outcome?: 'done' | 'discarded'): Promise<void> {
 			if (this.ticket === null || this.busy) {
 				return
 			}
 
-			const schliessen = this.ticket.closedAt === null
 			this.busy = true
 			try {
 				const updated = await updateTicket(
 					this.ticket.boardId,
 					this.ticket.id,
 					this.ticket.version,
-					{ closed: schliessen },
+					schliessen ? { closed: true, outcome } : { closed: false },
 				)
 				this.$emit('changed', updated)
 			} catch (e) {

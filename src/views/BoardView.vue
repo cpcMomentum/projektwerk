@@ -484,8 +484,9 @@ export default defineComponent({
 		 * `openTicketData` bedingungslos und taugt hier deshalb nicht.
 		 *
 		 * @param ticket Der Vorgang, dessen Abschluss umgeschaltet wird.
+		 * @param outcome Beim Abschließen das gewählte Ergebnis (#171); beim Wieder-öffnen weggelassen.
 		 */
-		async toggleClosed(ticket: Ticket) {
+		async toggleClosed(ticket: Ticket, outcome?: 'done' | 'discarded') {
 			const schliessen = ticket.closedAt === null
 
 			try {
@@ -493,7 +494,9 @@ export default defineComponent({
 					ticket.boardId,
 					ticket.id,
 					ticket.version,
-					{ closed: schliessen },
+					// Das Ergebnis begleitet nur das Abschließen (#171); beim
+					// Wieder-öffnen löscht der Server es ohnehin.
+					schliessen ? { closed: true, outcome } : { closed: false },
 				)
 				this.store.replaceTicket(updated)
 				if (this.openTicketData?.id === updated.id) {

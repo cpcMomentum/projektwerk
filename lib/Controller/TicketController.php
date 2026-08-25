@@ -207,11 +207,15 @@ class TicketController extends Controller {
 		?string $responsibleUserId = null,
 		?string $dueDate = null,
 		?bool $closed = null,
+		?string $outcome = null,
 	): JSONResponse {
 		// Nur das übernehmen, was tatsächlich geschickt wurde: Ein
 		// nicht genanntes Feld darf nicht auf null zurückfallen. Das Loeschen
 		// einer Faelligkeit reist deshalb als Leerstring, nicht als `null` — der
 		// waere hier nicht von „nicht geschickt" zu unterscheiden.
+		//
+		// `outcome` (#171) begleitet `closed: true`; beim Wieder-oeffnen bleibt
+		// es weg und der Dienst loescht das Ergebnis ohnehin.
 		$changes = array_filter(
 			[
 				'title' => $title,
@@ -219,6 +223,7 @@ class TicketController extends Controller {
 				'responsibleUserId' => $responsibleUserId,
 				'dueDate' => $dueDate,
 				'closed' => $closed,
+				'outcome' => $outcome,
 			],
 			static fn ($value): bool => $value !== null,
 		);
