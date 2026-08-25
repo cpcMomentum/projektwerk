@@ -30,6 +30,17 @@
 					:aria-label="t('projektwerk', 'Seit Ihrem letzten Blick geändert')" />
 				<span class="pw-num">#{{ paddedNumber }}</span>
 				<!--
+					Das Abschluss-Ergebnis (#171) direkt auf der Karte — erledigt
+					oder verworfen, damit das Board beides unterscheidet, ohne dass
+					man erst die Karte öffnet.
+				-->
+				<span
+					v-if="ticket.closedAt"
+					class="pw-card__outcome"
+					:class="{ 'pw-card__outcome--discarded': ticket.closedOutcome === 'discarded' }">
+					{{ closedLabel }}
+				</span>
+				<!--
 					Die Kennzeichnung gibt es nur für die interne Seite und nur,
 					wenn es überhaupt eine Gegenseite gibt (§9).
 
@@ -138,15 +149,39 @@
 				Abschließen / Wieder öffnen direkt an der Karte (#168) — sichtbar
 				auch für die Kundenseite, ohne erst ins Detail zu müssen. Ruft
 				dieselbe offen↔geschlossen-Kette wie der Knopf im Detail.
+
+				**Das Ergebnis wählt man mit** (#171): zwei Einträge (erledigt /
+				verworfen) statt eines. Das zweite Argument reicht das Ergebnis
+				durch; beim Wieder-öffnen bleibt es weg (ein offener Vorgang hat
+				keins). Im Menü sind zwei Zeilen nicht eng — anders als zwei Knöpfe
+				auf der schmalen Karte.
 			-->
+			<template v-if="ticket.closedAt === null">
+				<NcActionButton
+					:closeAfterClick="true"
+					@click="$emit('toggleclosed', ticket, 'done')">
+					<template #icon>
+						<CheckIcon :size="20" />
+					</template>
+					{{ t('projektwerk', 'Als erledigt abschließen') }}
+				</NcActionButton>
+				<NcActionButton
+					:closeAfterClick="true"
+					@click="$emit('toggleclosed', ticket, 'discarded')">
+					<template #icon>
+						<CancelIcon :size="20" />
+					</template>
+					{{ t('projektwerk', 'Als verworfen abschließen') }}
+				</NcActionButton>
+			</template>
 			<NcActionButton
+				v-else
 				:closeAfterClick="true"
 				@click="$emit('toggleclosed', ticket)">
 				<template #icon>
-					<CheckIcon v-if="ticket.closedAt === null" :size="20" />
-					<RestoreIcon v-else :size="20" />
+					<RestoreIcon :size="20" />
 				</template>
-				{{ ticket.closedAt === null ? t('projektwerk', 'Abschließen') : t('projektwerk', 'Wieder öffnen') }}
+				{{ t('projektwerk', 'Wieder öffnen') }}
 			</NcActionButton>
 
 			<!--
@@ -201,6 +236,7 @@ import NcAvatar from '@nextcloud/vue/components/NcAvatar'
 import ArrowRightIcon from 'vue-material-design-icons/ArrowRight.vue'
 import CalendarAlertIcon from 'vue-material-design-icons/CalendarAlert.vue'
 import CalendarIcon from 'vue-material-design-icons/CalendarOutline.vue'
+import CancelIcon from 'vue-material-design-icons/Cancel.vue'
 import CheckIcon from 'vue-material-design-icons/Check.vue'
 import CommentOutlineIcon from 'vue-material-design-icons/CommentOutline.vue'
 import DeleteOutlineIcon from 'vue-material-design-icons/DeleteOutline.vue'
@@ -219,6 +255,7 @@ export default defineComponent({
 		ArrowRightIcon,
 		CalendarIcon,
 		CalendarAlertIcon,
+		CancelIcon,
 		CheckIcon,
 		CommentOutlineIcon,
 		DeleteOutlineIcon,
@@ -294,6 +331,22 @@ export default defineComponent({
 
 		paddedNumber(): string {
 			return String(this.ticket.number).padStart(4, '0')
+		},
+
+		/**
+		 * Das Abschluss-Ergebnis als Wort (#171): erledigt oder verworfen, sonst
+		 * das neutrale „Geschlossen" für vor #171 ohne Ergebnis geschlossene
+		 * Vorgänge. Nur sichtbar, wenn der Vorgang überhaupt geschlossen ist.
+		 */
+		closedLabel(): string {
+			if (this.ticket.closedOutcome === 'discarded') {
+				return t('projektwerk', 'Verworfen')
+			}
+			if (this.ticket.closedOutcome === 'done') {
+				return t('projektwerk', 'Erledigt')
+			}
+
+			return t('projektwerk', 'Geschlossen')
 		},
 
 		/**

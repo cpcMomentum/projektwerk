@@ -323,6 +323,8 @@ OC.L10N.register(
     "Mit „@“ jemanden erwähnen" : "Mit „@“ jemanden erwähnen",
     "Fett" : "Fett",
     "Aufzählung" : "Aufzählung",
-    "Nummerierte Liste" : "Nummerierte Liste"
+    "Nummerierte Liste" : "Nummerierte Liste",
+    "Als erledigt abschließen" : "Als erledigt abschließen",
+    "Als verworfen abschließen" : "Als verworfen abschließen"
 },
 "nplurals=2; plural=(n != 1);");

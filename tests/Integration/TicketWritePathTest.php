@@ -12,6 +12,7 @@ namespace OCA\Projektwerk\Tests\Integration;
 use OCA\Projektwerk\Access\TicketScope;
 use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Db\AttachmentMapper;
+use OCA\Projektwerk\Db\Ticket;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Service\NoFolderException;
 use OCA\Projektwerk\Service\ConflictException;
@@ -917,6 +918,44 @@ class TicketWritePathTest extends IntegrationTestCase {
 			$this->geschlossenZeilen($ticketId),
 			'Ein zweites „closed: true" ist kein Uebergang und darf nicht erneut ausloesen.',
 		);
+	}
+
+	/**
+	 * **Das Abschluss-Ergebnis begleitet den Abschluss** (#171): beim Schliessen
+	 * gewaehlt, beim Wieder-oeffnen geloescht. Ein offener Vorgang traegt kein
+	 * Ergebnis — sonst gaebe es einen dritten Zustand neben offen und zu.
+	 */
+	public function testClosingRecordsTheChosenOutcomeAndReopeningClearsIt(): void {
+		$bert = $this->viewer(LeakMatrixFixture::BERT);
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+
+		$erledigt = $this->service->update($bert, $ticketId, 1, ['closed' => true, 'outcome' => 'done']);
+		$this->assertSame(Ticket::OUTCOME_DONE, $erledigt->getClosedOutcome(), 'Erledigt muss vermerkt sein.');
+
+		$offen = $this->service->update($bert, $ticketId, (int)$erledigt->getVersion(), ['closed' => false]);
+		$this->assertNull($offen->getClosedOutcome(), 'Ein wieder geoeffneter Vorgang hat kein Ergebnis.');
+
+		$verworfen = $this->service->update($bert, $ticketId, (int)$offen->getVersion(), ['closed' => true, 'outcome' => 'discarded']);
+		$this->assertSame(Ticket::OUTCOME_DISCARDED, $verworfen->getClosedOutcome(), 'Verworfen muss vermerkt sein.');
+	}
+
+	/**
+	 * **Kein Drittzustand durch die Hintertuer** (#171): Eine fehlende oder
+	 * unbekannte Ergebnisangabe faellt auf „erledigt" zurueck — der haeufige,
+	 * positive Fall ist zugleich der sichere. So hat ein Abschluss immer ein
+	 * Vorzeichen, ohne dass ein leerer Wert etwas Eigenes bedeutet.
+	 */
+	public function testClosingWithMissingOrUnknownOutcomeDefaultsToDone(): void {
+		$bert = $this->viewer(LeakMatrixFixture::BERT);
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+
+		$ohne = $this->service->update($bert, $ticketId, 1, ['closed' => true]);
+		$this->assertSame(Ticket::OUTCOME_DONE, $ohne->getClosedOutcome(), 'Ohne Angabe gilt „erledigt".');
+
+		$auf = $this->service->update($bert, $ticketId, (int)$ohne->getVersion(), ['closed' => false]);
+
+		$quatsch = $this->service->update($bert, $ticketId, (int)$auf->getVersion(), ['closed' => true, 'outcome' => 'bogus']);
+		$this->assertSame(Ticket::OUTCOME_DONE, $quatsch->getClosedOutcome(), 'Ein unbekannter Wert faellt auf „erledigt".');
 	}
 
 	/**

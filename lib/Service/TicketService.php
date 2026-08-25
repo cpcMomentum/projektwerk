@@ -269,8 +269,13 @@ class TicketService {
 		$frischGeschlossen = false;
 		if (array_key_exists('closed', $changes)) {
 			$warOffen = $ticket->getClosedAt() === null;
-			$frischGeschlossen = $warOffen && (bool)$changes['closed'];
-			$ticket->setClosedAt($changes['closed'] ? new \DateTime() : null);
+			$schliessen = (bool)$changes['closed'];
+			$frischGeschlossen = $warOffen && $schliessen;
+			$ticket->setClosedAt($schliessen ? new \DateTime() : null);
+			// **Das Ergebnis begleitet den Abschluss** (#171): beim Schliessen
+			// gewaehlt, beim Wieder-oeffnen geloescht — ein offener Vorgang hat
+			// kein Ergebnis. Kein Drittzustand, nur ein Vorzeichen am Abschluss.
+			$ticket->setClosedOutcome($schliessen ? $this->pruefeOutcome($changes['outcome'] ?? null) : null);
 		}
 
 		$this->touch($ticket, $viewer);
@@ -368,6 +373,21 @@ class TicketService {
 		}
 
 		return $date;
+	}
+
+	/**
+	 * Das Abschluss-Ergebnis auf einen erlaubten Wert bringen (#171).
+	 *
+	 * Nur `verworfen` (negativ) muss ausdrücklich gewählt werden; alles andere —
+	 * eine fehlende oder unbekannte Angabe — gilt als `erledigt`. Ein Abschluss
+	 * hat damit immer ein Vorzeichen, ohne dass ein leerer Wert einen dritten
+	 * Zustand aufmacht. Der häufige, positive Fall ist zugleich der sichere
+	 * Rückfall.
+	 */
+	private function pruefeOutcome(?string $outcome): string {
+		return $outcome === Ticket::OUTCOME_DISCARDED
+			? Ticket::OUTCOME_DISCARDED
+			: Ticket::OUTCOME_DONE;
 	}
 
 	/**

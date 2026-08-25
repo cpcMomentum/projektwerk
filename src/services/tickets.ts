@@ -88,12 +88,13 @@ export async function createTicket(boardId: number, data: {
  * @param changes.responsibleUserId
  * @param changes.dueDate Ein `JJJJ-MM-TT` setzt, der Leerstring löscht, Weglassen lässt unverändert.
  * @param changes.closed
+ * @param changes.outcome Beim Abschließen `'done'` oder `'discarded'` (#171); beim Wieder-öffnen weglassen.
  */
 export async function updateTicket(
 	boardId: number,
 	ticketId: number,
 	version: number,
-	changes: { title?: string, description?: string | null, responsibleUserId?: string | null, dueDate?: string | null, closed?: boolean },
+	changes: { title?: string, description?: string | null, responsibleUserId?: string | null, dueDate?: string | null, closed?: boolean, outcome?: 'done' | 'discarded' },
 ): Promise<Ticket> {
 	return apiPatch<Ticket, typeof changes & { version: number }>(
 		`/boards/${boardId}/tickets/${ticketId}`,

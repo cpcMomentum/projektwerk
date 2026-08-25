@@ -896,6 +896,27 @@
 	color: var(--color-text-maxcontrast);
 }
 
+/*
+ * Verworfen (#171) hebt sich farblich ab — der Text „Verworfen" trägt die
+ * Aussage ohnehin, die Farbe verstärkt sie nur (kein farb-alleiniges Signal).
+ * Erledigt bleibt im neutralen Ton, wie ein sauber abgeschlossener Vorgang.
+ */
+.app-projektwerk .pw-meta__closed--discarded {
+	color: var(--color-error);
+}
+
+/* Das Ergebnis-Abzeichen auf einer geschlossenen Karte (#171) — klein, damit
+ * das Board erledigt von verworfen auf einen Blick unterscheidet. */
+.app-projektwerk .pw-card__outcome {
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-card__outcome--discarded {
+	color: var(--color-error);
+}
+
 .app-projektwerk .pw-detail__title {
 	margin: 0;
 	font-size: 24px;
