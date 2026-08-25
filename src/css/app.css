@@ -821,15 +821,8 @@
 }
 
 /* Der Abschließen-/Wieder-öffnen-Knopf sitzt links unter der Wartemarke (#168). */
-.app-projektwerk .pw-kopf__aktionen {
-	display: flex;
-	align-items: center;
-	flex-wrap: wrap;
-	gap: 8px;
-}
-
-/* Der Link zum überführten GitHub-Issue (#12) — steht an der Stelle, an der
-   sonst die Überführungs-Aktion stünde. */
+/* Der Link zum überführten GitHub-Issue (#12) — jetzt als Icon im
+   Kopf-Aktions-Cluster (#182), Nummer im Tooltip. */
 .app-projektwerk .pw-github-link {
 	display: inline-flex;
 	align-items: center;
@@ -839,6 +832,14 @@
 	color: var(--color-main-text);
 	text-decoration: none;
 	border-radius: var(--border-radius-element, var(--border-radius));
+}
+
+/* Reine Icon-Variante (#182): quadratisch wie ein Icon-Knopf, ohne Textabstand. */
+.app-projektwerk .pw-github-link--icon {
+	justify-content: center;
+	min-width: var(--default-clickable-area, 44px);
+	padding: 0;
+	gap: 0;
 }
 
 .app-projektwerk .pw-github-link:hover,
@@ -936,13 +937,29 @@
 	gap: 4px;
 }
 
+/*
+ * Der Titel wächst nicht mehr in die ganze Breite (#182): Er nimmt seine
+ * Inhaltsbreite und lässt den Stift direkt daneben — die Kopf-Aktionen werden
+ * über `margin-inline-start: auto` an den rechten Rand geschoben. `min-width: 0`
+ * hält den Umbruch langer Titel in der Flex-Zeile.
+ */
 .app-projektwerk .pw-detail__titelzeile .pw-detail__title {
-	flex: 1 1 auto;
+	flex: 0 1 auto;
+	min-width: 0;
 }
 
 .app-projektwerk .pw-detail__title-stift {
 	flex: 0 0 auto;
 	margin-block-start: 2px;
+}
+
+/* Kopf-Aktionen (#182): Icon-Knöpfe rechts in der Titelzeile, dicht gesetzt. */
+.app-projektwerk .pw-detail__kopfaktionen {
+	display: flex;
+	align-items: center;
+	flex: 0 0 auto;
+	gap: 2px;
+	margin-inline-start: auto;
 }
 
 .app-projektwerk .pw-detail__title-edit {
