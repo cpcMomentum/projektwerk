@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OCA\Projektwerk\Controller;
 
 use OCA\Projektwerk\Access\BoardAccess;
+use OCA\Projektwerk\Access\ChangeHighlighter;
 use OCA\Projektwerk\Access\NotAMemberException;
 use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Access\WaitStateCalculator;
@@ -59,6 +60,7 @@ class TicketController extends Controller {
 		private TicketService $service,
 		private AttachmentService $attachmentService,
 		private WaitStateCalculator $waitState,
+		private ChangeHighlighter $highlighter,
 		private BoardAccess $access,
 		private ?string $userId,
 	) {
@@ -96,10 +98,10 @@ class TicketController extends Controller {
 					'attachments' => $this->attachments->countForTickets($ids),
 					'collaborators' => $this->ticketUsers->countForTickets($ids),
 				],
-				// „Seit deinem Blick geändert" (#79) — nur für Vorgänge, die
-				// dieser Betrachter schon einmal geöffnet hat. Aus **seinem**
-				// Lesestand und der Bewegung (Ticket-Änderung oder neuer
-				// Kommentar), beides über die bereits gefilterte Menge.
+				// „Neu oder seit deinem Blick geändert" (#79, #175) — aus **seinem**
+				// Lesestand und der Bewegung (fremde Ticket-Änderung oder fremder
+				// Kommentar), beides über die bereits gefilterte Menge. Auch ein
+				// fremd angelegter, noch ungesehener Vorgang leuchtet (#175).
 				'changed' => $this->changedSince($viewer, $tickets, $ids),
 			]);
 		});
@@ -332,49 +334,29 @@ class TicketController extends Controller {
 	}
 
 	/**
-	 * „Seit deinem Blick geändert" je Vorgang (#79) — nur die geänderten stehen
-	 * drin, wie beim Wartezustand.
+	 * „Neu oder seit deinem Blick geändert" je Vorgang (#79, #175) — nur die
+	 * hervorzuhebenden stehen drin, wie beim Wartezustand.
 	 *
-	 * **Nur für schon einmal geöffnete Vorgänge.** Ein nie geöffneter bekommt
-	 * keinen Punkt: „seit du zuletzt draufgeschaut hast" setzt ein Draufschauen
-	 * voraus, und am ersten Tag trüge sonst jede Karte einen. Neue Zuweisungen
-	 * fangen Glocke, Mail und „Meine Vorgänge" ab.
-	 *
-	 * **Bewegung heisst Ticket-Änderung oder neuer Kommentar.** Beide über die
-	 * bereits gefilterte Menge — der Lesestand nach `user_id`, der jüngste
-	 * Kommentar über dieselben sichtbaren IDs. Verglichen wird über Zeitstempel,
-	 * nicht über die ISO-Zeichenkette: Deren Reihenfolge stimmt nur bei gleichem
-	 * Zeitzonenversatz, und daran soll die Rechnung nicht hängen.
+	 * **Die Regel steht im {@see ChangeHighlighter}**, eine reine Berechnung.
+	 * Hier werden nur die beiden Zutaten beigebracht, beide über die bereits
+	 * gefilterte Menge: der eigene Lesestand (nach `user_id`) und der jüngste
+	 * Kommentar je Vorgang (mit Autor, damit der eigene nicht leuchtet, #175).
+	 * Seit #175 leuchtet auch ein fremd angelegter, noch ungesehener Vorgang.
 	 *
 	 * @param \OCA\Projektwerk\Db\Ticket[] $tickets
 	 * @param int[] $ids
-	 * @return array<int, true> Nur die geänderten Vorgänge.
+	 * @return array<int, true> Nur die hervorzuhebenden Vorgänge.
 	 */
 	private function changedSince(ViewerContext $viewer, array $tickets, array $ids): array {
-		$seen = $this->reads->findSeenForTickets($viewer->userId, $ids);
-		if ($seen === []) {
-			return [];
-		}
-
-		$newestComment = $this->comments->findNewestForTickets($ids);
-
-		$changed = [];
-		foreach ($tickets as $ticket) {
-			$id = (int)$ticket->getId();
-			if (!isset($seen[$id])) {
-				continue;
-			}
-
-			$seenTs = (int)strtotime($seen[$id]);
-			$activityTs = $ticket->getUpdatedAt()?->getTimestamp() ?? 0;
-			$commentTs = isset($newestComment[$id]) ? (int)strtotime($newestComment[$id]) : 0;
-
-			if (max($activityTs, $commentTs) > $seenTs) {
-				$changed[$id] = true;
-			}
-		}
-
-		return $changed;
+		// Die Regel selbst steht im {@see ChangeHighlighter} — hier werden nur
+		// der eigene Lesestand und der jüngste Kommentar je Vorgang beigebracht,
+		// beides über die bereits gefilterte Menge.
+		return $this->highlighter->detect(
+			$tickets,
+			$this->reads->findSeenForTickets($viewer->userId, $ids),
+			$this->comments->findNewestForTickets($ids),
+			$viewer->userId,
+		);
 	}
 
 	/**

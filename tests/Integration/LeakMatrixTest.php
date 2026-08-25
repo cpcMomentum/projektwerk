@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OCA\Projektwerk\Tests\Integration;
 
 use OCA\Projektwerk\Access\BoardAccess;
+use OCA\Projektwerk\Access\ChangeHighlighter;
 use OCA\Projektwerk\Access\TicketScope;
 use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Access\WaitStateCalculator;
@@ -2045,6 +2046,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 			Server::get(TicketService::class),
 			Server::get(AttachmentService::class),
 			Server::get(WaitStateCalculator::class),
+			Server::get(ChangeHighlighter::class),
 			Server::get(BoardAccess::class),
 			$userId,
 		);
