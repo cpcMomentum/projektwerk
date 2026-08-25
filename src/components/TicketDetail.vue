@@ -72,8 +72,10 @@
 							Überschrift. Abschließen bleibt die Wahl erledigt/verworfen
 							(#171) als Icon mit Tooltip; das Ergebnis steht nach dem
 							Schließen beschriftet im Kopf und auf der Karte. Löschen
-							leise (tertiär); die GitHub-Überführung als Icon mit der
-							Issue-Nummer im Tooltip.
+							bekommt einen sichtbaren Hintergrund (secondary statt
+							tertiär), damit es in der dichteren Zeile nicht untergeht;
+							die GitHub-Überführung als Icon mit der Issue-Nummer im
+							Tooltip.
 						-->
 						<div class="pw-detail__kopfaktionen">
 							<template v-if="!ticket.closedAt">
