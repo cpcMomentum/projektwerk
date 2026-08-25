@@ -726,6 +726,59 @@
 	min-height: 0;
 }
 
+/*
+ * **Segment-Look wie WorkTime** (#219): weiße, leicht erhabene Aktiv-Kachel auf
+ * grauer Schiene statt des voll-blauen NC-Defaults — der iOS-Stil aus WorkTimes
+ * Genehmigungen (`layout-seg`/`seg-btn`). `NcRadioGroup` bleibt und mit ihm die
+ * Radio-Semantik, die Pfeiltasten und der Fokusring; hier liegt **nur die
+ * Optik** darüber. Greift über die Namensteile der CSS-Module-Klassen (der Hash
+ * wechselt je @nextcloud/vue-Fassung, der Name davor nicht) — bricht eine weg,
+ * fällt der Schalter sichtbar auf den Plattform-Look zurück, nicht kaputt.
+ *
+ * Gilt für alle drei Einsatzorte (Detail, Anlege-Dialog, Wizard); die
+ * Größen-Feinheiten oben bleiben auf `--knapp` beschränkt.
+ */
+.app-projektwerk .pw-vischoice [class*='_ncFormBox_row'] {
+	background: var(--color-background-dark);
+	border-radius: var(--border-radius-element, 8px);
+	padding: 3px;
+	gap: 2px;
+}
+
+/*
+ * Im Vorgang (`--knapp`) **ohne** Schienen-Polster: Die 34-px-Zeile hat kein
+ * Budget für die 2×3 px, sonst wächst der Schalter auf 40 px, die Beschriftung
+ * bricht um und er wird zweizeilig (karte-mobil.spec). Die graue Schiene bleibt
+ * trotzdem sichtbar — hinter den transparenten inaktiven Segmenten und in den
+ * Lücken. Das großzügigere Polster gilt nur im Anlege-Dialog/Wizard.
+ */
+.app-projektwerk .pw-vischoice--knapp [class*='_ncFormBox_row'] {
+	padding: 0;
+}
+
+.app-projektwerk .pw-vischoice [class*='_radioGroupButton_'] {
+	background: none;
+	border: none;
+	border-radius: var(--border-radius-element, 8px);
+	color: var(--color-text-maxcontrast);
+	box-shadow: none;
+}
+
+.app-projektwerk .pw-vischoice [class*='_radioGroupButton_']:hover {
+	background: var(--color-background-hover);
+}
+
+/*
+ * Das aktive Segment nach dem allgemeinen — gleiche Selektor-Stärke, also
+ * gewinnt die Reihenfolge: weiße Kachel, blaue Schrift, zarter Schatten.
+ */
+.app-projektwerk .pw-vischoice [class*='_radioGroupButton_active'],
+.app-projektwerk .pw-vischoice [class*='_radioGroupButton_active']:hover {
+	background: var(--color-main-background);
+	color: var(--color-primary-element);
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
 .app-projektwerk .pw-vishint {
 	margin: 0;
 	font-size: 13px;
