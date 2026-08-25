@@ -953,13 +953,22 @@
 	margin-block-start: 2px;
 }
 
-/* Kopf-Aktionen (#182): Icon-Knöpfe rechts in der Titelzeile, dicht gesetzt. */
+/*
+ * Kopf-Aktionen (#182, verfeinert): Icon-Knöpfe in der Steuerungs-Zeile, dicht
+ * gesetzt, direkt rechts neben der Sichtbarkeit. **Kein eigenes
+ * `margin-inline-start: auto`** — das trägt bereits `.pw-viscontrol`, das die
+ * Gruppe (Sichtbarkeit + Aktionen) gemeinsam an den rechten Rand schiebt. Ein
+ * zweites Auto risse die beiden auseinander.
+ */
 .app-projektwerk .pw-detail__kopfaktionen {
 	display: flex;
 	align-items: center;
 	flex: 0 0 auto;
 	gap: 2px;
-	margin-inline-start: auto;
+	/* Deutlicher Abstand zum Sichtbarkeits-Block, damit „wer sieht das" und
+	   „was passiert damit" als zwei Gruppen lesbar bleiben (kommt zum 8-px-Gap
+	   der Meta-Zeile hinzu). */
+	margin-inline-start: 16px;
 }
 
 .app-projektwerk .pw-detail__title-edit {
