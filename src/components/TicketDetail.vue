@@ -90,6 +90,91 @@
 									<PencilOutlineIcon :size="20" />
 								</template>
 							</NcButton>
+
+							<!--
+								**Kopf-Aktionen als Icons in der Titelzeile** (#182) —
+								die eigene Aktionszeile entfällt und gibt eine ganze
+								Zeile frei. Abschließen bleibt prominent (primär,
+								sichtbar für Gäste, #168); das Ergebnis wählt man
+								weiterhin (erledigt/verworfen, #171), nur als Icon mit
+								Tooltip statt als Text — beschriftet steht es nach dem
+								Schließen ohnehin im Kopf und auf der Karte. Löschen
+								bleibt leise (tertiär).
+							-->
+							<div class="pw-detail__kopfaktionen">
+								<template v-if="!ticket.closedAt">
+									<NcButton
+										variant="primary"
+										:disabled="busy"
+										:ariaLabel="t('projektwerk', 'Als erledigt abschließen')"
+										:title="t('projektwerk', 'Als erledigt abschließen')"
+										@click="closeWith('done')">
+										<template #icon>
+											<CheckIcon :size="20" />
+										</template>
+									</NcButton>
+									<NcButton
+										variant="secondary"
+										:disabled="busy"
+										:ariaLabel="t('projektwerk', 'Als verworfen abschließen')"
+										:title="t('projektwerk', 'Als verworfen abschließen')"
+										@click="closeWith('discarded')">
+										<template #icon>
+											<CancelIcon :size="20" />
+										</template>
+									</NcButton>
+								</template>
+								<NcButton
+									v-else
+									variant="secondary"
+									:disabled="busy"
+									:ariaLabel="t('projektwerk', 'Wieder öffnen')"
+									:title="t('projektwerk', 'Wieder öffnen')"
+									@click="reopen">
+									<template #icon>
+										<RestoreIcon :size="20" />
+									</template>
+								</NcButton>
+
+								<NcButton
+									variant="tertiary"
+									:disabled="busy"
+									:ariaLabel="t('projektwerk', 'Löschen')"
+									:title="t('projektwerk', 'Löschen')"
+									@click="$emit('delete', ticket)">
+									<template #icon>
+										<DeleteOutlineIcon :size="20" />
+									</template>
+								</NcButton>
+
+								<!--
+									**GitHub-Überführung** (#12) — einseitig, einmalig.
+									Ist der Vorgang schon überführt, führt das Icon zum
+									Issue (Nummer im Tooltip); sonst nur für interne
+									Betrachter an Boards mit hinterlegtem Repo.
+								-->
+								<a
+									v-if="ticket.githubIssueNumber"
+									class="pw-github-link pw-github-link--icon"
+									:href="ticket.githubIssueUrl ?? undefined"
+									target="_blank"
+									rel="noopener noreferrer"
+									:title="t('projektwerk', 'GitHub-Issue #{number}', { number: ticket.githubIssueNumber })"
+									:aria-label="t('projektwerk', 'GitHub-Issue #{number}', { number: ticket.githubIssueNumber })">
+									<GithubIcon :size="20" />
+								</a>
+								<NcButton
+									v-else-if="canTransferToGithub"
+									variant="tertiary"
+									:disabled="busy"
+									:ariaLabel="t('projektwerk', 'Nach GitHub überführen')"
+									:title="t('projektwerk', 'Nach GitHub überführen')"
+									@click="transferToGithub">
+									<template #icon>
+										<GithubIcon :size="20" />
+									</template>
+								</NcButton>
+							</div>
 						</div>
 					</template>
 
@@ -127,90 +212,6 @@
 						beantwortet der Personen-Block zwei Zeilen weiter.
 					-->
 					<WaitBadge :state="waiting" :fromClientSide="fromClientSide" :names="memberNames" />
-
-					<!--
-						Abschließen ist eine bewusste Handlung (#168, §9) und braucht
-						darum einen deutlichen Ort im Kopf, nicht nur einen Menüpunkt —
-						zumal Kunden Gäste sind und die Aktion sehen sollen. Der Knopf
-						ist zugleich das Archiv: abgeschlossen klappt unter „Ältere
-						anzeigen" weg.
-
-						**Das Ergebnis wird beim Abschließen gewählt** (#171): erledigt
-						(positiv) oder verworfen (negativ) — zwei sichtbare Knöpfe statt
-						eines versteckten Menüs, damit auch die Gästeseite den
-						Unterschied sieht und nicht ein „Verworfen" für ein „Fertig"
-						hält. Wieder-öffnen bleibt eine einzelne Handlung; ein offener
-						Vorgang hat kein Ergebnis.
-					-->
-					<div class="pw-kopf__aktionen">
-						<template v-if="!ticket.closedAt">
-							<NcButton variant="primary" :disabled="busy" @click="closeWith('done')">
-								<template #icon>
-									<CheckIcon :size="20" />
-								</template>
-								{{ t('projektwerk', 'Erledigt') }}
-							</NcButton>
-							<NcButton variant="secondary" :disabled="busy" @click="closeWith('discarded')">
-								<template #icon>
-									<CancelIcon :size="20" />
-								</template>
-								{{ t('projektwerk', 'Verworfen') }}
-							</NcButton>
-						</template>
-						<NcButton
-							v-else
-							variant="secondary"
-							:disabled="busy"
-							@click="reopen">
-							<template #icon>
-								<RestoreIcon :size="20" />
-							</template>
-							{{ t('projektwerk', 'Wieder öffnen') }}
-						</NcButton>
-
-						<!--
-							Löschen ist weich und über den Undo-Toast sofort umkehrbar
-							(#167), deshalb ohne schwere Rückfrage — tertiär und leiser
-							als der Abschließen-Knopf. Der eigentliche Löschvorgang
-							läuft in BoardView, damit Toast und Neuladen an einer
-							Stelle liegen (wie beim Karten-Menü).
-						-->
-						<NcButton
-							variant="tertiary"
-							:disabled="busy"
-							@click="$emit('delete', ticket)">
-							<template #icon>
-								<DeleteOutlineIcon :size="20" />
-							</template>
-							{{ t('projektwerk', 'Löschen') }}
-						</NcButton>
-
-						<!--
-							**GitHub-Überführung** (#12) — einseitig, einmalig. Ist
-							der Vorgang schon überführt, steht statt der Aktion der
-							Link zum Issue; sonst nur für interne Betrachter an
-							Boards mit hinterlegtem Repo.
-						-->
-						<a
-							v-if="ticket.githubIssueNumber"
-							class="pw-github-link"
-							:href="ticket.githubIssueUrl ?? undefined"
-							target="_blank"
-							rel="noopener noreferrer">
-							<GithubIcon :size="20" />
-							{{ t('projektwerk', 'GitHub-Issue #{number}', { number: ticket.githubIssueNumber }) }}
-						</a>
-						<NcButton
-							v-else-if="canTransferToGithub"
-							variant="tertiary"
-							:disabled="busy"
-							@click="transferToGithub">
-							<template #icon>
-								<GithubIcon :size="20" />
-							</template>
-							{{ t('projektwerk', 'Nach GitHub überführen') }}
-						</NcButton>
-					</div>
 				</header>
 
 				<!--
