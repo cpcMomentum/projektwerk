@@ -44,8 +44,9 @@
 				Bewusst schmal gehalten: nur Kennzahlen, die zum Handeln rufen —
 				keine Vanity-Zähler wie „12 offen". Eine Kachel mit Wert 0 fehlt
 				(kein „0 überfällig" als Beruhigungspille); sind alle 0, fehlt die
-				ganze Leiste. Jede Zahl entspricht genau dem, was in ihrer
-				Ziel-Liste steht, damit der Klick dorthin nichts Neues behauptet.
+				ganze Leiste. Jede Zahl ist ein Ausschnitt der Ziel-Liste (siehe
+				`ampel`-Getter) — der Klick springt zur ganzen Liste, in der diese
+				Zeilen stehen, nicht zu einer auf die Zahl gekürzten Ansicht.
 			-->
 			<div v-if="hasAmpel" class="pw-ampel">
 				<button
