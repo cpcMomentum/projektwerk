@@ -36,6 +36,33 @@
 
 		<template v-else>
 			<!--
+				**Die Ampel** (#224) — der einzige Zusatz gegenüber der reinen
+				Listenseite. Sie fasst oben zusammen, was gerade „rot" ist, und
+				macht den Blick-Zustand sichtbar, den vier gleich aussehende
+				Listen nicht hergeben.
+
+				Bewusst schmal gehalten: nur Kennzahlen, die zum Handeln rufen —
+				keine Vanity-Zähler wie „12 offen". Eine Kachel mit Wert 0 fehlt
+				(kein „0 überfällig" als Beruhigungspille); sind alle 0, fehlt die
+				ganze Leiste. Jede Zahl entspricht genau dem, was in ihrer
+				Ziel-Liste steht, damit der Klick dorthin nichts Neues behauptet.
+			-->
+			<div v-if="hasAmpel" class="pw-ampel">
+				<button
+					v-for="kachel in ampel"
+					:key="kachel.key"
+					type="button"
+					class="pw-kpi"
+					:class="'pw-kpi--' + kachel.tone"
+					:aria-label="ampelAria(kachel)"
+					@click="jumpTo(kachel.target)">
+					<span class="pw-kpi__lab">{{ kachel.label }}</span>
+					<span class="pw-kpi__num">{{ kachel.count }}</span>
+					<span class="pw-kpi__sub">{{ kachel.sub }}</span>
+				</button>
+			</div>
+
+			<!--
 				**Zwei Abschnitte, eine Zeilenform.** Das Mockup stellte drei
 				verschiedene Formen nebeneinander — Listenzeilen, Zaehler-Pillen
 				und eine Kachelreihe; Axels Befund war „zu unstrukturiert"
@@ -44,7 +71,11 @@
 				rechts eine Marke. Was sich unterscheidet, ist der Inhalt, nicht
 				die Gestalt.
 			-->
-			<section v-if="store.waitingRows.length > 0" class="pw-ov__block">
+			<section
+				v-if="store.waitingRows.length > 0"
+				ref="secWaiting"
+				class="pw-ov__block"
+				:class="{ 'pw-ov__block--flash': flash === 'secWaiting' }">
 				<h3 class="pw-col__head">
 					{{ t('projektwerk', 'Wartet auf die Kundenseite') }}
 					<span class="pw-n">{{ store.waitingRows.length }}</span>
@@ -80,7 +111,11 @@
 				**Meine Vorgänge** (#120): was bei mir liegt und gerade nicht auf
 				den Kunden wartet. Der zweite der drei Ballbesitz-Zustände aus #114.
 			-->
-			<section v-if="store.myTicketRows.length > 0" class="pw-ov__block">
+			<section
+				v-if="store.myTicketRows.length > 0"
+				ref="secMine"
+				class="pw-ov__block"
+				:class="{ 'pw-ov__block--flash': flash === 'secMine' }">
 				<h3 class="pw-col__head">
 					{{ t('projektwerk', 'Meine Vorgänge') }}
 					<span class="pw-n">{{ store.myTicketRows.length }}</span>
@@ -97,10 +132,17 @@
 						<span class="pw-ov__title">{{ row.ticket.title }}</span>
 						<span v-if="row.board" class="pw-ov__meta">{{ row.board.title }}</span>
 					</span>
+					<!--
+						**Überfällig ist rot, nicht gelb** (#224) — dieselbe Farbe
+						wie die Ampel-Kachel oben. Eine verstrichene Fälligkeit ist
+						eine echte Frist (#72), kein bloßes „lange her": Der gelbe
+						Ton der Wartezeit würde beides gleichsetzen. Fällig, aber
+						nicht überfällig, bleibt neutral.
+					-->
 					<span
 						v-if="row.ticket.dueDate"
 						class="pw-marke"
-						:class="{ 'pw-marke--lang': isOverdue(row.ticket.dueDate) }">
+						:class="{ 'pw-marke--rot': isOverdue(row.ticket.dueDate) }">
 						{{ dueLabel(row.ticket) }}
 					</span>
 				</button>
@@ -110,7 +152,11 @@
 				**Liegt bei niemandem** (#119): kein Verantwortlicher, kein offener
 				Schritt, wartet auch nicht — unbearbeitet. Der dritte Zustand.
 			-->
-			<section v-if="store.nobodyRows.length > 0" class="pw-ov__block">
+			<section
+				v-if="store.nobodyRows.length > 0"
+				ref="secNobody"
+				class="pw-ov__block"
+				:class="{ 'pw-ov__block--flash': flash === 'secNobody' }">
 				<h3 class="pw-col__head">
 					{{ t('projektwerk', 'Liegt bei niemandem') }}
 					<span class="pw-n">{{ store.nobodyRows.length }}</span>
@@ -130,7 +176,11 @@
 				</button>
 			</section>
 
-			<section v-if="store.projectRows.length > 0" class="pw-ov__block">
+			<section
+				v-if="store.projectRows.length > 0"
+				ref="secProjects"
+				class="pw-ov__block"
+				:class="{ 'pw-ov__block--flash': flash === 'secProjects' }">
 				<h3 class="pw-col__head">
 					{{ t('projektwerk', 'Projekte mit Bewegung') }}
 					<span class="pw-n">{{ store.projectRows.length }}</span>
@@ -169,7 +219,7 @@
 </template>
 
 <script lang="ts">
-import type { ProjectRow, WaitingRow } from '@/types/overview'
+import type { OverviewTicketRow, ProjectRow, WaitingRow } from '@/types/overview'
 import type { Ticket } from '@/types/ticket'
 
 import { n, t } from '@nextcloud/l10n'
@@ -203,6 +253,22 @@ const LANGE_WARTEZEIT = 7
 const STILLSTAND_TAGE = 14
 
 /**
+ * Eine Kachel der Dringlichkeits-Ampel (#224).
+ *
+ * `target` ist der Name der `ref` des Abschnitts, zu dem der Klick springt —
+ * die Zahl ist genau das, was dort steht.
+ */
+interface AmpelItem {
+	key: string
+	count: number
+	/** Farbrolle: `rot` nur bei echter Frist, `warn` für „lange/still", `neutral` sonst. */
+	tone: 'rot' | 'warn' | 'neutral'
+	target: 'secWaiting' | 'secMine' | 'secNobody' | 'secProjects'
+	label: string
+	sub: string
+}
+
+/**
  * Der Überblick — der Einstieg in die App (#76, entschieden am 2026-08-13).
  *
  * **Die Frage ist eine andere als bei „Meine Aufgaben".** Jene Seite beantwortet
@@ -225,6 +291,17 @@ export default defineComponent({
 
 	setup() {
 		return { store: useOverviewStore(), boardStore: useBoardStore(), LANGE_WARTEZEIT }
+	},
+
+	data() {
+		return {
+			/**
+			 * Der Abschnitt, der nach einem Ampel-Klick kurz aufleuchtet — als
+			 * `ref`-Name, oder `null`. Nur eine Bestätigung „hier bist du
+			 * gelandet", kein Zustand mit Bedeutung.
+			 */
+			flash: null as string | null,
+		}
 	},
 
 	computed: {
@@ -254,6 +331,68 @@ export default defineComponent({
 				...rows.filter((row) => pinned.has(row.boardId)),
 				...rows.filter((row) => !pinned.has(row.boardId)),
 			]
+		},
+
+		/**
+		 * Die Dringlichkeits-Ampel (#224) — nur die Kacheln mit einem Wert > 0.
+		 *
+		 * **Jede Zahl ist ein Ausschnitt einer bestehenden Liste, keine neue
+		 * Rechnung.** Sie stammt aus denselben Gettern wie die Abschnitte
+		 * darunter, damit es keine zweite Wahrheit gibt und der Klick auf eine
+		 * Kachel dort landet, wo genau diese Zeilen stehen.
+		 *
+		 * **„Überfällig" ist rot, der Rest gelb** — dieselbe Regel wie an der
+		 * Marke der Zeile: Rot heißt „Frist verstrichen" (echte Fälligkeit, #72),
+		 * eine lange Wartezeit oder ein stiller Stillstand ist auffällig, aber
+		 * ohne vereinbarte Frist nicht „zu spät".
+		 */
+		ampel(): AmpelItem[] {
+			const myRows = this.store.myTicketRows as OverviewTicketRow[]
+			const waiting = this.store.waitingRows as WaitingRow[]
+			const nobody = this.store.nobodyRows as OverviewTicketRow[]
+			const projects = this.store.projectRows as ProjectRow[]
+
+			const items: AmpelItem[] = [
+				{
+					key: 'overdue',
+					count: myRows.filter((row) => isOverdue(row.ticket.dueDate)).length,
+					tone: 'rot',
+					target: 'secMine',
+					label: t('projektwerk', 'Überfällig'),
+					sub: t('projektwerk', 'Frist verstrichen'),
+				},
+				{
+					key: 'waiting',
+					count: waiting.filter((row) => row.days >= LANGE_WARTEZEIT).length,
+					tone: 'warn',
+					target: 'secWaiting',
+					label: t('projektwerk', 'Wartet lange'),
+					sub: t('projektwerk', 'seit über einer Woche bei der Kundenseite'),
+				},
+				{
+					key: 'nobody',
+					count: nobody.length,
+					tone: 'neutral',
+					target: 'secNobody',
+					label: t('projektwerk', 'Liegt bei niemandem'),
+					sub: t('projektwerk', 'kein Verantwortlicher'),
+				},
+				{
+					key: 'stalled',
+					count: projects.filter((row) => this.isStalled(row)).length,
+					tone: 'warn',
+					target: 'secProjects',
+					label: t('projektwerk', 'Projekte still'),
+					sub: t('projektwerk', 'keine Bewegung'),
+				},
+			]
+
+			return items.filter((item) => item.count > 0)
+		},
+
+		/** Gibt es überhaupt etwas Rotes? — sonst bleibt die Leiste weg. */
+		hasAmpel(): boolean {
+			return (this.ampel as AmpelItem[]).length > 0
 		},
 	},
 
@@ -368,6 +507,46 @@ export default defineComponent({
 		 */
 		openBoard(boardId: number): void {
 			this.$router.push({ name: 'board', params: { boardId: String(boardId) } })
+		},
+
+		/**
+		 * Beschriftung der Ampel-Kachel für Hilfstechnik: Zahl, Bedeutung und was
+		 * ein Klick tut. Die Farbe trägt nie allein — sie steht ohnehin schon als
+		 * Text da, hier kommt nur die Handlung dazu.
+		 *
+		 * @param kachel Die Kachel.
+		 */
+		ampelAria(kachel: AmpelItem): string {
+			return t('projektwerk', '{count} {label}, zur Liste springen', {
+				count: String(kachel.count),
+				label: kachel.label,
+			})
+		},
+
+		/**
+		 * Zum Abschnitt springen, den eine Ampel-Kachel meint, und ihn kurz
+		 * aufleuchten lassen.
+		 *
+		 * Ein reiner Sprung innerhalb der Seite — kein neuer Datenpfad, kein
+		 * Filter, der etwas verbergen könnte. Der Abschnitt ist da, weil seine
+		 * Zahl > 0 ist; darum wird die `ref` gefunden.
+		 *
+		 * @param target Der `ref`-Name des Abschnitts.
+		 */
+		jumpTo(target: string): void {
+			const bezug = this.$refs[target] as HTMLElement | HTMLElement[] | undefined
+			const el = Array.isArray(bezug) ? bezug[0] : bezug
+			if (el === undefined) {
+				return
+			}
+
+			el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+			this.flash = target
+			window.setTimeout(() => {
+				if (this.flash === target) {
+					this.flash = null
+				}
+			}, 1400)
 		},
 	},
 })

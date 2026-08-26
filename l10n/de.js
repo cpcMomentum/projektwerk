@@ -335,6 +335,14 @@ OC.L10N.register(
     "Auch abschließen?" : "Auch abschließen?",
     "Nur verschieben" : "Nur verschieben",
     "Diesen Vorgang auch als verworfen abschließen?" : "Diesen Vorgang auch als verworfen abschließen?",
-    "Diesen Vorgang auch als erledigt abschließen?" : "Diesen Vorgang auch als erledigt abschließen?"
+    "Diesen Vorgang auch als erledigt abschließen?" : "Diesen Vorgang auch als erledigt abschließen?",
+    "Überfällig" : "Überfällig",
+    "Frist verstrichen" : "Frist verstrichen",
+    "Wartet lange" : "Wartet lange",
+    "seit über einer Woche bei der Kundenseite" : "seit über einer Woche bei der Kundenseite",
+    "kein Verantwortlicher" : "kein Verantwortlicher",
+    "Projekte still" : "Projekte still",
+    "keine Bewegung" : "keine Bewegung",
+    "{count} {label}, zur Liste springen" : "{count} {label}, zur Liste springen"
 },
 "nplurals=2; plural=(n != 1);");
