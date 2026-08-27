@@ -59,3 +59,30 @@ export interface TicketRow {
 	/** Fälligkeit liegt in der Vergangenheit. */
 	overdue: boolean
 }
+
+/**
+ * Eine Zeile der Maßnahmen-Tabelle (#226) — Schritte und Vorgänge in **einer**
+ * Liste, unterschieden nach der **Art der Obligation**:
+ *
+ * - `schritt`: mir ist ein Arbeitsschritt zugewiesen — das konkrete „ich muss X
+ *   erledigen".
+ * - `verantwortung`: ich bin für den Vorgang zuständig (oder beteiligt) — ich
+ *   schulde das Ergebnis.
+ *
+ * Der **Ersteller** ist bewusst keine eigene Art: etwas angelegt zu haben ist
+ * keine Pflicht zu handeln.
+ */
+export interface MeasureRow {
+	/** Stabile Kennung über beide Arten hinweg (`s<id>` bzw. `t<id>`). */
+	key: string
+	art: 'schritt' | 'verantwortung'
+	/** Der Schritt-Titel bzw. der Vorgangstitel. */
+	title: string
+	/** Der Vorgang — für den Sprung und die Herkunft. */
+	ticket: Ticket
+	board: TaskBoard | null
+	/** Fälligkeit des Schritts bzw. des Vorgangs, JJJJ-MM-TT oder null. */
+	dueDate: string | null
+	/** Fälligkeit liegt in der Vergangenheit. */
+	overdue: boolean
+}

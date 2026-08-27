@@ -352,6 +352,14 @@ OC.L10N.register(
     "wartet" : "wartet",
     "steht still" : "steht still",
     "läuft" : "läuft",
-    "{title}: {zustand}, {offen} offen, {erledigt} erledigt" : "{title}: {zustand}, {offen} offen, {erledigt} erledigt"
+    "{title}: {zustand}, {offen} offen, {erledigt} erledigt" : "{title}: {zustand}, {offen} offen, {erledigt} erledigt",
+    "Art" : "Art",
+    "Fällig" : "Fällig",
+    "Schritt" : "Schritt",
+    "Verantwortung" : "Verantwortung",
+    "überfällig {date}" : "überfällig {date}",
+    "{art}: {title}, {faellig}" : "{art}: {title}, {faellig}",
+    "Meine Maßnahmen" : "Meine Maßnahmen",
+    "Alle ansehen" : "Alle ansehen"
 },
 "nplurals=2; plural=(n != 1);");

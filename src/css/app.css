@@ -2288,6 +2288,61 @@
 .app-projektwerk .pw-dot--grau::before { background: var(--color-text-maxcontrast); }
 .app-projektwerk .pw-dot--gruen::before { background: var(--color-success-text); }
 
+/*
+ * Die Maßnahmen-Tabelle (#226) — dieselbe Rahmen-Card/`pw-ptable`-Basis, mit
+ * einer „Art"-Pille (Schritt vs. Verantwortung) und der Fälligkeit rechts.
+ */
+.app-projektwerk .pw-mtable__proj {
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-mtable__due {
+	text-align: end;
+	font-variant-numeric: tabular-nums;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-mtable__overdue {
+	color: var(--color-error-text);
+	font-weight: 600;
+}
+
+/* Die „Art"-Pille — Schritt hebt sich als das konkrete To-do zart blau ab. */
+.app-projektwerk .pw-art {
+	display: inline-block;
+	padding: 1px 8px;
+	border-radius: 20px;
+	font-size: 12px;
+	font-weight: 600;
+	white-space: nowrap;
+	background: var(--color-background-dark);
+	color: var(--color-main-text);
+}
+
+.app-projektwerk .pw-art--schritt {
+	background: var(--color-primary-element-light, var(--color-background-dark));
+	/*
+	 * Das Blau selbst als Text, nicht `--color-primary-element-text-dark`: Letztes
+	 * ist die Textfarbe auf **dunklem** Primär (praktisch weiß) und wäre auf dem
+	 * hellen Pillen-Grund unsichtbar.
+	 */
+	color: var(--color-primary-element);
+}
+
+/* Der „Alle ansehen"-Link unter der kompakten Maßnahmen-Tabelle. */
+.app-projektwerk .pw-ov__more {
+	display: inline-block;
+	margin-top: 10px;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--color-primary-element);
+	text-decoration: none;
+}
+
+.app-projektwerk .pw-ov__more:hover {
+	text-decoration: underline;
+}
+
 .app-projektwerk .pw-ov__block {
 	margin-bottom: 24px;
 }

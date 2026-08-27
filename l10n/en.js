@@ -352,6 +352,14 @@ OC.L10N.register(
     "wartet" : "waiting",
     "steht still" : "idle",
     "läuft" : "on track",
-    "{title}: {zustand}, {offen} offen, {erledigt} erledigt" : "{title}: {zustand}, {offen} open, {erledigt} done"
+    "{title}: {zustand}, {offen} offen, {erledigt} erledigt" : "{title}: {zustand}, {offen} open, {erledigt} done",
+    "Art" : "Type",
+    "Fällig" : "Due",
+    "Schritt" : "Step",
+    "Verantwortung" : "Responsibility",
+    "überfällig {date}" : "overdue {date}",
+    "{art}: {title}, {faellig}" : "{art}: {title}, {faellig}",
+    "Meine Maßnahmen" : "My measures",
+    "Alle ansehen" : "View all"
 },
 "nplurals=2; plural=(n != 1);");

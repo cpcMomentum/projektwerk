@@ -109,44 +109,29 @@
 			</section>
 
 			<!--
-				**Meine Vorgänge** (#120): was bei mir liegt und gerade nicht auf
-				den Kunden wartet. Der zweite der drei Ballbesitz-Zustände aus #114.
+				**Meine Maßnahmen** (#226) — meine Arbeitsschritte und Vorgänge in
+				einer Tabelle, unterschieden nach Art (Schritt / Verantwortung).
+				Kompakt auf dem Dashboard; die volle, bearbeitbare Liste (mit
+				Erledigt-Häkchen am Schritt) ist die Seite „Meine Aufgaben". Der
+				Abschnitt behält `ref`/Flash, damit die Ampel-Kachel „überfällig"
+				weiterhin hierher springt.
 			-->
 			<section
-				v-if="store.myTicketRows.length > 0"
+				v-if="taskStore.measureRows.length > 0"
 				ref="secMine"
 				class="pw-ov__block"
 				:class="{ 'pw-ov__block--flash': flash === 'secMine' }">
 				<h3 class="pw-col__head">
-					{{ t('projektwerk', 'Meine Vorgänge') }}
-					<span class="pw-n">{{ store.myTicketRows.length }}</span>
+					{{ t('projektwerk', 'Meine Maßnahmen') }}
+					<span class="pw-n">{{ taskStore.measureRows.length }}</span>
 				</h3>
-
-				<button
-					v-for="row in store.myTicketRows"
-					:key="row.ticket.id"
-					type="button"
-					class="pw-ov__row"
-					@click="openTicket(row.ticket)">
-					<span class="pw-num">#{{ padded(row.ticket.number) }}</span>
-					<span class="pw-ov__body">
-						<span class="pw-ov__title">{{ row.ticket.title }}</span>
-						<span v-if="row.board" class="pw-ov__meta">{{ row.board.title }}</span>
-					</span>
-					<!--
-						**Überfällig ist rot, nicht gelb** (#224) — dieselbe Farbe
-						wie die Ampel-Kachel oben. Eine verstrichene Fälligkeit ist
-						eine echte Frist (#72), kein bloßes „lange her": Der gelbe
-						Ton der Wartezeit würde beides gleichsetzen. Fällig, aber
-						nicht überfällig, bleibt neutral.
-					-->
-					<span
-						v-if="row.ticket.dueDate"
-						class="pw-marke"
-						:class="{ 'pw-marke--rot': isOverdue(row.ticket.dueDate) }">
-						{{ dueLabel(row.ticket) }}
-					</span>
-				</button>
+				<MeasuresTable :rows="taskStore.measureRows" :limit="5" />
+				<RouterLink
+					v-if="taskStore.measureRows.length > 5"
+					class="pw-ov__more"
+					:to="{ name: 'tasks' }">
+					{{ t('projektwerk', 'Alle ansehen') }}
+				</RouterLink>
 			</section>
 
 			<!--
@@ -201,6 +186,7 @@
 
 <script lang="ts">
 import type { OverviewTicketRow, ProjectRow, WaitingRow } from '@/types/overview'
+import type { MeasureRow } from '@/types/task'
 import type { Ticket } from '@/types/ticket'
 
 import { n, t } from '@nextcloud/l10n'
@@ -208,9 +194,10 @@ import { defineComponent } from 'vue'
 import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
 import AlertIcon from 'vue-material-design-icons/AlertOutline.vue'
 import ViewDashboardIcon from 'vue-material-design-icons/ViewDashboardOutline.vue'
+import MeasuresTable from '@/components/MeasuresTable.vue'
 import ProjectStatusTable from '@/components/ProjectStatusTable.vue'
 import { useOverviewStore } from '@/stores/overviewStore'
-import { germanDate, isOverdue } from '@/utils/date'
+import { useTaskStore } from '@/stores/taskStore'
 
 /**
  * Ab wann eine Wartezeit hervorgehoben wird.
@@ -267,10 +254,10 @@ interface AmpelItem {
 export default defineComponent({
 	name: 'OverviewView',
 
-	components: { AlertIcon, NcEmptyContent, ProjectStatusTable, ViewDashboardIcon },
+	components: { AlertIcon, MeasuresTable, NcEmptyContent, ProjectStatusTable, ViewDashboardIcon },
 
 	setup() {
-		return { store: useOverviewStore(), LANGE_WARTEZEIT }
+		return { store: useOverviewStore(), taskStore: useTaskStore(), LANGE_WARTEZEIT }
 	},
 
 	data() {
@@ -299,7 +286,7 @@ export default defineComponent({
 		 * ohne vereinbarte Frist nicht „zu spät".
 		 */
 		ampel(): AmpelItem[] {
-			const myRows = this.store.myTicketRows as OverviewTicketRow[]
+			const meine = this.taskStore.measureRows as MeasureRow[]
 			const waiting = this.store.waitingRows as WaitingRow[]
 			const nobody = this.store.nobodyRows as OverviewTicketRow[]
 			const projects = this.store.projectRows as ProjectRow[]
@@ -307,7 +294,10 @@ export default defineComponent({
 			const items: AmpelItem[] = [
 				{
 					key: 'overdue',
-					count: myRows.filter((row) => isOverdue(row.ticket.dueDate)).length,
+					// Aus den **Maßnahmen** (Schritte + Vorgänge), damit die Kachel
+					// dieselbe Zahl trägt wie die Tabelle darunter, zu der sie
+					// springt — nicht nur die überfälligen eigenen Vorgänge.
+					count: meine.filter((row) => row.overdue).length,
 					tone: 'rot',
 					target: 'secMine',
 					label: t('projektwerk', 'Überfällig'),
@@ -350,25 +340,13 @@ export default defineComponent({
 
 	created() {
 		this.store.load()
+		// Die Maßnahmen kommen aus „Meine Aufgaben" — auf dem Dashboard eine
+		// kompakte Auswahl, geladen wie der Überblick selbst.
+		this.taskStore.load()
 	},
 
 	methods: {
 		t,
-		isOverdue,
-
-		/**
-		 * „fällig {Datum}" oder „überfällig seit {Datum}" für einen Vorgang mit
-		 * Ticket-Fälligkeit (#72) im Abschnitt „Meine Vorgänge".
-		 *
-		 * @param ticket Der Vorgang.
-		 */
-		dueLabel(ticket: Ticket): string {
-			const date = germanDate(ticket.dueDate)
-
-			return isOverdue(ticket.dueDate)
-				? t('projektwerk', 'überfällig seit {date}', { date })
-				: t('projektwerk', 'fällig {date}', { date })
-		},
 
 		/**
 		 * Steht dieses Projekt still? — nichts wartet auf den Kunden und seit
