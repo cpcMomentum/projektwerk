@@ -1084,6 +1084,21 @@ class LeakMatrixTest extends IntegrationTestCase {
 				$userId . ': Die Namensliste deckt andere Projekte als die Herkunftszeile — '
 				. 'eines von beidem liefert ein fremdes Projekt mit.',
 			);
+
+			// (4) Die Aggregate (#226) tragen kein fremdes Projekt. Die
+			// Erledigt-Zähler und die Erste-Spalte-Zuordnung dürfen nur Boards
+			// nennen, die der Betrachter ohnehin kennt; die Sichtbarkeit je
+			// Vorgang reitet auf derselben `scopedQuery` wie die oben
+			// ausgeschriebene Ticketmenge.
+			$eigeneBoards = array_keys($data['boards']);
+			$this->assertEmpty(
+				array_diff(array_keys($data['closedCounts']), $eigeneBoards),
+				$userId . ': Ein fremdes Board in den Erledigt-Zählern.',
+			);
+			$this->assertEmpty(
+				array_diff(array_keys($data['firstColumn']), $eigeneBoards),
+				$userId . ': Ein fremdes Board in der Ersten-Spalte-Zuordnung.',
+			);
 		}
 
 		// Und das Nichtmitglied: leere Listen, kein 404 — wie bei `task#index`
@@ -1095,6 +1110,8 @@ class LeakMatrixTest extends IntegrationTestCase {
 		$this->assertSame([], $fremd->getData()['waiting']);
 		$this->assertSame([], $fremd->getData()['boards']);
 		$this->assertSame([], $fremd->getData()['names']);
+		$this->assertSame([], $fremd->getData()['closedCounts']);
+		$this->assertSame([], $fremd->getData()['firstColumn']);
 	}
 
 	/**
@@ -1996,6 +2013,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 			Server::get(TicketMapper::class),
 			Server::get(StepMapper::class),
 			Server::get(BoardMapper::class),
+			Server::get(ColumnMapper::class),
 			Server::get(WaitStateCalculator::class),
 			Server::get(MemberService::class),
 			$userId,

@@ -334,6 +334,57 @@ class TicketMapper extends QBMapper {
 	}
 
 	/**
+	 * Abgeschlossene Vorgaenge je Board, nach Ausgang gezaehlt — fuer den Status
+	 * „Erledigt" und den Fortschritt im Dashboard (#226).
+	 *
+	 * Sichtbarkeits-gefiltert ueber {@see scopedQuery()} wie jede Lesemethode:
+	 * auch dieser Zaehler zaehlt nur, was der Betrachter sehen darf, und verraet
+	 * damit nichts Verborgenes (§5.8). Ein abgeschlossener Vorgang **ohne**
+	 * ausdruecklichen Ausgang zaehlt als erledigt — geschlossen und nicht
+	 * verworfen ist erledigt.
+	 *
+	 * **Auf die uebergebenen Boards eingeschraenkt**, und zwar aus demselben
+	 * Grund wie die offene Menge und `firstColumn` im Ueberblick: Der Einstieg
+	 * zeigt nur **aktive** Projekte. Ohne diese Grenze zaehlte die Methode auch
+	 * erledigte Vorgaenge archivierter Projekte, und `closedCounts` traege
+	 * Board-Kennungen, die in `boards`/`firstColumn` fehlen — die drei Aggregate
+	 * liefen auseinander.
+	 *
+	 * @param string $userId Der Betrachter.
+	 * @param int[] $boardIds Die aktiven Boards, auf die gezaehlt wird.
+	 * @return array<int, array{done: int, discarded: int}> Board-Kennung => Zaehler
+	 */
+	public function countClosedByBoard(string $userId, array $boardIds): array {
+		if ($boardIds === []) {
+			return [];
+		}
+
+		$qb = $this->scopedQuery($userId, null);
+		$qb->select(self::T . '.board_id', self::T . '.closed_outcome')
+			->selectAlias($qb->func()->count(self::T . '.id'), 'cnt')
+			->andWhere($qb->expr()->isNotNull(self::T . '.closed_at'))
+			->andWhere($qb->expr()->in(
+				self::T . '.board_id',
+				$qb->createNamedParameter($boardIds, IQueryBuilder::PARAM_INT_ARRAY),
+			))
+			->groupBy(self::T . '.board_id', self::T . '.closed_outcome');
+
+		$result = $qb->executeQuery();
+		$counts = [];
+		while (($row = $result->fetch()) !== false) {
+			$boardId = (int)$row['board_id'];
+			if (!isset($counts[$boardId])) {
+				$counts[$boardId] = ['done' => 0, 'discarded' => 0];
+			}
+			$key = $row['closed_outcome'] === Ticket::OUTCOME_DISCARDED ? 'discarded' : 'done';
+			$counts[$boardId][$key] += (int)$row['cnt'];
+		}
+		$result->closeCursor();
+
+		return $counts;
+	}
+
+	/**
 	 * Die groesste Position einer Spalte — **ungefiltert**.
 	 *
 	 * Bewusst an `TicketScope` vorbei, und das ist die einzige Lesemethode
