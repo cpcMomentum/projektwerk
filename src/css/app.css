@@ -2049,8 +2049,102 @@
  * zusammenzulegen hiesse, eine Klasse mit zwei Bedeutungen zu haben — und die
  * naechste Aenderung an der einen Seite braeche die andere.
  */
+/*
+ * Die Dringlichkeits-Ampel (#224) — der KPI-Look von WorkTime, bewusst mit
+ * **Rahmen statt Schatten**: So macht es WorkTimes `OvertimeSummary` real, und
+ * ein Schatten auf weißem NC-Grund wirkt schnell fremd. `border-radius-large`
+ * und `tabular-nums` sind dasselbe Vokabular wie dort.
+ */
+.app-projektwerk .pw-ampel {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+	gap: 12px;
+	margin-bottom: 28px;
+}
+
+.app-projektwerk .pw-kpi {
+	display: flex;
+	flex-direction: column;
+	gap: 0;
+	min-height: var(--default-clickable-area, 34px);
+	padding: 14px 16px;
+	background: var(--color-main-background);
+	border: 1px solid var(--color-border-dark, var(--color-border));
+	border-radius: var(--border-radius-large, 12px);
+	text-align: start;
+	cursor: pointer;
+	transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.app-projektwerk .pw-kpi:hover {
+	background: var(--color-background-hover);
+	border-color: var(--color-primary-element);
+}
+
+.app-projektwerk .pw-kpi:focus-visible {
+	outline: 2px solid var(--color-primary-element);
+	outline-offset: 2px;
+}
+
+.app-projektwerk .pw-kpi__lab {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--color-main-text);
+}
+
+.app-projektwerk .pw-kpi__num {
+	font-size: 26px;
+	font-weight: 700;
+	line-height: 1;
+	margin-top: 8px;
+	font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Rot nur bei echter Frist (überfällig), gelb für „lange/still" — dieselbe
+ * Regel wie an der Marke der Zeile. `--color-warning-text`/`--color-error-text`
+ * sind die Textfarben; die gleichnamigen ohne `-text` sind Flächenfarben.
+ */
+.app-projektwerk .pw-kpi--rot .pw-kpi__num {
+	color: var(--color-error-text);
+}
+
+.app-projektwerk .pw-kpi--warn .pw-kpi__num {
+	color: var(--color-warning-text, var(--color-main-text));
+}
+
+.app-projektwerk .pw-kpi--neutral .pw-kpi__num {
+	color: var(--color-main-text);
+}
+
+.app-projektwerk .pw-kpi__sub {
+	font-size: 12px;
+	color: var(--color-text-maxcontrast);
+	margin-top: 6px;
+}
+
 .app-projektwerk .pw-ov__block {
 	margin-bottom: 24px;
+}
+
+/*
+ * Das kurze Aufleuchten nach einem Ampel-Klick (#224) — eine Bestätigung „hier
+ * bist du gelandet", die von selbst verklingt. Wer weniger Bewegung eingestellt
+ * hat, bekommt sie nicht.
+ */
+.app-projektwerk .pw-ov__block--flash {
+	animation: pw-flash 1.4s ease-out;
+}
+
+@keyframes pw-flash {
+	0% { background: var(--color-primary-element-light, var(--color-background-hover)); }
+	100% { background: transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.app-projektwerk .pw-ov__block--flash {
+		animation: none;
+	}
 }
 
 /*
@@ -2151,6 +2245,16 @@
 
 .app-projektwerk .pw-marke--lang {
 	color: var(--color-warning-text, var(--color-main-text));
+	font-weight: 600;
+}
+
+/*
+ * Überfällig (#224): Rot statt Gelb — echte Frist verstrichen (#72), dieselbe
+ * Farbe wie die Ampel-Kachel „Überfällig". `--color-error-text` ist die
+ * Textfarbe; `--color-error` wäre eine Fläche.
+ */
+.app-projektwerk .pw-marke--rot {
+	color: var(--color-error-text);
 	font-weight: 600;
 }
 

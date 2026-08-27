@@ -335,6 +335,14 @@ OC.L10N.register(
     "Auch abschließen?" : "Also close?",
     "Nur verschieben" : "Just move",
     "Diesen Vorgang auch als verworfen abschließen?" : "Also close this ticket as discarded?",
-    "Diesen Vorgang auch als erledigt abschließen?" : "Also close this ticket as done?"
+    "Diesen Vorgang auch als erledigt abschließen?" : "Also close this ticket as done?",
+    "Überfällig" : "Overdue",
+    "Frist verstrichen" : "Deadline passed",
+    "Wartet lange" : "Waiting a long time",
+    "seit über einer Woche bei der Kundenseite" : "with the customer for over a week",
+    "kein Verantwortlicher" : "no one responsible",
+    "Projekte still" : "Idle projects",
+    "keine Bewegung" : "no movement",
+    "{count} {label}, zur Liste springen" : "{count} {label}, jump to the list"
 },
 "nplurals=2; plural=(n != 1);");
