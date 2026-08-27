@@ -43,6 +43,22 @@ export interface OverviewData {
 	 * offenen Schritt.
 	 */
 	withOpenSteps: number[]
+	/**
+	 * Board-Kennung => Zähler der **abgeschlossenen** Vorgänge (#226).
+	 *
+	 * Die offenen Zahlen (Neu/Offen/Wartet) leitet das Dashboard aus `tickets`
+	 * und `waiting` ab; nur die erledigten fehlen dort, weil der Überblick
+	 * geschlossene Vorgänge bewusst nicht lädt. `done` trägt „Erledigt" und den
+	 * Fortschritt, `discarded` bleibt aus dem Fortschritts-Nenner.
+	 */
+	closedCounts: Record<number, { done: number, discarded: number }>
+	/**
+	 * Board-Kennung => Kennung der ersten Spalte (#226).
+	 *
+	 * Für den Status „Neu": ein offener Vorgang, dessen `columnId` gleich der
+	 * ersten Spalte seines Boards ist, liegt noch in der Eingangsspalte.
+	 */
+	firstColumn: Record<number, number>
 }
 
 /**

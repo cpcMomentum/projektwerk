@@ -12,6 +12,7 @@ namespace OCA\Projektwerk\Controller;
 use OCA\Projektwerk\Access\WaitStateCalculator;
 use OCA\Projektwerk\AppInfo\Application;
 use OCA\Projektwerk\Db\BoardMapper;
+use OCA\Projektwerk\Db\ColumnMapper;
 use OCA\Projektwerk\Db\Step;
 use OCA\Projektwerk\Db\StepMapper;
 use OCA\Projektwerk\Db\TaskFilter;
@@ -59,6 +60,7 @@ class OverviewController extends Controller {
 		private TicketMapper $tickets,
 		private StepMapper $steps,
 		private BoardMapper $boards,
+		private ColumnMapper $columns,
 		private WaitStateCalculator $waitState,
 		private MemberService $memberService,
 		private ?string $userId,
@@ -138,6 +140,18 @@ class OverviewController extends Controller {
 			'me' => $this->userId,
 			// Vorgänge mit offenem Schritt (#119).
 			'withOpenSteps' => $withOpenSteps,
+			// **Erledigte je Projekt** (#226) — für die Status-Zahl „Erledigt"
+			// und den Fortschritt im Dashboard. Die offenen Zahlen (Neu/Offen/
+			// Wartet) entstehen aus `tickets`+`waiting` oben; nur die
+			// geschlossenen fehlen dort, weil der Überblick sie bewusst weglässt.
+			// Sichtbarkeits-gefiltert **und** auf die aktiven Boards beschränkt
+			// (`array_keys($aktiv)`), damit dieser Zähler dieselbe Projektmenge
+			// nennt wie `boards` und `firstColumn` — archivierte bleiben draußen.
+			'closedCounts' => $this->tickets->countClosedByBoard($this->userId, array_keys($aktiv)),
+			// **Erste Spalte je Projekt** (#226) — ein offener Vorgang darin gilt
+			// als „Neu" (noch in der Eingangsspalte, nicht aufgegriffen). Nur für
+			// die aktiven Boards, die die Seite ohnehin kennt.
+			'firstColumn' => $this->columns->findFirstColumnByBoard(array_keys($aktiv)),
 		]);
 	}
 

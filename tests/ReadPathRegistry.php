@@ -69,6 +69,11 @@ final class ReadPathRegistry {
 		// Liest ungefiltert (§3.8) und ist deshalb der einzige Pfad, dessen
 		// Erwartung lautet: fuer jeden Betrachter derselbe Wert.
 		'TicketMapper::findLastPositionInColumn',
+		// Erledigt-Zaehler je Board fuers Dashboard (#226), sichtbarkeits-
+		// gefiltert ueber dieselbe `scopedQuery` wie jede andere Ticketmenge und
+		// auf die uebergebenen (aktiven) Boards eingeschraenkt. Die Erwartung
+		// dazu ist `testOverviewEndpointMatchesTheVisibleSetAcrossBoards`.
+		'TicketMapper::countClosedByBoard',
 
 		// Board, Mitglieder, Spalten. Nicht ticketgefiltert, aber
 		// betrachterabhaengig — und damit ebenso eine Frage, die die Matrix
@@ -84,6 +89,11 @@ final class ReadPathRegistry {
 		// Mitglieder namentlich.
 		'MemberMapper::findForUserBoards',
 		'ColumnMapper::findForBoard',
+		// Die erste Spalte je Board fuers Dashboard (#226) — nicht
+		// sichtbarkeits-gefiltert wie `findForBoard` (§5.1), aber ebenso auf die
+		// uebergebenen Boards des Betrachters eingeschraenkt. Die Erwartung ist
+		// dieselbe wie oben bei `countClosedByBoard`.
+		'ColumnMapper::findFirstColumnByBoard',
 
 		// Die Kinder — je Mapper Liste und Zaehler. Der Zaehler steht hier
 		// gleichberechtigt neben der Liste, weil §5.8 ihn ausdruecklich

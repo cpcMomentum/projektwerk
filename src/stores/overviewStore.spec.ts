@@ -52,6 +52,8 @@ function daten(teile: Partial<OverviewData> = {}): OverviewData {
 		names: {},
 		me: '',
 		withOpenSteps: [],
+		closedCounts: {},
+		firstColumn: {},
 		...teile,
 	}
 }
