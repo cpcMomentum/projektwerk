@@ -60,7 +60,7 @@ class ColumnMapper extends QBMapper {
 	 * @param int[] $boardIds Die Boards des Betrachters.
 	 * @return array<int, int> Board-Kennung => Kennung der ersten Spalte
 	 */
-	public function firstColumnByBoard(array $boardIds): array {
+	public function findFirstColumnByBoard(array $boardIds): array {
 		if ($boardIds === []) {
 			return [];
 		}

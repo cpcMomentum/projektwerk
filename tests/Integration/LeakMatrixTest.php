@@ -250,11 +250,13 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'TicketMapper::findForRestore' => 'testRestoreLookupIsScopedToBoardAndOwningRole',
 		'TicketMapper::countVisibleInBoard' => 'testCountersNeverCountWhatIsHidden',
 		'TicketMapper::findLastPositionInColumn' => 'testLastPositionIsTheSameForEveryViewer',
+		'TicketMapper::countClosedByBoard' => 'testOverviewEndpointMatchesTheVisibleSetAcrossBoards',
 		// zusaetzlich gefahren von testBothCompanyNamesReachEveryViewer
 		'BoardMapper::findForViewer' => 'testBoardMetadataPathsTrustTheContextAlone',
 		'BoardMapper::findAllForUser' => 'testBoardListFollowsMembership',
 		'MemberMapper::findForBoard' => 'testBoardMetadataPathsTrustTheContextAlone',
 		'ColumnMapper::findForBoard' => 'testBoardMetadataPathsTrustTheContextAlone',
+		'ColumnMapper::findFirstColumnByBoard' => 'testOverviewEndpointMatchesTheVisibleSetAcrossBoards',
 		'CommentMapper::findForTickets' => 'testChildrenFollowTheFilteredTicketSet',
 		'CommentMapper::countForTickets' => 'testChildCountersFollowTheFilteredTicketSet',
 		'CommentMapper::findNewestForTickets' => 'testNewestCommentFollowsTheFilteredTicketSet',

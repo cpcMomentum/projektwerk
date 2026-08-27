@@ -151,7 +151,7 @@ class OverviewController extends Controller {
 			// **Erste Spalte je Projekt** (#226) — ein offener Vorgang darin gilt
 			// als „Neu" (noch in der Eingangsspalte, nicht aufgegriffen). Nur für
 			// die aktiven Boards, die die Seite ohnehin kennt.
-			'firstColumn' => $this->columns->firstColumnByBoard(array_keys($aktiv)),
+			'firstColumn' => $this->columns->findFirstColumnByBoard(array_keys($aktiv)),
 		]);
 	}
 
