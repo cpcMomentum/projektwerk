@@ -110,3 +110,36 @@ export interface ProjectRow {
 	 */
 	lastMovementDays: number | null
 }
+
+/**
+ * Eine Zeile der Projekt-Status-Tabelle im Dashboard (#226).
+ *
+ * Fasst je Projekt die kanonischen Status zusammen (Neu/Offen/Wartet aus der
+ * offenen Menge, Erledigt aus `closedCounts`) und leitet daraus Fortschritt und
+ * ein **Zustandssignal** ab — getrennt vom Status, „wo liegt der Ball".
+ */
+export interface ProjectStatusRow {
+	boardId: number
+	title: string
+	/** Beide Firmennamen, wie in {@see ProjectRow}. */
+	org: string
+	/** Offen, noch in der Eingangsspalte — neu reingekommen. */
+	neu: number
+	/** Offen, in Arbeit (nicht neu, wartet nicht). */
+	offen: number
+	/** Offen, wartet auf die Kundenseite. */
+	wartet: number
+	/** Abgeschlossen mit Ergebnis erledigt. */
+	erledigt: number
+	/** Abgeschlossen mit Ergebnis verworfen — nicht im Fortschritts-Nenner. */
+	verworfen: number
+	/** Offene Vorgänge gesamt (neu + offen + wartet). */
+	offenGesamt: number
+	/** Anteil erledigt an (erledigt + offen), 0..1; 0 wenn nichts vorliegt. */
+	fortschritt: number
+	/**
+	 * „Wo liegt der Ball" — aus den Daten abgeleitet, nicht gepflegt:
+	 * `rot` überfällig, `gelb` beim Kunden, `grau` steht still, `gruen` läuft.
+	 */
+	zustand: 'rot' | 'gelb' | 'grau' | 'gruen'
+}
