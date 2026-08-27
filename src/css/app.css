@@ -2123,6 +2123,171 @@
 	margin-top: 6px;
 }
 
+/*
+ * Die Projekt-Status-Tabelle (#226) — der WorkTime-Tabellen-Look aus
+ * `YearOverviewTable`: eine Rahmen-Card, `border-collapse`, Zahlen rechts/mittig
+ * mit `tabular-nums`, ganze Zeile klickbar. Auf schmalen Schirmen scrollt die
+ * Tabelle in ihrer Card, statt die Seite breit zu machen.
+ */
+.app-projektwerk .pw-ptable-card {
+	margin-bottom: 28px;
+	border: 1px solid var(--color-border-dark, var(--color-border));
+	border-radius: var(--border-radius-large, 12px);
+	overflow-x: auto;
+}
+
+.app-projektwerk .pw-ptable {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 14px;
+}
+
+.app-projektwerk .pw-ptable thead th {
+	text-align: start;
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--color-text-maxcontrast);
+	padding: 10px 14px;
+	white-space: nowrap;
+	border-bottom: 1px solid var(--color-border-dark, var(--color-border));
+}
+
+.app-projektwerk .pw-ptable th.pw-ptable__c,
+.app-projektwerk .pw-ptable td.pw-ptable__c {
+	text-align: center;
+}
+
+.app-projektwerk .pw-ptable tbody td {
+	padding: 12px 14px;
+	border-top: 1px solid var(--color-border);
+	vertical-align: middle;
+	white-space: nowrap;
+}
+
+.app-projektwerk .pw-ptable tbody tr:first-child td {
+	border-top: none;
+}
+
+.app-projektwerk .pw-ptable__row {
+	cursor: pointer;
+}
+
+.app-projektwerk .pw-ptable__row:hover {
+	background: var(--color-background-hover);
+}
+
+.app-projektwerk .pw-ptable__row:focus-visible {
+	outline: 2px solid var(--color-primary-element);
+	outline-offset: -2px;
+}
+
+.app-projektwerk .pw-ptable__row:hover .pw-ptable__title {
+	text-decoration: underline;
+}
+
+.app-projektwerk .pw-ptable__proj {
+	min-width: 160px;
+	white-space: normal;
+}
+
+.app-projektwerk .pw-ptable__title {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	font-weight: 600;
+}
+
+.app-projektwerk .pw-ptable__pin {
+	flex: 0 0 auto;
+	color: var(--color-favorite, var(--color-warning-text));
+}
+
+.app-projektwerk .pw-ptable__org {
+	display: block;
+	font-size: 12px;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-ptable__zero {
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-ptable__done {
+	color: var(--color-success-text);
+	font-weight: 600;
+}
+
+.app-projektwerk .pw-ptable__done.pw-ptable__zero {
+	color: var(--color-text-maxcontrast);
+	font-weight: 400;
+}
+
+.app-projektwerk .pw-ptable__warn {
+	color: var(--color-warning-text);
+	font-weight: 600;
+}
+
+/* Fortschrittsbalken — grau leer, blau gefüllt. */
+.app-projektwerk .pw-ptable__progress {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 120px;
+}
+
+.app-projektwerk .pw-ptable__bar {
+	position: relative;
+	flex: 1 1 auto;
+	height: 8px;
+	min-width: 60px;
+	border-radius: var(--border-radius-element, 8px);
+	background: var(--color-background-dark);
+	overflow: hidden;
+}
+
+.app-projektwerk .pw-ptable__bar > span {
+	position: absolute;
+	inset: 0 auto 0 0;
+	background: var(--color-primary-element);
+	border-radius: var(--border-radius-element, 8px);
+}
+
+.app-projektwerk .pw-ptable__pct {
+	flex: 0 0 auto;
+	font-size: 12px;
+	color: var(--color-text-maxcontrast);
+	font-variant-numeric: tabular-nums;
+	min-width: 38px;
+	text-align: end;
+}
+
+/*
+ * Zustandspunkt („wo liegt der Ball") — Farbe UND Wort, nie Farbe allein (§9).
+ * Rot nur bei echter Frist; gelb wartend; grau still; grün läuft.
+ */
+.app-projektwerk .pw-dot {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 12px;
+	white-space: nowrap;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-dot::before {
+	content: "";
+	width: 9px;
+	height: 9px;
+	border-radius: 50%;
+	background: var(--color-text-maxcontrast);
+	flex: 0 0 auto;
+}
+
+.app-projektwerk .pw-dot--rot::before { background: var(--color-error-text); }
+.app-projektwerk .pw-dot--gelb::before { background: var(--color-warning-text); }
+.app-projektwerk .pw-dot--grau::before { background: var(--color-text-maxcontrast); }
+.app-projektwerk .pw-dot--gruen::before { background: var(--color-success-text); }
+
 .app-projektwerk .pw-ov__block {
 	margin-bottom: 24px;
 }

@@ -372,7 +372,16 @@
 		"kein Verantwortlicher": "no one responsible",
 		"Projekte still": "Idle projects",
 		"keine Bewegung": "no movement",
-		"{count} {label}, zur Liste springen": "{count} {label}, jump to the list"
+		"{count} {label}, zur Liste springen": "{count} {label}, jump to the list",
+		"Neu": "New",
+		"Offen": "Open",
+		"Wartet": "Waiting",
+		"Fortschritt": "Progress",
+		"Zustand": "State",
+		"wartet": "waiting",
+		"steht still": "idle",
+		"läuft": "on track",
+		"{title}: {zustand}, {offen} offen, {erledigt} erledigt": "{title}: {zustand}, {offen} open, {erledigt} done"
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }

@@ -177,43 +177,23 @@
 				</button>
 			</section>
 
+			<!--
+				**Projekte als Status-Tabelle** (#226) — löst die frühere Liste
+				„Projekte mit Bewegung" ab. Sie zeigt je aktivem Projekt die
+				Status-Zahlen, den Fortschritt und das abgeleitete Zustandssignal;
+				die Rechnung liegt im Store, die Darstellung in `ProjectStatusTable`.
+				Der Abschnitt behält `ref`/Flash, damit die Ampel-Kachel „Projekte
+				still" weiterhin hierher springt.
+			-->
 			<section
-				v-if="store.projectRows.length > 0"
+				v-if="store.projectStatusRows.length > 0"
 				ref="secProjects"
 				class="pw-ov__block"
 				:class="{ 'pw-ov__block--flash': flash === 'secProjects' }">
 				<h3 class="pw-col__head">
-					{{ t('projektwerk', 'Projekte mit Bewegung') }}
-					<span class="pw-n">{{ store.projectRows.length }}</span>
+					{{ t('projektwerk', 'Projekte') }}
 				</h3>
-
-				<button
-					v-for="row in sortedProjectRows"
-					:key="row.boardId"
-					type="button"
-					class="pw-ov__row"
-					@click="openBoard(row.boardId)">
-					<!--
-						An der Stelle der Vorgangsnummer steht der Stern der
-						angepinnten Projekte (#116) — sonst nichts: Ein Projekt hat
-						keine Nummer. Die Spalte bleibt stehen, damit die Zeilen
-						beider Abschnitte auf derselben Kante beginnen.
-					-->
-					<StarIcon v-if="isPinned(row.boardId)" class="pw-ov__pin" :size="16" />
-					<span v-else class="pw-num pw-num--leer" aria-hidden="true" />
-					<span class="pw-ov__body">
-						<span class="pw-ov__title">{{ row.title }}</span>
-						<span v-if="row.org" class="pw-ov__meta">{{ row.org }}</span>
-						<!--
-							Der Stillstand-Hinweis (#116) steht nur, wo er etwas sagt:
-							Das Projekt wartet auf niemanden und ruht trotzdem lange.
-							Ein wartendes Projekt ruht mit gutem Grund und bekommt
-							ihn nicht.
-						-->
-						<span v-if="isStalled(row)" class="pw-ov__still">{{ stallLabel(row) }}</span>
-					</span>
-					<span class="pw-marke">{{ offenLabel(row) }}</span>
-				</button>
+				<ProjectStatusTable />
 			</section>
 		</template>
 	</div>
@@ -227,9 +207,8 @@ import { n, t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
 import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
 import AlertIcon from 'vue-material-design-icons/AlertOutline.vue'
-import StarIcon from 'vue-material-design-icons/Star.vue'
 import ViewDashboardIcon from 'vue-material-design-icons/ViewDashboardOutline.vue'
-import { useBoardStore } from '@/stores/boardStore'
+import ProjectStatusTable from '@/components/ProjectStatusTable.vue'
 import { useOverviewStore } from '@/stores/overviewStore'
 import { germanDate, isOverdue } from '@/utils/date'
 
@@ -288,10 +267,10 @@ interface AmpelItem {
 export default defineComponent({
 	name: 'OverviewView',
 
-	components: { AlertIcon, NcEmptyContent, StarIcon, ViewDashboardIcon },
+	components: { AlertIcon, NcEmptyContent, ProjectStatusTable, ViewDashboardIcon },
 
 	setup() {
-		return { store: useOverviewStore(), boardStore: useBoardStore(), LANGE_WARTEZEIT }
+		return { store: useOverviewStore(), LANGE_WARTEZEIT }
 	},
 
 	data() {
@@ -306,34 +285,6 @@ export default defineComponent({
 	},
 
 	computed: {
-		/**
-		 * Die Kennungen der angepinnten Projekte (#115), als Menge für den
-		 * schnellen Test je Zeile.
-		 *
-		 * Aus dem Board-Speicher, den der App-Rahmen ohnehin beim Start lädt —
-		 * kein zweiter Abruf.
-		 */
-		pinnedIds(): Set<number> {
-			return new Set(this.boardStore.pinnedBoards.map((board) => board.id))
-		},
-
-		/**
-		 * „Projekte mit Bewegung", angepinnte zuerst (#116).
-		 *
-		 * Die Reihenfolge des Speichers bleibt innerhalb beider Gruppen erhalten
-		 * (stabile Teilung): Wer ein Projekt anpinnt, will es oben sehen, ohne
-		 * dass sich darunter die gewohnte Ordnung nach Wartendem verdreht.
-		 */
-		sortedProjectRows(): ProjectRow[] {
-			const rows = this.store.projectRows as ProjectRow[]
-			const pinned = this.pinnedIds
-
-			return [
-				...rows.filter((row) => pinned.has(row.boardId)),
-				...rows.filter((row) => !pinned.has(row.boardId)),
-			]
-		},
-
 		/**
 		 * Die Dringlichkeits-Ampel (#224) — nur die Kacheln mit einem Wert > 0.
 		 *
@@ -420,13 +371,6 @@ export default defineComponent({
 		},
 
 		/**
-		 * @param boardId Kennung des Projekts.
-		 */
-		isPinned(boardId: number): boolean {
-			return this.pinnedIds.has(boardId)
-		},
-
-		/**
 		 * Steht dieses Projekt still? — nichts wartet auf den Kunden und seit
 		 * mindestens `STILLSTAND_TAGE` Tagen keine Bewegung (#116).
 		 *
@@ -436,15 +380,6 @@ export default defineComponent({
 			return row.waiting === 0
 				&& row.lastMovementDays !== null
 				&& row.lastMovementDays >= STILLSTAND_TAGE
-		},
-
-		/**
-		 * Die „steht still"-Marke.
-		 *
-		 * @param row Die Zeile.
-		 */
-		stallLabel(row: ProjectRow): string {
-			return n('projektwerk', 'steht still seit %n Tag', 'steht still seit %n Tagen', row.lastMovementDays ?? 0)
 		},
 
 		/**
@@ -475,22 +410,6 @@ export default defineComponent({
 		},
 
 		/**
-		 * Was in diesem Projekt offen ist — und wie viel davon wartet.
-		 *
-		 * Zwei getrennte Zeichenketten statt einer mit Platzhaltern: `n()` beugt
-		 * nach genau einer Zahl, und hier sind es zwei.
-		 *
-		 * @param row Die Zeile.
-		 */
-		offenLabel(row: ProjectRow): string {
-			const offen = n('projektwerk', '%n offen', '%n offen', row.open)
-
-			return row.waiting === 0
-				? offen
-				: `${offen} · ${n('projektwerk', '%n wartet', '%n warten', row.waiting)}`
-		},
-
-		/**
 		 * Ins Board, mit dem Vorgang offen — derselbe Weg wie der Deep-Link.
 		 *
 		 * @param ticket Der Vorgang.
@@ -501,13 +420,6 @@ export default defineComponent({
 				params: { boardId: String(ticket.boardId) },
 				query: { ticket: String(ticket.id) },
 			})
-		},
-
-		/**
-		 * @param boardId Kennung des Projekts.
-		 */
-		openBoard(boardId: number): void {
-			this.$router.push({ name: 'board', params: { boardId: String(boardId) } })
 		},
 
 		/**
