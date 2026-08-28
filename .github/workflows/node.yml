@@ -53,6 +53,12 @@ jobs:
         # Vergleich meldet immer (nc-app-tooling#1).
         run: npm ci
 
+      - name: Schema-Portabilitaet
+        run: npx nc-schema-check
+
+      - name: Notification-Vertraege
+        run: npx nc-notification-check
+
       # Faengt Strings ab, die in t()/n()/->t() stehen, aber in keiner l10n-Datei.
       # Solche Texte fallen in JEDER Sprache auf den deutschen Quelltext zurueck.
       # Die 21 Backend-Texte, die dieser Schritt zuerst gefunden hat, standen seit
