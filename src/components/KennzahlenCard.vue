@@ -22,26 +22,26 @@
 			<h3 class="pw-kpicard__h">
 				{{ t('projektwerk', 'Durchsatz') }}
 			</h3>
-			<dl class="pw-dur">
+			<div class="pw-dur">
 				<div class="pw-dur__item">
-					<dt class="pw-dur__l">
+					<span class="pw-dur__l">
 						{{ t('projektwerk', 'Neu / Woche') }}
-					</dt>
-					<dd class="pw-dur__v">
+					</span>
+					<span class="pw-dur__v">
 						{{ store.durchsatz.neu }}
 						<span class="pw-dur__delta" :class="deltaCls(store.durchsatz.neuDelta)">{{ deltaText(store.durchsatz.neuDelta) }}</span>
-					</dd>
+					</span>
 				</div>
 				<div class="pw-dur__item">
-					<dt class="pw-dur__l">
+					<span class="pw-dur__l">
 						{{ t('projektwerk', 'Erledigt / Woche') }}
-					</dt>
-					<dd class="pw-dur__v">
+					</span>
+					<span class="pw-dur__v">
 						{{ store.durchsatz.erledigt }}
 						<span class="pw-dur__delta" :class="deltaCls(store.durchsatz.erledigtDelta)">{{ deltaText(store.durchsatz.erledigtDelta) }}</span>
-					</dd>
+					</span>
 				</div>
-			</dl>
+			</div>
 		</div>
 	</div>
 </template>
