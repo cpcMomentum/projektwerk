@@ -173,3 +173,59 @@ Vergleich mit Linear, GitHub Projects, Asana, Basecamp, Height, Monday.com in
 Dringlichkeits-Sortierung der Maßnahmen, Recency als eigene Blöcke, fixe 4 Status
 als Grundlage der Mehr-Board-Aggregation. Bewusst weggelassen: Velocity/Burn-up,
 Gantt/Roadmap, Widget-Flut, Arbeitsmengen-Kennzahlen.
+
+---
+
+## Finale Vorlage (2026-08-29)
+
+Nach mehreren Design-Runden (mit Design-Assistent und einem Ultra-Workflow für
+die Voll-Breite-Kennzahlen) steht die Vorlage. Referenz: `dashboard-vorlage-final.png`
+und `.html`. Sie **ersetzt die V3-Zweiteilung** im Code.
+
+### Aufbau (von oben nach unten)
+
+1. **Kennzahlen-Karte, volle Breite** (Grid links breiter, rechts gedeckelt):
+   - **Wo hakt es** (links): vier **Mini-Balken** zum Vergleichen — Überfällig,
+     Wartet lange, Liegt bei niemandem, Steht still. Label | Balken (auf Max
+     skaliert, gedeckelt) | Zahl. Bewusst *andere* Darstellung als die Kacheln,
+     weil hier **verglichen** statt **zusammengesetzt** wird.
+   - **Durchsatz** (rechts, mit Trenner, vertikal verankert): Neu / Woche und
+     Erledigt / Woche als große Zahl + Veränderung zur Vorwoche + Verlaufs-Kurve.
+2. **Projekt-Kacheln** (2-Spalten-Raster, max. 6, Rest aufklappbar): je Kachel
+   Name/Firma, Zustandspunkt rechts oben, die vier kanonischen Status
+   (Neu/Offen/Wartet/Erledigt) als **Zahlen mit farbigem Strich über einem echt
+   proportionalen Statusbalken** — die Zahl sitzt am **Anfang ihres Segments**.
+   Legende einmal oben. Klick → Projekt-Dashboard (Stufe 2, #227), bis dahin Board.
+3. **Meine Maßnahmen** als Tabelle (bestehend).
+
+### Design-Entscheidungen (festgehalten)
+- Zahlen **über** dem Balken (nicht drin): löst den Zielkonflikt „Zahl lesbar vs.
+  Balken ehrlich proportional" — der Balken bleibt 1:1 proportional, die Zahlen
+  sind hochkontrastig (`--color-main-text`), kein Weiß-auf-Gold/Grau-Problem.
+- Mini-Balken bei voller Breite **gedeckelt** (`max-width`), damit sie nicht
+  auswalzen; Durchsatz mit großen Zahlen verankert, damit er den Raum hält.
+
+### Weg 2 — was jetzt gebaut wird / was folgt
+**Jetzt (vorhandene bzw. billig aggregierbare Daten):**
+- Wo-hakt-es-Mini-Balken (aus den vorhandenen Gettern).
+- Projekt-Kacheln mit Statusbalken (aus `projectStatusRows`).
+- Durchsatz-**Zahlen** (neu/erledigt diese Woche) + **Delta** zur Vorwoche — je
+  eine kleine, sichtbarkeits-sichere Count-Abfrage.
+- Meine-Maßnahmen-Tabelle.
+
+**Zweiter Schritt (braucht Zeitreihen-Backend):**
+- Die **Verlaufs-Kurven** (Sparklines) neben dem Durchsatz — brauchen eine
+  Tages-Zeitreihe.
+- Die **„▲ N diese Woche"-Zeile je Kachel** (per-Board-Wochendelta) — optional
+  mit dem Verlaufs-Backend.
+
+### Sichtbarkeit & Rechte (entschieden 2026-08-29)
+- **Datenzahlen sind sichtbarkeits-sicher** (scopedQuery) und werden in der
+  Leak-Matrix **auch für externe Betrachter** geprüft. Kein Gast sieht ein
+  fremdes Projekt oder einen verborgenen Vorgang.
+- **Das Dashboard ist intern.** Gäste (in allen ihren Boards extern) landen auf
+  ihrem Board, nicht auf dem Portfolio-Dashboard. Regel: „intern in ≥1 Board".
+- **Sichtbarkeit bleibt mitgliedschaftsbasiert.** „Geschäftsführung sieht alle
+  Projekte" und „wer darf Projekte anlegen" (heute: jeder, `NoAdminRequired`)
+  sind eine **eigene Governance-Runde** (Portfolio-Recht / Gruppe / `is_manager`)
+  — **nicht** Teil dieses Baus.
