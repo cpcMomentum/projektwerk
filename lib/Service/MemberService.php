@@ -148,6 +148,21 @@ class MemberService {
 	}
 
 	/**
+	 * Die eigene Rolle je Board — fürs Gäste-Gate (#234).
+	 *
+	 * Reine Weitergabe an {@see MemberMapper::rolesForUser()}: Anders als bei
+	 * den Namen ist hier nichts aufzulösen, die Rolle steht roh an der
+	 * Mitgliedschaft. Der Umweg über den Dienst besteht dennoch, weil die
+	 * Controller die Mitgliederdaten grundsätzlich über diese Grenze beziehen
+	 * und nicht am Dienst vorbei auf den Mapper greifen.
+	 *
+	 * @return array<int, string> Board-Kennung => Rolle.
+	 */
+	public function rolesForUserBoards(string $userId): array {
+		return $this->members->rolesForUser($userId);
+	}
+
+	/**
 	 * Rolle, Verwaltungsrecht und Name einer Mitgliedschaft ändern.
 	 *
 	 * **Zum Rollenwechsel gibt es keine Datenbewegung.** §8 friert

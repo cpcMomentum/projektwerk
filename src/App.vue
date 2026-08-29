@@ -17,7 +17,17 @@
 			stehen). Die volle Projektliste bleibt der Projekte-Seite.
 		-->
 		<NcAppNavigation>
+			<!--
+				**Der Überblick ist ein internes Werkzeug** (#234). Ein Betrachter,
+				der in allen seinen Projekten extern ist (der Kunde), sieht den
+				Eintrag nicht — der Router leitet ihn ohnehin auf sein Board um,
+				und ein Menüpunkt, der nur zurückwirft, wäre Rauschen. Optimistisch
+				gezeigt, solange die Liste noch lädt: Der interne Normalfall
+				bekommt kein Aufblitzen, und der Kunde landet durch das Gate gar
+				nicht erst hier.
+			-->
 			<NcAppNavigationItem
+				v-if="!store.loaded || store.internalSomewhere"
 				:name="t('projektwerk', 'Überblick')"
 				:to="{ name: 'overview' }"
 				@click="closeNavigationOnMobile">
@@ -116,8 +126,10 @@ export default {
 
 	created() {
 		// Einmal beim Mounten der App, fuer den Pin-Abschnitt (#115). Nicht bei
-		// jedem Ansichtswechsel — der Rahmen bleibt stehen.
-		this.store.loadBoards()
+		// jedem Ansichtswechsel — der Rahmen bleibt stehen. `ensureBoards` statt
+		// `loadBoards`, damit sich dieser Abruf und das Gaeste-Gate im Router
+		// (#234) denselben Ladevorgang teilen, statt zweimal zu holen.
+		this.store.ensureBoards()
 	},
 
 	methods: {

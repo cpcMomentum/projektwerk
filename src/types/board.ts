@@ -51,6 +51,15 @@ export interface Board {
 	 * Detailansicht (`board#show`) kennt es nicht — sie braucht es auch nicht.
 	 */
 	pinned?: boolean
+	/**
+	 * Die eigene Rolle in **diesem** Projekt (#234) — `internal`/`external`.
+	 *
+	 * Optional aus demselben Grund wie `pinned`: Nur die Projektliste
+	 * (`board#index`) liefert sie mit, die Detailansicht kennt sie unter
+	 * `viewer.role`. Sie trägt das Gäste-Gate: Wer in allen seinen Projekten
+	 * extern ist, landet nicht auf dem Überblick, sondern auf seinem Board.
+	 */
+	viewerRole?: MemberRole
 	createdAt: string | null
 	updatedAt: string | null
 }

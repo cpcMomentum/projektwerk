@@ -89,23 +89,33 @@ test.describe('Kundenseite', () => {
 	test.use({ storageState: KUNDE.sitzung })
 
 	/**
-	 * **Der Überblick ist der breiteste Lesepfad der App** — und damit die
-	 * Stelle, an der ein Ausfall der Sichtbarkeitsregel am sichtbarsten wäre:
-	 * auf der Startseite, ohne dass jemand etwas anklickt.
+	 * Der Überblick ist ein **internes** Steuerungswerkzeug (#234). Ein Kunde,
+	 * der in allen seinen Projekten extern ist, erreicht ihn gar nicht — er wird
+	 * beim Öffnen der App auf seine Projekte geleitet.
 	 *
-	 * Die Leak-Matrix prüft dieselbe Zusage am Endpunkt. Hier steht sie im
-	 * Browser, gegen das ausgelieferte DOM.
+	 * **Damit entfällt die frühere Browser-Prüfung „der Kunde sieht auf dem
+	 * Überblick keinen internen Vorgang":** Er sieht den Überblick nicht mehr.
+	 * Die Sichtbarkeitszusage selbst hängt nicht an diesem Gate — sie steht im
+	 * `scopedQuery` und wird am Endpunkt von der Leak-Matrix gefahren
+	 * (`overview#index`). Dieses Gate ist Verteidigung in der Tiefe auf der
+	 * Produkt-/Routing-Ebene.
+	 *
+	 * **Geprüft wird die Abwesenheit, nicht ein festes Ziel.** Wohin der Kunde
+	 * landet — sein Board bei einem Projekt, die Projektliste bei mehreren —
+	 * hängt an der Zahl seiner Projekte und ist damit vom Testbestand abhängig.
+	 * Dass es *nicht* der Überblick ist, hängt an nichts.
 	 */
-	test('findet den internen Vorgang nirgends im Überblick', async ({ page }) => {
+	test('wird vom Überblick weggeleitet — er ist ihm nicht zugänglich', async ({ page }) => {
+		// Ohne Pfad — so, wie der Menüeintrag in Nextcloud die App aufruft.
 		await page.goto(APP_PFAD)
-		await expect(page.getByRole('heading', { name: 'Überblick' })).toBeVisible({ timeout: 30_000 })
 
-		// Erst die Gegenprobe: Das Projekt ist als Kachel da. Ohne sie wäre der
-		// Test auch bei einer leeren Seite grün.
-		await expect(page.locator('.pw-tile', { hasText: projekt.titel })).toBeVisible()
+		// Warten, bis der Rahmen steht: Den „Projekte"-Eintrag hat jede Rolle.
+		await expect(page.getByRole('link', { name: 'Projekte' })).toBeVisible({ timeout: 30_000 })
 
-		// Kein interner Vorgang im ausgelieferten DOM — die Kacheln zeigen ohnehin
-		// nur Zähler, keine Vorgangstitel; ein Leak wäre hier trotzdem sichtbar.
-		expect(await page.content()).not.toContain(projekt.intern.title)
+		// Der Überblick ist weg: kein Menüeintrag, keine Kennzahlen-Karte, und
+		// die Adresse steht nicht mehr auf dem bloßen Einstieg.
+		await expect(page.getByRole('link', { name: 'Überblick' })).toHaveCount(0)
+		await expect(page.locator('.pw-kpicard')).toHaveCount(0)
+		expect(page.url()).not.toMatch(/#\/$/)
 	})
 })
