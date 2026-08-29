@@ -366,6 +366,12 @@ OC.L10N.register(
     "davon überfällig" : "davon überfällig",
     "Zurzeit liegt nichts bei dir." : "Zurzeit liegt nichts bei dir.",
     "Wie die Projekte stehen" : "Wie die Projekte stehen",
-    "Steht still" : "Steht still"
+    "Steht still" : "Steht still",
+    "Wo hakt es" : "Wo hakt es",
+    "Durchsatz" : "Durchsatz",
+    "Neu / Woche" : "Neu / Woche",
+    "Erledigt / Woche" : "Erledigt / Woche",
+    "{title}: {zustand}, {neu} neu, {offen} offen, {wartet} wartet, {erledigt} erledigt" : "{title}: {zustand}, {neu} neu, {offen} offen, {wartet} wartet, {erledigt} erledigt",
+    "_%n weiteres Projekt anzeigen_::_%n weitere Projekte anzeigen_" : ["%n weiteres Projekt anzeigen","%n weitere Projekte anzeigen"]
 },
 "nplurals=2; plural=(n != 1);");

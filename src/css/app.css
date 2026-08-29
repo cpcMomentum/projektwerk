@@ -2215,6 +2215,309 @@
 .app-projektwerk .pw-dot--gruen::before { background: var(--color-success-text); }
 
 /*
+ * Die Projekt-Kacheln (#226) — lösen die Status-Tabelle ab. Je Projekt eine
+ * Kachel mit den Status als Zahlen über einem echt proportionalen Statusbalken.
+ * Die Statusfarbe steht als `--c` an der Segmentklasse und gilt für Strich UND
+ * Balken; die Legende steht einmal oben.
+ */
+.app-projektwerk .pw-st--neu { --c: var(--color-primary-element); }
+.app-projektwerk .pw-st--offen { --c: var(--color-text-maxcontrast); }
+.app-projektwerk .pw-st--wartet { --c: var(--color-warning-text); }
+.app-projektwerk .pw-st--erl { --c: var(--color-success-text); }
+
+.app-projektwerk .pw-tiles__legend {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px 14px;
+	margin: 2px 0 12px;
+	font-size: 12.5px;
+}
+
+.app-projektwerk .pw-tiles__leg {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-tiles__legdot {
+	width: 10px;
+	height: 10px;
+	border-radius: 3px;
+	background: var(--c);
+}
+
+.app-projektwerk .pw-tiles {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 12px;
+}
+
+@media (max-width: 560px) {
+	.app-projektwerk .pw-tiles {
+		grid-template-columns: 1fr;
+	}
+}
+
+.app-projektwerk .pw-tile {
+	display: block;
+	width: 100%;
+	padding: 14px 16px;
+	border: 1px solid var(--color-border-dark, var(--color-border));
+	border-radius: var(--border-radius-large, 12px);
+	background: var(--color-main-background);
+	text-align: start;
+	cursor: pointer;
+	transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.app-projektwerk .pw-tile:hover {
+	background: var(--color-background-hover);
+	border-color: var(--color-primary-element);
+}
+
+.app-projektwerk .pw-tile:focus-visible {
+	outline: 2px solid var(--color-primary-element);
+	outline-offset: 2px;
+}
+
+.app-projektwerk .pw-tile:hover .pw-tile__title {
+	text-decoration: underline;
+}
+
+.app-projektwerk .pw-tile__head {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	gap: 8px;
+	margin-bottom: 12px;
+}
+
+.app-projektwerk .pw-tile__ident {
+	min-width: 0;
+}
+
+.app-projektwerk .pw-tile__pin {
+	color: var(--color-favorite, var(--color-warning-text));
+	vertical-align: -2px;
+	margin-inline-end: 3px;
+}
+
+.app-projektwerk .pw-tile__title {
+	font-weight: 700;
+	font-size: 15px;
+}
+
+.app-projektwerk .pw-tile__org {
+	display: block;
+	font-size: 12px;
+	color: var(--color-text-maxcontrast);
+	margin-top: 1px;
+}
+
+/* Zähler-Zeile: gleiche Proportion + Lücken wie der Balken, Zahl am Segmentanfang. */
+.app-projektwerk .pw-tile__nums {
+	display: flex;
+	gap: 2px;
+	margin-bottom: 6px;
+}
+
+.app-projektwerk .pw-tile__num {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	min-width: 0;
+	overflow: visible;
+	white-space: nowrap;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--color-main-text);
+	font-variant-numeric: tabular-nums;
+}
+
+.app-projektwerk .pw-tile__tick {
+	width: 3px;
+	height: 13px;
+	border-radius: 2px;
+	background: var(--c);
+	flex: 0 0 auto;
+}
+
+/* Der echt proportionale Statusbalken. */
+.app-projektwerk .pw-tile__bar {
+	display: flex;
+	gap: 2px;
+	height: 14px;
+	border-radius: var(--border-radius-pill, 7px);
+	overflow: hidden;
+}
+
+.app-projektwerk .pw-tile__seg {
+	background: var(--c);
+	min-width: 3px;
+}
+
+.app-projektwerk .pw-tiles__more {
+	display: inline-block;
+	margin-top: 12px;
+	padding: 0;
+	border: none;
+	background: none;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--color-primary-element);
+	cursor: pointer;
+}
+
+.app-projektwerk .pw-tiles__more:hover {
+	text-decoration: underline;
+}
+
+/*
+ * Die Kennzahlen-Karte (#226) — volle Breite, links „Wo hakt es" (Mini-Balken),
+ * rechts der Durchsatz mit Trenner. Mini-Balken gedeckelt, damit sie bei voller
+ * Breite nicht auswalzen; Durchsatz mit großen Zahlen verankert.
+ */
+.app-projektwerk .pw-kpicard {
+	display: grid;
+	grid-template-columns: minmax(0, 1.6fr) minmax(15rem, 0.8fr);
+	gap: 22px;
+	width: 100%;
+	margin-bottom: 28px;
+	padding: 16px 20px;
+	border: 1px solid var(--color-border-dark, var(--color-border));
+	border-radius: var(--border-radius-large, 12px);
+	background: var(--color-main-background);
+}
+
+.app-projektwerk .pw-kpicard__sec {
+	min-width: 0;
+}
+
+.app-projektwerk .pw-kpicard__h {
+	margin: 0 0 12px;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.05em;
+	text-transform: none;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-kpicard__dur {
+	padding-inline-start: 22px;
+	border-inline-start: 1px solid var(--color-border);
+	display: flex;
+	flex-direction: column;
+}
+
+@media (max-width: 560px) {
+	.app-projektwerk .pw-kpicard {
+		grid-template-columns: 1fr;
+		gap: 16px;
+	}
+
+	.app-projektwerk .pw-kpicard__dur {
+		padding-inline-start: 0;
+		padding-top: 14px;
+		border-inline-start: none;
+		border-top: 1px solid var(--color-border);
+	}
+}
+
+/* Mini-Balken */
+.app-projektwerk .pw-mini {
+	display: grid;
+	grid-template-columns: minmax(92px, 150px) 1fr 2ch;
+	align-items: center;
+	gap: 10px 12px;
+}
+
+.app-projektwerk .pw-mini__l {
+	font-size: 13px;
+	color: var(--color-main-text);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.app-projektwerk .pw-mini__track {
+	max-width: 18rem;
+	width: 100%;
+	height: 8px;
+	background: var(--color-background-dark);
+	border-radius: var(--border-radius-pill, 8px);
+	overflow: hidden;
+}
+
+.app-projektwerk .pw-mini__fill {
+	display: block;
+	height: 100%;
+	min-width: 8px;
+	border-radius: inherit;
+}
+
+.app-projektwerk .pw-mini__fill.pw-mini--rot { background: var(--color-error-text); }
+.app-projektwerk .pw-mini__fill.pw-mini--gelb { background: var(--color-warning-text); }
+.app-projektwerk .pw-mini__fill.pw-mini--slate { background: #5b7a99; }
+.app-projektwerk .pw-mini__fill.pw-mini--grau { background: var(--color-text-maxcontrast); }
+
+.app-projektwerk .pw-mini__v {
+	text-align: end;
+	font-size: 13px;
+	font-weight: 700;
+	color: var(--color-main-text);
+	font-variant-numeric: tabular-nums;
+}
+
+.app-projektwerk .pw-mini__v--rot {
+	color: var(--color-error-text);
+}
+
+/* Durchsatz */
+.app-projektwerk .pw-dur {
+	margin: 0;
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	gap: 18px;
+}
+
+.app-projektwerk .pw-dur__item {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.app-projektwerk .pw-dur__l {
+	font-size: 13px;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-dur__v {
+	margin: 0;
+	font-size: clamp(26px, 3vw, 36px);
+	font-weight: 700;
+	line-height: 1.05;
+	color: var(--color-main-text);
+	display: flex;
+	align-items: baseline;
+	gap: 10px;
+	flex-wrap: wrap;
+	font-variant-numeric: tabular-nums;
+}
+
+.app-projektwerk .pw-dur__delta {
+	font-size: 13px;
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+}
+
+.app-projektwerk .pw-dur__delta--up { color: var(--color-success-text); }
+.app-projektwerk .pw-dur__delta--down { color: var(--color-error-text); }
+.app-projektwerk .pw-dur__delta--flat { color: var(--color-text-maxcontrast); }
+
+/*
  * Die Maßnahmen-Tabelle (#226) — dieselbe Rahmen-Card/`pw-ptable`-Basis, mit
  * einer „Art"-Pille (Schritt vs. Verantwortung) und der Fälligkeit rechts.
  */

@@ -13,7 +13,7 @@
 		<!--
 			**Der Fehlerfall vor dem Leerfall** — dieselbe Ordnung wie in
 			`TasksView`. Ohne ihn behauptet ein gescheitertes Laden „nichts
-			offen": Die Tabellen sind ja leer. Das ist die unangenehmste Sorte
+			offen": Die Karten sind ja leer. Das ist die unangenehmste Sorte
 			Falschaussage, und auf der Startseite die folgenreichste.
 		-->
 		<NcEmptyContent
@@ -36,70 +36,39 @@
 
 		<template v-else>
 			<!--
-				**Zwei Hälften, eine Form** (#226, V3): oben „was bei mir liegt",
-				unten „wie die Projekte stehen". Beide tragen dieselbe Tabellenform;
-				die kleinen Kennzahlen sitzen über der jeweiligen Hälfte statt als
-				eigene Ampel-Leiste. So liest die Seite als eine designte Einheit
-				statt als Schichten aus Karten, Listen und Tabellen.
+				**Das Kachel-Dashboard** (#226): oben die Kennzahlen über alle
+				Projekte (wo hakt es + Durchsatz), dann die Projekte als Kacheln,
+				darunter meine Maßnahmen. Die Rechnung liegt in den Gettern und
+				den Kind-Komponenten; die Seite ordnet nur an.
 			-->
+			<KennzahlenCard />
+
 			<section class="pw-half">
 				<h3 class="pw-col__head">
-					{{ t('projektwerk', 'Was bei mir liegt') }}
+					{{ t('projektwerk', 'Projekte') }}
 				</h3>
-
-				<div class="pw-stats">
-					<div class="pw-stat">
-						<span class="pw-stat__lab">{{ t('projektwerk', 'Meine Maßnahmen') }}</span>
-						<span class="pw-stat__num">{{ measureCount }}</span>
-					</div>
-					<div v-if="overdueCount > 0" class="pw-stat">
-						<span class="pw-stat__lab">{{ t('projektwerk', 'davon überfällig') }}</span>
-						<span class="pw-stat__num pw-stat__num--rot">{{ overdueCount }}</span>
-					</div>
-				</div>
-
-				<template v-if="measureCount > 0">
-					<MeasuresTable :rows="taskStore.measureRows" :limit="5" />
-					<RouterLink
-						v-if="measureCount > 5"
-						class="pw-ov__more"
-						:to="{ name: 'tasks' }">
-						{{ t('projektwerk', 'Alle ansehen') }}
-					</RouterLink>
-				</template>
-				<p v-else class="pw-empty-line">
-					{{ t('projektwerk', 'Zurzeit liegt nichts bei dir.') }}
-				</p>
+				<ProjectTiles />
 			</section>
 
-			<section v-if="hatProjekte" class="pw-half">
+			<section v-if="measureCount > 0" class="pw-half">
 				<h3 class="pw-col__head">
-					{{ t('projektwerk', 'Wie die Projekte stehen') }}
+					{{ t('projektwerk', 'Meine Maßnahmen') }}
+					<span class="pw-n">{{ measureCount }}</span>
 				</h3>
-
-				<div v-if="waitingLongCount > 0 || nobodyCount > 0 || stalledCount > 0" class="pw-stats">
-					<div v-if="waitingLongCount > 0" class="pw-stat">
-						<span class="pw-stat__lab">{{ t('projektwerk', 'Wartet lange') }}</span>
-						<span class="pw-stat__num pw-stat__num--warn">{{ waitingLongCount }}</span>
-					</div>
-					<div v-if="nobodyCount > 0" class="pw-stat">
-						<span class="pw-stat__lab">{{ t('projektwerk', 'Liegt bei niemandem') }}</span>
-						<span class="pw-stat__num">{{ nobodyCount }}</span>
-					</div>
-					<div v-if="stalledCount > 0" class="pw-stat">
-						<span class="pw-stat__lab">{{ t('projektwerk', 'Steht still') }}</span>
-						<span class="pw-stat__num pw-stat__num--warn">{{ stalledCount }}</span>
-					</div>
-				</div>
-
-				<ProjectStatusTable />
+				<MeasuresTable :rows="taskStore.measureRows" :limit="5" />
+				<RouterLink
+					v-if="measureCount > 5"
+					class="pw-ov__more"
+					:to="{ name: 'tasks' }">
+					{{ t('projektwerk', 'Alle ansehen') }}
+				</RouterLink>
 			</section>
 		</template>
 	</div>
 </template>
 
 <script lang="ts">
-import type { ProjectStatusRow, WaitingRow } from '@/types/overview'
+import type { ProjectStatusRow } from '@/types/overview'
 import type { MeasureRow } from '@/types/task'
 
 import { t } from '@nextcloud/l10n'
@@ -107,34 +76,26 @@ import { defineComponent } from 'vue'
 import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
 import AlertIcon from 'vue-material-design-icons/AlertOutline.vue'
 import ViewDashboardIcon from 'vue-material-design-icons/ViewDashboardOutline.vue'
+import KennzahlenCard from '@/components/KennzahlenCard.vue'
 import MeasuresTable from '@/components/MeasuresTable.vue'
-import ProjectStatusTable from '@/components/ProjectStatusTable.vue'
+import ProjectTiles from '@/components/ProjectTiles.vue'
 import { useOverviewStore } from '@/stores/overviewStore'
 import { useTaskStore } from '@/stores/taskStore'
 
 /**
- * Ab wann eine Wartezeit als „lange" zählt — eine Woche, grob und ohne Frist.
- * Dieselbe Grenze wie zuvor in der Ampel.
- */
-const LANGE_WARTEZEIT = 7
-
-/**
- * Der Überblick — der Einstieg in die App (#76), als Dashboard in zwei Hälften
- * (#226, V3): **was bei mir liegt** (meine Maßnahmen) und **wie die Projekte
- * stehen** (Status-Tabelle mit abgeleitetem Zustand).
+ * Der Überblick — der Einstieg in die App (#76), als **Kachel-Dashboard** (#226):
+ * Kennzahlen über alle Projekte (wo hakt es + Durchsatz), die Projekte als
+ * Kacheln mit Status und Zustand, darunter meine Maßnahmen.
  *
- * **Zwei Speicher.** Die Maßnahmen kommen aus „Meine Aufgaben" (`taskStore`),
- * die Projektzahlen aus dem Überblick (`overviewStore`). Beide werden hier
- * geladen; die Rechnung liegt in den Gettern, die Seite zeigt nur an.
- *
- * **Die frühere Ampel und die Wo-hakt-es-Listen sind entfallen.** Ihre Aussage
- * tragen jetzt die kleinen Kennzahlen über den Hälften und die Zustandsspalte
- * der Projekt-Tabelle; das einzelne wartende Ticket sieht man im Projekt.
+ * **Zwei Speicher.** Die Projektzahlen aus dem Überblick (`overviewStore`), die
+ * Maßnahmen aus „Meine Aufgaben" (`taskStore`). Beide werden hier geladen; die
+ * Darstellung liegt in den Kind-Komponenten (`KennzahlenCard`, `ProjectTiles`,
+ * `MeasuresTable`).
  */
 export default defineComponent({
 	name: 'OverviewView',
 
-	components: { AlertIcon, MeasuresTable, NcEmptyContent, ProjectStatusTable, ViewDashboardIcon },
+	components: { AlertIcon, KennzahlenCard, MeasuresTable, NcEmptyContent, ProjectTiles, ViewDashboardIcon },
 
 	setup() {
 		return { store: useOverviewStore(), taskStore: useTaskStore() }
@@ -154,26 +115,6 @@ export default defineComponent({
 		/** Wie viele Maßnahmen bei mir liegen. */
 		measureCount(): number {
 			return (this.taskStore.measureRows as MeasureRow[]).length
-		},
-
-		/** Wie viele davon überfällig sind. */
-		overdueCount(): number {
-			return (this.taskStore.measureRows as MeasureRow[]).filter((row) => row.overdue).length
-		},
-
-		/** Vorgänge, die seit über einer Woche auf die Kundenseite warten. */
-		waitingLongCount(): number {
-			return (this.store.waitingRows as WaitingRow[]).filter((row) => row.days >= LANGE_WARTEZEIT).length
-		},
-
-		/** Vorgänge ohne Verantwortlichen und ohne offenen Schritt. */
-		nobodyCount(): number {
-			return this.store.nobodyRows.length
-		},
-
-		/** Projekte, die stillstehen (Zustand grau). */
-		stalledCount(): number {
-			return (this.store.projectStatusRows as ProjectStatusRow[]).filter((row) => row.zustand === 'grau').length
 		},
 
 		/** Gibt es überhaupt ein Projekt mit Inhalt zu zeigen? */

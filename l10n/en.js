@@ -366,6 +366,12 @@ OC.L10N.register(
     "davon überfällig" : "of which overdue",
     "Zurzeit liegt nichts bei dir." : "Nothing on your plate right now.",
     "Wie die Projekte stehen" : "How the projects stand",
-    "Steht still" : "Idle"
+    "Steht still" : "Idle",
+    "Wo hakt es" : "Bottlenecks",
+    "Durchsatz" : "Throughput",
+    "Neu / Woche" : "New / week",
+    "Erledigt / Woche" : "Done / week",
+    "{title}: {zustand}, {neu} neu, {offen} offen, {wartet} wartet, {erledigt} erledigt" : "{title}: {zustand}, {neu} new, {offen} open, {wartet} waiting, {erledigt} done",
+    "_%n weiteres Projekt anzeigen_::_%n weitere Projekte anzeigen_" : ["show %n more project","show %n more projects"]
 },
 "nplurals=2; plural=(n != 1);");
