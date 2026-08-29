@@ -396,6 +396,11 @@ class TicketMapper extends QBMapper {
 	 * in die Abfrage interpoliert wird — kein Nutzerwert. Bei `closed_at` fallen
 	 * offene Vorgaenge durch die `>=`-Bedingung von selbst heraus (Wert NULL).
 	 *
+	 * **Bei `closed_at` zaehlen nur erledigte, keine verworfenen Vorgaenge** —
+	 * dieselbe Unterscheidung wie in {@see countClosedByBoard()}: geschlossen
+	 * und nicht verworfen ist erledigt. Ohne diesen Filter zaehlte „Erledigt /
+	 * Woche" im Dashboard auch Vorgaenge, die nur verworfen wurden.
+	 *
 	 * @param string $userId Der Betrachter.
 	 * @param int[] $boardIds Die aktiven Boards.
 	 * @param string $column `created_at` oder `closed_at`.
@@ -417,6 +422,12 @@ class TicketMapper extends QBMapper {
 			->andWhere($qb->expr()->gte($col, $qb->createNamedParameter($ab)));
 		if ($bis !== null) {
 			$qb->andWhere($qb->expr()->lt($col, $qb->createNamedParameter($bis)));
+		}
+		if ($column === 'closed_at') {
+			$qb->andWhere($qb->expr()->orX(
+				$qb->expr()->isNull(self::T . '.closed_outcome'),
+				$qb->expr()->neq(self::T . '.closed_outcome', $qb->createNamedParameter(Ticket::OUTCOME_DISCARDED)),
+			));
 		}
 
 		$result = $qb->executeQuery();
