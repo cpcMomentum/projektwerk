@@ -1,0 +1,201 @@
+<meta charset="utf-8">
+<title>ProjektWerk Dashboard — fertig</title>
+<style>
+:root{
+ --color-main-background:#fff;--color-main-text:#222;--color-text-maxcontrast:#6b6b6b;
+ --color-border:#ededed;--color-border-dark:#dbdbdb;--color-background-hover:#f5f5f5;--color-background-dark:#ececec;
+ --color-primary-element:#0082c9;--color-error:#c7261a;--color-warning:#c8860a;--color-success:#2d7b41;--color-favorite:#a08b00;
+ --border-radius-large:12px;--border-radius-pill:7px;
+ --slate:#5b7a99;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){
+ --color-main-background:#171717;--color-main-text:#d8d8d8;--color-text-maxcontrast:#8c8c8c;
+ --color-border:#363636;--color-border-dark:#4a4a4a;--color-background-hover:#262626;--color-background-dark:#2a2a2a;
+ --color-primary-element:#329ddd;--color-error:#e9605a;--color-warning:#d1a200;--color-success:#4cb964;--color-favorite:#d1b900;--slate:#7d9bbb;}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--color-main-background);color:var(--color-main-text);font-family:-apple-system,"Segoe UI",Roboto,"Noto Sans",sans-serif;font-size:15px;line-height:1.5}
+.wrap{max-width:900px;margin:0 auto;padding:22px 20px 60px}
+h2{margin:0 0 2px;font-size:22px;font-weight:700;letter-spacing:-.01em}
+.sub{margin:0 0 18px;font-size:13px;color:var(--color-text-maxcontrast)}
+.bh{margin:24px 0 6px;font-size:13px;font-weight:600;color:var(--color-text-maxcontrast);display:flex;gap:8px;align-items:baseline}
+.badge{font-variant-numeric:tabular-nums;background:var(--color-background-dark);border-radius:10px;padding:1px 7px;font-size:12px}
+
+/* Statusfarbe je Segment/Tick */
+.st-neu{--c:var(--color-primary-element)}
+.st-offen{--c:var(--color-text-maxcontrast)}
+.st-wartet{--c:var(--color-warning)}
+.st-erl{--c:var(--color-success)}
+
+/* Kennzahlen-Karte: Wo hakt es ÜBER Durchsatz */
+.kpi{display:flex;flex-wrap:wrap;gap:22px;border:1px solid var(--color-border-dark);border-radius:var(--border-radius-large);padding:14px 18px;max-width:640px}
+.khakt{flex:1 1 320px}
+.kdur{flex:1 1 180px;border-left:2px solid var(--color-border);padding-left:20px}
+@media(max-width:520px){.kdur{flex-basis:100%;border-left:none;padding-left:0;border-top:1px solid var(--color-border);padding-top:12px}}
+.kpi__h{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--color-text-maxcontrast);margin-bottom:10px}
+.mini{display:grid;grid-template-columns:minmax(92px,150px) 1fr 1.75rem;align-items:center;gap:10px 12px}
+.mini .ml{font-size:13px;color:var(--color-text-maxcontrast);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mini .mb{height:8px;border-radius:var(--border-radius-pill);background:var(--color-background-dark);overflow:hidden}
+.mini .mb>i{display:block;height:100%;border-radius:inherit;min-width:8px}
+.mini .mv{text-align:right;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--color-main-text)}
+.through{display:flex;flex-direction:column;gap:16px}
+.ts .tl{font-size:12px;font-weight:600;color:var(--color-text-maxcontrast)}
+.ts .tv{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;display:flex;align-items:baseline;gap:8px;margin-top:2px;color:var(--color-main-text)}
+.dlt{font-size:12px;font-weight:600;color:var(--color-success)}
+.dlt.mut{color:var(--color-text-maxcontrast)}
+
+/* Projekte */
+.plegend{display:flex;flex-wrap:wrap;gap:14px;margin:2px 0 14px;font-size:12.5px}
+.plegend .i{display:inline-flex;align-items:center;gap:6px;color:var(--color-text-maxcontrast)}
+.plegend .d{width:10px;height:10px;border-radius:3px}
+.tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+@media(max-width:560px){.tiles{grid-template-columns:1fr}}
+.tile{border:1px solid var(--color-border-dark);border-radius:var(--border-radius-large);padding:14px 16px;cursor:pointer;transition:border-color .12s,background .12s}
+.tile:hover{background:var(--color-background-hover);border-color:var(--color-primary-element)}
+.tile__head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:12px}
+.tile__name{font-weight:700;font-size:15px;display:flex;align-items:center;gap:5px}
+.tile__org{font-size:12px;color:var(--color-text-maxcontrast);margin-top:1px}
+.dot{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--color-text-maxcontrast);white-space:nowrap}
+.dot::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--color-text-maxcontrast);flex:0 0 auto}
+.dot.r::before{background:var(--color-error)}.dot.w::before{background:var(--color-warning)}.dot.g::before{background:var(--color-success)}.dot.s::before{background:var(--color-text-maxcontrast)}
+.dot.r{color:var(--color-error)}
+/* Zähler-Zeile über dem Balken */
+.pnums{display:flex;gap:2px;margin-bottom:6px;font-size:13px}
+.tnum{display:flex;align-items:center;gap:5px;min-width:0;overflow:visible;white-space:nowrap;font-weight:600;font-variant-numeric:tabular-nums;color:var(--color-main-text)}
+.tnum .tick{width:3px;height:13px;border-radius:2px;background:var(--c);flex:0 0 auto}
+/* Balken: höher, echt proportional */
+.pbar{display:flex;gap:2px;height:14px;border-radius:var(--border-radius-pill);overflow:hidden}
+.pseg{background:var(--c);min-width:3px}
+.foot{display:flex;justify-content:flex-end;margin-top:9px;font-size:12px;color:var(--color-success);font-weight:600}
+.foot.z{color:var(--color-text-maxcontrast)}
+.more{display:inline-block;margin-top:12px;font-size:13px;font-weight:600;color:var(--color-primary-element);cursor:pointer}
+
+/* Maßnahmen-Tabelle */
+.card{border:1px solid var(--color-border-dark);border-radius:var(--border-radius-large);overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:start;font-size:12px;font-weight:600;color:var(--color-text-maxcontrast);padding:9px 13px;border-bottom:1px solid var(--color-border-dark);white-space:nowrap}
+td{padding:11px 13px;border-top:1px solid var(--color-border);vertical-align:middle;white-space:nowrap}
+tr:first-child td{border-top:none}
+tbody tr:hover{background:var(--color-background-hover)}
+.ttt{font-weight:600}.tmut{color:var(--color-text-maxcontrast);font-size:12px}.rr{text-align:right}
+.red{color:var(--color-error);font-weight:600}
+.pill{display:inline-block;padding:1px 8px;border-radius:20px;font-size:12px;font-weight:600;background:var(--color-background-dark)}
+.pill.s{background:#e5f2fb;color:#00567e}
+
+/* Voll-Breite Kennzahlen-Karte (Design-Workflow) */
+.kpi-card{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(15rem,.8fr);gap:24px;width:100%;box-sizing:border-box;padding:18px 22px;background:var(--color-main-background);border:1px solid var(--color-border-dark);border-radius:var(--border-radius-large);color:var(--color-main-text)}
+.kpi-sec{min-width:0}
+.kpi-title{margin:0 0 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--color-text-maxcontrast)}
+.bar-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.bar-row{display:grid;grid-template-columns:minmax(7rem,auto) minmax(0,1fr) 2ch;align-items:center;gap:12px}
+.bar-label{font-size:13px;color:var(--color-main-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-track{max-width:18rem;width:100%;height:8px;background:var(--color-background-dark);border-radius:var(--border-radius-pill);overflow:hidden}
+.bar-fill{display:block;height:100%;width:calc(var(--val)/var(--max)*100%);min-width:4px;border-radius:inherit}
+.bar-fill.is-overdue{background:var(--color-error)}
+.bar-fill.is-waiting{background:var(--color-warning)}
+.bar-fill.is-nobody{background:var(--slate)}
+.bar-fill.is-stalled{background:var(--color-text-maxcontrast)}
+.bar-value{font-size:14px;font-weight:700;text-align:right;color:var(--color-main-text);font-variant-numeric:tabular-nums}
+.kpi-throughput{padding-left:24px;border-left:1px solid var(--color-border);display:flex;flex-direction:column}
+.thr-list{margin:0;flex:1;display:flex;flex-direction:column;justify-content:center;gap:20px}
+.thr-item{display:flex;flex-direction:column;gap:2px}
+.thr-label{font-size:13px;color:var(--color-text-maxcontrast)}
+.thr-value{margin:0;font-size:clamp(26px,3vw,36px);font-weight:700;line-height:1.05;color:var(--color-main-text);display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-variant-numeric:tabular-nums}
+.thr-spark{width:96px;height:30px;flex:0 0 auto;margin-left:auto}
+.thr-delta{font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:4px;font-variant-numeric:tabular-nums}
+.thr-delta.is-up{color:var(--color-success)}
+@media(max-width:640px){.kpi-card{grid-template-columns:1fr;gap:18px}.kpi-throughput{padding-left:0;padding-top:16px;border-left:none;border-top:1px solid var(--color-border)}.thr-list{flex-direction:row;gap:32px}.bar-track{max-width:none}}
+</style>
+<div class="wrap">
+ <h2>Überblick</h2>
+ <p class="sub">Wie es über alle Projekte steht, und was bei mir liegt.</p>
+
+ <!-- KENNZAHLEN: Wo hakt es ÜBER Durchsatz -->
+ <section class="kpi-card" aria-label="Kennzahlen">
+  <div class="kpi-sec kpi-hotspots">
+   <h3 class="kpi-title">Wo hakt es</h3>
+   <ul class="bar-list">
+    <li class="bar-row" style="--val:2;--max:4"><span class="bar-label">Überfällig</span><span class="bar-track"><span class="bar-fill is-overdue"></span></span><span class="bar-value" style="color:var(--color-error)">2</span></li>
+    <li class="bar-row" style="--val:4;--max:4"><span class="bar-label">Wartet lange</span><span class="bar-track"><span class="bar-fill is-waiting"></span></span><span class="bar-value">4</span></li>
+    <li class="bar-row" style="--val:3;--max:4"><span class="bar-label">Liegt bei niemandem</span><span class="bar-track"><span class="bar-fill is-nobody"></span></span><span class="bar-value">3</span></li>
+    <li class="bar-row" style="--val:1;--max:4"><span class="bar-label">Steht still</span><span class="bar-track"><span class="bar-fill is-stalled"></span></span><span class="bar-value">1</span></li>
+   </ul>
+  </div>
+  <div class="kpi-sec kpi-throughput">
+   <h3 class="kpi-title">Durchsatz</h3>
+   <dl class="thr-list">
+    <div class="thr-item"><dt class="thr-label">Neu / Woche</dt><dd class="thr-value">5 <span class="thr-delta is-up">▲ +2</span><svg class="thr-spark" viewBox="0 0 96 30"><path d="M0,24 16,22 32,23 48,15 64,18 80,10 96,6 L96,30 L0,30 Z" fill="var(--color-primary-element)" fill-opacity=".12"/><polyline points="0,24 16,22 32,23 48,15 64,18 80,10 96,6" fill="none" stroke="var(--color-primary-element)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></dd></div>
+    <div class="thr-item"><dt class="thr-label">Erledigt / Woche</dt><dd class="thr-value">7 <span class="thr-delta is-up">▲ +1</span><svg class="thr-spark" viewBox="0 0 96 30"><path d="M0,23 16,19 32,21 48,12 64,15 80,7 96,3 L96,30 L0,30 Z" fill="var(--color-success)" fill-opacity=".12"/><polyline points="0,23 16,19 32,21 48,12 64,15 80,7 96,3" fill="none" stroke="var(--color-success)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></dd></div>
+   </dl>
+  </div>
+ </section>
+
+ <!-- PROJEKTE -->
+ <div class="bh">Projekte <span class="badge">7</span></div>
+ <div class="plegend">
+  <span class="i"><span class="d" style="background:var(--color-primary-element)"></span>Neu</span>
+  <span class="i"><span class="d" style="background:var(--color-text-maxcontrast)"></span>Offen</span>
+  <span class="i"><span class="d" style="background:var(--color-warning)"></span>Wartet</span>
+  <span class="i"><span class="d" style="background:var(--color-success)"></span>Erledigt</span>
+ </div>
+ <div class="tiles">
+
+  <div class="tile">
+   <div class="tile__head"><div><div class="tile__name"><span style="color:var(--color-favorite)">★</span> Relaunch Website</div><div class="tile__org">Müller Elektrotechnik</div></div><span class="dot r">überfällig</span></div>
+   <div class="pnums">
+    <span class="tnum st-neu" style="flex:1"><i class="tick"></i>1</span><span class="tnum st-offen" style="flex:4"><i class="tick"></i>4</span>
+    <span class="tnum st-wartet" style="flex:3"><i class="tick"></i>3</span><span class="tnum st-erl" style="flex:8"><i class="tick"></i>8</span>
+   </div>
+   <div class="pbar" role="img" aria-label="Neu 1, Offen 4, Wartet 3, Erledigt 8">
+    <span class="pseg st-neu" style="flex:1"></span><span class="pseg st-offen" style="flex:4"></span><span class="pseg st-wartet" style="flex:3"></span><span class="pseg st-erl" style="flex:8"></span>
+   </div>
+   <div class="foot">▲ 3 diese Woche</div>
+  </div>
+
+  <div class="tile">
+   <div class="tile__head"><div><div class="tile__name">Neubau Nord</div><div class="tile__org">Bau AG</div></div><span class="dot w">wartet</span></div>
+   <div class="pnums">
+    <span class="tnum st-neu" style="flex:2"><i class="tick"></i>2</span><span class="tnum st-offen" style="flex:3"><i class="tick"></i>3</span>
+    <span class="tnum st-wartet" style="flex:1"><i class="tick"></i>1</span><span class="tnum st-erl" style="flex:5"><i class="tick"></i>5</span>
+   </div>
+   <div class="pbar" role="img" aria-label="Neu 2, Offen 3, Wartet 1, Erledigt 5">
+    <span class="pseg st-neu" style="flex:2"></span><span class="pseg st-offen" style="flex:3"></span><span class="pseg st-wartet" style="flex:1"></span><span class="pseg st-erl" style="flex:5"></span>
+   </div>
+   <div class="foot">▲ 2 diese Woche</div>
+  </div>
+
+  <div class="tile">
+   <div class="tile__head"><div><div class="tile__name">Sanierung Süd</div><div class="tile__org">Huber &amp; Co</div></div><span class="dot s">steht still</span></div>
+   <div class="pnums">
+    <span class="tnum st-offen" style="flex:1"><i class="tick"></i>1</span><span class="tnum st-erl" style="flex:6"><i class="tick"></i>6</span>
+   </div>
+   <div class="pbar" role="img" aria-label="Offen 1, Erledigt 6">
+    <span class="pseg st-offen" style="flex:1"></span><span class="pseg st-erl" style="flex:6"></span>
+   </div>
+   <div class="foot z">± 0 diese Woche</div>
+  </div>
+
+  <div class="tile">
+   <div class="tile__head"><div><div class="tile__name">Planung West</div><div class="tile__org">Schmidt</div></div><span class="dot g">läuft</span></div>
+   <div class="pnums">
+    <span class="tnum st-neu" style="flex:1"><i class="tick"></i>1</span><span class="tnum st-offen" style="flex:2"><i class="tick"></i>2</span><span class="tnum st-erl" style="flex:2"><i class="tick"></i>2</span>
+   </div>
+   <div class="pbar" role="img" aria-label="Neu 1, Offen 2, Erledigt 2">
+    <span class="pseg st-neu" style="flex:1"></span><span class="pseg st-offen" style="flex:2"></span><span class="pseg st-erl" style="flex:2"></span>
+   </div>
+   <div class="foot">▲ 1 diese Woche</div>
+  </div>
+
+ </div>
+ <span class="more">2 weitere Projekte anzeigen ▾</span>
+
+ <!-- MASSNAHMEN -->
+ <div class="bh">Meine Maßnahmen <span class="badge">3</span></div>
+ <div class="card"><table>
+  <thead><tr><th>Vorgang</th><th>Projekt</th><th>Art</th><th class="rr">Fällig</th></tr></thead>
+  <tbody>
+   <tr><td class="ttt">Rückruf klären</td><td class="tmut">Relaunch Website</td><td><span class="pill">Verantwortung</span></td><td class="rr red">überfällig 03.08.</td></tr>
+   <tr><td class="ttt">Angebot kalkulieren</td><td class="tmut">Neubau Nord</td><td><span class="pill s">Schritt</span></td><td class="rr tmut">10.09.</td></tr>
+   <tr><td class="ttt">Freigabe einholen</td><td class="tmut">Relaunch Website</td><td><span class="pill">Verantwortung</span></td><td class="rr tmut">—</td></tr>
+  </tbody>
+ </table></div>
+</div>

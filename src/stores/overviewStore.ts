@@ -15,7 +15,7 @@
  * im Server wäre dieselbe Regel an zwei Orten.
  */
 
-import type { OverviewData, OverviewTicketRow, ProjectRow, WaitingRow } from '@/types/overview'
+import type { OverviewData, OverviewTicketRow, ProjectRow, ProjectStatusRow, WaitingRow } from '@/types/overview'
 import type { TaskBoard } from '@/types/task'
 import type { Ticket } from '@/types/ticket'
 
@@ -32,6 +32,12 @@ interface State {
 	me: string
 	/** Vorgänge mit offenem Schritt — für „liegt bei niemandem" (#119). */
 	withOpenSteps: Set<number>
+	/** Board => Zähler der erledigten/verworfenen Vorgänge (#226). */
+	closedCounts: OverviewData['closedCounts']
+	/** Board => Kennung der ersten Spalte, für den Status „Neu" (#226). */
+	firstColumn: OverviewData['firstColumn']
+	/** Durchsatz: neu/erledigt der letzten Woche + Delta (#226). */
+	durchsatz: OverviewData['durchsatz']
 	loading: boolean
 	/**
 	 * Der heutige Tag, beim Laden festgehalten.
@@ -89,6 +95,13 @@ function tageZwischen(von: string, bis: string): number {
 	return Number.isFinite(abstand) ? Math.max(0, Math.round(abstand / 86_400_000)) : 0
 }
 
+/**
+ * Ab wann ein Projekt als „steht still" gilt (#116/#226): so viele Tage ohne
+ * Bewegung, **und nur wenn nichts auf den Kunden wartet**. Grob und ohne Frist,
+ * wie im Überblick — ein Hinweis, keine Behauptung „zu spät".
+ */
+const STILLSTAND_TAGE = 14
+
 export const useOverviewStore = defineStore('overview', {
 	state: (): State => ({
 		tickets: [],
@@ -97,6 +110,9 @@ export const useOverviewStore = defineStore('overview', {
 		names: {},
 		me: '',
 		withOpenSteps: new Set(),
+		closedCounts: {},
+		firstColumn: {},
+		durchsatz: { neu: 0, neuDelta: 0, erledigt: 0, erledigtDelta: 0 },
 		loading: false,
 		today: heute(),
 		error: null,
@@ -199,6 +215,102 @@ export const useOverviewStore = defineStore('overview', {
 		},
 
 		/**
+		 * **Die Projekt-Status-Tabelle** (#226) — je Projekt die kanonischen
+		 * Status und ein abgeleitetes Zustandssignal.
+		 *
+		 * **Über alle aktiven Projekte**, nicht nur die mit offenen Vorgängen: Ein
+		 * Projekt, dessen Arbeit erledigt ist, gehört mit seinem Fortschritt in die
+		 * Übersicht, nicht aus ihr heraus. Neu/Offen/Wartet entstehen aus der
+		 * offenen Menge (und dem Wartezustand, wie im Überblick), Erledigt kommt
+		 * aus `closedCounts` vom Server.
+		 *
+		 * **Das Zustandssignal ist abgeleitet, nicht gepflegt** (Kernlehre der
+		 * Recherche): rot bei echter Frist (ein offener Vorgang überfällig), gelb
+		 * wenn der Ball beim Kunden liegt, grau bei Stillstand (nichts bewegt sich
+		 * und niemand wartet), sonst grün. Sortiert nach Zustand — die
+		 * Problemfälle oben.
+		 *
+		 * @param state Der Speicher.
+		 */
+		projectStatusRows: (state): ProjectStatusRow[] => {
+			interface Roh { neu: number, offen: number, wartet: number, overdue: boolean, movedDays: number }
+			const leer = (): Roh => ({ neu: 0, offen: 0, wartet: 0, overdue: false, movedDays: Number.POSITIVE_INFINITY })
+			const proBoard = new Map<number, Roh>()
+
+			for (const ticket of state.tickets) {
+				const boardId = ticket.boardId
+				const z = proBoard.get(boardId) ?? leer()
+
+				// Wartet vor Neu: ein wartender Vorgang in der Eingangsspalte zählt
+				// als wartend, nicht als neu — der Ball liegt schon beim Kunden.
+				if (state.waiting[ticket.id] !== undefined) {
+					z.wartet += 1
+				} else if (state.firstColumn[boardId] !== undefined && ticket.columnId === state.firstColumn[boardId]) {
+					z.neu += 1
+				} else {
+					z.offen += 1
+				}
+
+				// Überfällig: eine echte Frist ist verstrichen. Verglichen auf den
+				// festgehaltenen Tag, damit es über Mitternacht nicht springt.
+				if (ticket.dueDate !== null && ticket.dueDate < state.today) {
+					z.overdue = true
+				}
+
+				// Jüngste Bewegung = kleinste Zahl an Tagen (wie in `projectRows`).
+				if (ticket.updatedAt) {
+					const tage = tageZwischen(ticket.updatedAt, state.today)
+					if (tage < z.movedDays) {
+						z.movedDays = tage
+					}
+				}
+
+				proBoard.set(boardId, z)
+			}
+
+			const rang = { rot: 0, gelb: 1, grau: 2, gruen: 3 }
+
+			return Object.keys(state.boards)
+				.map(Number)
+				.map((boardId): ProjectStatusRow => {
+					const z = proBoard.get(boardId) ?? leer()
+					const board = state.boards[boardId] ?? null
+					const closed = state.closedCounts[boardId] ?? { done: 0, discarded: 0 }
+					const offenGesamt = z.neu + z.offen + z.wartet
+					const nenner = closed.done + offenGesamt
+					const stillstand = z.wartet === 0
+						&& Number.isFinite(z.movedDays)
+						&& z.movedDays >= STILLSTAND_TAGE
+
+					let zustand: ProjectStatusRow['zustand']
+					if (z.overdue) {
+						zustand = 'rot'
+					} else if (z.wartet > 0) {
+						zustand = 'gelb'
+					} else if (stillstand) {
+						zustand = 'grau'
+					} else {
+						zustand = 'gruen'
+					}
+
+					return {
+						boardId,
+						title: board?.title ?? '',
+						org: [board?.orgInternal, board?.orgExternal].filter(Boolean).join(' · '),
+						neu: z.neu,
+						offen: z.offen,
+						wartet: z.wartet,
+						erledigt: closed.done,
+						verworfen: closed.discarded,
+						offenGesamt,
+						fortschritt: nenner > 0 ? closed.done / nenner : 0,
+						zustand,
+					}
+				})
+				.sort((a, b) => rang[a.zustand] - rang[b.zustand] || b.offenGesamt - a.offenGesamt || a.boardId - b.boardId)
+		},
+
+		/**
 		 * **Meine Vorgänge** (#120) — die, für die ich verantwortlich bin und die
 		 * gerade **nicht** auf die Kundenseite warten.
 		 *
@@ -290,6 +402,9 @@ export const useOverviewStore = defineStore('overview', {
 			this.names = data.names
 			this.me = data.me
 			this.withOpenSteps = new Set(data.withOpenSteps)
+			this.closedCounts = data.closedCounts
+			this.firstColumn = data.firstColumn
+			this.durchsatz = data.durchsatz
 		},
 	},
 })

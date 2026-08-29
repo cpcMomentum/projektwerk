@@ -251,6 +251,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'TicketMapper::countVisibleInBoard' => 'testCountersNeverCountWhatIsHidden',
 		'TicketMapper::findLastPositionInColumn' => 'testLastPositionIsTheSameForEveryViewer',
 		'TicketMapper::countClosedByBoard' => 'testOverviewEndpointMatchesTheVisibleSetAcrossBoards',
+		'TicketMapper::countInWindow' => 'testOverviewEndpointMatchesTheVisibleSetAcrossBoards',
 		// zusaetzlich gefahren von testBothCompanyNamesReachEveryViewer
 		'BoardMapper::findForViewer' => 'testBoardMetadataPathsTrustTheContextAlone',
 		'BoardMapper::findAllForUser' => 'testBoardListFollowsMembership',
@@ -1114,6 +1115,11 @@ class LeakMatrixTest extends IntegrationTestCase {
 		$this->assertSame([], $fremd->getData()['names']);
 		$this->assertSame([], $fremd->getData()['closedCounts']);
 		$this->assertSame([], $fremd->getData()['firstColumn']);
+		// Auch der Durchsatz verrät nichts: kein Board, kein Fenster — überall 0.
+		$this->assertSame(
+			['neu' => 0, 'neuDelta' => 0, 'erledigt' => 0, 'erledigtDelta' => 0],
+			$fremd->getData()['durchsatz'],
+		);
 	}
 
 	/**

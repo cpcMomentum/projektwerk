@@ -152,7 +152,41 @@ class OverviewController extends Controller {
 			// als „Neu" (noch in der Eingangsspalte, nicht aufgegriffen). Nur für
 			// die aktiven Boards, die die Seite ohnehin kennt.
 			'firstColumn' => $this->columns->findFirstColumnByBoard(array_keys($aktiv)),
+			// **Durchsatz** (#226) — neu und erledigt in den letzten sieben Tagen
+			// mit Veränderung zur Vorwoche. Die Verlaufs-Kurven kommen später mit
+			// einer Tages-Zeitreihe; hier stehen nur die Zahlen.
+			'durchsatz' => $this->durchsatz(array_keys($aktiv)),
 		]);
+	}
+
+	/**
+	 * Der Durchsatz je Zeitfenster (#226): neu und erledigt in den letzten
+	 * sieben Tagen, mit der Veränderung zur Vorwoche.
+	 *
+	 * Rollende Sieben-Tage-Fenster, in **UTC** gerechnet — so speichert die DB
+	 * die Zeitstempel, und der Vergleich kippt nicht mit der lokalen Zeitzone.
+	 * Jeder Zähler ist sichtbarkeits-sicher (siehe {@see TicketMapper::countInWindow()}).
+	 *
+	 * @param int[] $boardIds Die aktiven Boards.
+	 * @return array{neu: int, neuDelta: int, erledigt: int, erledigtDelta: int}
+	 */
+	private function durchsatz(array $boardIds): array {
+		$utc = new \DateTimeZone('UTC');
+		$w1 = (new \DateTime('now', $utc))->modify('-7 days')->format('Y-m-d H:i:s');
+		$w2 = (new \DateTime('now', $utc))->modify('-14 days')->format('Y-m-d H:i:s');
+		$uid = (string)$this->userId;
+
+		$neuThis = $this->tickets->countInWindow($uid, $boardIds, 'created_at', $w1, null);
+		$neuLast = $this->tickets->countInWindow($uid, $boardIds, 'created_at', $w2, $w1);
+		$erlThis = $this->tickets->countInWindow($uid, $boardIds, 'closed_at', $w1, null);
+		$erlLast = $this->tickets->countInWindow($uid, $boardIds, 'closed_at', $w2, $w1);
+
+		return [
+			'neu' => $neuThis,
+			'neuDelta' => $neuThis - $neuLast,
+			'erledigt' => $erlThis,
+			'erledigtDelta' => $erlThis - $erlLast,
+		];
 	}
 
 	/**

@@ -2050,101 +2050,510 @@
  * naechste Aenderung an der einen Seite braeche die andere.
  */
 /*
- * Die Dringlichkeits-Ampel (#224) — der KPI-Look von WorkTime, bewusst mit
- * **Rahmen statt Schatten**: So macht es WorkTimes `OvertimeSummary` real, und
- * ein Schatten auf weißem NC-Grund wirkt schnell fremd. `border-radius-large`
- * und `tabular-nums` sind dasselbe Vokabular wie dort.
+ * Die Projekt-Status-Tabelle (#226) — der WorkTime-Tabellen-Look aus
+ * `YearOverviewTable`: eine Rahmen-Card, `border-collapse`, Zahlen rechts/mittig
+ * mit `tabular-nums`, ganze Zeile klickbar. Auf schmalen Schirmen scrollt die
+ * Tabelle in ihrer Card, statt die Seite breit zu machen.
  */
-.app-projektwerk .pw-ampel {
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-	gap: 12px;
+.app-projektwerk .pw-ptable-card {
 	margin-bottom: 28px;
-}
-
-.app-projektwerk .pw-kpi {
-	display: flex;
-	flex-direction: column;
-	gap: 0;
-	min-height: var(--default-clickable-area, 34px);
-	padding: 14px 16px;
-	background: var(--color-main-background);
 	border: 1px solid var(--color-border-dark, var(--color-border));
 	border-radius: var(--border-radius-large, 12px);
+	overflow-x: auto;
+}
+
+.app-projektwerk .pw-ptable {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 14px;
+}
+
+.app-projektwerk .pw-ptable thead th {
+	text-align: start;
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--color-text-maxcontrast);
+	padding: 10px 14px;
+	white-space: nowrap;
+	border-bottom: 1px solid var(--color-border-dark, var(--color-border));
+}
+
+.app-projektwerk .pw-ptable tbody td {
+	padding: 12px 14px;
+	border-top: 1px solid var(--color-border);
+	vertical-align: middle;
+	white-space: nowrap;
+}
+
+.app-projektwerk .pw-ptable tbody tr:first-child td {
+	border-top: none;
+}
+
+.app-projektwerk .pw-ptable__row {
+	cursor: pointer;
+}
+
+.app-projektwerk .pw-ptable__row:hover {
+	background: var(--color-background-hover);
+}
+
+.app-projektwerk .pw-ptable__row:focus-visible {
+	outline: 2px solid var(--color-primary-element);
+	outline-offset: -2px;
+}
+
+.app-projektwerk .pw-ptable__row:hover .pw-ptable__title {
+	text-decoration: underline;
+}
+
+.app-projektwerk .pw-ptable__title {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	font-weight: 600;
+}
+
+/*
+ * Zustandspunkt („wo liegt der Ball") — Farbe UND Wort, nie Farbe allein (§9).
+ * Rot nur bei echter Frist; gelb wartend; grau still; grün läuft.
+ */
+.app-projektwerk .pw-dot {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 12px;
+	white-space: nowrap;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-dot::before {
+	content: "";
+	width: 9px;
+	height: 9px;
+	border-radius: 50%;
+	background: var(--color-text-maxcontrast);
+	flex: 0 0 auto;
+}
+
+.app-projektwerk .pw-dot--rot::before { background: var(--color-error-text); }
+.app-projektwerk .pw-dot--gelb::before { background: var(--color-warning-text); }
+.app-projektwerk .pw-dot--grau::before { background: var(--color-text-maxcontrast); }
+.app-projektwerk .pw-dot--gruen::before { background: var(--color-success-text); }
+
+/*
+ * Die Projekt-Kacheln (#226) — lösen die Status-Tabelle ab. Je Projekt eine
+ * Kachel mit den Status als Zahlen über einem echt proportionalen Statusbalken.
+ * Die Statusfarbe steht als `--c` an der Segmentklasse und gilt für Strich UND
+ * Balken; die Legende steht einmal oben.
+ */
+.app-projektwerk .pw-st--neu { --c: var(--color-primary-element); }
+.app-projektwerk .pw-st--offen { --c: var(--color-text-maxcontrast); }
+.app-projektwerk .pw-st--wartet { --c: var(--color-warning-text); }
+.app-projektwerk .pw-st--erl { --c: var(--color-success-text); }
+
+.app-projektwerk .pw-tiles__legend {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px 14px;
+	margin: 2px 0 12px;
+	font-size: 12.5px;
+}
+
+.app-projektwerk .pw-tiles__leg {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-tiles__legdot {
+	width: 10px;
+	height: 10px;
+	border-radius: 3px;
+	background: var(--c);
+}
+
+.app-projektwerk .pw-tiles {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 12px;
+}
+
+@media (max-width: 560px) {
+	.app-projektwerk .pw-tiles {
+		grid-template-columns: 1fr;
+	}
+}
+
+.app-projektwerk .pw-tile {
+	display: block;
+	width: 100%;
+	padding: 14px 16px;
+	border: 1px solid var(--color-border-dark, var(--color-border));
+	border-radius: var(--border-radius-large, 12px);
+	background: var(--color-main-background);
 	text-align: start;
 	cursor: pointer;
 	transition: background 0.12s ease, border-color 0.12s ease;
 }
 
-.app-projektwerk .pw-kpi:hover {
+.app-projektwerk .pw-tile:hover {
 	background: var(--color-background-hover);
 	border-color: var(--color-primary-element);
 }
 
-.app-projektwerk .pw-kpi:focus-visible {
+.app-projektwerk .pw-tile:focus-visible {
 	outline: 2px solid var(--color-primary-element);
 	outline-offset: 2px;
 }
 
-.app-projektwerk .pw-kpi__lab {
+.app-projektwerk .pw-tile:hover .pw-tile__title {
+	text-decoration: underline;
+}
+
+.app-projektwerk .pw-tile__head {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	gap: 8px;
+	margin-bottom: 12px;
+}
+
+.app-projektwerk .pw-tile__ident {
+	min-width: 0;
+}
+
+.app-projektwerk .pw-tile__pin {
+	color: var(--color-favorite, var(--color-warning-text));
+	vertical-align: -2px;
+	margin-inline-end: 3px;
+}
+
+.app-projektwerk .pw-tile__title {
+	font-weight: 700;
+	font-size: 15px;
+}
+
+.app-projektwerk .pw-tile__org {
+	display: block;
+	font-size: 12px;
+	color: var(--color-text-maxcontrast);
+	margin-top: 1px;
+}
+
+/* Zähler-Zeile: gleiche Proportion + Lücken wie der Balken, Zahl am Segmentanfang. */
+.app-projektwerk .pw-tile__nums {
+	display: flex;
+	gap: 2px;
+	margin-bottom: 6px;
+}
+
+.app-projektwerk .pw-tile__num {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	min-width: 0;
+	overflow: visible;
+	white-space: nowrap;
 	font-size: 13px;
 	font-weight: 600;
 	color: var(--color-main-text);
-}
-
-.app-projektwerk .pw-kpi__num {
-	font-size: 26px;
-	font-weight: 700;
-	line-height: 1;
-	margin-top: 8px;
 	font-variant-numeric: tabular-nums;
 }
 
+.app-projektwerk .pw-tile__tick {
+	width: 3px;
+	height: 13px;
+	border-radius: 2px;
+	background: var(--c);
+	flex: 0 0 auto;
+}
+
+/* Der echt proportionale Statusbalken. */
+.app-projektwerk .pw-tile__bar {
+	display: flex;
+	gap: 2px;
+	height: 14px;
+	border-radius: var(--border-radius-pill, 7px);
+	overflow: hidden;
+}
+
+.app-projektwerk .pw-tile__seg {
+	background: var(--c);
+	min-width: 3px;
+}
+
+.app-projektwerk .pw-tiles__more {
+	display: inline-block;
+	margin-top: 12px;
+	padding: 0;
+	border: none;
+	background: none;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--color-primary-element);
+	cursor: pointer;
+}
+
+.app-projektwerk .pw-tiles__more:hover {
+	text-decoration: underline;
+}
+
 /*
- * Rot nur bei echter Frist (überfällig), gelb für „lange/still" — dieselbe
- * Regel wie an der Marke der Zeile. `--color-warning-text`/`--color-error-text`
- * sind die Textfarben; die gleichnamigen ohne `-text` sind Flächenfarben.
+ * Die Kennzahlen-Karte (#226) — volle Breite, links „Wo hakt es" (Mini-Balken),
+ * rechts der Durchsatz mit Trenner. Mini-Balken gedeckelt, damit sie bei voller
+ * Breite nicht auswalzen; Durchsatz mit großen Zahlen verankert.
  */
-.app-projektwerk .pw-kpi--rot .pw-kpi__num {
+.app-projektwerk .pw-kpicard {
+	display: grid;
+	grid-template-columns: minmax(0, 1.6fr) minmax(15rem, 0.8fr);
+	align-items: start;
+	gap: 22px;
+	width: 100%;
+	margin-bottom: 24px;
+	padding: 14px 18px;
+	border: 1px solid var(--color-border-dark, var(--color-border));
+	border-radius: var(--border-radius-large, 12px);
+	background: var(--color-main-background);
+}
+
+.app-projektwerk .pw-kpicard__sec {
+	min-width: 0;
+}
+
+.app-projektwerk .pw-kpicard__h {
+	margin: 0 0 12px;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.05em;
+	text-transform: none;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-kpicard__dur {
+	padding-inline-start: 22px;
+	border-inline-start: 1px solid var(--color-border);
+	display: flex;
+	flex-direction: column;
+}
+
+@media (max-width: 560px) {
+	.app-projektwerk .pw-kpicard {
+		grid-template-columns: 1fr;
+		gap: 16px;
+	}
+
+	.app-projektwerk .pw-kpicard__dur {
+		padding-inline-start: 0;
+		padding-top: 14px;
+		border-inline-start: none;
+		border-top: 1px solid var(--color-border);
+	}
+}
+
+/* Mini-Balken */
+.app-projektwerk .pw-mini {
+	display: grid;
+	grid-template-columns: minmax(92px, 150px) 1fr 2ch;
+	align-items: center;
+	gap: 8px 12px;
+}
+
+.app-projektwerk .pw-mini__l {
+	font-size: 13px;
+	color: var(--color-main-text);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.app-projektwerk .pw-mini__track {
+	max-width: 18rem;
+	width: 100%;
+	height: 8px;
+	background: var(--color-background-dark);
+	border-radius: var(--border-radius-pill, 8px);
+	overflow: hidden;
+}
+
+.app-projektwerk .pw-mini__fill {
+	display: block;
+	height: 100%;
+	min-width: 8px;
+	border-radius: inherit;
+}
+
+.app-projektwerk .pw-mini__fill.pw-mini--rot { background: var(--color-error-text); }
+.app-projektwerk .pw-mini__fill.pw-mini--gelb { background: var(--color-warning-text); }
+.app-projektwerk .pw-mini__fill.pw-mini--slate { background: #5b7a99; }
+.app-projektwerk .pw-mini__fill.pw-mini--grau { background: var(--color-text-maxcontrast); }
+
+.app-projektwerk .pw-mini__v {
+	text-align: end;
+	font-size: 13px;
+	font-weight: 700;
+	color: var(--color-main-text);
+	font-variant-numeric: tabular-nums;
+}
+
+.app-projektwerk .pw-mini__v--rot {
 	color: var(--color-error-text);
 }
 
-.app-projektwerk .pw-kpi--warn .pw-kpi__num {
-	color: var(--color-warning-text, var(--color-main-text));
+/* Durchsatz */
+.app-projektwerk .pw-dur {
+	margin: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
 }
 
-.app-projektwerk .pw-kpi--neutral .pw-kpi__num {
+.app-projektwerk .pw-dur__item {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.app-projektwerk .pw-dur__l {
+	display: block;
+	font-size: 13px;
+	line-height: 1.3;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-dur__v {
+	margin: 0;
+	font-size: clamp(24px, 2.4vw, 30px);
+	font-weight: 700;
+	line-height: 1.05;
+	color: var(--color-main-text);
+	display: flex;
+	align-items: baseline;
+	gap: 10px;
+	flex-wrap: nowrap;
+	padding: 0;
+	line-height: 1.1;
+	font-variant-numeric: tabular-nums;
+}
+
+.app-projektwerk .pw-dur__delta {
+	font-size: 13px;
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+}
+
+.app-projektwerk .pw-dur__delta--up { color: var(--color-success-text); }
+.app-projektwerk .pw-dur__delta--down { color: var(--color-error-text); }
+.app-projektwerk .pw-dur__delta--flat { color: var(--color-text-maxcontrast); }
+
+/*
+ * Die Maßnahmen-Tabelle (#226) — dieselbe Rahmen-Card/`pw-ptable`-Basis, mit
+ * einer „Art"-Pille (Schritt vs. Verantwortung) und der Fälligkeit rechts.
+ */
+.app-projektwerk .pw-mtable__proj {
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-mtable__due {
+	text-align: end;
+	font-variant-numeric: tabular-nums;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-mtable__overdue {
+	color: var(--color-error-text);
+	font-weight: 600;
+}
+
+/* Die „Art"-Pille — Schritt hebt sich als das konkrete To-do zart blau ab. */
+.app-projektwerk .pw-art {
+	display: inline-block;
+	padding: 1px 8px;
+	border-radius: 20px;
+	font-size: 12px;
+	font-weight: 600;
+	white-space: nowrap;
+	background: var(--color-background-dark);
 	color: var(--color-main-text);
 }
 
-.app-projektwerk .pw-kpi__sub {
+.app-projektwerk .pw-art--schritt {
+	background: var(--color-primary-element-light, var(--color-background-dark));
+	/*
+	 * Das Blau selbst als Text, nicht `--color-primary-element-text-dark`: Letztes
+	 * ist die Textfarbe auf **dunklem** Primär (praktisch weiß) und wäre auf dem
+	 * hellen Pillen-Grund unsichtbar.
+	 */
+	color: var(--color-primary-element);
+}
+
+/* Der „Alle ansehen"-Link unter der kompakten Maßnahmen-Tabelle. */
+.app-projektwerk .pw-ov__more {
+	display: inline-block;
+	margin-top: 10px;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--color-primary-element);
+	text-decoration: none;
+}
+
+.app-projektwerk .pw-ov__more:hover {
+	text-decoration: underline;
+}
+
+/*
+ * Die zwei Hälften des Dashboards (#226, V3) und die kleinen Kennzahlen über
+ * jeder Hälfte — ruhige Stat-Kacheln, kein Ampel-Streifen mehr.
+ */
+.app-projektwerk .pw-half {
+	margin-bottom: 32px;
+}
+
+.app-projektwerk .pw-stats {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	margin: 0 0 12px;
+}
+
+.app-projektwerk .pw-stat {
+	min-width: 120px;
+	padding: 8px 14px;
+	border: 1px solid var(--color-border-dark, var(--color-border));
+	border-radius: var(--border-radius-large, 12px);
+}
+
+.app-projektwerk .pw-stat__lab {
+	display: block;
 	font-size: 12px;
+	font-weight: 600;
 	color: var(--color-text-maxcontrast);
-	margin-top: 6px;
+}
+
+.app-projektwerk .pw-stat__num {
+	display: block;
+	margin-top: 2px;
+	font-size: 20px;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+}
+
+.app-projektwerk .pw-stat__num--rot {
+	color: var(--color-error-text);
+}
+
+.app-projektwerk .pw-stat__num--warn {
+	color: var(--color-warning-text);
+}
+
+.app-projektwerk .pw-empty-line {
+	padding: 4px 2px;
+	font-size: 14px;
+	color: var(--color-text-maxcontrast);
 }
 
 .app-projektwerk .pw-ov__block {
 	margin-bottom: 24px;
-}
-
-/*
- * Das kurze Aufleuchten nach einem Ampel-Klick (#224) — eine Bestätigung „hier
- * bist du gelandet", die von selbst verklingt. Wer weniger Bewegung eingestellt
- * hat, bekommt sie nicht.
- */
-.app-projektwerk .pw-ov__block--flash {
-	animation: pw-flash 1.4s ease-out;
-}
-
-@keyframes pw-flash {
-	0% { background: var(--color-primary-element-light, var(--color-background-hover)); }
-	100% { background: transparent; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-	.app-projektwerk .pw-ov__block--flash {
-		animation: none;
-	}
 }
 
 /*
