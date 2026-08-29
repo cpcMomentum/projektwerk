@@ -36,6 +36,8 @@ interface State {
 	closedCounts: OverviewData['closedCounts']
 	/** Board => Kennung der ersten Spalte, für den Status „Neu" (#226). */
 	firstColumn: OverviewData['firstColumn']
+	/** Durchsatz: neu/erledigt der letzten Woche + Delta (#226). */
+	durchsatz: OverviewData['durchsatz']
 	loading: boolean
 	/**
 	 * Der heutige Tag, beim Laden festgehalten.
@@ -110,6 +112,7 @@ export const useOverviewStore = defineStore('overview', {
 		withOpenSteps: new Set(),
 		closedCounts: {},
 		firstColumn: {},
+		durchsatz: { neu: 0, neuDelta: 0, erledigt: 0, erledigtDelta: 0 },
 		loading: false,
 		today: heute(),
 		error: null,
@@ -401,6 +404,7 @@ export const useOverviewStore = defineStore('overview', {
 			this.withOpenSteps = new Set(data.withOpenSteps)
 			this.closedCounts = data.closedCounts
 			this.firstColumn = data.firstColumn
+			this.durchsatz = data.durchsatz
 		},
 	},
 })

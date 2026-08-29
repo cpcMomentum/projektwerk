@@ -54,6 +54,7 @@ function daten(teile: Partial<OverviewData> = {}): OverviewData {
 		withOpenSteps: [],
 		closedCounts: {},
 		firstColumn: {},
+		durchsatz: { neu: 0, neuDelta: 0, erledigt: 0, erledigtDelta: 0 },
 		...teile,
 	}
 }

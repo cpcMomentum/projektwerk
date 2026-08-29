@@ -59,6 +59,16 @@ export interface OverviewData {
 	 * ersten Spalte seines Boards ist, liegt noch in der Eingangsspalte.
 	 */
 	firstColumn: Record<number, number>
+	/**
+	 * Der Durchsatz (#226): neu und erledigt in den letzten sieben Tagen, mit
+	 * der Veränderung zur Vorwoche (`*Delta`). Die Verlaufs-Kurven kommen später.
+	 */
+	durchsatz: {
+		neu: number
+		neuDelta: number
+		erledigt: number
+		erledigtDelta: number
+	}
 }
 
 /**

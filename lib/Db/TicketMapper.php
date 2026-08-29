@@ -385,6 +385,48 @@ class TicketMapper extends QBMapper {
 	}
 
 	/**
+	 * Zaehlt Vorgaenge, deren Zeitspalte in `[ab, bis)` liegt — fuer den
+	 * **Durchsatz** im Dashboard (#226): neu bzw. erledigt je Zeitfenster.
+	 *
+	 * Sichtbarkeits-gefiltert ueber {@see scopedQuery()} und auf die aktiven
+	 * Boards beschraenkt, exakt wie {@see countClosedByBoard()}: auch dieser
+	 * Zaehler zaehlt nur, was der Betrachter sehen darf (§5.8).
+	 *
+	 * `$column` ist **whitelisted** (nur `created_at`/`closed_at`), weil der Name
+	 * in die Abfrage interpoliert wird — kein Nutzerwert. Bei `closed_at` fallen
+	 * offene Vorgaenge durch die `>=`-Bedingung von selbst heraus (Wert NULL).
+	 *
+	 * @param string $userId Der Betrachter.
+	 * @param int[] $boardIds Die aktiven Boards.
+	 * @param string $column `created_at` oder `closed_at`.
+	 * @param string $ab Untergrenze (inklusive), Format `Y-m-d H:i:s` (UTC).
+	 * @param ?string $bis Obergrenze (exklusiv) oder null fuer offen.
+	 */
+	public function countInWindow(string $userId, array $boardIds, string $column, string $ab, ?string $bis): int {
+		if ($boardIds === [] || !in_array($column, ['created_at', 'closed_at'], true)) {
+			return 0;
+		}
+
+		$qb = $this->scopedQuery($userId, null);
+		$col = self::T . '.' . $column;
+		$qb->select($qb->func()->count(self::T . '.id'))
+			->andWhere($qb->expr()->in(
+				self::T . '.board_id',
+				$qb->createNamedParameter($boardIds, IQueryBuilder::PARAM_INT_ARRAY),
+			))
+			->andWhere($qb->expr()->gte($col, $qb->createNamedParameter($ab)));
+		if ($bis !== null) {
+			$qb->andWhere($qb->expr()->lt($col, $qb->createNamedParameter($bis)));
+		}
+
+		$result = $qb->executeQuery();
+		$count = (int)$result->fetchOne();
+		$result->closeCursor();
+
+		return $count;
+	}
+
+	/**
 	 * Die groesste Position einer Spalte — **ungefiltert**.
 	 *
 	 * Bewusst an `TicketScope` vorbei, und das ist die einzige Lesemethode

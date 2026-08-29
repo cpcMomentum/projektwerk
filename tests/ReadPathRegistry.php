@@ -74,6 +74,10 @@ final class ReadPathRegistry {
 		// auf die uebergebenen (aktiven) Boards eingeschraenkt. Die Erwartung
 		// dazu ist `testOverviewEndpointMatchesTheVisibleSetAcrossBoards`.
 		'TicketMapper::countClosedByBoard',
+		// Durchsatz-Zaehler je Zeitfenster fuers Dashboard (#226) — dieselbe
+		// `scopedQuery`, auf die aktiven Boards beschraenkt; zaehlt nur, was der
+		// Betrachter sehen darf. Erwartung: derselbe Overview-Test.
+		'TicketMapper::countInWindow',
 
 		// Board, Mitglieder, Spalten. Nicht ticketgefiltert, aber
 		// betrachterabhaengig — und damit ebenso eine Frage, die die Matrix
