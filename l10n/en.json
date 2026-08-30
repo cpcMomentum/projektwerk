@@ -404,6 +404,15 @@
 		"_%n weiteres Projekt anzeigen_::_%n weitere Projekte anzeigen_": [
 			"show %n more project",
 			"show %n more projects"
+		],
+		"Verlauf der letzten 30 Tage, zuletzt {n} pro Tag": "History of the last 30 days, most recently {n} per day",
+		"_%n neuer Vorgang diese Woche_::_%n neue Vorgänge diese Woche_": [
+			"%n new item this week",
+			"%n new items this week"
+		],
+		"_%n diese Woche_::_%n diese Woche_": [
+			"%n this week",
+			"%n this week"
 		]
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"

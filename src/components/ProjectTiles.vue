@@ -26,7 +26,15 @@
 						<span class="pw-tile__title">{{ row.title }}</span>
 						<span v-if="row.org" class="pw-tile__org">{{ row.org }}</span>
 					</span>
-					<span class="pw-dot" :class="'pw-dot--' + row.zustand">{{ zustandLabel(row.zustand) }}</span>
+					<span class="pw-tile__headcol">
+						<span class="pw-dot" :class="'pw-dot--' + row.zustand">{{ zustandLabel(row.zustand) }}</span>
+						<!-- „N diese Woche" (#232): der Zuwachs dieses Projekts,
+						     nur wenn diese Woche etwas dazukam. Steht bei den
+						     Bewegungssignalen rechts, unter dem Zustand. -->
+						<span v-if="row.neuDieseWoche > 0" class="pw-tile__week" aria-hidden="true">
+							<span class="pw-tile__weektri">▲</span>{{ weekText(row.neuDieseWoche) }}
+						</span>
+					</span>
 				</span>
 
 				<!-- Zahlen am Anfang ihres Segments: gleiche Proportion wie der
@@ -199,7 +207,7 @@ export default defineComponent({
 		 * @param row Die Zeile.
 		 */
 		tileAria(row: ProjectStatusRow): string {
-			return t('projektwerk', '{title}: {zustand}, {neu} neu, {offen} offen, {wartet} wartet, {erledigt} erledigt', {
+			const kern = t('projektwerk', '{title}: {zustand}, {neu} neu, {offen} offen, {wartet} wartet, {erledigt} erledigt', {
 				title: row.title,
 				zustand: this.zustandLabel(row.zustand),
 				neu: String(row.neu),
@@ -207,6 +215,21 @@ export default defineComponent({
 				wartet: String(row.wartet),
 				erledigt: String(row.erledigt),
 			})
+			// Das „diese Woche" ist im Bild ein grüner Pfeil; für Hilfstechnik
+			// wird daraus ein Satz, angehängt nur wenn es etwas zu sagen gibt.
+			if (row.neuDieseWoche > 0) {
+				return kern + '. ' + n('projektwerk', '%n neuer Vorgang diese Woche', '%n neue Vorgänge diese Woche', row.neuDieseWoche)
+			}
+			return kern
+		},
+
+		/**
+		 * Die sichtbare Beschriftung der Wochen-Marke (#232) — „N diese Woche".
+		 *
+		 * @param anzahl Neue Vorgänge dieser Woche.
+		 */
+		weekText(anzahl: number): string {
+			return n('projektwerk', '%n diese Woche', '%n diese Woche', anzahl)
 		},
 
 		/**

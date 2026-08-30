@@ -372,6 +372,9 @@ OC.L10N.register(
     "Neu / Woche" : "Neu / Woche",
     "Erledigt / Woche" : "Erledigt / Woche",
     "{title}: {zustand}, {neu} neu, {offen} offen, {wartet} wartet, {erledigt} erledigt" : "{title}: {zustand}, {neu} neu, {offen} offen, {wartet} wartet, {erledigt} erledigt",
-    "_%n weiteres Projekt anzeigen_::_%n weitere Projekte anzeigen_" : ["%n weiteres Projekt anzeigen","%n weitere Projekte anzeigen"]
+    "_%n weiteres Projekt anzeigen_::_%n weitere Projekte anzeigen_" : ["%n weiteres Projekt anzeigen","%n weitere Projekte anzeigen"],
+    "Verlauf der letzten 30 Tage, zuletzt {n} pro Tag" : "Verlauf der letzten 30 Tage, zuletzt {n} pro Tag",
+    "_%n neuer Vorgang diese Woche_::_%n neue Vorgänge diese Woche_" : ["%n neuer Vorgang diese Woche","%n neue Vorgänge diese Woche"],
+    "_%n diese Woche_::_%n diese Woche_" : ["%n diese Woche","%n diese Woche"]
 },
 "nplurals=2; plural=(n != 1);");

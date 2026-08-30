@@ -60,15 +60,28 @@ export interface OverviewData {
 	 */
 	firstColumn: Record<number, number>
 	/**
-	 * Der Durchsatz (#226): neu und erledigt in den letzten sieben Tagen, mit
-	 * der Veränderung zur Vorwoche (`*Delta`). Die Verlaufs-Kurven kommen später.
+	 * Der Durchsatz (#226/#232): neu und erledigt in den letzten sieben Tagen,
+	 * mit der Veränderung zur Vorwoche (`*Delta`), dazu die Tages-Zeitreihe der
+	 * letzten 30 Tage für die Verlaufs-Kurven (`*Reihe`, älteste zuerst).
 	 */
 	durchsatz: {
 		neu: number
 		neuDelta: number
 		erledigt: number
 		erledigtDelta: number
+		/** Ein Zähler je Tag über 30 Tage, älteste zuerst. */
+		neuReihe: number[]
+		/** Ein Zähler je Tag über 30 Tage, älteste zuerst. */
+		erledigtReihe: number[]
 	}
+	/**
+	 * Board-Kennung => neue Vorgänge der letzten sieben Tage (#232).
+	 *
+	 * Die Marke „N diese Woche" an der Projekt-Kachel — der Durchsatz oben nennt
+	 * die Summe über alle Projekte, dies bricht sie auf das einzelne herunter.
+	 * Nur Projekte mit mindestens einem neuen Vorgang stehen drin.
+	 */
+	neuDieseWoche: Record<number, number>
 }
 
 /**
@@ -143,6 +156,12 @@ export interface ProjectStatusRow {
 	erledigt: number
 	/** Abgeschlossen mit Ergebnis verworfen — nicht im Fortschritts-Nenner. */
 	verworfen: number
+	/**
+	 * Neue Vorgänge der letzten sieben Tage in diesem Projekt (#232) — die
+	 * Marke „▲ N diese Woche". `0`, wenn diese Woche nichts dazukam; die Kachel
+	 * zeigt die Marke dann nicht.
+	 */
+	neuDieseWoche: number
 	/** Offene Vorgänge gesamt (neu + offen + wartet). */
 	offenGesamt: number
 	/** Anteil erledigt an (erledigt + offen), 0..1; 0 wenn nichts vorliegt. */

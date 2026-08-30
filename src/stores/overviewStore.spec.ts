@@ -54,7 +54,8 @@ function daten(teile: Partial<OverviewData> = {}): OverviewData {
 		withOpenSteps: [],
 		closedCounts: {},
 		firstColumn: {},
-		durchsatz: { neu: 0, neuDelta: 0, erledigt: 0, erledigtDelta: 0 },
+		durchsatz: { neu: 0, neuDelta: 0, erledigt: 0, erledigtDelta: 0, neuReihe: [], erledigtReihe: [] },
+		neuDieseWoche: {},
 		...teile,
 	}
 }
@@ -298,5 +299,26 @@ describe('Überblick', () => {
 		}))
 
 		expect(store.nobodyRows.map((r) => r.ticket.id)).toEqual([1])
+	})
+
+	/**
+	 * „N diese Woche" je Projekt (#232) reitet auf `projectStatusRows` mit — der
+	 * Zähler kommt vom Server, die Zeile reicht ihn nur durch. Ein Projekt ohne
+	 * Eintrag steht auf 0, nicht auf `undefined`.
+	 */
+	it('reicht den Wochen-Zuwachs je Projekt an die Statuszeile durch', () => {
+		const store = useOverviewStore()
+		store.apply(daten({
+			tickets: [ticket(1, 1), ticket(2, 2)],
+			boards: {
+				1: { title: 'Mit Zuwachs', orgInternal: 'Wir', orgExternal: 'Kunde' },
+				2: { title: 'Ohne Zuwachs', orgInternal: 'Wir', orgExternal: 'Kunde' },
+			},
+			neuDieseWoche: { 1: 3 },
+		}))
+
+		const proBoard = Object.fromEntries(store.projectStatusRows.map((r) => [r.boardId, r.neuDieseWoche]))
+		expect(proBoard[1]).toBe(3)
+		expect(proBoard[2]).toBe(0)
 	})
 })

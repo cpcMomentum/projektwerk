@@ -60,6 +60,11 @@ test.describe('Dienstleisterseite', () => {
 		// beide Ansichten übereinander stünden.
 		await expect(page.locator('.pw-kpicard')).toBeVisible()
 
+		// Die Verlaufs-Kurven (#232) hängen im Durchsatz — eine je Zähler. Sie
+		// kommen mit der 30-Tage-Reihe vom Server und rendern auch bei einem
+		// frischen Projekt (flache Linie), also immer zwei.
+		await expect(page.locator('.pw-spark')).toHaveCount(2)
+
 		// Und die Projektliste ist weiter erreichbar — sie ist nur umgezogen.
 		await page.getByRole('link', { name: 'Projekte' }).click()
 		await expect(page.getByRole('heading', { name: 'Projekte' })).toBeVisible()

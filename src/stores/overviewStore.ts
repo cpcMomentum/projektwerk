@@ -36,8 +36,10 @@ interface State {
 	closedCounts: OverviewData['closedCounts']
 	/** Board => Kennung der ersten Spalte, für den Status „Neu" (#226). */
 	firstColumn: OverviewData['firstColumn']
-	/** Durchsatz: neu/erledigt der letzten Woche + Delta (#226). */
+	/** Durchsatz: neu/erledigt der Woche + Delta + 30-Tage-Reihen (#226/#232). */
 	durchsatz: OverviewData['durchsatz']
+	/** Board => neue Vorgänge der letzten Woche, für die Kachel-Marke (#232). */
+	neuDieseWoche: OverviewData['neuDieseWoche']
 	loading: boolean
 	/**
 	 * Der heutige Tag, beim Laden festgehalten.
@@ -112,7 +114,8 @@ export const useOverviewStore = defineStore('overview', {
 		withOpenSteps: new Set(),
 		closedCounts: {},
 		firstColumn: {},
-		durchsatz: { neu: 0, neuDelta: 0, erledigt: 0, erledigtDelta: 0 },
+		durchsatz: { neu: 0, neuDelta: 0, erledigt: 0, erledigtDelta: 0, neuReihe: [], erledigtReihe: [] },
+		neuDieseWoche: {},
 		loading: false,
 		today: heute(),
 		error: null,
@@ -302,6 +305,7 @@ export const useOverviewStore = defineStore('overview', {
 						wartet: z.wartet,
 						erledigt: closed.done,
 						verworfen: closed.discarded,
+						neuDieseWoche: state.neuDieseWoche[boardId] ?? 0,
 						offenGesamt,
 						fortschritt: nenner > 0 ? closed.done / nenner : 0,
 						zustand,
@@ -405,6 +409,7 @@ export const useOverviewStore = defineStore('overview', {
 			this.closedCounts = data.closedCounts
 			this.firstColumn = data.firstColumn
 			this.durchsatz = data.durchsatz
+			this.neuDieseWoche = data.neuDieseWoche
 		},
 	},
 })
