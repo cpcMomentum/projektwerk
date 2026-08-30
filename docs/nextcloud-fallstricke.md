@@ -582,6 +582,17 @@ zugleich die Bedingung, unter der der Auto-Move überhaupt sicher sein kann.
 
 ## Noch nicht belegt
 
+- **S3 — Touch-Drag-&-Drop auf echtem Gerät (§11.4), nie formal gemessen — und nicht mehr
+  blockierend.** Die Frage war: Trägt `vue-draggable-plus@0.6.1` auf echtem iPhone/Android
+  (Langdruck, Autoscroll, horizontal geblätterte Spalten)? Ein Urteil brauchbar/unbrauchbar liegt
+  **nicht** vor; es gibt weder eine Datei in `spike/` noch eine Messung hier. Der Spike war als
+  Gate für Phase 7a gedacht — „bei unbrauchbar entfällt 7a ersatzlos". **7a ist trotzdem gebaut und
+  ausgeliefert** (Drag & Drop zwischen Spalten, PR #158, Issue #11 abgeschlossen am 2026-08-30),
+  gekapselt in `BoardDragLayer.vue`. Die Bau-Entscheidung ist damit faktisch getroffen; die formale
+  Geräte-Messung bleibt ein offener Haken, blockiert aber nichts mehr. **Wichtig:** Sie ist auch
+  kein Abnahme-Ausweg — §5.28 trägt die Bedienbarkeit ohnehin über das „Verschieben nach …"-Menü
+  (`NcActions`, tastatur- und ARIA-tauglich) und die Tastatur, nicht über die Zieh-Geste. Fällt die
+  Geräte-Messung eines Tages doch negativ aus, kostet das den Zieh-Komfort, nicht die Funktion.
 - Ob Talk-Bot-Nachrichten von der Produktivinstanz aus zugestellt werden (Selbstaufruf hinter
   Reverse-Proxy oder mit Split-DNS scheitert gern still).
 - Ob ein Gastkonto den Klick auf eine Ticket-Vorschaukarte bis in die App verfolgen kann — hängt an
