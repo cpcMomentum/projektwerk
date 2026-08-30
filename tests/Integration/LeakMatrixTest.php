@@ -1401,6 +1401,32 @@ class LeakMatrixTest extends IntegrationTestCase {
 	}
 
 	/**
+	 * `board#index` trägt die eigene Rolle je Board (#234) — und zwar **je
+	 * Board getrennt**.
+	 *
+	 * Das Gäste-Gate im Browser hängt daran: Bert ist im ersten Board intern,
+	 * im zweiten die Kundenseite. Käme eine flache Rolle über alle Projekte,
+	 * fiele genau diese Person durchs Raster — sie sähe entweder den Überblick,
+	 * den sie im zweiten Projekt nicht sehen soll, oder verlöre ihn im ersten.
+	 * Der Wert steht am Projekt, nicht an der Person.
+	 */
+	public function testBoardIndexCarriesTheViewersRolePerBoard(): void {
+		$byTitle = [];
+		foreach ($this->boardController(self::BERT)->index()->getData() as $board) {
+			$byTitle[(string)$board['title']] = $board['viewerRole'];
+		}
+
+		$this->assertSame(
+			[
+				'Leak-Matrix' => ViewerContext::ROLE_INTERNAL,
+				'Leak-Matrix Zweitboard' => ViewerContext::ROLE_EXTERNAL,
+			],
+			$byTitle,
+			'Bert muss im ersten Board intern und im zweiten extern erscheinen.',
+		);
+	}
+
+	/**
 	 * Der Einzelabruf am Endpunkt — und die Probe auf die Fehlerform.
 	 *
 	 * Hier greift `BoardAccess`, anders als bei den Mapper-Pfaden mit selbst

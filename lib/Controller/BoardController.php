@@ -82,8 +82,18 @@ class BoardController extends Controller {
 		// „sichtbar", und sichtbar ist genau, was hier drinsteht. Ein gepinntes
 		// Board, das der Filter nicht hergibt, kommt gar nicht erst vor.
 		$pinned = $this->pins->pinnedIds($this->userId);
+		// Die eigene Rolle je Board reitet — wie die Pin-Markierung — auf dieser
+		// Liste mit (#234). Das Gäste-Gate im Browser leitet einen Betrachter,
+		// der in **allen** seinen Boards extern ist, vom Überblick auf sein
+		// Board um; dafür braucht es genau dieses Signal, und aus derselben
+		// Liste stammt auch das Umleitungsziel. Es ist die Rolle der
+		// abfragenden Person selbst — eigene Daten, kein zweiter Ort, an dem die
+		// Sichtbarkeitsregel stimmen müsste.
+		$roles = $this->members->rolesForUserBoards($this->userId);
 		$data = array_map(
-			static fn ($board): array => $board->jsonSerialize() + ['pinned' => in_array((int)$board->getId(), $pinned, true)],
+			static fn ($board): array => $board->jsonSerialize()
+				+ ['pinned' => in_array((int)$board->getId(), $pinned, true)]
+				+ ['viewerRole' => $roles[(int)$board->getId()] ?? null],
 			$boards,
 		);
 
