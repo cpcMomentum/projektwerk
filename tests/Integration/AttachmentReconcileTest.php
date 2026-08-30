@@ -163,6 +163,41 @@ class AttachmentReconcileTest extends IntegrationTestCase {
 	}
 
 	/**
+	 * **`preview()` meldet den Fehlplatzierten und rührt ihn nicht an** (#11) —
+	 * der lesende Zwilling hinter `projektwerk:attachments:verify`. Er sieht
+	 * denselben Fall wie {@see reconcile()}, gibt Ist- und Soll-Ort zurück, aber
+	 * die Datei bleibt liegen und `location` bleibt unverändert.
+	 */
+	public function testPreviewReportsTheMisplacedAttachmentWithoutMoving(): void {
+		$ergebnis = $this->repair->preview();
+
+		$this->assertSame(1, $ergebnis['mismatched'], 'Der fehlplatzierte Anhang wurde nicht gemeldet.');
+		$this->assertSame($this->attachmentId, $ergebnis['items'][0]['attachmentId']);
+		$this->assertSame($this->ticketId, $ergebnis['items'][0]['ticketId']);
+		$this->assertSame(Attachment::LOCATION_INTERNAL, $ergebnis['items'][0]['ist']);
+		$this->assertSame(Attachment::LOCATION_PUBLIC, $ergebnis['items'][0]['soll']);
+
+		// **Nichts bewegt:** Datei bleibt im internen Ordner, der gespeicherte
+		// Ort ebenso — genau das trennt verify von relocate.
+		$this->assertTrue($this->internalFolder->nodeExists(self::FILE), 'preview() hat die Datei verschoben.');
+		$this->assertFalse($this->publicFolder->nodeExists(self::FILE), 'preview() hat die Datei in den oeffentlichen Ordner gezogen.');
+		$this->assertSame(Attachment::LOCATION_INTERNAL, $this->attachmentOf($this->ticketId)->getLocation(), 'preview() hat den gespeicherten Ort geaendert.');
+	}
+
+	/**
+	 * **Nach dem Heilen meldet `preview()` nichts** — Gegenprobe zur Idempotenz:
+	 * ist alles am richtigen Ort, ist der Verify-Befund leer.
+	 */
+	public function testPreviewReportsNothingOnceEverythingSits(): void {
+		$this->repair->reconcile();
+
+		$ergebnis = $this->repair->preview();
+
+		$this->assertSame(0, $ergebnis['mismatched'], 'preview() meldet einen Fehlplatzierten, obwohl alles sitzt.');
+		$this->assertSame([], $ergebnis['items']);
+	}
+
+	/**
 	 * **Zweiter Lauf ist ein No-op** (Idempotenz): Nach dem Heilen passt jeder
 	 * Ort zu seiner Sichtbarkeit, es gibt nichts mehr nachzuziehen.
 	 */

@@ -130,6 +130,36 @@ class RelocateAttachments implements IRepairStep {
 	}
 
 	/**
+	 * **Nur schauen, nichts bewegen** (#11): welche Anhänge lägen am falschen
+	 * Ort? Zeigt, was {@see reconcile()} nachziehen würde — ohne eine Datei
+	 * anzufassen und ohne DB-Schreibzugriff. Der lesende Zwilling zum
+	 * Reparaturlauf, für den Blick vor dem Eingriff ({@see \OCA\Projektwerk\Command\AttachmentsVerify}).
+	 *
+	 * Der Soll-Ort kommt aus derselben Quelle wie beim Heilen
+	 * ({@see mismatched()} liefert nur Zeilen mit vorhandenem Soll-Ort), deshalb
+	 * ist `soll` hier nie leer.
+	 *
+	 * @return array{mismatched: int, items: list<array{attachmentId: int, ticketId: int, ist: string, soll: string}>}
+	 */
+	public function preview(): array {
+		$items = [];
+
+		foreach ($this->mismatched() as $row) {
+			$items[] = [
+				'attachmentId' => (int)$row['att_id'],
+				'ticketId' => (int)$row['ticket_id'],
+				'ist' => (string)$row['att_location'],
+				'soll' => (string)$this->folders->locationForVisibility(
+					(string)$row['visibility'],
+					(string)$row['creator_role'],
+				),
+			];
+		}
+
+		return ['mismatched' => count($items), 'items' => $items];
+	}
+
+	/**
 	 * Die Zeilen, deren gespeicherter Ort nicht zur Sichtbarkeit ihres Vorgangs
 	 * passt — board-übergreifend und an der Sichtbarkeitsregel vorbei.
 	 *
