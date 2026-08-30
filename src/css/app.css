@@ -3065,3 +3065,203 @@
 .app-projektwerk .pw-table__row--global .pw-table__name {
 	font-weight: 700;
 }
+
+/*
+ * Das Projekt-Dashboard (#227, Ebene 2). Karten und Tabellen im WorkTime-Look:
+ * Rahmen (--color-border-dark), --border-radius-large, tabular-nums, kein
+ * Schatten. Die Status-Farben stammen aus denselben `pw-st--*`-Klassen wie die
+ * Überblick-Kacheln (--c je Status).
+ */
+.app-projektwerk .pw-crumb {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--color-primary-element);
+	margin-bottom: 8px;
+}
+.app-projektwerk .pw-crumb:hover { text-decoration: underline; }
+
+.app-projektwerk .pw-pd__head {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	gap: 16px;
+	margin-bottom: 20px;
+}
+.app-projektwerk .pw-pd__head h2 { margin: 0; }
+.app-projektwerk .pw-pd__org {
+	font-size: 13px;
+	color: var(--color-text-maxcontrast);
+	margin-top: 2px;
+}
+
+/* Status-Kacheln */
+.app-projektwerk .pw-pd__kpis {
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	gap: 12px;
+	margin-bottom: 22px;
+}
+@media (max-width: 680px) {
+	.app-projektwerk .pw-pd__kpis { grid-template-columns: repeat(2, 1fr); }
+}
+.app-projektwerk .pw-pd__kpi {
+	border: 1px solid var(--color-border-dark, var(--color-border));
+	border-radius: var(--border-radius-large, 12px);
+	padding: 12px 16px;
+}
+.app-projektwerk .pw-pd__kpil {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--color-text-maxcontrast);
+	margin-bottom: 6px;
+}
+.app-projektwerk .pw-pd__dot {
+	width: 9px;
+	height: 9px;
+	border-radius: 2px;
+	background: var(--c, var(--color-text-maxcontrast));
+	flex: 0 0 auto;
+}
+.app-projektwerk .pw-pd__kpirow {
+	display: flex;
+	align-items: baseline;
+	gap: 10px;
+}
+.app-projektwerk .pw-pd__kpin {
+	font-size: 32px;
+	font-weight: 700;
+	line-height: 1;
+	color: var(--color-main-text);
+	font-variant-numeric: tabular-nums;
+}
+.app-projektwerk .pw-pd__kpi.pw-st--neu .pw-pd__kpin { color: var(--color-primary-element); }
+.app-projektwerk .pw-pd__kpi.pw-st--wartet .pw-pd__kpin { color: var(--color-warning-text); }
+.app-projektwerk .pw-pd__kpi.pw-st--erl .pw-pd__kpin { color: var(--color-success-text); }
+.app-projektwerk .pw-pd__over {
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--color-error-text);
+	white-space: nowrap;
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+.app-projektwerk .pw-pd__overtri { font-size: 9px; }
+
+/* Abschnitts-Karte (eigene Klasse, nicht die Board-Ticket-`pw-card`) */
+.app-projektwerk .pw-sect {
+	border: 1px solid var(--color-border-dark, var(--color-border));
+	border-radius: var(--border-radius-large, 12px);
+	background: var(--color-main-background);
+	padding: 16px 18px;
+	margin-bottom: 22px;
+}
+.app-projektwerk .pw-sect__h {
+	margin: 0 0 12px;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.05em;
+	color: var(--color-text-maxcontrast);
+}
+
+/* Fortschritt */
+.app-projektwerk .pw-pd__prog {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+.app-projektwerk .pw-pd__progbar {
+	flex: 1;
+	height: 12px;
+	border-radius: 6px;
+	background: var(--color-background-dark);
+	overflow: hidden;
+}
+.app-projektwerk .pw-pd__progfill {
+	height: 100%;
+	background: var(--color-success-text);
+}
+.app-projektwerk .pw-pd__progtxt {
+	font-size: 13px;
+	color: var(--color-text-maxcontrast);
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+}
+
+/* Phasen-Verteilung */
+.app-projektwerk .pw-pd__phaselegend {
+	display: flex;
+	gap: 16px;
+	flex-wrap: wrap;
+	margin-bottom: 10px;
+	font-size: 12px;
+	color: var(--color-text-maxcontrast);
+}
+.app-projektwerk .pw-pd__pleg { display: inline-flex; align-items: center; gap: 6px; }
+.app-projektwerk .pw-pd__pdot { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.app-projektwerk .pw-pd__phasebar {
+	display: flex;
+	gap: 2px;
+	height: 26px;
+	border-radius: var(--border-radius-pill, 7px);
+	overflow: hidden;
+}
+.app-projektwerk .pw-pd__pseg {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: #fff;
+	font-size: 12px;
+	font-weight: 700;
+	min-width: 24px;
+	font-variant-numeric: tabular-nums;
+}
+
+/* Tabellen */
+.app-projektwerk .pw-pd__table { width: 100%; border-collapse: collapse; }
+.app-projektwerk .pw-pd__table th {
+	text-align: start;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.03em;
+	color: var(--color-text-maxcontrast);
+	padding: 8px 10px;
+	border-bottom: 1px solid var(--color-border-dark, var(--color-border));
+}
+.app-projektwerk .pw-pd__table td {
+	font-size: 14px;
+	padding: 11px 10px;
+	border-bottom: 1px solid var(--color-border);
+}
+.app-projektwerk .pw-pd__table tr:last-child td { border-bottom: none; }
+.app-projektwerk .pw-pd__row { cursor: pointer; }
+.app-projektwerk .pw-pd__row:hover { background: var(--color-background-hover); }
+.app-projektwerk .pw-pd__row:focus-visible { outline: 2px solid var(--color-primary-element); outline-offset: -2px; }
+.app-projektwerk .pw-pd__phase {
+	font-size: 12px;
+	font-weight: 600;
+	padding: 2px 8px;
+	border-radius: 9px;
+	background: var(--color-background-dark);
+	color: var(--color-main-text);
+	white-space: nowrap;
+}
+.app-projektwerk .pw-pd__late { color: var(--color-error-text); font-weight: 600; }
+.app-projektwerk .pw-pd__when { text-align: end; color: var(--color-text-maxcontrast); white-space: nowrap; }
+.app-projektwerk .pw-pd__empty { margin: 4px 0 0; font-size: 14px; color: var(--color-text-maxcontrast); }
+
+/* Zwei Listen nebeneinander */
+.app-projektwerk .pw-pd__two {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 22px;
+}
+@media (max-width: 820px) {
+	.app-projektwerk .pw-pd__two { grid-template-columns: 1fr; }
+}

@@ -375,6 +375,20 @@ OC.L10N.register(
     "_%n weiteres Projekt anzeigen_::_%n weitere Projekte anzeigen_" : ["show %n more project","show %n more projects"],
     "Verlauf der letzten 30 Tage, zuletzt {n} pro Tag" : "History of the last 30 days, most recently {n} per day",
     "_%n neuer Vorgang diese Woche_::_%n neue Vorgänge diese Woche_" : ["%n new item this week","%n new items this week"],
-    "_%n diese Woche_::_%n diese Woche_" : ["%n this week","%n this week"]
+    "_%n diese Woche_::_%n diese Woche_" : ["%n this week","%n this week"],
+    "Das Projekt lässt sich nicht laden" : "The project cannot be loaded",
+    "Board öffnen" : "Open board",
+    "Verteilung über die Phasen" : "Distribution across phases",
+    "Noch keine Vorgänge in diesem Projekt." : "No items in this project yet.",
+    "Offene Vorgänge" : "Open items",
+    "Phase" : "Phase",
+    "Verantwortlich" : "Responsible",
+    "Alles abgearbeitet — kein offener Vorgang." : "All done — no open item.",
+    "Zuletzt bearbeitet" : "Recently edited",
+    "Noch nichts bearbeitet." : "Nothing edited yet.",
+    "Zuletzt abgestellt" : "Recently completed",
+    "Noch nichts erledigt." : "Nothing completed yet.",
+    "{done} von {total} erledigt · {pct} %" : "{done} of {total} done · {pct} %",
+    "_%n überfällig_::_%n überfällig_" : ["%n overdue","%n overdue"]
 },
 "nplurals=2; plural=(n != 1);");

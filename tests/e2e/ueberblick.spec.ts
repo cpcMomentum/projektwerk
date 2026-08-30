@@ -83,9 +83,38 @@ test.describe('Dienstleisterseite', () => {
 		// nicht nur Farbe).
 		await expect(kachel).toHaveAttribute('aria-label', /1 wartet/)
 
-		// Der Klick führt ins Board des Projekts — kein zweiter Ort für einen
-		// Vorgang, in Stufe 2 wird daraus das Projekt-Dashboard.
+		// Der Klick führt seit Stufe 2 (#227) ins **Projekt-Dashboard**, nicht
+		// mehr direkt aufs Board.
 		await kachel.click()
+		await expect(page).toHaveURL(/#\/project\/\d+/)
+	})
+})
+
+test.describe('Projekt-Dashboard (#227)', () => {
+	test.use({ storageState: INTERN.sitzung })
+
+	/**
+	 * Die zweite Ebene: Klick auf eine Kachel landet im Projekt-Dashboard, und
+	 * von dort führt „Board öffnen" weiter aufs Kanban. Beide Wege sind der Kern
+	 * dieses Issues — der Landepunkt **und** der Weiterweg.
+	 */
+	test('führt vom Überblick ins Projekt-Dashboard und weiter aufs Board', async ({ page }) => {
+		await page.goto(APP_PFAD)
+		await expect(page.getByRole('heading', { name: 'Überblick' })).toBeVisible({ timeout: 30_000 })
+
+		await page.locator('.pw-tile', { hasText: projekt.titel }).click()
+		await expect(page).toHaveURL(/#\/project\/\d+/)
+
+		// Der Kopf trägt den Projektnamen; die Kennzahlen-Karte des Überblicks
+		// ist hier **nicht** — das unterscheidet die Ebene-2-Seite von Ebene 1.
+		await expect(page.getByRole('heading', { name: projekt.titel })).toBeVisible()
+		await expect(page.locator('.pw-kpicard')).toHaveCount(0)
+		// Die vier Status-Kacheln und der Phasen-Balken stehen.
+		await expect(page.locator('.pw-pd__kpi')).toHaveCount(4)
+		await expect(page.locator('.pw-pd__phasebar')).toBeVisible()
+
+		// „Board öffnen" führt aufs Kanban dieses Projekts.
+		await page.getByRole('button', { name: 'Board öffnen' }).click()
 		await expect(page).toHaveURL(/#\/boards\/\d+/)
 	})
 })
