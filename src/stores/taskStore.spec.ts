@@ -260,4 +260,33 @@ describe('Meine Vorgänge — Sortierung nach Fälligkeit (#72)', () => {
 		expect(store.ticketRows.map((r) => r.ticket.id)).toEqual([2, 1])
 		expect(store.ticketRows.map((r) => r.overdue)).toEqual([true, false])
 	})
+
+	/**
+	 * Die Maßnahmen (#226) vereinen Schritte und Vorgänge in einer Liste, jeder
+	 * mit seiner Art, Überfälliges oben. Heute ist der 09.08.
+	 */
+	it('vereint Schritte und Vorgänge zu Maßnahmen, Überfälliges oben', () => {
+		const store = useTaskStore()
+		store.apply({
+			stepTickets: [ticket(1, '2026-01-01T00:00:00+00:00')],
+			steps: [
+				step(10, '2026-08-01', 1), // überfällig
+				step(11, null, 1), // ohne Frist
+			],
+			tickets: [
+				ticket(20, '2026-01-01T00:00:00+00:00', '2026-08-05'), // überfällig
+				ticket(21, '2026-01-01T00:00:00+00:00', null), // ohne Frist
+			],
+			boards: {},
+		})
+
+		// Überfälliges zuerst, darin nach Fälligkeit (01.08. vor 05.08.); danach
+		// das Undatierte, stabil nach Schlüssel (s vor t).
+		expect(store.measureRows.map((r) => [r.art, r.key, r.overdue])).toEqual([
+			['schritt', 's10', true],
+			['verantwortung', 't20', true],
+			['schritt', 's11', false],
+			['verantwortung', 't21', false],
+		])
+	})
 })

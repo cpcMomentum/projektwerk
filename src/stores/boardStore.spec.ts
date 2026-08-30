@@ -28,8 +28,9 @@ import { CLOSED_TAIL, useBoardStore } from '@/stores/boardStore'
 // Der Speicher wird hier ohne Server gefahren: Geprüft wird die Regel, nicht
 // das Laden. `open()` braucht die beiden Aufrufe trotzdem, weil es der Pfad
 // ist, an dem der Aufklappzustand hängt.
+const fetchBoardsSpy = vi.hoisted(() => vi.fn(() => Promise.resolve([] as unknown[])))
 vi.mock('@/services/boards', () => ({
-	fetchBoards: () => Promise.resolve([]),
+	fetchBoards: fetchBoardsSpy,
 	fetchBoard: (id: number) => Promise.resolve({
 		board: { id },
 		members: [],
@@ -296,5 +297,68 @@ describe('Lesestand', () => {
 		await store.markRead(42)
 
 		expect(markTicketReadSpy).not.toHaveBeenCalled()
+	})
+})
+
+/**
+ * Die Boardliste einmal laden und das „intern irgendwo"-Signal (#234).
+ *
+ * `ensureBoards()` ist der geteilte Ladeweg von App-Rahmen und Gäste-Gate. Der
+ * Fehler, der hier droht: zwei Abrufe beim Seitenaufruf statt eines, oder ein
+ * `internalSomewhere`, das ein Board ohne Rolle fälschlich als intern zählt und
+ * so das Gate für den Kunden aufreißt.
+ */
+describe('ensureBoards + internalSomewhere', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia())
+		fetchBoardsSpy.mockClear()
+		fetchBoardsSpy.mockResolvedValue([])
+	})
+
+	it('lädt genau einmal, auch bei mehreren Aufrufen', async () => {
+		const store = useBoardStore()
+
+		await Promise.all([store.ensureBoards(), store.ensureBoards()])
+		await store.ensureBoards()
+
+		expect(fetchBoardsSpy).toHaveBeenCalledTimes(1)
+		expect(store.loaded).toBe(true)
+	})
+
+	it('lässt bei Ladefehler `loaded` falsch, damit erneut versucht wird', async () => {
+		fetchBoardsSpy.mockRejectedValueOnce(new Error('Netz'))
+		const store = useBoardStore()
+
+		await store.ensureBoards()
+		expect(store.loaded).toBe(false)
+
+		fetchBoardsSpy.mockResolvedValueOnce([])
+		await store.ensureBoards()
+		expect(store.loaded).toBe(true)
+		expect(fetchBoardsSpy).toHaveBeenCalledTimes(2)
+	})
+
+	it('ist intern, sobald ein Board die eigene Rolle intern trägt', async () => {
+		fetchBoardsSpy.mockResolvedValue([
+			{ id: 1, viewerRole: 'external' },
+			{ id: 2, viewerRole: 'internal' },
+		] as unknown[])
+		const store = useBoardStore()
+
+		await store.ensureBoards()
+
+		expect(store.internalSomewhere).toBe(true)
+	})
+
+	it('ist nicht intern, wenn alle Boards extern oder ohne Rolle sind', async () => {
+		fetchBoardsSpy.mockResolvedValue([
+			{ id: 1, viewerRole: 'external' },
+			{ id: 2 },
+		] as unknown[])
+		const store = useBoardStore()
+
+		await store.ensureBoards()
+
+		expect(store.internalSomewhere).toBe(false)
 	})
 })

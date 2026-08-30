@@ -6,20 +6,21 @@ import { marke, projektAufbauen, projektAufraeumen } from './projekt.ts'
 import { APP_PFAD, INTERN, KUNDE } from './rollen.ts'
 
 /**
- * Der Überblick als Einstieg (#76, entschieden am 2026-08-13).
+ * Der Überblick als Einstieg (#76), jetzt als **Kachel-Dashboard** (#226).
  *
  * **Zwei Zusicherungen, und die zweite ist die teure.**
  *
- * 1. Wer die App ohne Pfad öffnet, landet auf dem Überblick — nicht mehr auf
- *    der Projektliste. Das ist die ganze Entscheidung aus #76.
- * 2. Die Seite zeigt, **was bei der Kundenseite liegt** — auch an einem
+ * 1. Wer die App ohne Pfad öffnet, landet auf dem Überblick — nicht auf der
+ *    Projektliste.
+ * 2. Die Seite zeigt den Zustand eines Projekts — auch die Wartezeit an einem
  *    Vorgang, der dem Betrachter nicht gehört. Genau darin unterscheidet sie
- *    sich von „Meine Aufgaben", und ohne diesen Unterschied wäre sie die Seite,
- *    die niemand öffnet.
+ *    sich von „Meine Aufgaben".
  *
- * Der zweite Punkt ist gegen die naheliegende Fehlimplementierung gerichtet:
- * `task#index` wiederzuverwenden. Der Test legt den wartenden Schritt deshalb
- * an einem Vorgang an, für den `INTERN` **nicht** verantwortlich ist.
+ * **Was der Umbau geändert hat:** Der Überblick zeigt die Projekte als Kacheln
+ * mit kanonischen Status-Zählern (Neu/Offen/Wartet/Erledigt), nicht mehr als
+ * Listen einzelner Vorgänge mit Namen. Wer konkret wartet, sieht man im Projekt;
+ * das Dashboard trägt die Zahl. Deshalb prüft dieser Test die Wartezeit am
+ * **Wartet-Zähler der Kachel**, nicht mehr an einer Namenszeile.
  */
 
 let projekt: Projekt
@@ -54,9 +55,15 @@ test.describe('Dienstleisterseite', () => {
 
 		await expect(page.getByRole('heading', { name: 'Überblick' })).toBeVisible({ timeout: 30_000 })
 
-		// **Die Gegenprobe.** Ohne sie wäre der Test auch grün, wenn beide
-		// Ansichten übereinander stünden.
-		await expect(page.getByRole('heading', { name: 'Projekte', exact: true })).toHaveCount(0)
+		// **Die Gegenprobe.** Das Dashboard trägt die Kennzahlen-Karte; die
+		// Projektliste tut das nicht. Ohne sie wäre der Test auch grün, wenn
+		// beide Ansichten übereinander stünden.
+		await expect(page.locator('.pw-kpicard')).toBeVisible()
+
+		// Die Verlaufs-Kurven (#232) hängen im Durchsatz — eine je Zähler. Sie
+		// kommen mit der 30-Tage-Reihe vom Server und rendern auch bei einem
+		// frischen Projekt (flache Linie), also immer zwei.
+		await expect(page.locator('.pw-spark')).toHaveCount(2)
 
 		// Und die Projektliste ist weiter erreichbar — sie ist nur umgezogen.
 		await page.getByRole('link', { name: 'Projekte' }).click()
@@ -64,43 +71,51 @@ test.describe('Dienstleisterseite', () => {
 		expect(page.url()).toContain('#/boards')
 	})
 
-	test('der Überblick zeigt, was bei der Kundenseite liegt — mit Namen', async ({ page }) => {
+	test('der Überblick zeigt das Projekt als Kachel mit Wartet-Zähler', async ({ page }) => {
 		await page.goto(APP_PFAD)
 		await expect(page.getByRole('heading', { name: 'Überblick' })).toBeVisible({ timeout: 30_000 })
 
-		const abschnitt = page.locator('.pw-ov__block', { hasText: 'Wartet auf die Kundenseite' })
-		await expect(abschnitt).toBeVisible()
+		const kachel = page.locator('.pw-tile', { hasText: projekt.titel })
+		await expect(kachel).toBeVisible()
 
-		const zeile = abschnitt.locator('.pw-ov__row', { hasText: projekt.oeffentlich.title })
-		await expect(zeile).toBeVisible()
+		// Der wartende Vorgang schlägt sich im Wartet-Zähler nieder — die
+		// Kennzeichnung steckt in der Beschriftung der ganzen Kachel (§9:
+		// nicht nur Farbe).
+		await expect(kachel).toHaveAttribute('aria-label', /1 wartet/)
 
-		// **Namen, keine Kennungen** — dieselbe Zusicherung wie in #104, und
-		// hier steht sie auf der Startseite.
-		await expect(zeile).toContainText(KUNDE.name)
-		await expect(zeile).not.toContainText(KUNDE.uid)
-
-		// Die Herkunft gehört an die Zeile: Auf einer projektübergreifenden
-		// Seite ist der Ort die halbe Information.
-		await expect(zeile).toContainText(projekt.titel)
-
-		// Und der Klick führt ins Board, mit dem Vorgang offen — derselbe Weg
-		// wie der Deep-Link, kein zweiter Ort für einen Vorgang.
-		await zeile.click()
-		await expect(page.locator('.pw-detail')).toBeVisible()
-		await expect(page.locator('.pw-detail')).toContainText(projekt.oeffentlich.title)
+		// Der Klick führt seit Stufe 2 (#227) ins **Projekt-Dashboard**, nicht
+		// mehr direkt aufs Board.
+		await kachel.click()
+		await expect(page).toHaveURL(/#\/project\/\d+/)
 	})
+})
 
-	test('der zweite Abschnitt zählt die Projekte', async ({ page }) => {
+test.describe('Projekt-Dashboard (#227)', () => {
+	test.use({ storageState: INTERN.sitzung })
+
+	/**
+	 * Die zweite Ebene: Klick auf eine Kachel landet im Projekt-Dashboard, und
+	 * von dort führt „Board öffnen" weiter aufs Kanban. Beide Wege sind der Kern
+	 * dieses Issues — der Landepunkt **und** der Weiterweg.
+	 */
+	test('führt vom Überblick ins Projekt-Dashboard und weiter aufs Board', async ({ page }) => {
 		await page.goto(APP_PFAD)
 		await expect(page.getByRole('heading', { name: 'Überblick' })).toBeVisible({ timeout: 30_000 })
 
-		const abschnitt = page.locator('.pw-ov__block', { hasText: 'Projekte mit Bewegung' })
-		const zeile = abschnitt.locator('.pw-ov__row', { hasText: projekt.titel })
-		await expect(zeile).toBeVisible()
+		await page.locator('.pw-tile', { hasText: projekt.titel }).click()
+		await expect(page).toHaveURL(/#\/project\/\d+/)
 
-		// Zwei offene Vorgänge legt `projektAufbauen` an, einer davon wartet.
-		await expect(zeile).toContainText('2 offen')
-		await expect(zeile).toContainText('1 wartet')
+		// Der Kopf trägt den Projektnamen; die Kennzahlen-Karte des Überblicks
+		// ist hier **nicht** — das unterscheidet die Ebene-2-Seite von Ebene 1.
+		await expect(page.getByRole('heading', { name: projekt.titel })).toBeVisible()
+		await expect(page.locator('.pw-kpicard')).toHaveCount(0)
+		// Die vier Status-Kacheln und der Phasen-Balken stehen.
+		await expect(page.locator('.pw-pd__kpi')).toHaveCount(4)
+		await expect(page.locator('.pw-pd__phasebar')).toBeVisible()
+
+		// „Board öffnen" führt aufs Kanban dieses Projekts.
+		await page.getByRole('button', { name: 'Board öffnen' }).click()
+		await expect(page).toHaveURL(/#\/boards\/\d+/)
 	})
 })
 
@@ -108,22 +123,33 @@ test.describe('Kundenseite', () => {
 	test.use({ storageState: KUNDE.sitzung })
 
 	/**
-	 * **Der Überblick ist der breiteste Lesepfad der App** — und damit die
-	 * Stelle, an der ein Ausfall der Sichtbarkeitsregel am sichtbarsten wäre:
-	 * auf der Startseite, ohne dass jemand etwas anklickt.
+	 * Der Überblick ist ein **internes** Steuerungswerkzeug (#234). Ein Kunde,
+	 * der in allen seinen Projekten extern ist, erreicht ihn gar nicht — er wird
+	 * beim Öffnen der App auf seine Projekte geleitet.
 	 *
-	 * Die Leak-Matrix prüft dieselbe Zusage am Endpunkt. Hier steht sie im
-	 * Browser, gegen das ausgelieferte DOM — eine Regel, die im JOIN stimmt und
-	 * in der Oberfläche trotzdem durchscheint, wäre gebrochen.
+	 * **Damit entfällt die frühere Browser-Prüfung „der Kunde sieht auf dem
+	 * Überblick keinen internen Vorgang":** Er sieht den Überblick nicht mehr.
+	 * Die Sichtbarkeitszusage selbst hängt nicht an diesem Gate — sie steht im
+	 * `scopedQuery` und wird am Endpunkt von der Leak-Matrix gefahren
+	 * (`overview#index`). Dieses Gate ist Verteidigung in der Tiefe auf der
+	 * Produkt-/Routing-Ebene.
+	 *
+	 * **Geprüft wird die Abwesenheit, nicht ein festes Ziel.** Wohin der Kunde
+	 * landet — sein Board bei einem Projekt, die Projektliste bei mehreren —
+	 * hängt an der Zahl seiner Projekte und ist damit vom Testbestand abhängig.
+	 * Dass es *nicht* der Überblick ist, hängt an nichts.
 	 */
-	test('findet den internen Vorgang nirgends im Überblick', async ({ page }) => {
+	test('wird vom Überblick weggeleitet — er ist ihm nicht zugänglich', async ({ page }) => {
+		// Ohne Pfad — so, wie der Menüeintrag in Nextcloud die App aufruft.
 		await page.goto(APP_PFAD)
-		await expect(page.getByRole('heading', { name: 'Überblick' })).toBeVisible({ timeout: 30_000 })
 
-		// Erst die Gegenprobe: Der öffentliche Vorgang ist da. Ohne sie wäre
-		// der Test auch bei einer leeren Seite grün.
-		await expect(page.locator('.pw-ov__block', { hasText: 'Projekte mit Bewegung' })).toContainText(projekt.titel)
+		// Warten, bis der Rahmen steht: Den „Projekte"-Eintrag hat jede Rolle.
+		await expect(page.getByRole('link', { name: 'Projekte' })).toBeVisible({ timeout: 30_000 })
 
-		expect(await page.content()).not.toContain(projekt.intern.title)
+		// Der Überblick ist weg: kein Menüeintrag, keine Kennzahlen-Karte, und
+		// die Adresse steht nicht mehr auf dem bloßen Einstieg.
+		await expect(page.getByRole('link', { name: 'Überblick' })).toHaveCount(0)
+		await expect(page.locator('.pw-kpicard')).toHaveCount(0)
+		expect(page.url()).not.toMatch(/#\/$/)
 	})
 })

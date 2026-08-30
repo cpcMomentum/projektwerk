@@ -103,4 +103,42 @@ class MemberMapper extends QBMapper {
 
 		return $this->findEntities($qb);
 	}
+
+	/**
+	 * Die eigene Rolle je Board — Board-Kennung => `internal`/`external`.
+	 *
+	 * Fuers Gaeste-Gate (#234): Der Ueberblick ist ein internes
+	 * Steuerungswerkzeug; wer in **allen** seinen Boards extern ist, wird auf
+	 * sein Board geleitet statt aufs Portfolio-Dashboard. Diese Methode liefert
+	 * das Signal dafuer, und dieselbe Antwort taugt zugleich fuer das Ziel der
+	 * Umleitung (ein Board oder mehrere).
+	 *
+	 * **Nur die eigenen Mitgliedschaften**, nicht die der Mitbetrachter: Es ist
+	 * die Rolle der abfragenden Person, also ihre eigenen Daten — hier ist
+	 * nichts zu verbergen, und ein Sichtbarkeitsfilter waere fehl am Platz.
+	 * Deshalb auch eine eigene schmale Abfrage statt {@see findForUserBoards()},
+	 * die alle Mitglieder aller eigenen Boards laedt: Fuer die eigene Rolle
+	 * genuegt eine Zeile je Board.
+	 *
+	 * @return array<int, string> Board-Kennung => Rolle.
+	 */
+	public function rolesForUser(string $userId): array {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('board_id', 'role')
+			->from($this->tableName)
+			->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+			// Feste Reihenfolge, damit die Zuordnung deterministisch ist — die
+			// Reihenfolge selbst nutzt niemand, aber ein Test darf sich auf sie
+			// verlassen dürfen.
+			->orderBy('board_id', 'ASC');
+
+		$roles = [];
+		$result = $qb->executeQuery();
+		while ($row = $result->fetch()) {
+			$roles[(int)$row['board_id']] = (string)$row['role'];
+		}
+		$result->closeCursor();
+
+		return $roles;
+	}
 }

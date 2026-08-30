@@ -12,6 +12,7 @@ namespace OCA\Projektwerk\Controller;
 use OCA\Projektwerk\Access\WaitStateCalculator;
 use OCA\Projektwerk\AppInfo\Application;
 use OCA\Projektwerk\Db\BoardMapper;
+use OCA\Projektwerk\Db\ColumnMapper;
 use OCA\Projektwerk\Db\Step;
 use OCA\Projektwerk\Db\StepMapper;
 use OCA\Projektwerk\Db\TaskFilter;
@@ -59,6 +60,7 @@ class OverviewController extends Controller {
 		private TicketMapper $tickets,
 		private StepMapper $steps,
 		private BoardMapper $boards,
+		private ColumnMapper $columns,
 		private WaitStateCalculator $waitState,
 		private MemberService $memberService,
 		private ?string $userId,
@@ -138,7 +140,113 @@ class OverviewController extends Controller {
 			'me' => $this->userId,
 			// Vorgänge mit offenem Schritt (#119).
 			'withOpenSteps' => $withOpenSteps,
+			// **Erledigte je Projekt** (#226) — für die Status-Zahl „Erledigt"
+			// und den Fortschritt im Dashboard. Die offenen Zahlen (Neu/Offen/
+			// Wartet) entstehen aus `tickets`+`waiting` oben; nur die
+			// geschlossenen fehlen dort, weil der Überblick sie bewusst weglässt.
+			// Sichtbarkeits-gefiltert **und** auf die aktiven Boards beschränkt
+			// (`array_keys($aktiv)`), damit dieser Zähler dieselbe Projektmenge
+			// nennt wie `boards` und `firstColumn` — archivierte bleiben draußen.
+			'closedCounts' => $this->tickets->countClosedByBoard($this->userId, array_keys($aktiv)),
+			// **Erste Spalte je Projekt** (#226) — ein offener Vorgang darin gilt
+			// als „Neu" (noch in der Eingangsspalte, nicht aufgegriffen). Nur für
+			// die aktiven Boards, die die Seite ohnehin kennt.
+			'firstColumn' => $this->columns->findFirstColumnByBoard(array_keys($aktiv)),
+			// **Durchsatz** (#226/#232) — neu und erledigt in den letzten sieben
+			// Tagen mit Veränderung zur Vorwoche, dazu die Tages-Zeitreihe der
+			// letzten 30 Tage für die Verlaufs-Kurven.
+			'durchsatz' => $this->durchsatz(array_keys($aktiv)),
+			// **Neu je Projekt in den letzten sieben Tagen** (#232) — die Marke
+			// „N diese Woche" an der Kachel. Sichtbarkeits-sicher und auf die
+			// aktiven Boards beschränkt, dieselbe Projektmenge wie `boards`.
+			'neuDieseWoche' => $this->tickets->countNewByBoard(
+				$this->userId,
+				array_keys($aktiv),
+				(new \DateTime('now', new \DateTimeZone('UTC')))->modify('-7 days')->format('Y-m-d H:i:s'),
+			),
 		]);
+	}
+
+	/**
+	 * Der Durchsatz je Zeitfenster (#226): neu und erledigt in den letzten
+	 * sieben Tagen, mit der Veränderung zur Vorwoche.
+	 *
+	 * Rollende Sieben-Tage-Fenster, in **UTC** gerechnet — so speichert die DB
+	 * die Zeitstempel, und der Vergleich kippt nicht mit der lokalen Zeitzone.
+	 * Jeder Zähler ist sichtbarkeits-sicher (siehe {@see TicketMapper::countInWindow()}).
+	 *
+	 * @param int[] $boardIds Die aktiven Boards.
+	 * @return array{neu: int, neuDelta: int, erledigt: int, erledigtDelta: int}
+	 */
+	private function durchsatz(array $boardIds): array {
+		$utc = new \DateTimeZone('UTC');
+		$w1 = (new \DateTime('now', $utc))->modify('-7 days')->format('Y-m-d H:i:s');
+		$w2 = (new \DateTime('now', $utc))->modify('-14 days')->format('Y-m-d H:i:s');
+		$uid = (string)$this->userId;
+
+		$neuThis = $this->tickets->countInWindow($uid, $boardIds, 'created_at', $w1, null);
+		$neuLast = $this->tickets->countInWindow($uid, $boardIds, 'created_at', $w2, $w1);
+		$erlThis = $this->tickets->countInWindow($uid, $boardIds, 'closed_at', $w1, null);
+		$erlLast = $this->tickets->countInWindow($uid, $boardIds, 'closed_at', $w2, $w1);
+
+		return [
+			'neu' => $neuThis,
+			'neuDelta' => $neuThis - $neuLast,
+			'erledigt' => $erlThis,
+			'erledigtDelta' => $erlThis - $erlLast,
+			// Die Verlaufs-Kurven (#232): ein Zähler je Tag über die letzten
+			// {@see REIHE_TAGE} Tage, älteste zuerst. Die Zahlen oben nennen die
+			// Woche, die Kurve zeigt den Weg dahin.
+			'neuReihe' => $this->reihe($boardIds, 'created_at'),
+			'erledigtReihe' => $this->reihe($boardIds, 'closed_at'),
+		];
+	}
+
+	/**
+	 * Wie viele Tage die Verlaufs-Kurve umfasst (#232). Ein Monat: genug, um
+	 * einen Trend zu sehen, ohne dass die Kurve bei wenigen Vorgängen je Tag ins
+	 * Rauschen kippt. Reine Anzeige — nichts wird gespeichert.
+	 */
+	private const REIHE_TAGE = 30;
+
+	/**
+	 * Die Tages-Zeitreihe eines Zählers (#232): für jeden der letzten
+	 * {@see REIHE_TAGE} Tage die Zahl sichtbarer Vorgänge, älteste zuerst.
+	 *
+	 * **In UTC gebündelt**, wie der Durchsatz daneben: Die DB speichert die
+	 * Zeitstempel so, und ein `substr($ts, 0, 10)` schneidet den UTC-Tag heraus
+	 * — portabel über SQLite und Postgres, ohne Datumsfunktion der Datenbank
+	 * (siehe {@see TicketMapper::findTimestampsInWindow()}).
+	 *
+	 * @param int[] $boardIds Die aktiven Boards.
+	 * @param string $column `created_at` oder `closed_at`.
+	 * @return int[] Ein Zähler je Tag, Länge {@see REIHE_TAGE}, älteste zuerst.
+	 */
+	private function reihe(array $boardIds, string $column): array {
+		$utc = new \DateTimeZone('UTC');
+		$tage = self::REIHE_TAGE;
+		$start = (new \DateTime('now', $utc))->setTime(0, 0, 0)->modify('-' . ($tage - 1) . ' days');
+		$ab = $start->format('Y-m-d H:i:s');
+		$bis = (new \DateTime('now', $utc))->format('Y-m-d H:i:s');
+
+		// Tag-Kennung (Y-m-d) => Index in der Reihe. So braucht das Bündeln nur
+		// einen Nachschlag je Zeitstempel, keine Datumsrechnung.
+		$index = [];
+		$tag = clone $start;
+		for ($i = 0; $i < $tage; $i++) {
+			$index[$tag->format('Y-m-d')] = $i;
+			$tag = $tag->modify('+1 day');
+		}
+
+		$reihe = array_fill(0, $tage, 0);
+		foreach ($this->tickets->findTimestampsInWindow((string)$this->userId, $boardIds, $column, $ab, $bis) as $ts) {
+			$key = substr($ts, 0, 10);
+			if (isset($index[$key])) {
+				$reihe[$index[$key]]++;
+			}
+		}
+
+		return $reihe;
 	}
 
 	/**

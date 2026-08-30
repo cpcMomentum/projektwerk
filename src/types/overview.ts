@@ -43,6 +43,45 @@ export interface OverviewData {
 	 * offenen Schritt.
 	 */
 	withOpenSteps: number[]
+	/**
+	 * Board-Kennung => Zähler der **abgeschlossenen** Vorgänge (#226).
+	 *
+	 * Die offenen Zahlen (Neu/Offen/Wartet) leitet das Dashboard aus `tickets`
+	 * und `waiting` ab; nur die erledigten fehlen dort, weil der Überblick
+	 * geschlossene Vorgänge bewusst nicht lädt. `done` trägt „Erledigt" und den
+	 * Fortschritt, `discarded` bleibt aus dem Fortschritts-Nenner.
+	 */
+	closedCounts: Record<number, { done: number, discarded: number }>
+	/**
+	 * Board-Kennung => Kennung der ersten Spalte (#226).
+	 *
+	 * Für den Status „Neu": ein offener Vorgang, dessen `columnId` gleich der
+	 * ersten Spalte seines Boards ist, liegt noch in der Eingangsspalte.
+	 */
+	firstColumn: Record<number, number>
+	/**
+	 * Der Durchsatz (#226/#232): neu und erledigt in den letzten sieben Tagen,
+	 * mit der Veränderung zur Vorwoche (`*Delta`), dazu die Tages-Zeitreihe der
+	 * letzten 30 Tage für die Verlaufs-Kurven (`*Reihe`, älteste zuerst).
+	 */
+	durchsatz: {
+		neu: number
+		neuDelta: number
+		erledigt: number
+		erledigtDelta: number
+		/** Ein Zähler je Tag über 30 Tage, älteste zuerst. */
+		neuReihe: number[]
+		/** Ein Zähler je Tag über 30 Tage, älteste zuerst. */
+		erledigtReihe: number[]
+	}
+	/**
+	 * Board-Kennung => neue Vorgänge der letzten sieben Tage (#232).
+	 *
+	 * Die Marke „N diese Woche" an der Projekt-Kachel — der Durchsatz oben nennt
+	 * die Summe über alle Projekte, dies bricht sie auf das einzelne herunter.
+	 * Nur Projekte mit mindestens einem neuen Vorgang stehen drin.
+	 */
+	neuDieseWoche: Record<number, number>
 }
 
 /**
@@ -93,4 +132,43 @@ export interface ProjectRow {
 	 * wartet und trotzdem lange ruht, ist das, was man übersieht.
 	 */
 	lastMovementDays: number | null
+}
+
+/**
+ * Eine Zeile der Projekt-Status-Tabelle im Dashboard (#226).
+ *
+ * Fasst je Projekt die kanonischen Status zusammen (Neu/Offen/Wartet aus der
+ * offenen Menge, Erledigt aus `closedCounts`) und leitet daraus Fortschritt und
+ * ein **Zustandssignal** ab — getrennt vom Status, „wo liegt der Ball".
+ */
+export interface ProjectStatusRow {
+	boardId: number
+	title: string
+	/** Beide Firmennamen, wie in {@see ProjectRow}. */
+	org: string
+	/** Offen, noch in der Eingangsspalte — neu reingekommen. */
+	neu: number
+	/** Offen, in Arbeit (nicht neu, wartet nicht). */
+	offen: number
+	/** Offen, wartet auf die Kundenseite. */
+	wartet: number
+	/** Abgeschlossen mit Ergebnis erledigt. */
+	erledigt: number
+	/** Abgeschlossen mit Ergebnis verworfen — nicht im Fortschritts-Nenner. */
+	verworfen: number
+	/**
+	 * Neue Vorgänge der letzten sieben Tage in diesem Projekt (#232) — die
+	 * Marke „▲ N diese Woche". `0`, wenn diese Woche nichts dazukam; die Kachel
+	 * zeigt die Marke dann nicht.
+	 */
+	neuDieseWoche: number
+	/** Offene Vorgänge gesamt (neu + offen + wartet). */
+	offenGesamt: number
+	/** Anteil erledigt an (erledigt + offen), 0..1; 0 wenn nichts vorliegt. */
+	fortschritt: number
+	/**
+	 * „Wo liegt der Ball" — aus den Daten abgeleitet, nicht gepflegt:
+	 * `rot` überfällig, `gelb` beim Kunden, `grau` steht still, `gruen` läuft.
+	 */
+	zustand: 'rot' | 'gelb' | 'grau' | 'gruen'
 }

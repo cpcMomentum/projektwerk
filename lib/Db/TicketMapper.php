@@ -334,6 +334,195 @@ class TicketMapper extends QBMapper {
 	}
 
 	/**
+	 * Abgeschlossene Vorgaenge je Board, nach Ausgang gezaehlt — fuer den Status
+	 * „Erledigt" und den Fortschritt im Dashboard (#226).
+	 *
+	 * Sichtbarkeits-gefiltert ueber {@see scopedQuery()} wie jede Lesemethode:
+	 * auch dieser Zaehler zaehlt nur, was der Betrachter sehen darf, und verraet
+	 * damit nichts Verborgenes (§5.8). Ein abgeschlossener Vorgang **ohne**
+	 * ausdruecklichen Ausgang zaehlt als erledigt — geschlossen und nicht
+	 * verworfen ist erledigt.
+	 *
+	 * **Auf die uebergebenen Boards eingeschraenkt**, und zwar aus demselben
+	 * Grund wie die offene Menge und `firstColumn` im Ueberblick: Der Einstieg
+	 * zeigt nur **aktive** Projekte. Ohne diese Grenze zaehlte die Methode auch
+	 * erledigte Vorgaenge archivierter Projekte, und `closedCounts` traege
+	 * Board-Kennungen, die in `boards`/`firstColumn` fehlen — die drei Aggregate
+	 * liefen auseinander.
+	 *
+	 * @param string $userId Der Betrachter.
+	 * @param int[] $boardIds Die aktiven Boards, auf die gezaehlt wird.
+	 * @return array<int, array{done: int, discarded: int}> Board-Kennung => Zaehler
+	 */
+	public function countClosedByBoard(string $userId, array $boardIds): array {
+		if ($boardIds === []) {
+			return [];
+		}
+
+		$qb = $this->scopedQuery($userId, null);
+		$qb->select(self::T . '.board_id', self::T . '.closed_outcome')
+			->selectAlias($qb->func()->count(self::T . '.id'), 'cnt')
+			->andWhere($qb->expr()->isNotNull(self::T . '.closed_at'))
+			->andWhere($qb->expr()->in(
+				self::T . '.board_id',
+				$qb->createNamedParameter($boardIds, IQueryBuilder::PARAM_INT_ARRAY),
+			))
+			->groupBy(self::T . '.board_id', self::T . '.closed_outcome');
+
+		$result = $qb->executeQuery();
+		$counts = [];
+		while (($row = $result->fetch()) !== false) {
+			$boardId = (int)$row['board_id'];
+			if (!isset($counts[$boardId])) {
+				$counts[$boardId] = ['done' => 0, 'discarded' => 0];
+			}
+			$key = $row['closed_outcome'] === Ticket::OUTCOME_DISCARDED ? 'discarded' : 'done';
+			$counts[$boardId][$key] += (int)$row['cnt'];
+		}
+		$result->closeCursor();
+
+		return $counts;
+	}
+
+	/**
+	 * Zaehlt Vorgaenge, deren Zeitspalte in `[ab, bis)` liegt — fuer den
+	 * **Durchsatz** im Dashboard (#226): neu bzw. erledigt je Zeitfenster.
+	 *
+	 * Sichtbarkeits-gefiltert ueber {@see scopedQuery()} und auf die aktiven
+	 * Boards beschraenkt, exakt wie {@see countClosedByBoard()}: auch dieser
+	 * Zaehler zaehlt nur, was der Betrachter sehen darf (§5.8).
+	 *
+	 * `$column` ist **whitelisted** (nur `created_at`/`closed_at`), weil der Name
+	 * in die Abfrage interpoliert wird — kein Nutzerwert. Bei `closed_at` fallen
+	 * offene Vorgaenge durch die `>=`-Bedingung von selbst heraus (Wert NULL).
+	 *
+	 * **Bei `closed_at` zaehlen nur erledigte, keine verworfenen Vorgaenge** —
+	 * dieselbe Unterscheidung wie in {@see countClosedByBoard()}: geschlossen
+	 * und nicht verworfen ist erledigt. Ohne diesen Filter zaehlte „Erledigt /
+	 * Woche" im Dashboard auch Vorgaenge, die nur verworfen wurden.
+	 *
+	 * @param string $userId Der Betrachter.
+	 * @param int[] $boardIds Die aktiven Boards.
+	 * @param string $column `created_at` oder `closed_at`.
+	 * @param string $ab Untergrenze (inklusive), Format `Y-m-d H:i:s` (UTC).
+	 * @param ?string $bis Obergrenze (exklusiv) oder null fuer offen.
+	 */
+	public function countInWindow(string $userId, array $boardIds, string $column, string $ab, ?string $bis): int {
+		if ($boardIds === [] || !in_array($column, ['created_at', 'closed_at'], true)) {
+			return 0;
+		}
+
+		$qb = $this->scopedQuery($userId, null);
+		$col = self::T . '.' . $column;
+		$qb->select($qb->func()->count(self::T . '.id'))
+			->andWhere($qb->expr()->in(
+				self::T . '.board_id',
+				$qb->createNamedParameter($boardIds, IQueryBuilder::PARAM_INT_ARRAY),
+			))
+			->andWhere($qb->expr()->gte($col, $qb->createNamedParameter($ab)));
+		if ($bis !== null) {
+			$qb->andWhere($qb->expr()->lt($col, $qb->createNamedParameter($bis)));
+		}
+		if ($column === 'closed_at') {
+			$qb->andWhere($qb->expr()->orX(
+				$qb->expr()->isNull(self::T . '.closed_outcome'),
+				$qb->expr()->neq(self::T . '.closed_outcome', $qb->createNamedParameter(Ticket::OUTCOME_DISCARDED)),
+			));
+		}
+
+		$result = $qb->executeQuery();
+		$count = (int)$result->fetchOne();
+		$result->closeCursor();
+
+		return $count;
+	}
+
+	/**
+	 * Die Zeitstempel aller sichtbaren Vorgaenge im Fenster [ab, bis) — roh,
+	 * fuer die Tages-Zeitreihe des Durchsatzes (#232).
+	 *
+	 * **Warum roh und nicht schon je Tag gruppiert:** Ein `GROUP BY
+	 * DATE(created_at)` waere je Datenbank ein anderer Ausdruck — SQLite
+	 * `strftime`, Postgres `date_trunc`, MySQL `DATE()`. Die Leak-Matrix faehrt
+	 * SQLite, die Produktivinstanz Postgres; eine Abfrage, die an dieser
+	 * Unterscheidung haengt, ginge genau dort auseinander, wo sie gepruegt wird.
+	 * Das Buendeln nach UTC-Tag ist reine Zeichenarbeit und gehoert deshalb in
+	 * den Aufrufer, nicht in die Datenbank. Das Issue setzt ohnehin auf kleine
+	 * Datenmengen (#232).
+	 *
+	 * Dieselbe sichtbarkeits-sichere Basis wie {@see countInWindow()}, inklusive
+	 * des Ausschlusses verworfener Vorgaenge bei `closed_at` — sonst zaehlte die
+	 * Erledigt-Kurve, was die Erledigt-Zahl daneben nicht zaehlt.
+	 *
+	 * @param int[] $boardIds Die aktiven Boards.
+	 * @param string $column `created_at` oder `closed_at`.
+	 * @return string[] Die Zeitstempel im DB-Format, unsortiert.
+	 */
+	public function findTimestampsInWindow(string $userId, array $boardIds, string $column, string $ab, string $bis): array {
+		if ($boardIds === [] || !in_array($column, ['created_at', 'closed_at'], true)) {
+			return [];
+		}
+
+		$qb = $this->scopedQuery($userId, null);
+		$col = self::T . '.' . $column;
+		$qb->select($col)
+			->andWhere($qb->expr()->in(
+				self::T . '.board_id',
+				$qb->createNamedParameter($boardIds, IQueryBuilder::PARAM_INT_ARRAY),
+			))
+			->andWhere($qb->expr()->gte($col, $qb->createNamedParameter($ab)))
+			->andWhere($qb->expr()->lt($col, $qb->createNamedParameter($bis)));
+		if ($column === 'closed_at') {
+			$qb->andWhere($qb->expr()->orX(
+				$qb->expr()->isNull(self::T . '.closed_outcome'),
+				$qb->expr()->neq(self::T . '.closed_outcome', $qb->createNamedParameter(Ticket::OUTCOME_DISCARDED)),
+			));
+		}
+
+		$result = $qb->executeQuery();
+		$stamps = array_map(static fn ($row): string => (string)$row[$column], $result->fetchAll());
+		$result->closeCursor();
+
+		return $stamps;
+	}
+
+	/**
+	 * Neu angelegte Vorgaenge je Board seit einem Zeitpunkt — fuer die Marke
+	 * „N diese Woche" an der Projekt-Kachel (#232).
+	 *
+	 * Gruppiert nach `board_id`, nicht nach Tag: Das ist portabel und braucht
+	 * keine Datumsfunktion. Sichtbarkeits-sicher wie jede Lesemethode hier; ein
+	 * Nichtmitglied bekommt eine leere Zuordnung.
+	 *
+	 * @param int[] $boardIds Die aktiven Boards.
+	 * @return array<int, int> Board-Kennung => Anzahl neuer Vorgaenge.
+	 */
+	public function countNewByBoard(string $userId, array $boardIds, string $since): array {
+		if ($boardIds === []) {
+			return [];
+		}
+
+		$qb = $this->scopedQuery($userId, null);
+		$qb->select(self::T . '.board_id')
+			->selectAlias($qb->func()->count(self::T . '.id'), 'cnt')
+			->andWhere($qb->expr()->in(
+				self::T . '.board_id',
+				$qb->createNamedParameter($boardIds, IQueryBuilder::PARAM_INT_ARRAY),
+			))
+			->andWhere($qb->expr()->gte(self::T . '.created_at', $qb->createNamedParameter($since)))
+			->groupBy(self::T . '.board_id');
+
+		$result = $qb->executeQuery();
+		$counts = [];
+		while (($row = $result->fetch()) !== false) {
+			$counts[(int)$row['board_id']] = (int)$row['cnt'];
+		}
+		$result->closeCursor();
+
+		return $counts;
+	}
+
+	/**
 	 * Die groesste Position einer Spalte — **ungefiltert**.
 	 *
 	 * Bewusst an `TicketScope` vorbei, und das ist die einzige Lesemethode

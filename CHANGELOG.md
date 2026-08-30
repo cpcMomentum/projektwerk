@@ -6,6 +6,31 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.4.9] - 2026-08-30
+
+### Added
+
+- **Überblick als Kennzahlen-Dashboard** (#226). Der Überblick zeigt die Projekte jetzt als
+  Kacheln mit einer Kennzahlen-Karte darüber — Durchsatz (neu/erledigt je Woche mit Delta) und
+  Projektzustand auf einen Blick, im WorkTime-KPI-Look.
+- **Durchsatz-Verlauf als Sparklines** (#232). Neben den Durchsatz-Zahlen zeichnet eine
+  30-Tage-Kurve (neu/erledigt) den Trend, dazu „▲ N diese Woche" je Projekt-Kachel.
+- **Projekt-Dashboard als zweite Ebene** (#227). Ein Klick auf eine Projekt-Kachel öffnet ein
+  Projekt-Dashboard (Status-Kacheln mit Überfällig-Zahl, Fortschritt, Phasen-Verteilung aus den
+  echten Board-Spalten) statt direkt das Board; von dort führt „Board öffnen" weiter aufs Kanban.
+- **`occ projektwerk:attachments:verify`** (#11). Meldet fehlplatzierte Anhänge mit Ist- und
+  Soll-Ablageort, ohne eine Datei zu bewegen — der lesende Zwilling zu `attachments:relocate`,
+  für den Blick vor dem Eingriff. Exit 0, wenn alles am richtigen Ort liegt, sonst 1.
+
+### Changed
+
+- **Gäste landen auf ihrem Board** (#234). Wer in allen Projekten Kundenseite ist, wird beim
+  App-Start auf sein Board (bei mehreren auf die Projektliste) geleitet statt auf den internen
+  Überblick. Der Überblick bleibt ein internes Werkzeug; die Zahlen darin waren ohnehin
+  sichtbarkeitssicher, das ist Verteidigung in der Tiefe.
+- **Durchsatz zählt verworfene Vorgänge nicht als erledigt** (#226). Ein mit „verworfen"
+  abgeschlossener Vorgang erhöht die „Erledigt"-Zahl nicht mehr.
+
 ## [0.4.8] - 2026-08-25
 
 ### Added

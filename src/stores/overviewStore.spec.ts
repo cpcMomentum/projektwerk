@@ -52,6 +52,10 @@ function daten(teile: Partial<OverviewData> = {}): OverviewData {
 		names: {},
 		me: '',
 		withOpenSteps: [],
+		closedCounts: {},
+		firstColumn: {},
+		durchsatz: { neu: 0, neuDelta: 0, erledigt: 0, erledigtDelta: 0, neuReihe: [], erledigtReihe: [] },
+		neuDieseWoche: {},
 		...teile,
 	}
 }
@@ -92,6 +96,64 @@ describe('Überblick', () => {
 			[2, 1],
 			[1, 0],
 		])
+	})
+
+	/**
+	 * Die Projekt-Status-Tabelle (#226): Zähler, Fortschritt und das abgeleitete
+	 * Zustandssignal — ein Board je Zustand, sortiert mit den Problemfällen oben.
+	 */
+	it('leitet Status, Fortschritt und Zustand je Projekt ab', () => {
+		const tk = (teile: Partial<Ticket>): Ticket => ({
+			columnId: 0, dueDate: null, updatedAt: null, ...teile,
+		} as unknown as Ticket)
+
+		const store = useOverviewStore()
+		store.apply(daten({
+			boards: {
+				1: { title: 'Rot', orgInternal: 'Wir', orgExternal: 'A' },
+				2: { title: 'Gelb', orgInternal: 'Wir', orgExternal: 'B' },
+				3: { title: 'Grau', orgInternal: 'Wir', orgExternal: 'C' },
+				4: { title: 'Grün', orgInternal: 'Wir', orgExternal: 'D' },
+			},
+			firstColumn: { 1: 10, 2: 20, 3: 30, 4: 40 },
+			tickets: [
+				// Board 1: in Eingangsspalte (neu) UND überfällig → rot schlägt alles.
+				tk({ id: 1, boardId: 1, columnId: 10, dueDate: '2026-08-01' }),
+				// Board 2: wartet auf Kunde → gelb (und zählt als wartet, nicht neu).
+				tk({ id: 2, boardId: 2, columnId: 20 }),
+				// Board 3: in Arbeit, seit langem keine Bewegung, wartet nicht → grau.
+				tk({ id: 3, boardId: 3, columnId: 35, updatedAt: '2026-07-01T00:00:00+00:00' }),
+				// Board 4: neu in der Eingangsspalte, frisch bewegt → grün.
+				tk({ id: 4, boardId: 4, columnId: 40, updatedAt: '2026-08-13T00:00:00+00:00' }),
+			],
+			waiting: { 2: { since: '2026-08-10T00:00:00+00:00', userIds: ['carla'], overdue: false } },
+			closedCounts: { 1: { done: 3, discarded: 1 }, 4: { done: 1, discarded: 0 } },
+		}))
+		store.today = '2026-08-13'
+
+		const rows = store.projectStatusRows
+		// Sortiert nach Zustand: rot, gelb, grau, grün.
+		expect(rows.map((r) => [r.title, r.zustand])).toEqual([
+			['Rot', 'rot'],
+			['Gelb', 'gelb'],
+			['Grau', 'grau'],
+			['Grün', 'gruen'],
+		])
+
+		const rot = rows[0]
+		expect([rot.neu, rot.offen, rot.wartet, rot.erledigt, rot.verworfen]).toEqual([1, 0, 0, 3, 1])
+		expect(rot.offenGesamt).toBe(1)
+		expect(rot.fortschritt).toBeCloseTo(0.75) // 3 / (3 + 1)
+
+		const gelb = rows[1]
+		expect([gelb.neu, gelb.offen, gelb.wartet]).toEqual([0, 0, 1])
+
+		const grau = rows[2]
+		expect([grau.neu, grau.offen, grau.wartet]).toEqual([0, 1, 0])
+
+		const gruen = rows[3]
+		expect([gruen.neu, gruen.erledigt]).toEqual([1, 1])
+		expect(gruen.fortschritt).toBeCloseTo(0.5) // 1 / (1 + 1)
 	})
 
 	/**
@@ -237,5 +299,26 @@ describe('Überblick', () => {
 		}))
 
 		expect(store.nobodyRows.map((r) => r.ticket.id)).toEqual([1])
+	})
+
+	/**
+	 * „N diese Woche" je Projekt (#232) reitet auf `projectStatusRows` mit — der
+	 * Zähler kommt vom Server, die Zeile reicht ihn nur durch. Ein Projekt ohne
+	 * Eintrag steht auf 0, nicht auf `undefined`.
+	 */
+	it('reicht den Wochen-Zuwachs je Projekt an die Statuszeile durch', () => {
+		const store = useOverviewStore()
+		store.apply(daten({
+			tickets: [ticket(1, 1), ticket(2, 2)],
+			boards: {
+				1: { title: 'Mit Zuwachs', orgInternal: 'Wir', orgExternal: 'Kunde' },
+				2: { title: 'Ohne Zuwachs', orgInternal: 'Wir', orgExternal: 'Kunde' },
+			},
+			neuDieseWoche: { 1: 3 },
+		}))
+
+		const proBoard = Object.fromEntries(store.projectStatusRows.map((r) => [r.boardId, r.neuDieseWoche]))
+		expect(proBoard[1]).toBe(3)
+		expect(proBoard[2]).toBe(0)
 	})
 })

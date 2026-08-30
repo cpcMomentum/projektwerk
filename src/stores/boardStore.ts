@@ -54,6 +54,15 @@ interface State {
 	/** Spalten, in denen „ältere anzeigen" gerade aufgeklappt ist (#59). */
 	expandedColumns: number[]
 	loading: boolean
+	/**
+	 * Ob die Boardliste seit dem Seitenaufruf **mindestens einmal** geladen
+	 * wurde (#234). Nicht `boards.length > 0`: Ein interner Nutzer ohne Projekt
+	 * hat eine leere, aber gültige Liste — und das Gäste-Gate muss „noch nicht
+	 * geladen" von „geladen, aber leer" unterscheiden können.
+	 */
+	loaded: boolean
+	/** Der laufende Ladevorgang, damit Rahmen und Gate ihn sich teilen (#234). */
+	loadPromise: Promise<void> | null
 	error: string | null
 }
 
@@ -72,6 +81,8 @@ export const useBoardStore = defineStore('board', {
 		onlyWaiting: false,
 		expandedColumns: [],
 		loading: false,
+		loaded: false,
+		loadPromise: null,
 		error: null,
 	}),
 
@@ -116,6 +127,20 @@ export const useBoardStore = defineStore('board', {
 		 * @param state Der Speicher.
 		 */
 		pinnedBoards: (state): Board[] => state.boards.filter((board) => board.pinned === true),
+
+		/**
+		 * Ob der Betrachter in **mindestens einem** Projekt intern ist (#234).
+		 *
+		 * Das Unterscheidungsmerkmal zwischen Dienstleister und Kunde über alle
+		 * Projekte hinweg: Der Überblick ist ein internes Steuerungswerkzeug,
+		 * und der „Überblick"-Eintrag der Seitenleiste erscheint nur, wo er
+		 * hinführt. Ein Betrachter ohne jedes Projekt gilt hier **nicht** als
+		 * extern — er sieht den Überblick (leer), um sein erstes Projekt
+		 * anzulegen.
+		 *
+		 * @param state Der Speicher.
+		 */
+		internalSomewhere: (state): boolean => state.boards.some((board) => board.viewerRole === 'internal'),
 
 		/**
 		 * Wie viele sichtbare Vorgänge gerade warten.
@@ -165,11 +190,41 @@ export const useBoardStore = defineStore('board', {
 			this.error = null
 			try {
 				this.boards = await fetchBoards()
+				this.loaded = true
 			} catch (e) {
 				this.error = (e as { message?: string }).message ?? 'Unbekannter Fehler'
 				showError(this.error)
 			} finally {
 				this.loading = false
+			}
+		},
+
+		/**
+		 * Die Boardliste einmal laden und den laufenden Ladevorgang teilen (#234).
+		 *
+		 * Der App-Rahmen (für den Pin-Abschnitt) und das Gäste-Gate (im Router)
+		 * feuern beide beim Seitenaufruf — ohne Bündelung wäre das ein doppelter
+		 * Abruf und ein Wettlauf. Ist die Liste geladen, kehrt die Methode sofort
+		 * zurück; läuft gerade ein Abruf, hängt sie sich an ihn.
+		 *
+		 * **Bei Fehlschlag bleibt `loaded` falsch** — ein erneuter Aufruf
+		 * versucht es wieder. Das Gate wertet das als „unbekannt" und zeigt den
+		 * Überblick (fail-open): Die Zahlen dort sind ohnehin
+		 * sichtbarkeits-sicher, und ein interner Nutzer soll bei einem Flackern
+		 * nicht aus seinem Werkzeug ausgesperrt werden.
+		 */
+		async ensureBoards(): Promise<void> {
+			if (this.loaded) {
+				return
+			}
+			if (this.loadPromise !== null) {
+				return this.loadPromise
+			}
+			this.loadPromise = this.loadBoards()
+			try {
+				await this.loadPromise
+			} finally {
+				this.loadPromise = null
 			}
 		},
 

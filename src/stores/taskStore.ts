@@ -10,7 +10,7 @@
  * mit dem anderen zu verwechseln.
  */
 
-import type { StepRow, TaskBoard, TaskList, TicketRow } from '@/types/task'
+import type { MeasureRow, StepRow, TaskBoard, TaskList, TicketRow } from '@/types/task'
 import type { Step, Ticket } from '@/types/ticket'
 
 import { t } from '@nextcloud/l10n'
@@ -192,6 +192,52 @@ export const useTaskStore = defineStore('tasks', {
 				// Gleiche Fälligkeit (oder beide ohne): das Ältere zuerst.
 				return (a.ticket.createdAt ?? '').localeCompare(b.ticket.createdAt ?? '')
 					|| a.ticket.id - b.ticket.id
+			})
+		},
+
+		/**
+		 * **Meine Maßnahmen** (#226) — Arbeitsschritte und Vorgänge in einer
+		 * Liste, unterschieden nach der Art der Obligation.
+		 *
+		 * Dieselbe Quelle wie die zwei Abschnitte von „Meine Aufgaben"
+		 * (`stepRows`, `ticketRows`); hier zu einer Tabelle vereint. Sortiert nach
+		 * derselben §9-Regel wie beide Abschnitte: Überfälliges oben, dann nach
+		 * Fälligkeit, ohne Datum ans Ende. Ein fehlendes Datum ist nicht „sofort".
+		 */
+		measureRows(): MeasureRow[] {
+			const schritte: MeasureRow[] = (this.stepRows as StepRow[]).map((row) => ({
+				key: `s${row.step.id}`,
+				art: 'schritt',
+				title: row.step.title,
+				ticket: row.ticket,
+				board: row.board,
+				dueDate: row.step.dueDate,
+				overdue: row.overdue,
+			}))
+			const vorgaenge: MeasureRow[] = (this.ticketRows as TicketRow[]).map((row) => ({
+				key: `t${row.ticket.id}`,
+				art: 'verantwortung',
+				title: row.ticket.title,
+				ticket: row.ticket,
+				board: row.board,
+				dueDate: row.ticket.dueDate,
+				overdue: row.overdue,
+			}))
+
+			return [...schritte, ...vorgaenge].sort((a, b) => {
+				if (a.overdue !== b.overdue) {
+					return a.overdue ? -1 : 1
+				}
+				if (a.dueDate !== b.dueDate) {
+					if (a.dueDate === null) {
+						return 1
+					}
+					if (b.dueDate === null) {
+						return -1
+					}
+					return a.dueDate < b.dueDate ? -1 : 1
+				}
+				return a.key.localeCompare(b.key)
 			})
 		},
 

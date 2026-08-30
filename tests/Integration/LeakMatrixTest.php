@@ -250,11 +250,16 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'TicketMapper::findForRestore' => 'testRestoreLookupIsScopedToBoardAndOwningRole',
 		'TicketMapper::countVisibleInBoard' => 'testCountersNeverCountWhatIsHidden',
 		'TicketMapper::findLastPositionInColumn' => 'testLastPositionIsTheSameForEveryViewer',
+		'TicketMapper::countClosedByBoard' => 'testOverviewEndpointMatchesTheVisibleSetAcrossBoards',
+		'TicketMapper::countInWindow' => 'testOverviewEndpointMatchesTheVisibleSetAcrossBoards',
+		'TicketMapper::findTimestampsInWindow' => 'testOverviewEndpointMatchesTheVisibleSetAcrossBoards',
+		'TicketMapper::countNewByBoard' => 'testOverviewEndpointMatchesTheVisibleSetAcrossBoards',
 		// zusaetzlich gefahren von testBothCompanyNamesReachEveryViewer
 		'BoardMapper::findForViewer' => 'testBoardMetadataPathsTrustTheContextAlone',
 		'BoardMapper::findAllForUser' => 'testBoardListFollowsMembership',
 		'MemberMapper::findForBoard' => 'testBoardMetadataPathsTrustTheContextAlone',
 		'ColumnMapper::findForBoard' => 'testBoardMetadataPathsTrustTheContextAlone',
+		'ColumnMapper::findFirstColumnByBoard' => 'testOverviewEndpointMatchesTheVisibleSetAcrossBoards',
 		'CommentMapper::findForTickets' => 'testChildrenFollowTheFilteredTicketSet',
 		'CommentMapper::countForTickets' => 'testChildCountersFollowTheFilteredTicketSet',
 		'CommentMapper::findNewestForTickets' => 'testNewestCommentFollowsTheFilteredTicketSet',
@@ -1084,6 +1089,25 @@ class LeakMatrixTest extends IntegrationTestCase {
 				$userId . ': Die Namensliste deckt andere Projekte als die Herkunftszeile — '
 				. 'eines von beidem liefert ein fremdes Projekt mit.',
 			);
+
+			// (4) Die Aggregate (#226) tragen kein fremdes Projekt. Die
+			// Erledigt-Zähler und die Erste-Spalte-Zuordnung dürfen nur Boards
+			// nennen, die der Betrachter ohnehin kennt; die Sichtbarkeit je
+			// Vorgang reitet auf derselben `scopedQuery` wie die oben
+			// ausgeschriebene Ticketmenge.
+			$eigeneBoards = array_keys($data['boards']);
+			$this->assertEmpty(
+				array_diff(array_keys($data['closedCounts']), $eigeneBoards),
+				$userId . ': Ein fremdes Board in den Erledigt-Zählern.',
+			);
+			$this->assertEmpty(
+				array_diff(array_keys($data['firstColumn']), $eigeneBoards),
+				$userId . ': Ein fremdes Board in der Ersten-Spalte-Zuordnung.',
+			);
+			$this->assertEmpty(
+				array_diff(array_keys($data['neuDieseWoche']), $eigeneBoards),
+				$userId . ': Ein fremdes Board in „N diese Woche".',
+			);
 		}
 
 		// Und das Nichtmitglied: leere Listen, kein 404 — wie bei `task#index`
@@ -1095,6 +1119,24 @@ class LeakMatrixTest extends IntegrationTestCase {
 		$this->assertSame([], $fremd->getData()['waiting']);
 		$this->assertSame([], $fremd->getData()['boards']);
 		$this->assertSame([], $fremd->getData()['names']);
+		$this->assertSame([], $fremd->getData()['closedCounts']);
+		$this->assertSame([], $fremd->getData()['firstColumn']);
+		// Auch der Durchsatz verrät nichts: kein Board, kein Fenster — die Zahlen
+		// und die Deltas auf 0, und die Verlaufs-Kurven (#232) eine flache
+		// Null-Reihe über 30 Tage. Kein Board heißt keine Zeitstempel, also
+		// nichts, was eine Kurve aus dem Nichts zeichnen könnte.
+		$this->assertSame(
+			[
+				'neu' => 0,
+				'neuDelta' => 0,
+				'erledigt' => 0,
+				'erledigtDelta' => 0,
+				'neuReihe' => array_fill(0, 30, 0),
+				'erledigtReihe' => array_fill(0, 30, 0),
+			],
+			$fremd->getData()['durchsatz'],
+		);
+		$this->assertSame([], $fremd->getData()['neuDieseWoche'], 'Ein Nichtmitglied bekommt eine „diese Woche"-Zuordnung.');
 	}
 
 	/**
@@ -1373,6 +1415,32 @@ class LeakMatrixTest extends IntegrationTestCase {
 
 		$this->assertSame(Http::STATUS_OK, $response->getStatus());
 		$this->assertSame([], $response->getData(), 'Das Nichtmitglied bekommt eine Boardliste.');
+	}
+
+	/**
+	 * `board#index` trägt die eigene Rolle je Board (#234) — und zwar **je
+	 * Board getrennt**.
+	 *
+	 * Das Gäste-Gate im Browser hängt daran: Bert ist im ersten Board intern,
+	 * im zweiten die Kundenseite. Käme eine flache Rolle über alle Projekte,
+	 * fiele genau diese Person durchs Raster — sie sähe entweder den Überblick,
+	 * den sie im zweiten Projekt nicht sehen soll, oder verlöre ihn im ersten.
+	 * Der Wert steht am Projekt, nicht an der Person.
+	 */
+	public function testBoardIndexCarriesTheViewersRolePerBoard(): void {
+		$byTitle = [];
+		foreach ($this->boardController(self::BERT)->index()->getData() as $board) {
+			$byTitle[(string)$board['title']] = $board['viewerRole'];
+		}
+
+		$this->assertSame(
+			[
+				'Leak-Matrix' => ViewerContext::ROLE_INTERNAL,
+				'Leak-Matrix Zweitboard' => ViewerContext::ROLE_EXTERNAL,
+			],
+			$byTitle,
+			'Bert muss im ersten Board intern und im zweiten extern erscheinen.',
+		);
 	}
 
 	/**
@@ -1996,6 +2064,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 			Server::get(TicketMapper::class),
 			Server::get(StepMapper::class),
 			Server::get(BoardMapper::class),
+			Server::get(ColumnMapper::class),
 			Server::get(WaitStateCalculator::class),
 			Server::get(MemberService::class),
 			$userId,
