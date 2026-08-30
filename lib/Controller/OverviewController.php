@@ -152,10 +152,18 @@ class OverviewController extends Controller {
 			// als „Neu" (noch in der Eingangsspalte, nicht aufgegriffen). Nur für
 			// die aktiven Boards, die die Seite ohnehin kennt.
 			'firstColumn' => $this->columns->findFirstColumnByBoard(array_keys($aktiv)),
-			// **Durchsatz** (#226) — neu und erledigt in den letzten sieben Tagen
-			// mit Veränderung zur Vorwoche. Die Verlaufs-Kurven kommen später mit
-			// einer Tages-Zeitreihe; hier stehen nur die Zahlen.
+			// **Durchsatz** (#226/#232) — neu und erledigt in den letzten sieben
+			// Tagen mit Veränderung zur Vorwoche, dazu die Tages-Zeitreihe der
+			// letzten 30 Tage für die Verlaufs-Kurven.
 			'durchsatz' => $this->durchsatz(array_keys($aktiv)),
+			// **Neu je Projekt in den letzten sieben Tagen** (#232) — die Marke
+			// „N diese Woche" an der Kachel. Sichtbarkeits-sicher und auf die
+			// aktiven Boards beschränkt, dieselbe Projektmenge wie `boards`.
+			'neuDieseWoche' => $this->tickets->countNewByBoard(
+				$this->userId,
+				array_keys($aktiv),
+				(new \DateTime('now', new \DateTimeZone('UTC')))->modify('-7 days')->format('Y-m-d H:i:s'),
+			),
 		]);
 	}
 
@@ -186,7 +194,59 @@ class OverviewController extends Controller {
 			'neuDelta' => $neuThis - $neuLast,
 			'erledigt' => $erlThis,
 			'erledigtDelta' => $erlThis - $erlLast,
+			// Die Verlaufs-Kurven (#232): ein Zähler je Tag über die letzten
+			// {@see REIHE_TAGE} Tage, älteste zuerst. Die Zahlen oben nennen die
+			// Woche, die Kurve zeigt den Weg dahin.
+			'neuReihe' => $this->reihe($boardIds, 'created_at'),
+			'erledigtReihe' => $this->reihe($boardIds, 'closed_at'),
 		];
+	}
+
+	/**
+	 * Wie viele Tage die Verlaufs-Kurve umfasst (#232). Ein Monat: genug, um
+	 * einen Trend zu sehen, ohne dass die Kurve bei wenigen Vorgängen je Tag ins
+	 * Rauschen kippt. Reine Anzeige — nichts wird gespeichert.
+	 */
+	private const REIHE_TAGE = 30;
+
+	/**
+	 * Die Tages-Zeitreihe eines Zählers (#232): für jeden der letzten
+	 * {@see REIHE_TAGE} Tage die Zahl sichtbarer Vorgänge, älteste zuerst.
+	 *
+	 * **In UTC gebündelt**, wie der Durchsatz daneben: Die DB speichert die
+	 * Zeitstempel so, und ein `substr($ts, 0, 10)` schneidet den UTC-Tag heraus
+	 * — portabel über SQLite und Postgres, ohne Datumsfunktion der Datenbank
+	 * (siehe {@see TicketMapper::findTimestampsInWindow()}).
+	 *
+	 * @param int[] $boardIds Die aktiven Boards.
+	 * @param string $column `created_at` oder `closed_at`.
+	 * @return int[] Ein Zähler je Tag, Länge {@see REIHE_TAGE}, älteste zuerst.
+	 */
+	private function reihe(array $boardIds, string $column): array {
+		$utc = new \DateTimeZone('UTC');
+		$tage = self::REIHE_TAGE;
+		$start = (new \DateTime('now', $utc))->setTime(0, 0, 0)->modify('-' . ($tage - 1) . ' days');
+		$ab = $start->format('Y-m-d H:i:s');
+		$bis = (new \DateTime('now', $utc))->format('Y-m-d H:i:s');
+
+		// Tag-Kennung (Y-m-d) => Index in der Reihe. So braucht das Bündeln nur
+		// einen Nachschlag je Zeitstempel, keine Datumsrechnung.
+		$index = [];
+		$tag = clone $start;
+		for ($i = 0; $i < $tage; $i++) {
+			$index[$tag->format('Y-m-d')] = $i;
+			$tag = $tag->modify('+1 day');
+		}
+
+		$reihe = array_fill(0, $tage, 0);
+		foreach ($this->tickets->findTimestampsInWindow((string)$this->userId, $boardIds, $column, $ab, $bis) as $ts) {
+			$key = substr($ts, 0, 10);
+			if (isset($index[$key])) {
+				$reihe[$index[$key]]++;
+			}
+		}
+
+		return $reihe;
 	}
 
 	/**

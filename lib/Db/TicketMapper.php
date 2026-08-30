@@ -438,6 +438,91 @@ class TicketMapper extends QBMapper {
 	}
 
 	/**
+	 * Die Zeitstempel aller sichtbaren Vorgaenge im Fenster [ab, bis) — roh,
+	 * fuer die Tages-Zeitreihe des Durchsatzes (#232).
+	 *
+	 * **Warum roh und nicht schon je Tag gruppiert:** Ein `GROUP BY
+	 * DATE(created_at)` waere je Datenbank ein anderer Ausdruck — SQLite
+	 * `strftime`, Postgres `date_trunc`, MySQL `DATE()`. Die Leak-Matrix faehrt
+	 * SQLite, die Produktivinstanz Postgres; eine Abfrage, die an dieser
+	 * Unterscheidung haengt, ginge genau dort auseinander, wo sie gepruegt wird.
+	 * Das Buendeln nach UTC-Tag ist reine Zeichenarbeit und gehoert deshalb in
+	 * den Aufrufer, nicht in die Datenbank. Das Issue setzt ohnehin auf kleine
+	 * Datenmengen (#232).
+	 *
+	 * Dieselbe sichtbarkeits-sichere Basis wie {@see countInWindow()}, inklusive
+	 * des Ausschlusses verworfener Vorgaenge bei `closed_at` — sonst zaehlte die
+	 * Erledigt-Kurve, was die Erledigt-Zahl daneben nicht zaehlt.
+	 *
+	 * @param int[] $boardIds Die aktiven Boards.
+	 * @param string $column `created_at` oder `closed_at`.
+	 * @return string[] Die Zeitstempel im DB-Format, unsortiert.
+	 */
+	public function findTimestampsInWindow(string $userId, array $boardIds, string $column, string $ab, string $bis): array {
+		if ($boardIds === [] || !in_array($column, ['created_at', 'closed_at'], true)) {
+			return [];
+		}
+
+		$qb = $this->scopedQuery($userId, null);
+		$col = self::T . '.' . $column;
+		$qb->select($col)
+			->andWhere($qb->expr()->in(
+				self::T . '.board_id',
+				$qb->createNamedParameter($boardIds, IQueryBuilder::PARAM_INT_ARRAY),
+			))
+			->andWhere($qb->expr()->gte($col, $qb->createNamedParameter($ab)))
+			->andWhere($qb->expr()->lt($col, $qb->createNamedParameter($bis)));
+		if ($column === 'closed_at') {
+			$qb->andWhere($qb->expr()->orX(
+				$qb->expr()->isNull(self::T . '.closed_outcome'),
+				$qb->expr()->neq(self::T . '.closed_outcome', $qb->createNamedParameter(Ticket::OUTCOME_DISCARDED)),
+			));
+		}
+
+		$result = $qb->executeQuery();
+		$stamps = array_map(static fn ($row): string => (string)$row[$column], $result->fetchAll());
+		$result->closeCursor();
+
+		return $stamps;
+	}
+
+	/**
+	 * Neu angelegte Vorgaenge je Board seit einem Zeitpunkt — fuer die Marke
+	 * „N diese Woche" an der Projekt-Kachel (#232).
+	 *
+	 * Gruppiert nach `board_id`, nicht nach Tag: Das ist portabel und braucht
+	 * keine Datumsfunktion. Sichtbarkeits-sicher wie jede Lesemethode hier; ein
+	 * Nichtmitglied bekommt eine leere Zuordnung.
+	 *
+	 * @param int[] $boardIds Die aktiven Boards.
+	 * @return array<int, int> Board-Kennung => Anzahl neuer Vorgaenge.
+	 */
+	public function countNewByBoard(string $userId, array $boardIds, string $since): array {
+		if ($boardIds === []) {
+			return [];
+		}
+
+		$qb = $this->scopedQuery($userId, null);
+		$qb->select(self::T . '.board_id')
+			->selectAlias($qb->func()->count(self::T . '.id'), 'cnt')
+			->andWhere($qb->expr()->in(
+				self::T . '.board_id',
+				$qb->createNamedParameter($boardIds, IQueryBuilder::PARAM_INT_ARRAY),
+			))
+			->andWhere($qb->expr()->gte(self::T . '.created_at', $qb->createNamedParameter($since)))
+			->groupBy(self::T . '.board_id');
+
+		$result = $qb->executeQuery();
+		$counts = [];
+		while (($row = $result->fetch()) !== false) {
+			$counts[(int)$row['board_id']] = (int)$row['cnt'];
+		}
+		$result->closeCursor();
+
+		return $counts;
+	}
+
+	/**
 	 * Die groesste Position einer Spalte — **ungefiltert**.
 	 *
 	 * Bewusst an `TicketScope` vorbei, und das ist die einzige Lesemethode

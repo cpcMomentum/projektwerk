@@ -252,6 +252,8 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'TicketMapper::findLastPositionInColumn' => 'testLastPositionIsTheSameForEveryViewer',
 		'TicketMapper::countClosedByBoard' => 'testOverviewEndpointMatchesTheVisibleSetAcrossBoards',
 		'TicketMapper::countInWindow' => 'testOverviewEndpointMatchesTheVisibleSetAcrossBoards',
+		'TicketMapper::findTimestampsInWindow' => 'testOverviewEndpointMatchesTheVisibleSetAcrossBoards',
+		'TicketMapper::countNewByBoard' => 'testOverviewEndpointMatchesTheVisibleSetAcrossBoards',
 		// zusaetzlich gefahren von testBothCompanyNamesReachEveryViewer
 		'BoardMapper::findForViewer' => 'testBoardMetadataPathsTrustTheContextAlone',
 		'BoardMapper::findAllForUser' => 'testBoardListFollowsMembership',
@@ -1102,6 +1104,10 @@ class LeakMatrixTest extends IntegrationTestCase {
 				array_diff(array_keys($data['firstColumn']), $eigeneBoards),
 				$userId . ': Ein fremdes Board in der Ersten-Spalte-Zuordnung.',
 			);
+			$this->assertEmpty(
+				array_diff(array_keys($data['neuDieseWoche']), $eigeneBoards),
+				$userId . ': Ein fremdes Board in „N diese Woche".',
+			);
 		}
 
 		// Und das Nichtmitglied: leere Listen, kein 404 — wie bei `task#index`
@@ -1115,11 +1121,22 @@ class LeakMatrixTest extends IntegrationTestCase {
 		$this->assertSame([], $fremd->getData()['names']);
 		$this->assertSame([], $fremd->getData()['closedCounts']);
 		$this->assertSame([], $fremd->getData()['firstColumn']);
-		// Auch der Durchsatz verrät nichts: kein Board, kein Fenster — überall 0.
+		// Auch der Durchsatz verrät nichts: kein Board, kein Fenster — die Zahlen
+		// und die Deltas auf 0, und die Verlaufs-Kurven (#232) eine flache
+		// Null-Reihe über 30 Tage. Kein Board heißt keine Zeitstempel, also
+		// nichts, was eine Kurve aus dem Nichts zeichnen könnte.
 		$this->assertSame(
-			['neu' => 0, 'neuDelta' => 0, 'erledigt' => 0, 'erledigtDelta' => 0],
+			[
+				'neu' => 0,
+				'neuDelta' => 0,
+				'erledigt' => 0,
+				'erledigtDelta' => 0,
+				'neuReihe' => array_fill(0, 30, 0),
+				'erledigtReihe' => array_fill(0, 30, 0),
+			],
 			$fremd->getData()['durchsatz'],
 		);
+		$this->assertSame([], $fremd->getData()['neuDieseWoche'], 'Ein Nichtmitglied bekommt eine „diese Woche"-Zuordnung.');
 	}
 
 	/**

@@ -2241,6 +2241,30 @@
 	margin-top: 1px;
 }
 
+/* Rechte Kopfspalte (#232): Zustand oben, „N diese Woche" darunter. */
+.app-projektwerk .pw-tile__headcol {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 3px;
+	flex: 0 0 auto;
+}
+
+.app-projektwerk .pw-tile__week {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--color-success-text);
+	white-space: nowrap;
+}
+
+.app-projektwerk .pw-tile__weektri {
+	font-size: 10px;
+	line-height: 1;
+}
+
 /* Zähler-Zeile: gleiche Proportion + Lücken wie der Balken, Zahl am Segmentanfang. */
 .app-projektwerk .pw-tile__nums {
 	display: flex;
@@ -2445,6 +2469,31 @@
 .app-projektwerk .pw-dur__delta--up { color: var(--color-success-text); }
 .app-projektwerk .pw-dur__delta--down { color: var(--color-error-text); }
 .app-projektwerk .pw-dur__delta--flat { color: var(--color-text-maxcontrast); }
+
+/*
+ * Die Verlaufs-Kurve (#232) — 30 Tage unter der Wochenzahl. Voll breit, feste
+ * Höhe; `preserveAspectRatio="none"` zieht das viewBox darauf, deshalb steht die
+ * Strichstärke hier in nicht-skalierender Einheit (`vector-effect`), sonst
+ * verzerrte das Strecken die Linie mit.
+ */
+.app-projektwerk .pw-spark {
+	display: block;
+	width: 100%;
+	height: 26px;
+	margin-top: 4px;
+	overflow: visible;
+}
+
+.app-projektwerk .pw-spark polyline {
+	fill: none;
+	stroke-width: 1.5px;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+	vector-effect: non-scaling-stroke;
+}
+
+.app-projektwerk .pw-spark--neu polyline { stroke: var(--color-primary-element); }
+.app-projektwerk .pw-spark--erl polyline { stroke: var(--color-success-text); }
 
 /*
  * Die Maßnahmen-Tabelle (#226) — dieselbe Rahmen-Card/`pw-ptable`-Basis, mit

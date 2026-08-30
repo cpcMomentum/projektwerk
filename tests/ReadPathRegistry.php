@@ -78,6 +78,16 @@ final class ReadPathRegistry {
 		// `scopedQuery`, auf die aktiven Boards beschraenkt; zaehlt nur, was der
 		// Betrachter sehen darf. Erwartung: derselbe Overview-Test.
 		'TicketMapper::countInWindow',
+		// Die Tages-Zeitreihe fuer die Verlaufs-Kurven (#232) — die sichtbaren
+		// Zeitstempel im Fenster, roh; dieselbe `scopedQuery` wie countInWindow,
+		// inklusive Ausschluss verworfener bei closed_at. Fuer ein Nichtmitglied
+		// leer; die Erwartung ist derselbe Overview-Test (die Reihen dort sind
+		// eine flache Null-Reihe).
+		'TicketMapper::findTimestampsInWindow',
+		// Neu je Board seit einem Zeitpunkt (#232) — die Marke „N diese Woche"
+		// an der Kachel. Sichtbarkeits-gefiltert und nach Board gruppiert; ein
+		// Nichtmitglied bekommt eine leere Zuordnung. Erwartung: der Overview-Test.
+		'TicketMapper::countNewByBoard',
 
 		// Board, Mitglieder, Spalten. Nicht ticketgefiltert, aber
 		// betrachterabhaengig — und damit ebenso eine Frage, die die Matrix

@@ -54,6 +54,9 @@ class TicketDurchsatzTest extends IntegrationTestCase {
 	/** Außerhalb — hinter der oberen, exklusiven Grenze. */
 	private const AUSSERHALB = '2026-09-01 10:00:00';
 
+	/** Vor der unteren Grenze — für den `since`-Schnitt von countNewByBoard. */
+	private const VOR_FENSTER = '2026-08-10 10:00:00';
+
 	private TicketMapper $tickets;
 	private int $boardId;
 	private int $columnId;
@@ -131,6 +134,60 @@ class TicketDurchsatzTest extends IntegrationTestCase {
 		// Vier im Fenster entstanden — auch der verworfene und der offene. Der
 		// Outcome-Filter greift nur bei closed_at, nicht hier.
 		$this->assertSame(4, $neu, 'Neu zählt jeden im Fenster entstandenen Vorgang, Outcome-unabhängig.');
+	}
+
+	/**
+	 * Die Zeitstempel für die Verlaufs-Kurve (#232) folgen bei `created_at`
+	 * derselben Regel wie der Zähler: jeder im Fenster entstandene Vorgang,
+	 * Outcome-unabhängig — offen und verworfen inbegriffen.
+	 */
+	public function testTimestampsInWindowForCreatedIncludeEveryOutcome(): void {
+		$this->insertTicket(self::IM_FENSTER, Ticket::OUTCOME_DONE, self::IM_FENSTER);
+		$this->insertTicket(null, null, self::IM_FENSTER);                              // offen
+		$this->insertTicket(self::IM_FENSTER, Ticket::OUTCOME_DISCARDED, self::IM_FENSTER); // verworfen
+		$this->insertTicket(self::AUSSERHALB, Ticket::OUTCOME_DONE, self::AUSSERHALB);   // außerhalb
+
+		$stamps = $this->tickets->findTimestampsInWindow(
+			self::VIEWER, [$this->boardId], 'created_at', self::AB, self::BIS,
+		);
+
+		$this->assertCount(3, $stamps, 'Drei im Fenster entstanden; der außerhalb nicht.');
+		foreach ($stamps as $stamp) {
+			$this->assertSame('2026-08-20', substr($stamp, 0, 10), 'Der UTC-Tag stimmt fürs Bündeln.');
+		}
+	}
+
+	/**
+	 * Bei `closed_at` teilt die Kurve die Regel des Zählers: nur erledigte
+	 * Vorgänge im Fenster, keine verworfenen, keine offenen — sonst zeigte die
+	 * Erledigt-Kurve, was die Erledigt-Zahl daneben nicht zählt.
+	 */
+	public function testTimestampsInWindowForClosedExcludeDiscardedAndOpen(): void {
+		$this->insertTicket(self::IM_FENSTER, Ticket::OUTCOME_DONE, self::IM_FENSTER);
+		$this->insertTicket(self::IM_FENSTER, null, self::IM_FENSTER);                   // erledigt ohne Outcome
+		$this->insertTicket(self::IM_FENSTER, Ticket::OUTCOME_DISCARDED, self::IM_FENSTER); // verworfen -> raus
+		$this->insertTicket(null, null, self::IM_FENSTER);                              // offen -> kein closed_at
+		$this->insertTicket(self::AUSSERHALB, Ticket::OUTCOME_DONE, self::AUSSERHALB);   // außerhalb -> raus
+
+		$stamps = $this->tickets->findTimestampsInWindow(
+			self::VIEWER, [$this->boardId], 'closed_at', self::AB, self::BIS,
+		);
+
+		$this->assertCount(2, $stamps, 'Nur die zwei erledigten im Fenster.');
+	}
+
+	/**
+	 * Die Kachel-Marke „N diese Woche" (#232): neu angelegte Vorgänge je Board
+	 * ab einem Zeitpunkt, gruppiert. Vor dem Schnitt Entstandenes zählt nicht.
+	 */
+	public function testCountNewByBoardCountsSinceGroupedByBoard(): void {
+		$this->insertTicket(null, null, self::IM_FENSTER);   // ab `since`
+		$this->insertTicket(null, null, self::IM_FENSTER);   // ab `since`
+		$this->insertTicket(null, null, self::VOR_FENSTER);  // vor `since` -> raus
+
+		$counts = $this->tickets->countNewByBoard(self::VIEWER, [$this->boardId], self::AB);
+
+		$this->assertSame([$this->boardId => 2], $counts);
 	}
 
 	/**
