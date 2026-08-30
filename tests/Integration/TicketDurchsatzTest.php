@@ -147,7 +147,7 @@ class TicketDurchsatzTest extends IntegrationTestCase {
 		$this->insertTicket(self::IM_FENSTER, Ticket::OUTCOME_DISCARDED, self::IM_FENSTER); // verworfen
 		$this->insertTicket(self::AUSSERHALB, Ticket::OUTCOME_DONE, self::AUSSERHALB);   // außerhalb
 
-		$stamps = $this->tickets->timestampsInWindow(
+		$stamps = $this->tickets->findTimestampsInWindow(
 			self::VIEWER, [$this->boardId], 'created_at', self::AB, self::BIS,
 		);
 
@@ -169,7 +169,7 @@ class TicketDurchsatzTest extends IntegrationTestCase {
 		$this->insertTicket(null, null, self::IM_FENSTER);                              // offen -> kein closed_at
 		$this->insertTicket(self::AUSSERHALB, Ticket::OUTCOME_DONE, self::AUSSERHALB);   // außerhalb -> raus
 
-		$stamps = $this->tickets->timestampsInWindow(
+		$stamps = $this->tickets->findTimestampsInWindow(
 			self::VIEWER, [$this->boardId], 'closed_at', self::AB, self::BIS,
 		);
 

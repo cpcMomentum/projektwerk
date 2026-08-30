@@ -252,6 +252,8 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'TicketMapper::findLastPositionInColumn' => 'testLastPositionIsTheSameForEveryViewer',
 		'TicketMapper::countClosedByBoard' => 'testOverviewEndpointMatchesTheVisibleSetAcrossBoards',
 		'TicketMapper::countInWindow' => 'testOverviewEndpointMatchesTheVisibleSetAcrossBoards',
+		'TicketMapper::findTimestampsInWindow' => 'testOverviewEndpointMatchesTheVisibleSetAcrossBoards',
+		'TicketMapper::countNewByBoard' => 'testOverviewEndpointMatchesTheVisibleSetAcrossBoards',
 		// zusaetzlich gefahren von testBothCompanyNamesReachEveryViewer
 		'BoardMapper::findForViewer' => 'testBoardMetadataPathsTrustTheContextAlone',
 		'BoardMapper::findAllForUser' => 'testBoardListFollowsMembership',

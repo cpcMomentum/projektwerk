@@ -458,7 +458,7 @@ class TicketMapper extends QBMapper {
 	 * @param string $column `created_at` oder `closed_at`.
 	 * @return string[] Die Zeitstempel im DB-Format, unsortiert.
 	 */
-	public function timestampsInWindow(string $userId, array $boardIds, string $column, string $ab, string $bis): array {
+	public function findTimestampsInWindow(string $userId, array $boardIds, string $column, string $ab, string $bis): array {
 		if ($boardIds === [] || !in_array($column, ['created_at', 'closed_at'], true)) {
 			return [];
 		}

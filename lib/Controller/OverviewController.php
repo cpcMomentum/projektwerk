@@ -216,7 +216,7 @@ class OverviewController extends Controller {
 	 * **In UTC gebündelt**, wie der Durchsatz daneben: Die DB speichert die
 	 * Zeitstempel so, und ein `substr($ts, 0, 10)` schneidet den UTC-Tag heraus
 	 * — portabel über SQLite und Postgres, ohne Datumsfunktion der Datenbank
-	 * (siehe {@see TicketMapper::timestampsInWindow()}).
+	 * (siehe {@see TicketMapper::findTimestampsInWindow()}).
 	 *
 	 * @param int[] $boardIds Die aktiven Boards.
 	 * @param string $column `created_at` oder `closed_at`.
@@ -239,7 +239,7 @@ class OverviewController extends Controller {
 		}
 
 		$reihe = array_fill(0, $tage, 0);
-		foreach ($this->tickets->timestampsInWindow((string)$this->userId, $boardIds, $column, $ab, $bis) as $ts) {
+		foreach ($this->tickets->findTimestampsInWindow((string)$this->userId, $boardIds, $column, $ab, $bis) as $ts) {
 			$key = substr($ts, 0, 10);
 			if (isset($index[$key])) {
 				$reihe[$index[$key]]++;
