@@ -97,5 +97,6 @@ Der eigentliche Zweck ist nicht das Board, sondern die **sichtbare Zustaendigkei
 	<commands>
 		<command>OCA\Projektwerk\Command\TicketRestore</command>
 		<command>OCA\Projektwerk\Command\AttachmentsRelocate</command>
+		<command>OCA\Projektwerk\Command\AttachmentsVerify</command>
 	</commands>
 </info>
