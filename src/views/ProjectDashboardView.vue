@@ -112,8 +112,10 @@
 							:key="ticket.id"
 							class="pw-pd__row"
 							tabindex="0"
+							role="button"
 							@click="openTicket(ticket.id)"
-							@keydown.enter="openTicket(ticket.id)">
+							@keydown.enter="openTicket(ticket.id)"
+							@keydown.space.prevent="openTicket(ticket.id)">
 							<td>{{ ticket.title }}</td>
 							<td><span class="pw-pd__phase">{{ columnTitle(ticket.columnId) }}</span></td>
 							<td>{{ ticket.responsibleUserId ? nameOf(ticket.responsibleUserId) : '—' }}</td>
@@ -141,8 +143,10 @@
 								:key="ticket.id"
 								class="pw-pd__row"
 								tabindex="0"
+								role="button"
 								@click="openTicket(ticket.id)"
-								@keydown.enter="openTicket(ticket.id)">
+								@keydown.enter="openTicket(ticket.id)"
+								@keydown.space.prevent="openTicket(ticket.id)">
 								<td>{{ ticket.title }}</td>
 								<td class="pw-pd__when">
 									<NcDateTime v-if="ticket.updatedAt" :timestamp="asMs(ticket.updatedAt)" relativeTime="long" />
@@ -167,8 +171,10 @@
 								:key="ticket.id"
 								class="pw-pd__row"
 								tabindex="0"
+								role="button"
 								@click="openTicket(ticket.id)"
-								@keydown.enter="openTicket(ticket.id)">
+								@keydown.enter="openTicket(ticket.id)"
+								@keydown.space.prevent="openTicket(ticket.id)">
 								<td>{{ ticket.title }}</td>
 								<td class="pw-pd__when">
 									<NcDateTime v-if="ticket.closedAt" :timestamp="asMs(ticket.closedAt)" relativeTime="long" />
@@ -199,7 +205,7 @@ import AlertCircleIcon from 'vue-material-design-icons/AlertCircleOutline.vue'
 import ArrowRightIcon from 'vue-material-design-icons/ArrowRight.vue'
 import ChevronLeftIcon from 'vue-material-design-icons/ChevronLeft.vue'
 import { useBoardStore } from '@/stores/boardStore'
-import { germanDate, heute } from '@/utils/date'
+import { germanDate, heute, isOverdue } from '@/utils/date'
 import { openTickets, projectSummary, recentlyDone, recentlyUpdated } from '@/utils/projectDashboard'
 
 /** Ein Statuseintrag der Kacheln — Reihenfolge = Anzeige. */
@@ -346,7 +352,7 @@ export default defineComponent({
 		 * @param ticket Der Vorgang.
 		 */
 		overdueRow(ticket: Ticket): boolean {
-			return ticket.closedAt === null && ticket.dueDate !== null && ticket.dueDate < heute()
+			return isOverdue(ticket.dueDate)
 		},
 
 		/**
