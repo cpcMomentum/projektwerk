@@ -90,12 +90,15 @@ test('nimmt eine Beschreibung mit und traegt spaeter ein Ergebnis nach', async (
 		.toBe('Bei drei Anbietern anfragen')
 	expect((await schrittAusDerDatenbank(request, 'Angebot einholen')).result).toBeNull()
 
-	// Ergebnis nachtragen: Zeile öffnen, tippen, mit „Fertig" (dem einzigen Knopf
-	// in der Zeile während des Bearbeitens) speichern.
+	// Ergebnis nachtragen: Zeile öffnen (der Schritt hat weder Zuweisung noch
+	// Frist, also steht dort der flache „Zuweisen oder Frist setzen"-Knopf),
+	// tippen, mit „Fertig" speichern. „Fertig" über das aria-label, nicht über
+	// die Knopf-Reihenfolge: `NcSelectUsers` bringt im Bearbeiten-Modus einen
+	// eigenen „Auswahl leeren"-Knopf mit.
 	const schritt = page.locator('.pw-step', { hasText: 'Angebot einholen' })
-	await schritt.locator('.pw-step__rechts button').first().click()
+	await schritt.locator('.pw-step__flach').click()
 	await schritt.locator('.pw-step__felder-text textarea').fill('Empfehlung: Hetzner')
-	await schritt.locator('.pw-step__rechts button').first().click()
+	await schritt.locator('[aria-label="Fertig"]').click()
 
 	await expect
 		.poll(async () => (await schrittAusDerDatenbank(request, 'Angebot einholen'))?.result)
