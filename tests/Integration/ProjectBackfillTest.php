@@ -41,14 +41,18 @@ class ProjectBackfillTest extends IntegrationTestCase {
 	}
 
 	public function testBackfillIstIdempotent(): void {
-		$boardId = $this->boardEinfuegen('Einmal-Board', 'lm-anna', 'cpcMomentum', 'Kunde GmbH', 0);
+		// Ein eindeutiger Titel, damit die Zählung unabhängig von anderen Tests
+		// zählt, wie viele Projekte für **dieses** Board entstanden sind — ein
+		// Duplikat aus einem zweiten Lauf ergäbe 2, nicht 1.
+		$titel = 'Idempotenz-' . uniqid('', true);
+		$this->boardEinfuegen($titel, 'lm-anna', 'cpcMomentum', 'Kunde GmbH', 0);
 
 		$this->backfillAusloesen();
 		$this->backfillAusloesen();
 
 		$this->assertSame(
 			1,
-			$this->anzahlProjekteFuerBoard($boardId),
+			$this->projekteMitTitel($titel),
 			'Ein zweiter Lauf darf kein zweites Projekt anlegen.',
 		);
 	}
@@ -92,18 +96,16 @@ class ProjectBackfillTest extends IntegrationTestCase {
 	}
 
 	/**
-	 * @param int $boardId Kennung des Boards.
+	 * Wie viele Projekte mit diesem Titel es gibt — zählt Duplikate mit, anders
+	 * als eine Suche über die (einzige) verknüpfte `project_id`.
+	 *
+	 * @param string $titel Der eindeutige Projekttitel.
 	 */
-	private function anzahlProjekteFuerBoard(int $boardId): int {
-		$board = $this->zeile('pwerk_boards', $boardId);
-		if ($board['project_id'] === null) {
-			return 0;
-		}
-
+	private function projekteMitTitel(string $titel): int {
 		$qb = $this->db->getQueryBuilder();
 		$qb->select($qb->func()->count('*'))
 			->from('pwerk_projects')
-			->where($qb->expr()->eq('id', $qb->createNamedParameter((int)$board['project_id'], IQueryBuilder::PARAM_INT)));
+			->where($qb->expr()->eq('title', $qb->createNamedParameter($titel, IQueryBuilder::PARAM_STR)));
 
 		return (int)$qb->executeQuery()->fetchOne();
 	}

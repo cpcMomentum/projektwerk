@@ -120,22 +120,37 @@ class Version000013Date20260901020000 extends SimpleMigrationStep {
 			->from('pwerk_boards')
 			->where($lese->expr()->isNull('project_id'));
 		$ergebnis = $lese->executeQuery();
-
-		$anzahl = 0;
-		while (($board = $ergebnis->fetch()) !== false) {
-			$projektId = $this->projektAusBoard($board);
-
-			$verknuepfen = $this->connection->getQueryBuilder();
-			$verknuepfen->update('pwerk_boards')
-				->set('project_id', $verknuepfen->createNamedParameter($projektId, IQueryBuilder::PARAM_INT))
-				->where($verknuepfen->expr()->eq('id', $verknuepfen->createNamedParameter((int)$board['id'], IQueryBuilder::PARAM_INT)));
-			$verknuepfen->executeStatement();
-
-			$anzahl++;
-		}
+		$boards = $ergebnis->fetchAll();
 		$ergebnis->closeCursor();
 
-		$output->info('pwerk_projects: ' . $anzahl . ' Projekt(e) aus Boards angelegt und verknüpft');
+		if ($boards === []) {
+			return;
+		}
+
+		// **Der Backfill läuft atomar.** Insert (Projekt) und Update (Board →
+		// Projekt) je Board gehören zusammen; ohne Transaktion ließe ein Abbruch
+		// zwischen beiden ein Board ohne `project_id` zurück, und der Neulauf
+		// legte ein zweites, verwaistes Projekt an. Bricht hier etwas ab, macht
+		// der Rollback alles rückgängig — der nächste Lauf beginnt sauber.
+		$this->connection->beginTransaction();
+		try {
+			foreach ($boards as $board) {
+				$projektId = $this->projektAusBoard($board);
+
+				$verknuepfen = $this->connection->getQueryBuilder();
+				$verknuepfen->update('pwerk_boards')
+					->set('project_id', $verknuepfen->createNamedParameter($projektId, IQueryBuilder::PARAM_INT))
+					->where($verknuepfen->expr()->eq('id', $verknuepfen->createNamedParameter((int)$board['id'], IQueryBuilder::PARAM_INT)));
+				$verknuepfen->executeStatement();
+			}
+			$this->connection->commit();
+		} catch (\Throwable $e) {
+			$this->connection->rollBack();
+
+			throw $e;
+		}
+
+		$output->info('pwerk_projects: ' . count($boards) . ' Projekt(e) aus Boards angelegt und verknüpft');
 	}
 
 	/**
