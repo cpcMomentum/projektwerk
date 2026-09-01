@@ -331,7 +331,7 @@ export default defineComponent({
 			immediate: true,
 			async handler(id: number) {
 				await this.store.open(id)
-				this.openFromQuery()
+				await this.openFromQuery()
 			},
 		},
 	},
@@ -478,24 +478,56 @@ export default defineComponent({
 		/**
 		 * Den Vorgang öffnen, den ein Deep-Link genannt hat.
 		 *
-		 * Läuft **nach** dem Laden, weil das Overlay das Ticket aus dem Speicher
-		 * nimmt. Fehlt es dort, passiert nichts weiter: Der Server hat die
-		 * Sichtbarkeit bereits geprüft, ein Fehlschlag hier wäre eine
-		 * zwischenzeitliche Änderung und keine Auskunft wert — das Board steht
-		 * dann eben offen, ohne Overlay.
+		 * Läuft **nach** dem Laden des Boards. Steht der Vorgang in der geladenen
+		 * Menge, öffnet ihn derselbe Weg wie ein Klick auf die Karte — samt
+		 * Kindern und Lesevermerk.
+		 *
+		 * Steht er **nicht** darin, wird er per ID nachgeladen. Der häufige Fall
+		 * ist ein **geschlossener** Vorgang: Die Board-Ladung blendet ihn aus
+		 * (`TicketMapper` filtert `closed_at`), aber `ticket_closed` ist ein
+		 * Mail-Anlass — der „Zum Vorgang"-Knopf zeigte deshalb ausgerechnet dort
+		 * ins Leere (#248). `ticket#show` geht über `findVisible` und damit durch
+		 * dieselbe Sichtbarkeitsprüfung wie jede Ticket-Abfrage; ist der Vorgang
+		 * verborgen oder fort, wirft der Aufruf und es bleibt fail-closed beim
+		 * offenen Board ohne Overlay. Hier zu unterscheiden hieße zu verraten,
+		 * was die Sichtbarkeitsregel verbirgt — dieselbe Linie wie im
+		 * `DeepLinkController`.
 		 *
 		 * Die Kennung bleibt danach in der Adresse stehen. Das ist gewollt: So
 		 * trägt auch der kopierte Hash-Link innerhalb der App.
 		 */
-		openFromQuery() {
+		async openFromQuery() {
 			const wanted = Number(this.$route.query.ticket)
 			if (!Number.isInteger(wanted) || wanted <= 0) {
 				return
 			}
 
-			const ticket = this.store.tickets.get(wanted)
-			if (ticket !== undefined) {
-				this.openTicketData = ticket
+			const bekannt = this.store.tickets.get(wanted)
+			if (bekannt !== undefined) {
+				await this.openTicket(bekannt)
+
+				return
+			}
+
+			// Die Board-Id beim Eintritt festhalten: Zwischen Anfrage und Antwort
+			// kann die Person das Board gewechselt haben. Dieselbe Ansicht wird
+			// über Board-Grenzen wiederverwendet (kein `:key` an der Route),
+			// deshalb liefe eine veraltete Antwort sonst ins offene Board des
+			// falschen Vorgangs.
+			const beimEintritt = this.boardId
+			try {
+				const detail = await fetchTicket(beimEintritt, wanted)
+				if (this.boardId !== beimEintritt) {
+					return
+				}
+
+				this.openTicketData = detail.ticket
+				this.openSteps = detail.steps
+				this.openComments = detail.comments
+				this.openAttachments = detail.attachments
+				this.store.markRead(wanted)
+			} catch {
+				// Verborgen oder nicht mehr vorhanden — bewusst still.
 			}
 		},
 
