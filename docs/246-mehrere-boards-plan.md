@@ -254,7 +254,3 @@ Alle fünf Punkte sind bestätigt (Axel, 2026-09-01) — die Begründungen bleib
 ---
 
 *Relevante Dateien: `lib/Access/TicketScope.php`, `lib/Access/ViewerContext.php`, `lib/Access/BoardAccess.php`, `lib/Db/BoardMapper.php`, `lib/Db/MemberMapper.php`, `lib/Db/TicketMapper.php`, `lib/Db/Board.php`, `lib/Db/Member.php`, `lib/Db/Ticket.php`, `lib/Db/Column.php`, `lib/Service/MemberService.php`, `lib/Controller/BoardController.php`, `appinfo/routes.php`, `src/router.ts`, `src/stores/boardStore.ts`, `src/views/ProjectDashboardView.vue`, `tests/ReadPathRegistry.php`, `docs/produktbeschreibung.md`.*
-
----
-
-**Hinweis an die aufrufende Stufe:** Das `Write`-Tool ist in dieser Session deaktiviert (`Error: No such tool available: Write`), daher konnte ich `docs/plan.md` nicht selbst schreiben. Der obige Markdown-Block ist der vollständige, platzhalterfreie Dateiinhalt und muss nach `/Users/axel/nextcloud_cpc_II/AAB_Coding_Projekte/projektwerk/docs/plan.md` geschrieben werden (Verzeichnis `docs/` existiert bereits).
