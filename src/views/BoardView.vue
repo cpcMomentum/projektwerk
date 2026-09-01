@@ -1,56 +1,69 @@
 <template>
 	<div class="pw-view" :style="{ '--pw-columns': store.columns.length || 1 }">
-		<div class="pw-view__head">
-			<h2>{{ store.board?.title ?? t('projektwerk', 'Projekt') }}</h2>
+		<!--
+			Brotkrume zurück zur Projektübersicht (#245) — dieselbe Form wie im
+			Projekt-Dashboard, ein echtes Ziel statt eines Zurück-Rätsels.
+		-->
+		<router-link
+			class="pw-crumb"
+			:to="{ name: 'project-dashboard', params: { boardId: String(boardId) } }">
+			<ChevronLeftIcon :size="16" />{{ t('projektwerk', 'Projektübersicht') }}
+		</router-link>
 
-			<NcButton variant="primary" :disabled="store.columns.length === 0" @click="creating = true">
-				<template #icon>
-					<PlusIcon :size="20" />
-				</template>
-				{{ t('projektwerk', 'Neuer Vorgang') }}
-			</NcButton>
+		<div class="pw-view__head pw-view__head--split">
+			<div class="pw-view__ident">
+				<h2>{{ store.board?.title ?? t('projektwerk', 'Projekt') }}</h2>
+				<div v-if="orgLine" class="pw-view__org">
+					{{ orgLine }}
+				</div>
+			</div>
 
-			<!--
-				Der Weg in die Einstellungen steht nur internen Mitgliedern mit
-				Verwaltungsrecht offen (§8) — wer ihn nicht hat, sieht keinen
-				Knopf statt einer Absage.
-			-->
-			<NcButton
-				v-if="store.viewer?.isManager"
-				:aria-label="t('projektwerk', 'Projekteinstellungen')"
-				@click="$router.push({ name: 'board-settings', params: { boardId: String(boardId) } })">
-				<template #icon>
-					<CogIcon :size="20" />
-				</template>
-			</NcButton>
+			<div class="pw-view__actions">
+				<NcButton variant="primary" :disabled="store.columns.length === 0" @click="creating = true">
+					<template #icon>
+						<PlusIcon :size="20" />
+					</template>
+					{{ t('projektwerk', 'Neuer Vorgang') }}
+				</NcButton>
 
-			<!-- Ohne hinterlegte Adresse entfaellt der Knopf ersatzlos (§9). -->
-			<NcButton
-				v-if="store.board?.chatUrl"
-				:href="store.board.chatUrl"
-				target="_blank"
-				rel="noopener">
-				{{ t('projektwerk', 'Zum Projektchat') }}
-			</NcButton>
+				<!--
+					Der Weg in die Einstellungen steht nur internen Mitgliedern mit
+					Verwaltungsrecht offen (§8) — wer ihn nicht hat, sieht keinen
+					Knopf statt einer Absage.
+				-->
+				<NcButton
+					v-if="store.viewer?.isManager"
+					:aria-label="t('projektwerk', 'Projekteinstellungen')"
+					@click="$router.push({ name: 'board-settings', params: { boardId: String(boardId) } })">
+					<template #icon>
+						<CogIcon :size="20" />
+					</template>
+				</NcButton>
 
-			<!--
-				Kein eigener Bereich fuer „wartend": Der Zustand liegt quer zu
-				den Spalten, und eine eigene Ansicht risse ihn aus dem
-				Zusammenhang, in dem er entsteht.
-			-->
-			<NcButton
-				v-if="store.waitingCount > 0 || store.onlyWaiting"
-				:variant="store.onlyWaiting ? 'primary' : 'secondary'"
-				@click="store.onlyWaiting = !store.onlyWaiting">
-				<template #icon>
-					<ClockAlertIcon :size="20" />
-				</template>
-				{{ t('projektwerk', 'Nur wartend') }} ({{ store.waitingCount }})
-			</NcButton>
+				<!-- Ohne hinterlegte Adresse entfaellt der Knopf ersatzlos (§9). -->
+				<NcButton
+					v-if="store.board?.chatUrl"
+					:href="store.board.chatUrl"
+					target="_blank"
+					rel="noopener">
+					{{ t('projektwerk', 'Zum Projektchat') }}
+				</NcButton>
 
-			<p v-if="orgLine" class="pw-view__sub">
-				{{ orgLine }}
-			</p>
+				<!--
+					Kein eigener Bereich fuer „wartend": Der Zustand liegt quer zu
+					den Spalten, und eine eigene Ansicht risse ihn aus dem
+					Zusammenhang, in dem er entsteht.
+				-->
+				<NcButton
+					v-if="store.waitingCount > 0 || store.onlyWaiting"
+					:variant="store.onlyWaiting ? 'primary' : 'secondary'"
+					@click="store.onlyWaiting = !store.onlyWaiting">
+					<template #icon>
+						<ClockAlertIcon :size="20" />
+					</template>
+					{{ t('projektwerk', 'Nur wartend') }} ({{ store.waitingCount }})
+				</NcButton>
+			</div>
 		</div>
 
 		<div v-if="store.loading" class="pw-board">
@@ -227,6 +240,7 @@ import { defineComponent } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcDialog from '@nextcloud/vue/components/NcDialog'
 import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
+import ChevronLeftIcon from 'vue-material-design-icons/ChevronLeft.vue'
 import ClockAlertIcon from 'vue-material-design-icons/ClockAlertOutline.vue'
 import CogIcon from 'vue-material-design-icons/Cog.vue'
 import FolderMultipleIcon from 'vue-material-design-icons/FolderMultiple.vue'
@@ -256,7 +270,7 @@ interface ColumnView {
 export default defineComponent({
 	name: 'BoardView',
 
-	components: { BoardDragLayer, ClockAlertIcon, CogIcon, CreateTicketDialog, FolderMultipleIcon, NcButton, NcDialog, NcEmptyContent, PlusIcon, TicketDetail },
+	components: { BoardDragLayer, ChevronLeftIcon, ClockAlertIcon, CogIcon, CreateTicketDialog, FolderMultipleIcon, NcButton, NcDialog, NcEmptyContent, PlusIcon, TicketDetail },
 
 	setup() {
 		return { store: useBoardStore() }
