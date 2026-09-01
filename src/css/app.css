@@ -37,6 +37,7 @@
 	 * Der Abstand sitzt an der Kopfzeile und nicht an `.pw-view`, damit die
 	 * Liste darunter die volle Breite behaelt — dort zaehlt jede Spalte.
 	 */
+	.app-projektwerk .pw-crumb,
 	.app-projektwerk .pw-view__head {
 		padding-inline-start: 44px;
 	}
@@ -57,11 +58,35 @@
 	letter-spacing: -0.01em;
 }
 
-.app-projektwerk .pw-view__sub {
-	width: 100%;
-	margin: -6px 0 0;
+/*
+ * Angeglichener Kopf (#245): Ticket-Board und Projekt-Dashboard teilen dieselbe
+ * ruhige Form — links ein Identitätsblock (Titel + Organisationszeile), rechts
+ * die Aktionen, darüber die Brotkrume. Der Modifier hält die übrigen Ansichten
+ * (Überblick, Projekte, Meine Aufgaben, Einstellungen) mit dem schlichten
+ * `pw-view__head` unberührt.
+ */
+.app-projektwerk .pw-view__head--split {
+	align-items: flex-start;
+	justify-content: space-between;
+}
+
+.app-projektwerk .pw-view__ident {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+}
+
+.app-projektwerk .pw-view__org {
 	font-size: 13px;
 	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-view__actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px 12px;
 }
 
 /* ---- Abschnittskopf: 13 px, Satzschreibung ------------------------------ */
@@ -3142,19 +3167,7 @@
 }
 .app-projektwerk .pw-crumb:hover { text-decoration: underline; }
 
-.app-projektwerk .pw-pd__head {
-	display: flex;
-	justify-content: space-between;
-	align-items: flex-start;
-	gap: 16px;
-	margin-bottom: 20px;
-}
-.app-projektwerk .pw-pd__head h2 { margin: 0; }
-.app-projektwerk .pw-pd__org {
-	font-size: 13px;
-	color: var(--color-text-maxcontrast);
-	margin-top: 2px;
-}
+/* Kopf: Board und Dashboard teilen `pw-view__head--split` (#245), siehe oben. */
 
 /* Status-Kacheln */
 .app-projektwerk .pw-pd__kpis {
