@@ -162,15 +162,15 @@ class Version000013Date20260901020000 extends SimpleMigrationStep {
 		$ein = $this->connection->getQueryBuilder();
 		$ein->insert('pwerk_projects')->values([
 			'title' => $ein->createNamedParameter((string)$board['title'], IQueryBuilder::PARAM_STR),
-			'description' => $ein->createNamedParameter($board['description'], $board['description'] === null ? IQueryBuilder::PARAM_NULL : IQueryBuilder::PARAM_STR),
+			'description' => $this->stringOderNull($ein, $board['description']),
 			'owner_user_id' => $ein->createNamedParameter((string)$board['owner_user_id'], IQueryBuilder::PARAM_STR),
-			'org_internal' => $ein->createNamedParameter($board['org_internal'], $board['org_internal'] === null ? IQueryBuilder::PARAM_NULL : IQueryBuilder::PARAM_STR),
-			'org_external' => $ein->createNamedParameter($board['org_external'], $board['org_external'] === null ? IQueryBuilder::PARAM_NULL : IQueryBuilder::PARAM_STR),
+			'org_internal' => $this->stringOderNull($ein, $board['org_internal']),
+			'org_external' => $this->stringOderNull($ein, $board['org_external']),
 			'folder_public_id' => $this->intOderNull($ein, $board['folder_public_id']),
-			'folder_public_path' => $ein->createNamedParameter($board['folder_public_path'], $board['folder_public_path'] === null ? IQueryBuilder::PARAM_NULL : IQueryBuilder::PARAM_STR),
+			'folder_public_path' => $this->stringOderNull($ein, $board['folder_public_path']),
 			'folder_internal_id' => $this->intOderNull($ein, $board['folder_internal_id']),
-			'folder_internal_path' => $ein->createNamedParameter($board['folder_internal_path'], $board['folder_internal_path'] === null ? IQueryBuilder::PARAM_NULL : IQueryBuilder::PARAM_STR),
-			'chat_url' => $ein->createNamedParameter($board['chat_url'], $board['chat_url'] === null ? IQueryBuilder::PARAM_NULL : IQueryBuilder::PARAM_STR),
+			'folder_internal_path' => $this->stringOderNull($ein, $board['folder_internal_path']),
+			'chat_url' => $this->stringOderNull($ein, $board['chat_url']),
 			'ticket_counter' => $ein->createNamedParameter((int)$board['ticket_counter'], IQueryBuilder::PARAM_INT),
 			'archived' => $ein->createNamedParameter((int)$board['archived'], IQueryBuilder::PARAM_INT),
 			'created_at' => $ein->createNamedParameter((string)$board['created_at'], IQueryBuilder::PARAM_STR),
@@ -191,5 +191,17 @@ class Version000013Date20260901020000 extends SimpleMigrationStep {
 		return $wert === null
 			? $qb->createNamedParameter(null, IQueryBuilder::PARAM_NULL)
 			: $qb->createNamedParameter((int)$wert, IQueryBuilder::PARAM_INT);
+	}
+
+	/**
+	 * Einen nullable String-Wert als Parameter — `null` bleibt `null`.
+	 *
+	 * @param IQueryBuilder $qb Der Query Builder.
+	 * @param mixed $wert Der rohe Spaltenwert.
+	 */
+	private function stringOderNull(IQueryBuilder $qb, mixed $wert): string {
+		return $wert === null
+			? $qb->createNamedParameter(null, IQueryBuilder::PARAM_NULL)
+			: $qb->createNamedParameter((string)$wert, IQueryBuilder::PARAM_STR);
 	}
 }
