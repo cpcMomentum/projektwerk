@@ -67,6 +67,32 @@ class StepWritePathTest extends IntegrationTestCase {
 	}
 
 	/**
+	 * **Beschreibung und Ergebnis am Schritt (#247).**
+	 *
+	 * Beide erben die Sichtbarkeit des Vorgangs und brauchen keine eigene Regel;
+	 * geprüft wird nur der Schreibpfad. Die Beschreibung geht schon beim Anlegen
+	 * mit (der sechste, hintangestellte Parameter), das Ergebnis wird später
+	 * nachgetragen, und ein leerer Wert leert das Feld (`null`) statt Leerraum zu
+	 * speichern — so muss die Anzeige nicht zwischen „leer" und „nie gesetzt"
+	 * unterscheiden.
+	 */
+	public function testDescriptionAndResult(): void {
+		$viewer = $this->owner();
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+
+		$step = $this->steps->create($viewer, $ticketId, 'Angebot einholen', null, null, 'Bei drei Anbietern anfragen');
+		$this->assertSame('Bei drei Anbietern anfragen', $step->getDescription());
+		$this->assertNull($step->getResult(), 'Das Ergebnis entsteht erst später.');
+
+		$mitErgebnis = $this->steps->update($viewer, (int)$step->getId(), ['result' => 'Empfehlung: Hetzner']);
+		$this->assertSame('Empfehlung: Hetzner', $mitErgebnis->getResult());
+		$this->assertSame('Bei drei Anbietern anfragen', $mitErgebnis->getDescription(), 'Die Beschreibung bleibt unberührt.');
+
+		$geleert = $this->steps->update($viewer, (int)$step->getId(), ['description' => '   ']);
+		$this->assertNull($geleert->getDescription(), 'Ein leerer Wert leert das Feld, statt Leerraum zu speichern.');
+	}
+
+	/**
 	 * **Eine Fälligkeit muss sich löschen lassen.**
 	 *
 	 * Dieselbe Falle wie bei der Zuweisung, ein Feld weiter: Der Controller

@@ -1616,6 +1616,65 @@
 }
 
 /*
+ * Beschreibung und Ergebnis (#247) stehen als **volle Zeilen** unter der
+ * Kopfzeile: `.pw-step` bricht um, `flex-basis: 100%` zwingt sie auf eine eigene
+ * Zeile. Eingerückt auf die Höhe des Titels, damit sie zum Schritt gehören und
+ * nicht zur Checkbox.
+ */
+.app-projektwerk .pw-step__beschreibung {
+	flex-basis: 100%;
+	margin: 0;
+	padding-inline-start: 28px;
+	font-size: 13px;
+	color: var(--color-text-maxcontrast);
+	overflow-wrap: anywhere;
+}
+
+.app-projektwerk .pw-step__ergebnis {
+	flex-basis: 100%;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	margin-inline-start: 28px;
+	padding: 6px 10px;
+	border-inline-start: 3px solid var(--color-border);
+	border-radius: var(--border-radius);
+	background: var(--color-background-hover);
+}
+
+.app-projektwerk .pw-step__ergebnis-marke {
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.02em;
+	color: var(--color-text-maxcontrast);
+}
+
+/* Mehrzeilig: Zeilenumbrüche des Ergebnisses bleiben erhalten. */
+.app-projektwerk .pw-step__ergebnis-text {
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	font-size: 14px;
+}
+
+.app-projektwerk .pw-step__felder-text {
+	flex-basis: 100%;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding-inline-start: 28px;
+}
+
+.app-projektwerk .pw-step__feld {
+	width: 100%;
+}
+
+/* Die optionale Beschreibung nimmt in der Neuanlage eine eigene Zeile. */
+.app-projektwerk .pw-step__neu-beschreibung {
+	flex-basis: 100%;
+}
+
+/*
  * Die Neuanlage in EINER Zeile (#99) statt in dreien: Titel, Person, Frist,
  * Plus. Vorher lag das Textfeld ueber die volle Breite, darunter eine zweite
  * Zeile mit den beiden Feldern und einem breiten „Hinzufuegen".

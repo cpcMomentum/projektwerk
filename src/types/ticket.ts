@@ -100,6 +100,10 @@ export interface Step {
 	id: number
 	ticketId: number
 	title: string
+	/** Eine Zeile: was zu tun ist (#247). `null`, wenn nicht gesetzt. */
+	description: string | null
+	/** Mehrzeilig: was dabei herauskam (#247). `null`, wenn nicht gesetzt. */
+	result: string | null
 	assignedUserId: string | null
 	/** Bei der Zuweisung **kopiert**, nicht zur Laufzeit ermittelt. */
 	assignedRole: MemberRole | null

@@ -32,6 +32,10 @@ use OCP\DB\Types;
  * @method void setTicketId(int $ticketId)
  * @method string getTitle()
  * @method void setTitle(string $title)
+ * @method ?string getDescription()
+ * @method void setDescription(?string $description)
+ * @method ?string getResult()
+ * @method void setResult(?string $result)
  * @method ?string getAssignedUserId()
  * @method void setAssignedUserId(?string $assignedUserId)
  * @method ?string getAssignedRole()
@@ -53,6 +57,8 @@ class Step extends Entity implements JsonSerializable {
 
 	protected ?int $ticketId = null;
 	protected ?string $title = null;
+	protected ?string $description = null;
+	protected ?string $result = null;
 	protected ?string $assignedUserId = null;
 	protected ?string $assignedRole = null;
 	protected ?DateTime $assignedAt = null;
@@ -65,6 +71,8 @@ class Step extends Entity implements JsonSerializable {
 	public function __construct() {
 		$this->addType('ticketId', Types::INTEGER);
 		$this->addType('title', Types::STRING);
+		$this->addType('description', Types::TEXT);
+		$this->addType('result', Types::TEXT);
 		$this->addType('assignedUserId', Types::STRING);
 		$this->addType('assignedRole', Types::STRING);
 		$this->addType('assignedAt', Types::DATETIME);
@@ -94,6 +102,8 @@ class Step extends Entity implements JsonSerializable {
 			'id' => $this->getId(),
 			'ticketId' => $this->getTicketId(),
 			'title' => $this->getTitle(),
+			'description' => $this->getDescription(),
+			'result' => $this->getResult(),
 			'assignedUserId' => $this->getAssignedUserId(),
 			'assignedRole' => $this->getAssignedRole(),
 			'assignedAt' => $this->getAssignedAt()?->format(DateTime::ATOM),
