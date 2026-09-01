@@ -65,6 +65,7 @@ class StepService {
 		string $title,
 		?string $assignedUserId = null,
 		?string $dueDate = null,
+		?string $description = null,
 	): Step {
 		$ticket = $this->tickets->findVisible($viewer, $ticketId);
 		$trimmed = trim($title);
@@ -76,6 +77,9 @@ class StepService {
 		$step = new Step();
 		$step->setTicketId($ticketId);
 		$step->setTitle($trimmed);
+		// Beschreibung und Ergebnis erben die Sichtbarkeit des Vorgangs; ein
+		// leerer Wert ist „keiner" (null), nicht die leere Zeichenkette.
+		$step->setDescription($this->leerAlsNull($description));
 		$step->setDone(0);
 		$step->setDueDate($this->parseDueDate($dueDate));
 		$step->setPosition($this->nextPosition($ticketId));
@@ -92,7 +96,7 @@ class StepService {
 	/**
 	 * Titel, Zuweisung, Faelligkeit, erledigt.
 	 *
-	 * @param array{title?: string, assignedUserId?: ?string, dueDate?: ?string, done?: bool} $changes
+	 * @param array{title?: string, description?: ?string, result?: ?string, assignedUserId?: ?string, dueDate?: ?string, done?: bool} $changes
 	 * @throws DoesNotExistException      Ticket oder Schritt nicht sichtbar
 	 * @throws \InvalidArgumentException  Zuweisung unzulaessig
 	 */
@@ -106,6 +110,14 @@ class StepService {
 				throw new \InvalidArgumentException('Ein Arbeitsschritt braucht einen Titel.');
 			}
 			$step->setTitle($title);
+		}
+
+		if (array_key_exists('description', $changes)) {
+			$step->setDescription($this->leerAlsNull($changes['description']));
+		}
+
+		if (array_key_exists('result', $changes)) {
+			$step->setResult($this->leerAlsNull($changes['result']));
 		}
 
 		if (array_key_exists('dueDate', $changes)) {
@@ -337,6 +349,25 @@ class StepService {
 		);
 
 		return $positions === [] ? 0 : max($positions) + 1;
+	}
+
+	/**
+	 * Ein Freitextfeld normalisieren: getrimmt, und leer heißt „keiner" (null).
+	 *
+	 * So trägt eine geleerte Beschreibung oder ein geleertes Ergebnis dasselbe
+	 * `null` wie ein nie gefülltes Feld — die Anzeige muss nicht zwischen „leer"
+	 * und „nie gesetzt" unterscheiden.
+	 *
+	 * @param string|null $wert Der rohe Wert aus der Anfrage.
+	 */
+	private function leerAlsNull(?string $wert): ?string {
+		if ($wert === null) {
+			return null;
+		}
+
+		$getrimmt = trim($wert);
+
+		return $getrimmt === '' ? null : $getrimmt;
 	}
 
 	/**

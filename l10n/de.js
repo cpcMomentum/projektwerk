@@ -389,6 +389,8 @@ OC.L10N.register(
     "Zuletzt abgestellt" : "Zuletzt abgestellt",
     "Noch nichts erledigt." : "Noch nichts erledigt.",
     "{done} von {total} erledigt · {pct} %" : "{done} von {total} erledigt · {pct} %",
-    "_%n überfällig_::_%n überfällig_" : ["%n überfällig","%n überfällig"]
+    "_%n überfällig_::_%n überfällig_" : ["%n überfällig","%n überfällig"],
+    "Ergebnis" : "Ergebnis",
+    "Beschreibung (optional)" : "Beschreibung (optional)"
 },
 "nplurals=2; plural=(n != 1);");

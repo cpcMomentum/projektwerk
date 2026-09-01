@@ -430,7 +430,9 @@
 		"_%n überfällig_::_%n überfällig_": [
 			"%n überfällig",
 			"%n überfällig"
-		]
+		],
+		"Ergebnis": "Ergebnis",
+		"Beschreibung (optional)": "Beschreibung (optional)"
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }
