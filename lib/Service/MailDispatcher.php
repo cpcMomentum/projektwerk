@@ -104,8 +104,10 @@ class MailDispatcher {
 	 * @param int $ticketId Der Vorgang — aufgelöst wird er erst beim Senden.
 	 * @param string $event Einer der `EVENT_*`-Werte aus {@see MailOutbox}.
 	 * @param int $boardId Das Projekt — der Schalter kann projektweise stehen.
+	 * @param string|null $actorUid Wer den Anlass ausgelöst hat (für „von wem").
+	 * @param string|null $stepTitle Titel des zugewiesenen Schritts, eingefroren.
 	 */
-	public function queue(string $recipientUid, int $ticketId, string $event, int $boardId): ?MailOutbox {
+	public function queue(string $recipientUid, int $ticketId, string $event, int $boardId, ?string $actorUid = null, ?string $stepTitle = null): ?MailOutbox {
 		// **Ohne Projekt.** Der Kanal ist global — „wie werde ich benachrichtigt"
 		// beantwortet niemand je Projekt anders. Ob dieser Anlass in diesem
 		// Projekt ueberhaupt zaehlt, hat der NotificationService schon
@@ -133,6 +135,8 @@ class MailDispatcher {
 			$unterdrueckt->setStatus(MailOutbox::STATUS_SUPPRESSED);
 			$unterdrueckt->setAttempts(0);
 			$unterdrueckt->setCreatedAt(new \DateTime());
+			$unterdrueckt->setActorUid($actorUid);
+			$unterdrueckt->setStepTitle($stepTitle);
 			$this->outbox->insert($unterdrueckt);
 
 			return null;
@@ -150,6 +154,8 @@ class MailDispatcher {
 		$zeile->setStatus(MailOutbox::STATUS_PENDING);
 		$zeile->setAttempts(0);
 		$zeile->setCreatedAt(new \DateTime());
+		$zeile->setActorUid($actorUid);
+		$zeile->setStepTitle($stepTitle);
 
 		return $this->outbox->insert($zeile);
 	}
@@ -166,8 +172,9 @@ class MailDispatcher {
 	 * @param string $betreff Fertiger Betreff in der Sprache der Zeile.
 	 * @param string $einleitung Fertiger Einleitungssatz für den Rumpf.
 	 * @param string $link Deep-Link zum Vorgang; leer heißt: kein „Zum Vorgang"-Knopf.
+	 * @param string $meta Kontextzeile über dem Text (Projekt · Vorgang); leer heißt: keine.
 	 */
-	public function flush(MailOutbox $zeile, string $betreff, string $einleitung, string $link = ''): MailOutbox {
+	public function flush(MailOutbox $zeile, string $betreff, string $einleitung, string $link = '', string $meta = ''): MailOutbox {
 		$adresse = $this->adresseVon((string)$zeile->getRecipientUid());
 
 		if ($adresse === null) {
@@ -189,6 +196,11 @@ class MailDispatcher {
 		$template = $this->mailer->createEMailTemplate('projektwerk.notification');
 		$template->setSubject($betreff);
 		$template->addHeading($betreff);
+		// Die Kontextzeile (Projekt · Vorgang) steht über dem Satz — wo einer da
+		// ist. Sie ordnet die Mail ein, bevor man den Satz liest.
+		if ($meta !== '') {
+			$template->addBodyText($meta);
+		}
 		$template->addBodyText($einleitung);
 		if ($link !== '') {
 			$l = $this->l10nFactory->get(Application::APP_ID, (string)$zeile->getLang());

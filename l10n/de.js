@@ -391,6 +391,15 @@ OC.L10N.register(
     "{done} von {total} erledigt · {pct} %" : "{done} von {total} erledigt · {pct} %",
     "_%n überfällig_::_%n überfällig_" : ["%n überfällig","%n überfällig"],
     "Ergebnis" : "Ergebnis",
-    "Beschreibung (optional)" : "Beschreibung (optional)"
+    "Beschreibung (optional)" : "Beschreibung (optional)",
+    "%1$s hat Ihnen den Vorgang #%2$s „%3$s“ zugewiesen." : "%1$s hat Ihnen den Vorgang #%2$s „%3$s“ zugewiesen.",
+    "%1$s hat Ihnen den Arbeitsschritt „%2$s“ im Vorgang #%3$s „%4$s“ zugewiesen." : "%1$s hat Ihnen den Arbeitsschritt „%2$s“ im Vorgang #%3$s „%4$s“ zugewiesen.",
+    "%1$s hat Ihnen einen Arbeitsschritt im Vorgang #%2$s „%3$s“ zugewiesen." : "%1$s hat Ihnen einen Arbeitsschritt im Vorgang #%2$s „%3$s“ zugewiesen.",
+    "Ihnen wurde der Arbeitsschritt „%1$s“ im Vorgang #%2$s „%3$s“ zugewiesen." : "Ihnen wurde der Arbeitsschritt „%1$s“ im Vorgang #%2$s „%3$s“ zugewiesen.",
+    "%1$s hat einen Kommentar zum Vorgang #%2$s „%3$s“ geschrieben." : "%1$s hat einen Kommentar zum Vorgang #%2$s „%3$s“ geschrieben.",
+    "%1$s hat Sie in einem Kommentar zum Vorgang #%2$s „%3$s“ erwähnt." : "%1$s hat Sie in einem Kommentar zum Vorgang #%2$s „%3$s“ erwähnt.",
+    "%1$s hat den Vorgang #%2$s „%3$s“ geschlossen." : "%1$s hat den Vorgang #%2$s „%3$s“ geschlossen.",
+    "%1$s hat den neuen Vorgang #%2$s „%3$s“ angelegt." : "%1$s hat den neuen Vorgang #%2$s „%3$s“ angelegt.",
+    "Projekt %1$s · Vorgang #%2$s" : "Projekt %1$s · Vorgang #%2$s"
 },
 "nplurals=2; plural=(n != 1);");
