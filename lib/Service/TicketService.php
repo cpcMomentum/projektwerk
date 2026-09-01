@@ -674,6 +674,10 @@ class TicketService {
 
 			$ticket = new Ticket();
 			$ticket->setBoardId($viewer->boardId);
+			// Projekt aus dem Board denormalisieren (#246 PR 1) — unveränderlich,
+			// noch ungenutzt vom TicketScope. `null`, solange ein frisch
+			// angelegtes Board noch kein Projekt trägt (bis PR 5).
+			$ticket->setProjectId($this->boards->findForViewer($viewer)->getProjectId());
 			$ticket->setColumnId($columnId);
 			$ticket->setNumber($number);
 			$ticket->setTitle($title);
