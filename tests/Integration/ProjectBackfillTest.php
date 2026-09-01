@@ -59,7 +59,7 @@ class ProjectBackfillTest extends IntegrationTestCase {
 
 	private function backfillAusloesen(): void {
 		$migration = new Version000013Date20260901020000($this->db);
-		$migration->postSchemaChange($this->output(), $this->schemaVorhanden(), []);
+		$migration->postSchemaChange($this->nullAusgabe(), $this->schemaVorhanden(), []);
 	}
 
 	/**
@@ -110,7 +110,7 @@ class ProjectBackfillTest extends IntegrationTestCase {
 		return (int)$qb->executeQuery()->fetchOne();
 	}
 
-	private function output(): IOutput {
+	private function nullAusgabe(): IOutput {
 		return $this->createMock(IOutput::class);
 	}
 

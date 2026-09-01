@@ -10,28 +10,26 @@ declare(strict_types=1);
 namespace OCA\Projektwerk\Db;
 
 use DateTime;
-use JsonSerializable;
 use OCP\AppFramework\Db\Entity;
 use OCP\DB\Types;
 
 /**
- * Ein Projekt.
+ * Das Projekt-Dach über den Boards (#246).
  *
- * `ticketCounter` und `changeSeq` sind Zaehler, die **nie ueber dieses Entity**
- * hochgezaehlt werden duerfen: Lesen-Erhoehen-Schreiben ist genau das Rennen,
- * das zwei Tickets dieselbe Nummer gibt. Beide bewegen sich per atomarem
- * `UPDATE ... SET x = x + 1` (§3.9); die Setter existieren nur, weil das Entity
- * die Spalten sonst beim Speichern verloere. Der Vorgang selbst kommt mit
- * Phase 2, wo der erste Schreibpfad entsteht.
+ * Trägt die **Engagement-Ebene** eines Kundenprojekts: Owner, die Namen der
+ * beiden Seiten, die geteilten Ordner (`90_Austausch` / `91_Tickets_intern`),
+ * den Projektchat, den projektweiten Nummernzähler und den Archivzustand.
+ * Mehrere Boards teilen sich all das; jedes Board trägt nur noch seine
+ * Kanban-Ebene (Titel, Spalten, Karten).
  *
- * `folderPublicPath` und `folderInternalPath` dienen **nur der Anzeige** und
- * duerfen veralten — fuehrend ist die Datei-ID. In S2 (07.08.2026) gemessen:
- * Die Datei-ID ueberlebt einen Umzug innerhalb des Team-Ordners, der Pfad nicht.
+ * **PR 0 (Spike):** Die Felder sind hier angelegt und aus dem Board **kopiert**,
+ * werden aber noch nicht von der App gelesen — die Herkunft wandert erst in
+ * späteren PRs vom Board hierher. Vorerst hält dieses Entity nur den Wächter
+ * {@see \OCA\Projektwerk\Tests\Unit\Db\EntitySchemaTest} zufrieden und steht für
+ * den Backfill bereit.
  *
  * @method string getTitle()
  * @method void setTitle(string $title)
- * @method ?int getProjectId()
- * @method void setProjectId(?int $projectId)
  * @method ?string getDescription()
  * @method void setDescription(?string $description)
  * @method string getOwnerUserId()
@@ -52,24 +50,16 @@ use OCP\DB\Types;
  * @method void setChatUrl(?string $chatUrl)
  * @method int getTicketCounter()
  * @method void setTicketCounter(int $ticketCounter)
- * @method int getGithubEnabled()
- * @method void setGithubEnabled(int $githubEnabled)
- * @method ?string getGithubRepo()
- * @method void setGithubRepo(?string $githubRepo)
  * @method int getArchived()
  * @method void setArchived(int $archived)
- * @method int getChangeSeq()
- * @method void setChangeSeq(int $changeSeq)
  * @method DateTime getCreatedAt()
  * @method void setCreatedAt(DateTime $createdAt)
  * @method DateTime getUpdatedAt()
  * @method void setUpdatedAt(DateTime $updatedAt)
  */
-class Board extends Entity implements JsonSerializable {
+class Project extends Entity {
 
 	protected ?string $title = null;
-	/** Das Projekt-Dach (#246); nullable bis der Backfill jedes Board verknüpft. */
-	protected ?int $projectId = null;
 	protected ?string $description = null;
 	protected ?string $ownerUserId = null;
 	protected ?string $orgInternal = null;
@@ -80,16 +70,12 @@ class Board extends Entity implements JsonSerializable {
 	protected ?string $folderInternalPath = null;
 	protected ?string $chatUrl = null;
 	protected ?int $ticketCounter = null;
-	protected ?int $githubEnabled = null;
-	protected ?string $githubRepo = null;
 	protected ?int $archived = null;
-	protected ?int $changeSeq = null;
 	protected ?DateTime $createdAt = null;
 	protected ?DateTime $updatedAt = null;
 
 	public function __construct() {
 		$this->addType('title', Types::STRING);
-		$this->addType('projectId', Types::INTEGER);
 		$this->addType('description', Types::TEXT);
 		$this->addType('ownerUserId', Types::STRING);
 		$this->addType('orgInternal', Types::STRING);
@@ -100,38 +86,8 @@ class Board extends Entity implements JsonSerializable {
 		$this->addType('folderInternalPath', Types::STRING);
 		$this->addType('chatUrl', Types::STRING);
 		$this->addType('ticketCounter', Types::INTEGER);
-		// SMALLINT 0/1, nie Types::BOOLEAN mit notnull — das erzeugt
-		// Schema-Fehler, und PARAM_BOOL schreibt auf PostgreSQL 'f' statt 0.
-		$this->addType('githubEnabled', Types::SMALLINT);
-		$this->addType('githubRepo', Types::STRING);
 		$this->addType('archived', Types::SMALLINT);
-		$this->addType('changeSeq', Types::INTEGER);
 		$this->addType('createdAt', Types::DATETIME);
 		$this->addType('updatedAt', Types::DATETIME);
-	}
-
-	public function isArchived(): bool {
-		return $this->getArchived() === 1;
-	}
-
-	public function jsonSerialize(): array {
-		return [
-			'id' => $this->getId(),
-			'title' => $this->getTitle(),
-			'description' => $this->getDescription(),
-			'ownerUserId' => $this->getOwnerUserId(),
-			'orgInternal' => $this->getOrgInternal(),
-			'orgExternal' => $this->getOrgExternal(),
-			'folderPublicId' => $this->getFolderPublicId(),
-			'folderPublicPath' => $this->getFolderPublicPath(),
-			'folderInternalId' => $this->getFolderInternalId(),
-			'folderInternalPath' => $this->getFolderInternalPath(),
-			'chatUrl' => $this->getChatUrl(),
-			'githubEnabled' => $this->getGithubEnabled() === 1,
-			'githubRepo' => $this->getGithubRepo(),
-			'archived' => $this->isArchived(),
-			'createdAt' => $this->getCreatedAt()?->format(DateTime::ATOM),
-			'updatedAt' => $this->getUpdatedAt()?->format(DateTime::ATOM),
-		];
 	}
 }
