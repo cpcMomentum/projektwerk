@@ -11,6 +11,7 @@ namespace OCA\Projektwerk\Migration;
 
 use Closure;
 use OCP\DB\ISchemaWrapper;
+use OCP\DB\QueryBuilder\IParameter;
 use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\DB\Types;
 use OCP\IDBConnection;
@@ -187,7 +188,7 @@ class Version000013Date20260901020000 extends SimpleMigrationStep {
 	 * @param IQueryBuilder $qb Der Query Builder.
 	 * @param mixed $wert Der rohe Spaltenwert.
 	 */
-	private function intOderNull(IQueryBuilder $qb, mixed $wert): string {
+	private function intOderNull(IQueryBuilder $qb, mixed $wert): IParameter|string {
 		return $wert === null
 			? $qb->createNamedParameter(null, IQueryBuilder::PARAM_NULL)
 			: $qb->createNamedParameter((int)$wert, IQueryBuilder::PARAM_INT);
@@ -199,7 +200,7 @@ class Version000013Date20260901020000 extends SimpleMigrationStep {
 	 * @param IQueryBuilder $qb Der Query Builder.
 	 * @param mixed $wert Der rohe Spaltenwert.
 	 */
-	private function stringOderNull(IQueryBuilder $qb, mixed $wert): string {
+	private function stringOderNull(IQueryBuilder $qb, mixed $wert): IParameter|string {
 		return $wert === null
 			? $qb->createNamedParameter(null, IQueryBuilder::PARAM_NULL)
 			: $qb->createNamedParameter((string)$wert, IQueryBuilder::PARAM_STR);
