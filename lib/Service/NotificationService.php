@@ -64,6 +64,9 @@ class NotificationService {
 		// Typfehlermeldung auflaufen, die auf die falsche Stelle zeigt.
 		private StepMapper $steps,
 		private CommentMapper $comments,
+		// Hinten angehängt (siehe oben): baut Betreff, Satz und Metazeile und
+		// wird vom Nachversand geteilt (#248, Teil 2).
+		private MailComposer $composer,
 	) {
 	}
 
@@ -79,9 +82,10 @@ class NotificationService {
 	 * @param string $recipientUid Wer benachrichtigt wird.
 	 * @param string $actorUid Wer die Handlung ausgelöst hat.
 	 * @param string $event Einer der `EVENT_*`-Werte aus {@see MailOutbox}.
+	 * @param string|null $stepTitle Bei einer Schritt-Zuweisung der Schritt-Titel, sonst null.
 	 * @return MailOutbox[] Was nach dem Commit zu senden ist.
 	 */
-	public function announce(Ticket $ticket, string $recipientUid, string $actorUid, string $event): array {
+	public function announce(Ticket $ticket, string $recipientUid, string $actorUid, string $event, ?string $stepTitle = null): array {
 		if (!$this->darfBenachrichtigtWerden($ticket, $recipientUid, $actorUid)) {
 			return [];
 		}
@@ -95,7 +99,7 @@ class NotificationService {
 
 		$this->bell($ticket, $recipientUid, $event);
 
-		$zeile = $this->mail->queue($recipientUid, (int)$ticket->getId(), $event, (int)$ticket->getBoardId());
+		$zeile = $this->mail->queue($recipientUid, (int)$ticket->getId(), $event, (int)$ticket->getBoardId(), $actorUid, $stepTitle);
 
 		return $zeile === null ? [] : [$zeile];
 	}
@@ -165,31 +169,18 @@ class NotificationService {
 	public function deliver(array $zeilen, Ticket $ticket): void {
 		foreach ($zeilen as $zeile) {
 			$l = $this->l10nFactory->get(Application::APP_ID, (string)$zeile->getLang());
-			$nummer = str_pad((string)$ticket->getNumber(), 4, '0', STR_PAD_LEFT);
+			// **Betreff, Satz und Metazeile an EINER Stelle** (#248, Teil 2):
+			// derselbe {@see MailComposer}, den auch der Nachversand nutzt, damit
+			// eine nachgereichte Mail nicht schlechter aussieht als die erste.
+			$text = $this->composer->compose($zeile, $ticket, $l);
 
-			$betreff = match ((string)$zeile->getEvent()) {
-				MailOutbox::EVENT_TICKET_ASSIGNED => $l->t('Vorgang #%1$s wurde Ihnen zugewiesen', [$nummer]),
-				MailOutbox::EVENT_STEP_ASSIGNED => $l->t('Arbeitsschritt in Vorgang #%1$s wurde Ihnen zugewiesen', [$nummer]),
-				MailOutbox::EVENT_COMMENT_ADDED => $l->t('Neuer Kommentar zu Vorgang #%1$s', [$nummer]),
-				MailOutbox::EVENT_COMMENT_MENTION => $l->t('Sie wurden in Vorgang #%1$s erwähnt', [$nummer]),
-				MailOutbox::EVENT_TICKET_CLOSED => $l->t('Vorgang #%1$s wurde geschlossen', [$nummer]),
-				default => $l->t('Neuer Vorgang #%1$s', [$nummer]),
-			};
-
-			// **Ein ganzer Satz mit Kontext** (#189) statt „Betreff: Titel".
-			// Der Titel steht in Anführungszeichen, damit klar ist, wo der
-			// Vorgangstitel anfängt und aufhört.
-			$titel = (string)$ticket->getTitle();
-			$einleitung = match ((string)$zeile->getEvent()) {
-				MailOutbox::EVENT_TICKET_ASSIGNED => $l->t('Ihnen wurde der Vorgang #%1$s „%2$s“ zugewiesen.', [$nummer, $titel]),
-				MailOutbox::EVENT_STEP_ASSIGNED => $l->t('Ihnen wurde ein Arbeitsschritt im Vorgang #%1$s „%2$s“ zugewiesen.', [$nummer, $titel]),
-				MailOutbox::EVENT_COMMENT_ADDED => $l->t('Es gibt einen neuen Kommentar zum Vorgang #%1$s „%2$s“.', [$nummer, $titel]),
-				MailOutbox::EVENT_COMMENT_MENTION => $l->t('Sie wurden in einem Kommentar zum Vorgang #%1$s „%2$s“ erwähnt.', [$nummer, $titel]),
-				MailOutbox::EVENT_TICKET_CLOSED => $l->t('Der Vorgang #%1$s „%2$s“ wurde geschlossen.', [$nummer, $titel]),
-				default => $l->t('Im Projekt ist der neue Vorgang #%1$s „%2$s“ entstanden.', [$nummer, $titel]),
-			};
-
-			$this->mail->flush($zeile, $betreff, $einleitung, $this->linkZu((int)$ticket->getId()));
+			$this->mail->flush(
+				$zeile,
+				$text['betreff'],
+				$text['einleitung'],
+				$this->linkZu((int)$ticket->getId()),
+				$text['meta'],
+			);
 		}
 	}
 

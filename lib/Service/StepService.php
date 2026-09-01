@@ -88,7 +88,7 @@ class StepService {
 		$neu = $this->applyAssignment($step, $ticket, $viewer, $assignedUserId);
 		$gespeichert = $this->steps->insert($step);
 
-		$this->ankuendigen($ticket, $neu, $viewer);
+		$this->ankuendigen($ticket, $neu, $viewer, $step->getTitle());
 
 		return $gespeichert;
 	}
@@ -137,7 +137,7 @@ class StepService {
 		}
 
 		$gespeichert = $this->steps->update($step);
-		$this->ankuendigen($ticket, $neu, $viewer);
+		$this->ankuendigen($ticket, $neu, $viewer, $step->getTitle());
 
 		return $gespeichert;
 	}
@@ -169,8 +169,9 @@ class StepService {
 	 * @param Ticket $ticket Der Vorgang, an dem der Schritt haengt.
 	 * @param string|null $recipientUid Wem neu zugewiesen wurde, sonst null.
 	 * @param ViewerContext $viewer Wer die Zuweisung vorgenommen hat.
+	 * @param string $stepTitle Titel des zugewiesenen Schritts — steht dann in der Mail.
 	 */
-	private function ankuendigen(Ticket $ticket, ?string $recipientUid, ViewerContext $viewer): void {
+	private function ankuendigen(Ticket $ticket, ?string $recipientUid, ViewerContext $viewer, string $stepTitle): void {
 		if ($recipientUid === null) {
 			return;
 		}
@@ -180,6 +181,7 @@ class StepService {
 			$recipientUid,
 			$viewer->userId,
 			MailOutbox::EVENT_STEP_ASSIGNED,
+			$stepTitle,
 		);
 		$this->notifications->deliver($vorgemerkt, $ticket);
 	}

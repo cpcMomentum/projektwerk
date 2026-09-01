@@ -64,6 +64,10 @@ use OCP\DB\Types;
  * @method void setCreatedAt(DateTime $createdAt)
  * @method ?DateTime getSentAt()
  * @method void setSentAt(?DateTime $sentAt)
+ * @method ?string getActorUid()
+ * @method void setActorUid(?string $actorUid)
+ * @method ?string getStepTitle()
+ * @method void setStepTitle(?string $stepTitle)
  */
 class MailOutbox extends Entity {
 
@@ -135,6 +139,8 @@ class MailOutbox extends Entity {
 	protected ?string $lastError = null;
 	protected ?DateTime $createdAt = null;
 	protected ?DateTime $sentAt = null;
+	protected ?string $actorUid = null;
+	protected ?string $stepTitle = null;
 
 	public function __construct() {
 		$this->addType('recipientUid', Types::STRING);
@@ -148,5 +154,7 @@ class MailOutbox extends Entity {
 		$this->addType('lastError', Types::STRING);
 		$this->addType('createdAt', Types::DATETIME);
 		$this->addType('sentAt', Types::DATETIME);
+		$this->addType('actorUid', Types::STRING);
+		$this->addType('stepTitle', Types::STRING);
 	}
 }
