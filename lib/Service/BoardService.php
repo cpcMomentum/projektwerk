@@ -14,12 +14,12 @@ use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Db\Attachment;
 use OCA\Projektwerk\Db\Board;
 use OCA\Projektwerk\Db\BoardMapper;
-use OCA\Projektwerk\Db\Project;
-use OCA\Projektwerk\Db\ProjectMapper;
 use OCA\Projektwerk\Db\Column;
 use OCA\Projektwerk\Db\ColumnMapper;
 use OCA\Projektwerk\Db\Member;
 use OCA\Projektwerk\Db\MemberMapper;
+use OCA\Projektwerk\Db\Project;
+use OCA\Projektwerk\Db\ProjectMapper;
 use OCP\IDBConnection;
 use OCP\IL10N;
 
