@@ -674,9 +674,9 @@ class TicketService {
 
 			$ticket = new Ticket();
 			$ticket->setBoardId($viewer->boardId);
-			// Projekt aus dem Board denormalisieren (#246 PR 1) — unveränderlich,
-			// noch ungenutzt vom TicketScope. `null`, solange ein frisch
-			// angelegtes Board noch kein Projekt trägt (bis PR 5).
+			// Projekt aus dem Board denormalisieren (#246 PR 1) — unveränderlich.
+			// Seit PR 2 trägt jedes Board sein Projekt bereits ab dem Anlegen
+			// (siehe BoardService::create()); TicketScope verbindet darüber.
 			$ticket->setProjectId($this->boards->findForViewer($viewer)->getProjectId());
 			$ticket->setColumnId($columnId);
 			$ticket->setNumber($number);
