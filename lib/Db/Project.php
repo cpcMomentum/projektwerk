@@ -22,11 +22,11 @@ use OCP\DB\Types;
  * Mehrere Boards teilen sich all das; jedes Board trägt nur noch seine
  * Kanban-Ebene (Titel, Spalten, Karten).
  *
- * **PR 0 (Spike):** Die Felder sind hier angelegt und aus dem Board **kopiert**,
- * werden aber noch nicht von der App gelesen — die Herkunft wandert erst in
- * späteren PRs vom Board hierher. Vorerst hält dieses Entity nur den Wächter
- * {@see \OCA\Projektwerk\Tests\Unit\Db\EntitySchemaTest} zufrieden und steht für
- * den Backfill bereit.
+ * **Seit #246 PR 5c ist das Projekt die Quelle** für Ordner und Chat: Die
+ * Einstellungen ({@see \OCA\Projektwerk\Service\BoardService::update()}) schreiben
+ * sie hier, und die Anzeige ({@see \OCA\Projektwerk\Service\BoardService::forViewerWithProjectFields()})
+ * spiegelt sie ins Board zurück. Migration 18 hat den Bestand einmalig
+ * nachgezogen.
  *
  * @method string getTitle()
  * @method void setTitle(string $title)
