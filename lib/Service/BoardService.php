@@ -18,6 +18,8 @@ use OCA\Projektwerk\Db\Column;
 use OCA\Projektwerk\Db\ColumnMapper;
 use OCA\Projektwerk\Db\Member;
 use OCA\Projektwerk\Db\MemberMapper;
+use OCA\Projektwerk\Db\Project;
+use OCA\Projektwerk\Db\ProjectMapper;
 use OCP\IDBConnection;
 use OCP\IL10N;
 
@@ -59,6 +61,7 @@ class BoardService {
 	public function __construct(
 		private IDBConnection $db,
 		private BoardMapper $boards,
+		private ProjectMapper $projects,
 		private MemberMapper $members,
 		private ColumnMapper $columns,
 		private BoardAccess $access,
@@ -99,6 +102,24 @@ class BoardService {
 		$this->db->beginTransaction();
 
 		try {
+			// #246: Das Projekt-Dach zuerst — ein Board ohne Projekt hätte
+			// Tickets mit `project_id = NULL`, die der (jetzt projekt-scoped)
+			// Sichtbarkeitsverbund nicht mehr fände. Vorerst ein Projekt je Board
+			// (Engagement-Felder kopiert); mehrere Boards unter einem Projekt legt
+			// erst die eigentliche Projekt-Anlage in einem späteren PR an.
+			$project = new Project();
+			$project->setTitle(trim($title));
+			$project->setDescription($description);
+			$project->setOwnerUserId($userId);
+			$project->setOrgInternal($this->trimOrNull($orgInternal));
+			$project->setOrgExternal($this->trimOrNull($orgExternal));
+			$project->setTicketCounter(0);
+			$project->setArchived(0);
+			$project->setCreatedAt($now);
+			$project->setUpdatedAt($now);
+			$project = $this->projects->insert($project);
+			$projectId = (int)$project->getId();
+
 			$board = new Board();
 			$board->setTitle(trim($title));
 			$board->setDescription($description);
@@ -106,12 +127,14 @@ class BoardService {
 			$board->setOrgInternal($this->trimOrNull($orgInternal));
 			$board->setOrgExternal($this->trimOrNull($orgExternal));
 			$board->setArchived(0);
+			$board->setProjectId($projectId);
 			$board->setCreatedAt($now);
 			$board->setUpdatedAt($now);
 			$board = $this->boards->insert($board);
 
 			$member = new Member();
 			$member->setBoardId((int)$board->getId());
+			$member->setProjectId($projectId);
 			$member->setUserId($userId);
 			$member->setRole(ViewerContext::ROLE_INTERNAL);
 			$member->setIsManager(1);

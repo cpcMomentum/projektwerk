@@ -35,6 +35,8 @@ final readonly class ViewerContext {
 	private function __construct(
 		public string $userId,
 		public int $boardId,
+		/** Das Projekt-Dach des Boards (#246). Die Mitgliedschaft gilt projektweit. */
+		public int $projectId,
 		public string $role,
 		public bool $isManager,
 	) {
@@ -46,7 +48,7 @@ final readonly class ViewerContext {
 	 *
 	 * @internal
 	 */
-	public static function forMember(string $userId, int $boardId, string $role, bool $isManager): self {
+	public static function forMember(string $userId, int $boardId, int $projectId, string $role, bool $isManager): self {
 		if ($role !== self::ROLE_INTERNAL && $role !== self::ROLE_EXTERNAL) {
 			// Ein unbekannter Rollenwert darf nicht als "irgendwas" durchgehen:
 			// Die Sichtbarkeitsregel vergleicht creator_role mit genau diesem
@@ -57,7 +59,7 @@ final readonly class ViewerContext {
 		// is_manager gilt laut §8 nur fuer interne Mitglieder. Ein externes
 		// Mitglied mit gesetztem Flag waere ein Datenfehler; hier wird er
 		// entschaerft statt weitergereicht.
-		return new self($userId, $boardId, $role, $isManager && $role === self::ROLE_INTERNAL);
+		return new self($userId, $boardId, $projectId, $role, $isManager && $role === self::ROLE_INTERNAL);
 	}
 
 	public function isInternal(): bool {

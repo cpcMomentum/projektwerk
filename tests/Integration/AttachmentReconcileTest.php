@@ -70,10 +70,12 @@ class AttachmentReconcileTest extends IntegrationTestCase {
 		$board->setFolderInternalId($this->internalFolder->getId());
 		$board->setCreatedAt(new \DateTime());
 		$board->setUpdatedAt(new \DateTime());
+		$projectId = $this->projektFuerBoard($board);
 		$boardId = (int)Server::get(BoardMapper::class)->insert($board)->getId();
 
 		$member = new Member();
 		$member->setBoardId($boardId);
+		$member->setProjectId($projectId);
 		$member->setUserId(self::UID);
 		$member->setRole(ViewerContext::ROLE_INTERNAL);
 		$member->setIsManager(1);
@@ -91,6 +93,7 @@ class AttachmentReconcileTest extends IntegrationTestCase {
 		// oeffentlichen Ordner.
 		$ticket = new Ticket();
 		$ticket->setBoardId($boardId);
+		$ticket->setProjectId($projectId);
 		$ticket->setColumnId($columnId);
 		$ticket->setNumber(1);
 		$ticket->setTitle('Anhang haengt hinterher');

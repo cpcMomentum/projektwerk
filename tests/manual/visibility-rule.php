@@ -28,6 +28,8 @@ use OCA\Projektwerk\Db\Comment;
 use OCA\Projektwerk\Db\CommentMapper;
 use OCA\Projektwerk\Db\Member;
 use OCA\Projektwerk\Db\MemberMapper;
+use OCA\Projektwerk\Db\Project;
+use OCA\Projektwerk\Db\ProjectMapper;
 use OCA\Projektwerk\Db\TaskFilter;
 use OCA\Projektwerk\Db\Ticket;
 use OCA\Projektwerk\Db\TicketMapper;
@@ -35,6 +37,7 @@ use OCP\IDBConnection;
 use OCP\Server;
 
 $db = Server::get(IDBConnection::class);
+$projects = Server::get(ProjectMapper::class);
 $boards = Server::get(BoardMapper::class);
 $members = Server::get(MemberMapper::class);
 $tickets = Server::get(TicketMapper::class);
@@ -44,9 +47,22 @@ $now = new DateTime();
 $failures = [];
 
 // --- Aufbau ---------------------------------------------------------------
+// #246 PR 2: Der Sichtbarkeitsverbund haengt jetzt an project_id, nicht mehr
+// an board_id — Board, Mitglieder und Tickets brauchen also ein Projekt-Dach.
+$project = new Project();
+$project->setTitle('SMOKE-Rule');
+$project->setOwnerUserId('smoke-anna');
+$project->setArchived(0);
+$project->setTicketCounter(0);
+$project->setCreatedAt($now);
+$project->setUpdatedAt($now);
+$project = $projects->insert($project);
+$projectId = (int)$project->getId();
+
 $board = new Board();
 $board->setTitle('SMOKE-Rule');
 $board->setOwnerUserId('smoke-anna');
+$board->setProjectId($projectId);
 $board->setCreatedAt($now);
 $board->setUpdatedAt($now);
 $board = $boards->insert($board);
@@ -55,6 +71,7 @@ $boardId = (int)$board->getId();
 foreach ([['smoke-anna', 'internal', 1], ['smoke-bert', 'internal', 0], ['smoke-kunde', 'external', 0]] as [$uid, $role, $mgr]) {
 	$member = new Member();
 	$member->setBoardId($boardId);
+	$member->setProjectId($projectId);
 	$member->setUserId($uid);
 	$member->setRole($role);
 	$member->setIsManager($mgr);
@@ -74,6 +91,7 @@ foreach ([
 ] as $label => [$visibility, $creator, $creatorRole]) {
 	$ticket = new Ticket();
 	$ticket->setBoardId($boardId);
+	$ticket->setProjectId($projectId);
 	$ticket->setColumnId(1);
 	$ticket->setNumber(++$n);
 	$ticket->setTitle($label);
@@ -111,9 +129,9 @@ $expect = static function (string $label, array $expected, array $actual) use (&
 
 $titles = static fn (array $rows): array => array_map(static fn ($t) => $t->getTitle(), $rows);
 
-$anna = ViewerContext::forMember('smoke-anna', $boardId, 'internal', true);
-$bert = ViewerContext::forMember('smoke-bert', $boardId, 'internal', false);
-$kunde = ViewerContext::forMember('smoke-kunde', $boardId, 'external', false);
+$anna = ViewerContext::forMember('smoke-anna', $boardId, $projectId, 'internal', true);
+$bert = ViewerContext::forMember('smoke-bert', $boardId, $projectId, 'internal', false);
+$kunde = ViewerContext::forMember('smoke-kunde', $boardId, $projectId, 'external', false);
 
 $expect('anna (intern) sieht', ['public/anna', 'internal/anna', 'private/anna'], $titles($tickets->findVisibleInBoard($anna)));
 $expect('bert (intern, nicht Erzeuger) sieht', ['public/anna', 'internal/anna'], $titles($tickets->findVisibleInBoard($bert)));
@@ -141,7 +159,7 @@ try {
 }
 
 // Ein Nichtmitglied faellt aus dem INNER JOIN, auch mit selbst gebautem Kontext.
-$fremd = ViewerContext::forMember('smoke-fremd', $boardId, 'internal', true);
+$fremd = ViewerContext::forMember('smoke-fremd', $boardId, $projectId, 'internal', true);
 $expect('Nichtmitglied sieht (trotz Kontext)', [], $titles($tickets->findVisibleInBoard($fremd)));
 
 // Kinder folgen der gefilterten Menge.
@@ -162,5 +180,8 @@ foreach (['pwerk_comments' => 'ticket_id', 'pwerk_tickets' => 'board_id', 'pwerk
 	$qb->delete($table)->where($qb->expr()->in($col, $qb->createNamedParameter($ids, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT_ARRAY)));
 	$qb->executeStatement();
 }
+$qb = $db->getQueryBuilder();
+$qb->delete('pwerk_projects')->where($qb->expr()->eq('id', $qb->createNamedParameter($projectId, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)));
+$qb->executeStatement();
 
 echo $failures === [] ? "\nERGEBNIS: Regel haelt in allen geprueften Faellen\n" : "\nERGEBNIS: FEHLGESCHLAGEN (" . implode('; ', $failures) . ")\n";

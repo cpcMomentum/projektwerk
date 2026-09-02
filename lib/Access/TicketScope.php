@@ -121,12 +121,18 @@ class TicketScope {
 		$m = self::MEMBER_ALIAS;
 		$uidParam = $qb->createNamedParameter($userId);
 
+		// **Der Verbund läuft über `project_id`, nicht `board_id`** (#246 PR 2).
+		// Die Mitgliedschaft gilt projektweit; ein Vorgang ist sichtbar, wenn die
+		// Person Mitglied **seines Projekts** ist — über alle Boards des Projekts
+		// hinweg. `t.project_id` ist denormalisiert und unveränderlich (PR 1), der
+		// Verbund bleibt damit einspaltig. Die Regel darunter (public / internal
+		// + Rolle / private) ist byte-identisch geblieben.
 		$qb->innerJoin(
 			$ticketAlias,
 			'pwerk_members',
 			$m,
 			$qb->expr()->andX(
-				$qb->expr()->eq($m . '.board_id', $ticketAlias . '.board_id'),
+				$qb->expr()->eq($m . '.project_id', $ticketAlias . '.project_id'),
 				$qb->expr()->eq($m . '.user_id', $uidParam),
 			),
 		);

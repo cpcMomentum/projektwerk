@@ -2095,6 +2095,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 			return ViewerContext::forMember(
 				self::FREMD,
 				$this->fixture->boardId,
+				$this->fixture->projectId,
 				ViewerContext::ROLE_INTERNAL,
 				true,
 			);

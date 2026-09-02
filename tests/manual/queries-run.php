@@ -33,7 +33,7 @@ use OCA\Projektwerk\Db\TicketUserMapper;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\Server;
 
-$viewer = ViewerContext::forMember('smoke-user', 999999, ViewerContext::ROLE_INTERNAL, false);
+$viewer = ViewerContext::forMember('smoke-user', 999999, 999999, ViewerContext::ROLE_INTERNAL, false);
 
 $checks = [];
 

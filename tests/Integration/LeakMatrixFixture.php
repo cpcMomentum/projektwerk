@@ -21,6 +21,8 @@ use OCA\Projektwerk\Db\Comment;
 use OCA\Projektwerk\Db\CommentMapper;
 use OCA\Projektwerk\Db\Member;
 use OCA\Projektwerk\Db\MemberMapper;
+use OCA\Projektwerk\Db\Project;
+use OCA\Projektwerk\Db\ProjectMapper;
 use OCA\Projektwerk\Db\Step;
 use OCA\Projektwerk\Db\StepMapper;
 use OCA\Projektwerk\Db\Ticket;
@@ -165,8 +167,14 @@ final class LeakMatrixFixture {
 
 	public int $boardId;
 
+	/** Das Projekt des ersten Boards (#246 PR 2). */
+	public int $projectId;
+
 	/** Das zweite Board (siehe {@see ERNA}). */
 	public int $otherBoardId;
+
+	/** Das Projekt des zweiten Boards (#246 PR 2). */
+	public int $otherProjectId;
 
 	/** @var array<string, int> Bezeichnung => Ticket-ID */
 	public array $ticketIds = [];
@@ -185,9 +193,26 @@ final class LeakMatrixFixture {
 		$steps = Server::get(StepMapper::class);
 		$attachments = Server::get(AttachmentMapper::class);
 		$ticketUsers = Server::get(TicketUserMapper::class);
+		$projects = Server::get(ProjectMapper::class);
+
+		// #246 PR 2: Das Projekt-Dach. Die Fixture umgeht die Services, also legt
+		// sie das Projekt selbst an und trägt `project_id` an Board, Mitgliedern
+		// und Tickets — sonst fände der jetzt projekt-scoped Sichtbarkeitsverbund
+		// nichts.
+		$project = new Project();
+		$project->setTitle('Leak-Matrix');
+		$project->setOwnerUserId(self::ANNA);
+		$project->setArchived(0);
+		$project->setOrgInternal(self::ORG_INTERNAL);
+		$project->setOrgExternal(self::ORG_EXTERNAL);
+		$project->setTicketCounter(0);
+		$project->setCreatedAt($now);
+		$project->setUpdatedAt($now);
+		$this->projectId = (int)$projects->insert($project)->getId();
 
 		$board = new Board();
 		$board->setTitle('Leak-Matrix');
+		$board->setProjectId($this->projectId);
 		$board->setOwnerUserId(self::ANNA);
 		// Ausdruecklich gesetzt, obwohl die Spalte 0 als Vorgabe traegt:
 		// findAllForUser() filtert auf archived = 0, und eine Erwartung soll
@@ -203,6 +228,7 @@ final class LeakMatrixFixture {
 		foreach (self::MEMBERS as $userId => [$role, $isManager, $displayName]) {
 			$member = new Member();
 			$member->setBoardId($this->boardId);
+			$member->setProjectId($this->projectId);
 			$member->setUserId($userId);
 			$member->setRole($role);
 			$member->setIsManager($isManager ? 1 : 0);
@@ -227,6 +253,7 @@ final class LeakMatrixFixture {
 
 			$ticket = new Ticket();
 			$ticket->setBoardId($this->boardId);
+			$ticket->setProjectId($this->projectId);
 			$ticket->setColumnId($this->columnIds[$columnTitle]);
 			$ticket->setNumber($number);
 			$ticket->setTitle($label);
@@ -320,9 +347,25 @@ final class LeakMatrixFixture {
 		$columns = Server::get(ColumnMapper::class);
 		$tickets = Server::get(TicketMapper::class);
 		$steps = Server::get(StepMapper::class);
+		$projects = Server::get(ProjectMapper::class);
+
+		// Ein eigenes Projekt — das zweite Board prüft die Rolle je Board (Bert
+		// hier extern, im ersten Board intern), das verlangt getrennte
+		// Mitgliedschaften und damit getrennte Projekte.
+		$project = new Project();
+		$project->setTitle('Leak-Matrix Zweitboard');
+		$project->setOwnerUserId(self::ERNA);
+		$project->setArchived(0);
+		$project->setOrgInternal('Erna Elektronik');
+		$project->setOrgExternal(self::ORG_INTERNAL);
+		$project->setTicketCounter(0);
+		$project->setCreatedAt($now);
+		$project->setUpdatedAt($now);
+		$this->otherProjectId = (int)$projects->insert($project)->getId();
 
 		$board = new Board();
 		$board->setTitle('Leak-Matrix Zweitboard');
+		$board->setProjectId($this->otherProjectId);
 		$board->setOwnerUserId(self::ERNA);
 		$board->setArchived(0);
 		$board->setOrgInternal('Erna Elektronik');
@@ -334,6 +377,7 @@ final class LeakMatrixFixture {
 		foreach (self::B_MEMBERS as $userId => [$role, $isManager]) {
 			$member = new Member();
 			$member->setBoardId($this->otherBoardId);
+			$member->setProjectId($this->otherProjectId);
 			$member->setUserId($userId);
 			$member->setRole($role);
 			$member->setIsManager($isManager ? 1 : 0);
@@ -355,6 +399,7 @@ final class LeakMatrixFixture {
 
 			$ticket = new Ticket();
 			$ticket->setBoardId($this->otherBoardId);
+			$ticket->setProjectId($this->otherProjectId);
 			$ticket->setColumnId($columnId);
 			$ticket->setNumber($number);
 			$ticket->setTitle($label);
