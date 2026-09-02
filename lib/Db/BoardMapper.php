@@ -68,12 +68,17 @@ class BoardMapper extends QBMapper {
 		$qb = $this->db->getQueryBuilder();
 		$qb->select('b.*')
 			->from($this->tableName, 'b')
+			// #246 PR 5: Mitgliedschaft gilt projektweit — der Verbund läuft über
+			// `project_id`, nicht `board_id`. Damit erscheinen ALLE Boards eines
+			// Projekts, in dem die Person Mitglied ist, auch die, deren Heimat-
+			// `board_id` in keiner ihrer Mitgliedszeilen steht. Bei einem Board je
+			// Projekt (bis PR 5) ist das dieselbe Menge wie zuvor.
 			->innerJoin(
 				'b',
 				'pwerk_members',
 				'm',
 				$qb->expr()->andX(
-					$qb->expr()->eq('m.board_id', 'b.id'),
+					$qb->expr()->eq('m.project_id', 'b.project_id'),
 					$qb->expr()->eq('m.user_id', $qb->createNamedParameter($userId)),
 				),
 			)

@@ -33,6 +33,29 @@ class ProjectMapper extends QBMapper {
 	}
 
 	/**
+	 * Das Projekt, dessen Mitgliedschaft dieser Kontext bezeugt (#246 PR 5).
+	 *
+	 * **Context-first, kein `find(int $id)`.** Der Einstieg ist ein
+	 * {@see ViewerContext}, dessen Projekt-Mitgliedschaft {@see \OCA\Projektwerk\Access\BoardAccess}
+	 * bereits geprüft hat — dieselbe Tür wie bei {@see BoardMapper::findForViewer()}.
+	 * Ein Projekt trägt keine ticketweise Sichtbarkeit; seine Zeile (Org, Owner,
+	 * später Ordner/Chat) ist für alle Mitglieder dieselbe. Deshalb ist dies kein
+	 * zweiter Lesepfad auf verborgene Daten, sondern der eine gesperrte Zugang zu
+	 * den Projekt-Stammdaten.
+	 */
+	public function findForViewer(ViewerContext $viewer): Project {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('*')
+			->from($this->tableName)
+			->where($qb->expr()->eq(
+				'id',
+				$qb->createNamedParameter($viewer->projectId, IQueryBuilder::PARAM_INT),
+			));
+
+		return $this->findEntity($qb);
+	}
+
+	/**
 	 * Die nächste Vorgangsnummer — **projektweit** fortlaufend (#246 PR 4).
 	 *
 	 * Ein Ticket-INSERT läuft in genau eine Nummer, und die zählt seit PR 4 am

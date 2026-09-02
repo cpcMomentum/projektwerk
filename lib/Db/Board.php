@@ -117,6 +117,9 @@ class Board extends Entity implements JsonSerializable {
 	public function jsonSerialize(): array {
 		return [
 			'id' => $this->getId(),
+			// #246: Das Projekt, zu dem dieses Board gehört. Das Frontend
+			// gruppiert die Board-Liste danach (mehrere Boards je Projekt).
+			'projectId' => $this->getProjectId(),
 			'title' => $this->getTitle(),
 			'description' => $this->getDescription(),
 			'ownerUserId' => $this->getOwnerUserId(),
