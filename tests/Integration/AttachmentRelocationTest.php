@@ -76,11 +76,13 @@ class AttachmentRelocationTest extends IntegrationTestCase {
 		$board->setFolderInternalId($this->internalFolder->getId());
 		$board->setCreatedAt(new \DateTime());
 		$board->setUpdatedAt(new \DateTime());
+		$projectId = $this->projektFuerBoard($board);
 		$boardId = (int)Server::get(BoardMapper::class)->insert($board)->getId();
 		$this->boardId = $boardId;
 
 		$member = new Member();
 		$member->setBoardId($boardId);
+		$member->setProjectId($projectId);
 		$member->setUserId(self::UID);
 		$member->setRole(ViewerContext::ROLE_INTERNAL);
 		$member->setIsManager(1);
@@ -97,6 +99,7 @@ class AttachmentRelocationTest extends IntegrationTestCase {
 
 		$ticket = new Ticket();
 		$ticket->setBoardId($boardId);
+		$ticket->setProjectId($projectId);
 		$ticket->setColumnId($columnId);
 		$ticket->setNumber(1);
 		$ticket->setTitle('Datei zieht mit');
