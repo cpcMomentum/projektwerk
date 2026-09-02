@@ -442,7 +442,11 @@
 		"%1$s hat den Vorgang #%2$s „%3$s“ geschlossen.": "%1$s hat den Vorgang #%2$s „%3$s“ geschlossen.",
 		"%1$s hat den neuen Vorgang #%2$s „%3$s“ angelegt.": "%1$s hat den neuen Vorgang #%2$s „%3$s“ angelegt.",
 		"Projekt %1$s · Vorgang #%2$s": "Projekt %1$s · Vorgang #%2$s",
-		"Projektübersicht": "Projektübersicht"
+		"Projektübersicht": "Projektübersicht",
+		"Boards": "Boards",
+		"Board hinzufügen": "Board hinzufügen",
+		"Das neue Board gehört zu diesem Projekt und teilt sich Mitglieder, Ordner und Vorgangsnummern.": "Das neue Board gehört zu diesem Projekt und teilt sich Mitglieder, Ordner und Vorgangsnummern.",
+		"Titel des Boards": "Titel des Boards"
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }
