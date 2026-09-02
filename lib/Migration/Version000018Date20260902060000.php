@@ -31,7 +31,14 @@ use OCP\Migration\SimpleMigrationStep;
  * alten (oder leeren) Werte. Dieser Abgleich schließt die Lücke: Er kopiert
  * Ordner-IDs, Ordner-Pfade und Chat-Link jedes Boards auf sein Projekt.
  *
- * Bis PR 5 hat jedes Projekt genau ein Board; der Bezug ist also eindeutig.
+ * **Geschwister-Boards ohne eigene Ordner/Chat bleiben außen vor.** Seit PR 5a
+ * kann ein Projekt mehrere Boards haben ({@see \OCA\Projektwerk\Service\BoardService::createInProject()}),
+ * und ein neu angelegtes Geschwister-Board startet mit lauter `NULL`-Werten in
+ * diesen fünf Spalten. Ein blindes „letztes Board gewinnt" würde auf einem
+ * Projekt mit Geschwister-Boards die schon gepflegten Werte mit `NULL`
+ * überschreiben, sobald das Geschwister-Board zufällig zuletzt verarbeitet
+ * wird. Deshalb: Boards ganz ohne eigene Werte werden übersprungen, und unter
+ * mehreren Boards mit Werten gewinnt das zuletzt geänderte (`updated_at`).
  * Idempotent (setzt absolute Werte), transaktional.
  */
 class Version000018Date20260902060000 extends SimpleMigrationStep {
@@ -81,12 +88,28 @@ class Version000018Date20260902060000 extends SimpleMigrationStep {
 			'folder_internal_id',
 			'folder_internal_path',
 			'chat_url',
+			'updated_at',
 		)
 			->from('pwerk_boards')
-			->where($lese->expr()->isNotNull('project_id'));
+			->where($lese->expr()->isNotNull('project_id'))
+			// Zuletzt geändert zuletzt verarbeitet, damit unter mehreren Boards
+			// desselben Projekts das mit dem neuesten Stand gewinnt.
+			->orderBy('updated_at', 'ASC');
 		$ergebnis = $lese->executeQuery();
 		$boards = $ergebnis->fetchAll();
 		$ergebnis->closeCursor();
+
+		// Geschwister-Boards, die nie eigene Ordner/Chat bekommen haben (leer seit
+		// ihrer Anlage), dürfen die schon gepflegten Projekt-Werte nicht mit
+		// `NULL` überschreiben.
+		$boards = array_filter(
+			$boards,
+			static fn (array $board): bool => $board['folder_public_id'] !== null
+				|| $board['folder_public_path'] !== null
+				|| $board['folder_internal_id'] !== null
+				|| $board['folder_internal_path'] !== null
+				|| $board['chat_url'] !== null,
+		);
 
 		if ($boards === []) {
 			return;

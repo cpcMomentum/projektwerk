@@ -280,11 +280,21 @@ class BoardService {
 		}
 
 		$board->setUpdatedAt(new \DateTime());
-		$saved = $this->boards->update($board);
 
-		if ($projectChanged) {
-			$project->setUpdatedAt(new \DateTime());
-			$this->projects->update($project);
+		$this->db->beginTransaction();
+		try {
+			$saved = $this->boards->update($board);
+
+			if ($projectChanged) {
+				$project->setUpdatedAt(new \DateTime());
+				$this->projects->update($project);
+			}
+
+			$this->db->commit();
+		} catch (\Throwable $e) {
+			$this->db->rollBack();
+
+			throw $e;
 		}
 
 		// Read-through: Die Antwort trägt Ordner und Chat aus dem Projekt. Das
