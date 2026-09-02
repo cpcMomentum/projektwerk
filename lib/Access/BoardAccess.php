@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace OCA\Projektwerk\Access;
 
+use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IDBConnection;
 
 /**
@@ -35,11 +36,18 @@ class BoardAccess {
 	 * @throws NotAMemberException wenn die Person nicht Mitglied des Boards ist
 	 */
 	public function contextFor(string $userId, int $boardId): ViewerContext {
+		// Board → Projekt → Mitgliedschaft in **einer** Abfrage (#246 PR 2). Die
+		// Rolle kommt aus der Projekt-Mitgliedschaft, nicht mehr aus einer
+		// Zeile je Board; das Board liefert nur noch sein Projekt.
 		$qb = $this->db->getQueryBuilder();
-		$qb->select('role', 'is_manager')
-			->from('pwerk_members')
-			->where($qb->expr()->eq('board_id', $qb->createNamedParameter($boardId, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)))
-			->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+		$qb->select('m.role', 'm.is_manager')
+			->selectAlias('b.project_id', 'project_id')
+			->from('pwerk_boards', 'b')
+			->innerJoin('b', 'pwerk_members', 'm', $qb->expr()->andX(
+				$qb->expr()->eq('m.project_id', 'b.project_id'),
+				$qb->expr()->eq('m.user_id', $qb->createNamedParameter($userId)),
+			))
+			->where($qb->expr()->eq('b.id', $qb->createNamedParameter($boardId, IQueryBuilder::PARAM_INT)))
 			->setMaxResults(1);
 
 		$result = $qb->executeQuery();
@@ -55,6 +63,7 @@ class BoardAccess {
 		return ViewerContext::forMember(
 			$userId,
 			$boardId,
+			(int)$row['project_id'],
 			(string)$row['role'],
 			(int)$row['is_manager'] === 1,
 		);
@@ -72,11 +81,17 @@ class BoardAccess {
 	 * @return ViewerContext[] leer, wenn die Person in keinem Board ist
 	 */
 	public function allContextsFor(string $userId): array {
+		// Projekt-Mitgliedschaft → alle Boards dieser Projekte (#246 PR 2). Wer
+		// Mitglied eines Projekts ist, ist es für jedes seiner Boards; die Rolle
+		// gilt projektweit. So entsteht je Board ein Kontext mit derselben Rolle.
 		$qb = $this->db->getQueryBuilder();
-		$qb->select('board_id', 'role', 'is_manager')
-			->from('pwerk_members')
-			->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
-			->orderBy('board_id', 'ASC');
+		$qb->selectAlias('b.id', 'board_id')
+			->selectAlias('b.project_id', 'project_id')
+			->addSelect('m.role', 'm.is_manager')
+			->from('pwerk_members', 'm')
+			->innerJoin('m', 'pwerk_boards', 'b', $qb->expr()->eq('b.project_id', 'm.project_id'))
+			->where($qb->expr()->eq('m.user_id', $qb->createNamedParameter($userId)))
+			->orderBy('b.id', 'ASC');
 
 		$result = $qb->executeQuery();
 		$contexts = [];
@@ -84,6 +99,7 @@ class BoardAccess {
 			$contexts[] = ViewerContext::forMember(
 				$userId,
 				(int)$row['board_id'],
+				(int)$row['project_id'],
 				(string)$row['role'],
 				(int)$row['is_manager'] === 1,
 			);
