@@ -25,8 +25,10 @@ use OCP\Migration\SimpleMigrationStep;
  * statt über `board_id`** — die Sichtbarkeits-REGEL (public / internal+Rolle /
  * private) bleibt byte-identisch, nur der Verbund-Schlüssel wandert. Solange
  * jedes Projekt genau ein Board hat, ist das verhaltensneutral; die
- * Zwei-Board-pro-Projekt-Fixture der Leak-Matrix beweist die Vertraulichkeit
- * für den Fall, dass es mehr werden.
+ * Zwei-Board-Fixture der Leak-Matrix (je eigenes Projekt) beweist die
+ * Vertraulichkeit **zwischen** Projekten. Ein Fixture mit zwei Boards
+ * **unter einem** Projekt — der eigentliche Beweis für den Fall, dass ein
+ * Projekt mehrere Boards trägt — steht noch aus.
  *
  * `board_id` bleibt vorerst an der Zeile (per-Board-Sichten wie „Meine
  * Aufgaben" laufen noch darüber); der Schlüsselwechsel betrifft nur den
