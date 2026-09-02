@@ -120,6 +120,13 @@ final class MultiBoardProjectLeakTest extends IntegrationTestCase {
 	private int $boardAId;
 	private int $boardBId;
 
+	/**
+	 * Projektweit fortlaufende Nummer — beide Boards teilen sie sich, weil sie
+	 * ein Projekt teilen. Seit #246 PR 4a ist `(project_id, number)` eindeutig;
+	 * je Board bei 1 zu beginnen kollidierte im gemeinsamen Projekt.
+	 */
+	private int $number = 0;
+
 	/** @var array<string, int> Bezeichnung => Ticket-ID */
 	private array $ids = [];
 
@@ -197,21 +204,20 @@ final class MultiBoardProjectLeakTest extends IntegrationTestCase {
 	 * @param array<string, array{0: string, 1: string, 2: string}> $rows
 	 */
 	private function insertTickets(TicketMapper $tickets, array $rows, int $boardId, int $columnId, \DateTime $now): void {
-		$number = 0;
 		foreach ($rows as $label => [$visibility, $creator, $creatorRole]) {
-			$number++;
+			$this->number++;
 
 			$ticket = new Ticket();
 			$ticket->setBoardId($boardId);
 			$ticket->setProjectId($this->projectId);
 			$ticket->setColumnId($columnId);
-			$ticket->setNumber($number);
+			$ticket->setNumber($this->number);
 			$ticket->setTitle($label);
 			$ticket->setVisibility($visibility);
 			$ticket->setCreatorUserId($creator);
 			$ticket->setCreatorRole($creatorRole);
 			$ticket->setResponsibleUserId($creator);
-			$ticket->setPosition($number * 65536);
+			$ticket->setPosition($this->number * 65536);
 			$ticket->setVersion(1);
 			$ticket->setCreatedAt($now);
 			$ticket->setUpdatedAt($now);
