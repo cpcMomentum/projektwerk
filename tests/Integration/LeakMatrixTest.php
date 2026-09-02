@@ -2086,6 +2086,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 		return new BoardController(
 			$this->createStub(IRequest::class),
 			Server::get(BoardMapper::class),
+			Server::get(BoardService::class),
 			Server::get(MemberService::class),
 			Server::get(ColumnMapper::class),
 			Server::get(BoardAccess::class),

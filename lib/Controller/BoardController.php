@@ -15,6 +15,7 @@ use OCA\Projektwerk\AppInfo\Application;
 use OCA\Projektwerk\Db\BoardMapper;
 use OCA\Projektwerk\Db\ColumnMapper;
 use OCA\Projektwerk\Service\BoardPinService;
+use OCA\Projektwerk\Service\BoardService;
 use OCA\Projektwerk\Service\MemberService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Db\DoesNotExistException;
@@ -45,6 +46,10 @@ class BoardController extends Controller {
 	public function __construct(
 		IRequest $request,
 		private BoardMapper $boards,
+		// Für die Anzeige eines einzelnen Boards: Er spiegelt Ordner und Chat
+		// aus dem Projekt hinein (#246), damit die Autorität dafür an einer
+		// Stelle bleibt.
+		private BoardService $boardService,
 		// Der Dienst statt des Mappers, weil die Mitgliederliste den
 		// anzuzeigenden Namen braucht und der aus Nextcloud kommt, wenn die
 		// Mitgliedschaft keinen eigenen fuehrt.
@@ -138,7 +143,9 @@ class BoardController extends Controller {
 			$viewer = $this->access->contextFor($this->userId, $boardId);
 
 			return new JSONResponse([
-				'board' => $this->boards->findForViewer($viewer),
+				// Ordner und Chat kommen aus dem Projekt (#246); der Dienst
+				// spiegelt sie ins Board, damit die Einstellungen sie sehen.
+				'board' => $this->boardService->forViewerWithProjectFields($viewer),
 				'members' => $this->members->listForBoard($viewer),
 				'columns' => $this->columns->findForBoard($viewer),
 				// Die eigene Rolle, damit das Frontend nicht aus der
