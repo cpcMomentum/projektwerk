@@ -40,6 +40,13 @@ class MemberMapper extends QBMapper {
 	 * Wo Externe nicht erscheinen duerfen (interne und private Tickets), filtert
 	 * die aufrufende Schicht, nicht die Abfrage.
 	 *
+	 * **Gefiltert wird über `project_id`, nicht `board_id`** (#246 PR 3): Die
+	 * Mitglieder eines Boards sind die des Projekts — Mitgliedschaft und Rolle
+	 * gelten projektweit, für alle Boards gemeinsam. Bis PR 5 (ein Board je
+	 * Projekt) ist das dieselbe Menge wie zuvor; ab dem zweiten Board zeigt die
+	 * Mitgliederverwaltung eines jeden Boards korrekt alle Projektmitglieder,
+	 * auch die, deren Heimat-`board_id` ein anderes Board des Projekts ist.
+	 *
 	 * @return Member[]
 	 */
 	public function findForBoard(ViewerContext $viewer): array {
@@ -47,8 +54,8 @@ class MemberMapper extends QBMapper {
 		$qb->select('*')
 			->from($this->tableName)
 			->where($qb->expr()->eq(
-				'board_id',
-				$qb->createNamedParameter($viewer->boardId, IQueryBuilder::PARAM_INT),
+				'project_id',
+				$qb->createNamedParameter($viewer->projectId, IQueryBuilder::PARAM_INT),
 			))
 			->orderBy('role', 'ASC')
 			->addOrderBy('user_id', 'ASC');
