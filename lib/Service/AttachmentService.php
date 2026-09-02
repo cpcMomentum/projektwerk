@@ -12,7 +12,7 @@ namespace OCA\Projektwerk\Service;
 use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Db\Attachment;
 use OCA\Projektwerk\Db\AttachmentMapper;
-use OCA\Projektwerk\Db\BoardMapper;
+use OCA\Projektwerk\Db\ProjectMapper;
 use OCA\Projektwerk\Db\Ticket;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCP\AppFramework\Db\DoesNotExistException;
@@ -63,7 +63,7 @@ class AttachmentService {
 	public function __construct(
 		private AttachmentMapper $attachments,
 		private TicketMapper $tickets,
-		private BoardMapper $boards,
+		private ProjectMapper $projects,
 		private ProjectFolderService $folders,
 	) {
 	}
@@ -306,7 +306,7 @@ class AttachmentService {
 			return $this->folders->privateFolderFor($viewer->userId);
 		}
 
-		$folderId = $this->folders->folderIdFor($this->boards->findForViewer($viewer), $location);
+		$folderId = $this->folders->folderIdFor($this->projects->findForViewer($viewer), $location);
 
 		if ($folderId === null) {
 			throw new NoFolderException(

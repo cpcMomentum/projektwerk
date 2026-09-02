@@ -233,6 +233,11 @@ class BoardService {
 		$this->assertManager($viewer);
 
 		$board = $this->boards->findForViewer($viewer);
+		// Ordner und Chat gehören seit #246 dem PROJEKT — eine Quelle, geteilt
+		// über alle Boards des Projekts. Board-eigene Felder (Titel, Org,
+		// GitHub) bleiben am Board.
+		$project = $this->projects->findForViewer($viewer);
+		$projectChanged = false;
 
 		if (array_key_exists('title', $changes)) {
 			$this->assertTitle($changes['title']);
@@ -248,15 +253,18 @@ class BoardService {
 			$board->setOrgExternal($this->trimOrNull($changes['orgExternal']));
 		}
 		if (array_key_exists('chatUrl', $changes)) {
-			// Reine Adresse für den Knopf „Zum Projektchat". Leer heißt: Knopf
-			// entfällt ersatzlos — kein Hinweis, keine Einrichtungsaufforderung.
-			$board->setChatUrl($this->trimOrNull($changes['chatUrl']));
+			// Reine Adresse für den Knopf „Zum Projektchat", am Projekt (#246).
+			// Leer heißt: Knopf entfällt ersatzlos.
+			$project->setChatUrl($this->trimOrNull($changes['chatUrl']));
+			$projectChanged = true;
 		}
 		if (array_key_exists('folderPublicPath', $changes)) {
-			$this->setFolder($viewer, $board, Attachment::LOCATION_PUBLIC, $changes['folderPublicPath']);
+			$this->setFolder($viewer, $project, Attachment::LOCATION_PUBLIC, $changes['folderPublicPath']);
+			$projectChanged = true;
 		}
 		if (array_key_exists('folderInternalPath', $changes)) {
-			$this->setFolder($viewer, $board, Attachment::LOCATION_INTERNAL, $changes['folderInternalPath']);
+			$this->setFolder($viewer, $project, Attachment::LOCATION_INTERNAL, $changes['folderInternalPath']);
+			$projectChanged = true;
 		}
 		if (array_key_exists('githubEnabled', $changes)) {
 			// SMALLINT 0/1, nie Types::BOOLEAN — siehe {@see Board}.
@@ -272,8 +280,48 @@ class BoardService {
 		}
 
 		$board->setUpdatedAt(new \DateTime());
+		$saved = $this->boards->update($board);
 
-		return $this->boards->update($board);
+		if ($projectChanged) {
+			$project->setUpdatedAt(new \DateTime());
+			$this->projects->update($project);
+		}
+
+		// Read-through: Die Antwort trägt Ordner und Chat aus dem Projekt. Das
+		// Board serialisiert sie, die Quelle bleibt aber das Projekt (#246) —
+		// nur in-memory, nicht persistiert.
+		$this->hydrateProjectFields($saved, $project);
+
+		return $saved;
+	}
+
+	/**
+	 * Das Board für die Anzeige — mit Ordner und Chat aus dem Projekt (#246).
+	 *
+	 * Der eine Lesepfad für `board#show`: Er liefert das Board membership-gated
+	 * ({@see BoardMapper::findForViewer()}) und spiegelt die fünf Projekt-Felder
+	 * hinein, sodass die Einstellungen die projektweiten Werte sehen. So bleibt
+	 * die Autorität für Ordner und Chat an EINER Stelle (dem Projekt), auch wenn
+	 * das Board sie in der API-Antwort trägt.
+	 */
+	public function forViewerWithProjectFields(ViewerContext $viewer): Board {
+		$board = $this->boards->findForViewer($viewer);
+		$this->hydrateProjectFields($board, $this->projects->findForViewer($viewer));
+
+		return $board;
+	}
+
+	/**
+	 * Ordner und Chat aus dem Projekt in das Board-Objekt spiegeln — allein für
+	 * die Serialisierung (#246). Nicht persistiert — die Board-Spalten bleiben
+	 * unberührt.
+	 */
+	private function hydrateProjectFields(Board $board, Project $project): void {
+		$board->setChatUrl($project->getChatUrl());
+		$board->setFolderPublicId($project->getFolderPublicId());
+		$board->setFolderPublicPath($project->getFolderPublicPath());
+		$board->setFolderInternalId($project->getFolderInternalId());
+		$board->setFolderInternalPath($project->getFolderInternalPath());
 	}
 
 	/**
@@ -326,12 +374,12 @@ class BoardService {
 	 *
 	 * @throws \OCP\Files\NotPermittedException Ordner nicht erreichbar oder nicht beschreibbar
 	 */
-	private function setFolder(ViewerContext $viewer, Board $board, string $location, ?string $path): void {
+	private function setFolder(ViewerContext $viewer, Project $project, string $location, ?string $path): void {
 		$intern = $location === Attachment::LOCATION_INTERNAL;
 
 		if ($path === null || trim($path) === '') {
-			$intern ? $board->setFolderInternalId(null) : $board->setFolderPublicId(null);
-			$intern ? $board->setFolderInternalPath(null) : $board->setFolderPublicPath(null);
+			$intern ? $project->setFolderInternalId(null) : $project->setFolderPublicId(null);
+			$intern ? $project->setFolderInternalPath(null) : $project->setFolderPublicPath(null);
 
 			return;
 		}
@@ -343,8 +391,8 @@ class BoardService {
 		// Dateibaum nicht gibt, und beim nächsten Vergleich stimmt nichts.
 		$clean = $this->folders->displayPath($viewer->userId, $folder);
 
-		$intern ? $board->setFolderInternalId($folder->getId()) : $board->setFolderPublicId($folder->getId());
-		$intern ? $board->setFolderInternalPath($clean) : $board->setFolderPublicPath($clean);
+		$intern ? $project->setFolderInternalId($folder->getId()) : $project->setFolderPublicId($folder->getId());
+		$intern ? $project->setFolderInternalPath($clean) : $project->setFolderPublicPath($clean);
 	}
 
 	private function trimOrNull(?string $value): ?string {

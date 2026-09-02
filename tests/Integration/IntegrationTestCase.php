@@ -96,6 +96,15 @@ abstract class IntegrationTestCase extends TestCase {
 		$project->setOwnerUserId((string)$board->getOwnerUserId());
 		$project->setOrgInternal($board->getOrgInternal());
 		$project->setOrgExternal($board->getOrgExternal());
+		// Ordner und Chat gehören seit #246 dem Projekt — die Ablage
+		// (ProjectFolderService::folderIdFor) liest sie dort. Vom Board kopieren,
+		// wie Migration 13 es auf echten Daten tut, damit Anhang-Tests ihren
+		// Zielordner finden.
+		$project->setFolderPublicId($board->getFolderPublicId());
+		$project->setFolderPublicPath($board->getFolderPublicPath());
+		$project->setFolderInternalId($board->getFolderInternalId());
+		$project->setFolderInternalPath($board->getFolderInternalPath());
+		$project->setChatUrl($board->getChatUrl());
 		$project->setTicketCounter(0);
 		$project->setArchived(0);
 		$project->setCreatedAt($now);
