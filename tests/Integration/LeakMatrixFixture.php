@@ -321,8 +321,14 @@ final class LeakMatrixFixture {
 		// eindeutigen Index. Genau so ist es beim ersten Lauf passiert. Eine
 		// Fixture, die einen Zustand herstellt, den der Produktivcode nie
 		// erzeugen kann, prueft den Produktivcode gegen eine Fiktion.
+		//
+		// Seit #246 PR 4a zaehlt die Nummer am **Projekt** — also traegt der
+		// Projektzaehler den Stand, genau wie die Migration ihn aus dem Board
+		// nachzieht. Der Board-Zaehler bleibt als Bestandsspiegel gesetzt.
 		$board->setTicketCounter($number);
 		$boards->update($board);
+		$project->setTicketCounter($number);
+		$projects->update($project);
 
 		$this->buildOtherBoard($now);
 	}
@@ -448,6 +454,8 @@ final class LeakMatrixFixture {
 
 		$board->setTicketCounter($number);
 		$boards->update($board);
+		$project->setTicketCounter($number);
+		$projects->update($project);
 	}
 
 	/**
