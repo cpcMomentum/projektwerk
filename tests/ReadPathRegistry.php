@@ -94,6 +94,11 @@ final class ReadPathRegistry {
 		// beantworten muss: Was sieht ein externes Mitglied hier?
 		'BoardMapper::findForViewer',
 		'BoardMapper::findAllForUser',
+		// Die Projekt-Stammdaten (#246) — Org, Owner, Ordner, Chat. Wie
+		// `BoardMapper::findForViewer` vertraut der Pfad dem Kontext allein; die
+		// Mitgliedschaftsgrenze sitzt eine Schicht hoeher in `BoardAccess`. Die
+		// Erwartung ist dieselbe: `testBoardMetadataPathsTrustTheContextAlone`.
+		'ProjectMapper::findForViewer',
 		'MemberMapper::findForBoard',
 		// Dieselbe Frage ueber alle Projekte des Betrachters (#76). Der
 		// Ueberblick loest Anzeigenamen auf, und bei ueber zwanzig Projekten

@@ -161,6 +161,63 @@ class BoardService {
 	}
 
 	/**
+	 * Ein **weiteres** Board in einem bestehenden Projekt anlegen (#246 PR 5).
+	 *
+	 * Der Unterschied zu {@see create()} ist der Kern von #246: Es entsteht
+	 * **kein** neues Projekt und **keine** neue Mitgliedszeile. Das Board hängt
+	 * am schon bestehenden Projekt des Betrachters; Mitglieder, Rollen, Ordner,
+	 * Chat und der Nummernkreis teilen sich alle Boards des Projekts über
+	 * `project_id` — genau deshalb ist die Mitgliedschaft seit PR 3 projekt-
+	 * scoped. Nur die Kanban-Hülle (Board-Zeile + Standardspalten) kommt hinzu.
+	 *
+	 * Anlegen darf, wer das Projekt verwaltet — dieselbe Regel wie bei jeder
+	 * Mitglieder- und Board-Pflege (§8), „so wie bisher".
+	 *
+	 * @throws NotManagerException
+	 * @throws \InvalidArgumentException Titel leer
+	 */
+	public function createInProject(ViewerContext $viewer, string $title): Board {
+		$this->assertManager($viewer);
+		$this->assertTitle($title);
+		$now = new \DateTime();
+
+		$this->db->beginTransaction();
+
+		try {
+			// Org und Eigentümer stammen aus dem Projekt: Sie gelten projektweit,
+			// ein zweites Board erbt sie, statt sie neu zu erfragen.
+			$project = $this->projects->findForViewer($viewer);
+
+			$board = new Board();
+			$board->setTitle(trim($title));
+			$board->setOwnerUserId((string)$project->getOwnerUserId());
+			$board->setOrgInternal($project->getOrgInternal());
+			$board->setOrgExternal($project->getOrgExternal());
+			$board->setArchived(0);
+			$board->setProjectId($viewer->projectId);
+			$board->setCreatedAt($now);
+			$board->setUpdatedAt($now);
+			$board = $this->boards->insert($board);
+
+			foreach (self::DEFAULT_COLUMNS as $position => $columnTitle) {
+				$column = new Column();
+				$column->setBoardId((int)$board->getId());
+				$column->setTitle($this->l10n->t($columnTitle));
+				$column->setPosition($position);
+				$this->columns->insert($column);
+			}
+
+			$this->db->commit();
+
+			return $board;
+		} catch (\Throwable $e) {
+			$this->db->rollBack();
+
+			throw $e;
+		}
+	}
+
+	/**
 	 * Titel, Beschreibung, die beiden Firmennamen, die Chat-Adresse und die
 	 * beiden Projektordner.
 	 *

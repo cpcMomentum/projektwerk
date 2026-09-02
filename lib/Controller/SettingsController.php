@@ -76,6 +76,23 @@ class SettingsController extends Controller {
 		}
 	}
 
+	/**
+	 * Ein **weiteres** Board im Projekt eines bestehenden Boards (#246 PR 5).
+	 *
+	 * Anders als {@see createBoard()} braucht dies einen Board-Kontext: Das neue
+	 * Board erbt Projekt, Mitglieder und Ordner des `{boardId}`, unter dem es
+	 * angelegt wird. Rechte- und Fehlerbehandlung laufen über {@see write()} —
+	 * Nichtmitglied 404, fehlendes Verwaltungsrecht 403, leerer Titel 400.
+	 */
+	#[NoAdminRequired]
+	public function createSiblingBoard(int $boardId, string $title): JSONResponse {
+		return $this->write(
+			$boardId,
+			fn (ViewerContext $viewer): mixed => $this->boardService->createInProject($viewer, $title),
+			Http::STATUS_CREATED,
+		);
+	}
+
 	#[NoAdminRequired]
 	public function updateBoard(
 		int $boardId,
