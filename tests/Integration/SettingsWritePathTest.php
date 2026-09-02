@@ -694,6 +694,7 @@ class SettingsWritePathTest extends IntegrationTestCase {
 		$viewers[LeakMatrixFixture::FREMD] = ViewerContext::forMember(
 			LeakMatrixFixture::FREMD,
 			$this->fixture->boardId,
+			$this->fixture->projectId,
 			ViewerContext::ROLE_INTERNAL,
 			true,
 		);

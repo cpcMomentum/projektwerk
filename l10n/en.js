@@ -389,6 +389,22 @@ OC.L10N.register(
     "Zuletzt abgestellt" : "Recently completed",
     "Noch nichts erledigt." : "Nothing completed yet.",
     "{done} von {total} erledigt · {pct} %" : "{done} of {total} done · {pct} %",
-    "_%n überfällig_::_%n überfällig_" : ["%n overdue","%n overdue"]
+    "_%n überfällig_::_%n überfällig_" : ["%n overdue","%n overdue"],
+    "Ergebnis" : "Result",
+    "Beschreibung (optional)" : "Description (optional)",
+    "%1$s hat Ihnen den Vorgang #%2$s „%3$s“ zugewiesen." : "%1$s assigned ticket #%2$s “%3$s” to you.",
+    "%1$s hat Ihnen den Arbeitsschritt „%2$s“ im Vorgang #%3$s „%4$s“ zugewiesen." : "%1$s assigned the work step “%2$s” in ticket #%3$s “%4$s” to you.",
+    "%1$s hat Ihnen einen Arbeitsschritt im Vorgang #%2$s „%3$s“ zugewiesen." : "%1$s assigned a work step in ticket #%2$s “%3$s” to you.",
+    "Ihnen wurde der Arbeitsschritt „%1$s“ im Vorgang #%2$s „%3$s“ zugewiesen." : "The work step “%1$s” in ticket #%2$s “%3$s” has been assigned to you.",
+    "%1$s hat einen Kommentar zum Vorgang #%2$s „%3$s“ geschrieben." : "%1$s wrote a comment on ticket #%2$s “%3$s”.",
+    "%1$s hat Sie in einem Kommentar zum Vorgang #%2$s „%3$s“ erwähnt." : "%1$s mentioned you in a comment on ticket #%2$s “%3$s”.",
+    "%1$s hat den Vorgang #%2$s „%3$s“ geschlossen." : "%1$s closed ticket #%2$s “%3$s”.",
+    "%1$s hat den neuen Vorgang #%2$s „%3$s“ angelegt." : "%1$s created the new ticket #%2$s “%3$s”.",
+    "Projekt %1$s · Vorgang #%2$s" : "Project %1$s · Ticket #%2$s",
+    "Projektübersicht" : "Project overview",
+    "Boards" : "Boards",
+    "Board hinzufügen" : "Add board",
+    "Das neue Board gehört zu diesem Projekt und teilt sich Mitglieder, Ordner und Vorgangsnummern." : "The new board belongs to this project and shares its members, folders and ticket numbers.",
+    "Titel des Boards" : "Board title"
 },
 "nplurals=2; plural=(n != 1);");

@@ -16,7 +16,7 @@ import type { Ticket, TicketList, WaitState } from '@/types/ticket'
 import { t } from '@nextcloud/l10n'
 import { defineStore } from 'pinia'
 import { fetchBoard, fetchBoards, setBoardPin } from '@/services/boards'
-import { createBoard as createBoardRequest } from '@/services/settings'
+import { createBoard as createBoardRequest, createSiblingBoard as createSiblingBoardRequest } from '@/services/settings'
 import { fetchTickets, markTicketRead, moveTicket as moveTicketRequest } from '@/services/tickets'
 import { showError } from '@/services/toast'
 
@@ -116,6 +116,22 @@ export const useBoardStore = defineStore('board', {
 		 * genau eine.
 		 */
 		orgLine: () => (board: Pick<Board, 'orgInternal' | 'orgExternal'>): string => [board.orgInternal, board.orgExternal].filter(Boolean).join(' · '),
+
+		/**
+		 * Die Boards des geöffneten Projekts (#246) — für den Board-Wechsler.
+		 *
+		 * Ein Projekt kann mehrere Boards haben; sie teilen sich `projectId`.
+		 * Solange ein Projekt genau ein Board hat, ist das eine einelementige
+		 * Liste, und der Wechsler bleibt aus. Ohne geöffnetes Board oder ohne
+		 * `projectId` (Altbestand) ist die Liste leer.
+		 */
+		siblingBoards: (state): Board[] => {
+			const projectId = state.board?.projectId
+			if (projectId === null || projectId === undefined) {
+				return []
+			}
+			return state.boards.filter((b) => b.projectId === projectId)
+		},
 
 		/**
 		 * Die angepinnten Projekte für die Seitenleiste (#115).
@@ -245,6 +261,25 @@ export const useBoardStore = defineStore('board', {
 		 */
 		async createBoard(data: { title: string, description?: string | null, orgInternal?: string | null, orgExternal?: string | null }): Promise<Board> {
 			const board = await createBoardRequest(data)
+			this.boards = [...this.boards, board]
+			return board
+		},
+
+		/**
+		 * Ein weiteres Board im Projekt des geöffneten Boards anlegen (#246).
+		 *
+		 * Es erbt Projekt, Mitglieder und Ordner; die Board-Liste wird danach
+		 * neu geladen, damit das neue Board sofort im Wechsler steht. Die
+		 * Navigation dorthin macht der Aufrufer.
+		 *
+		 * @param title Titel des neuen Boards.
+		 */
+		async addSiblingBoard(title: string): Promise<Board> {
+			const current = this.board
+			if (current === null) {
+				throw new Error('Kein Projekt geöffnet.')
+			}
+			const board = await createSiblingBoardRequest(current.id, title)
 			this.boards = [...this.boards, board]
 			return board
 		},

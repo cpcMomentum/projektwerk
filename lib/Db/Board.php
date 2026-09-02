@@ -30,6 +30,8 @@ use OCP\DB\Types;
  *
  * @method string getTitle()
  * @method void setTitle(string $title)
+ * @method ?int getProjectId()
+ * @method void setProjectId(?int $projectId)
  * @method ?string getDescription()
  * @method void setDescription(?string $description)
  * @method string getOwnerUserId()
@@ -66,6 +68,8 @@ use OCP\DB\Types;
 class Board extends Entity implements JsonSerializable {
 
 	protected ?string $title = null;
+	/** Das Projekt-Dach (#246); nullable bis der Backfill jedes Board verknüpft. */
+	protected ?int $projectId = null;
 	protected ?string $description = null;
 	protected ?string $ownerUserId = null;
 	protected ?string $orgInternal = null;
@@ -85,6 +89,7 @@ class Board extends Entity implements JsonSerializable {
 
 	public function __construct() {
 		$this->addType('title', Types::STRING);
+		$this->addType('projectId', Types::INTEGER);
 		$this->addType('description', Types::TEXT);
 		$this->addType('ownerUserId', Types::STRING);
 		$this->addType('orgInternal', Types::STRING);
@@ -112,6 +117,9 @@ class Board extends Entity implements JsonSerializable {
 	public function jsonSerialize(): array {
 		return [
 			'id' => $this->getId(),
+			// #246: Das Projekt, zu dem dieses Board gehört. Das Frontend
+			// gruppiert die Board-Liste danach (mehrere Boards je Projekt).
+			'projectId' => $this->getProjectId(),
 			'title' => $this->getTitle(),
 			'description' => $this->getDescription(),
 			'ownerUserId' => $this->getOwnerUserId(),

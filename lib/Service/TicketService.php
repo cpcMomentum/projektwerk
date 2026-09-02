@@ -16,6 +16,7 @@ use OCA\Projektwerk\Db\BoardMapper;
 use OCA\Projektwerk\Db\ColumnMapper;
 use OCA\Projektwerk\Db\MailOutbox;
 use OCA\Projektwerk\Db\MemberMapper;
+use OCA\Projektwerk\Db\ProjectMapper;
 use OCA\Projektwerk\Db\Ticket;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Db\TicketReadMapper;
@@ -47,6 +48,7 @@ class TicketService {
 		private IDBConnection $db,
 		private TicketMapper $tickets,
 		private BoardMapper $boards,
+		private ProjectMapper $projects,
 		private ColumnMapper $columns,
 		private MemberMapper $members,
 		private AttachmentService $attachmentService,
@@ -668,12 +670,19 @@ class TicketService {
 		try {
 			$this->assertColumnInBoard($viewer, $columnId);
 
-			$number = $this->boards->claimTicketNumber($viewer);
+			// Nummer projektweit fortlaufend (#246 PR 4); der Board-Änderungs-
+			// zähler zählt separat mit, weil der Delta-Poll je Board pollt.
+			$number = $this->projects->claimTicketNumber($viewer);
+			$this->boards->bumpChangeSeq($viewer);
 			$last = $this->tickets->findLastPositionInColumn($viewer, $columnId);
 			$now = new \DateTime();
 
 			$ticket = new Ticket();
 			$ticket->setBoardId($viewer->boardId);
+			// Projekt aus dem Board denormalisieren (#246 PR 1) — unveränderlich.
+			// Seit PR 2 trägt jedes Board sein Projekt bereits ab dem Anlegen
+			// (siehe BoardService::create()); TicketScope verbindet darüber.
+			$ticket->setProjectId($this->boards->findForViewer($viewer)->getProjectId());
 			$ticket->setColumnId($columnId);
 			$ticket->setNumber($number);
 			$ticket->setTitle($title);

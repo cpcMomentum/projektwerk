@@ -162,6 +162,25 @@ export class Api {
 	}
 
 	/**
+	 * Einen Vorgang schließen (erledigen, #171).
+	 *
+	 * Danach fällt er aus der Standard-Board-Ladung — `TicketMapper` blendet
+	 * `closed_at` aus. Genau dieser Zustand deckt den Deep-Link-Fehler aus #248
+	 * auf: Ein Mail-Link auf einen geschlossenen Vorgang fand ihn nicht mehr im
+	 * Speicher. Die `version` wird frisch geholt, damit der Test sie nicht
+	 * mitschleppen muss.
+	 *
+	 * @param boardId Kennung des Projekts.
+	 * @param ticketId Kennung des Vorgangs.
+	 */
+	async ticketSchliessen(boardId: number, ticketId: number): Promise<any> {
+		const aktuell = await this.lesen(`/api/v1/boards/${boardId}/tickets/${ticketId}`)
+		const version = aktuell.ticket.version
+
+		return this.schreiben('patch', `/api/v1/boards/${boardId}/tickets/${ticketId}`, { version, closed: true, outcome: 'done' })
+	}
+
+	/**
 	 * Eine Spalte als Endspalte markieren (#172).
 	 *
 	 * @param boardId Kennung des Projekts.

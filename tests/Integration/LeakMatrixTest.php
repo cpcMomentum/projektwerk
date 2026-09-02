@@ -30,6 +30,7 @@ use OCA\Projektwerk\Db\MailOutboxMapper;
 use OCA\Projektwerk\Db\MemberMapper;
 use OCA\Projektwerk\Db\NotifyPref;
 use OCA\Projektwerk\Db\NotifyPrefMapper;
+use OCA\Projektwerk\Db\ProjectMapper;
 use OCA\Projektwerk\Db\StepMapper;
 use OCA\Projektwerk\Db\TaskFilter;
 use OCA\Projektwerk\Db\TicketMapper;
@@ -256,6 +257,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'TicketMapper::countNewByBoard' => 'testOverviewEndpointMatchesTheVisibleSetAcrossBoards',
 		// zusaetzlich gefahren von testBothCompanyNamesReachEveryViewer
 		'BoardMapper::findForViewer' => 'testBoardMetadataPathsTrustTheContextAlone',
+		'ProjectMapper::findForViewer' => 'testBoardMetadataPathsTrustTheContextAlone',
 		'BoardMapper::findAllForUser' => 'testBoardListFollowsMembership',
 		'MemberMapper::findForBoard' => 'testBoardMetadataPathsTrustTheContextAlone',
 		'ColumnMapper::findForBoard' => 'testBoardMetadataPathsTrustTheContextAlone',
@@ -1286,6 +1288,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 	 */
 	public function testBoardMetadataPathsTrustTheContextAlone(): void {
 		$boards = Server::get(BoardMapper::class);
+		$projects = Server::get(ProjectMapper::class);
 		$members = Server::get(MemberMapper::class);
 		$columns = Server::get(ColumnMapper::class);
 
@@ -1296,6 +1299,14 @@ class LeakMatrixTest extends IntegrationTestCase {
 				'Leak-Matrix',
 				$boards->findForViewer($context)->getTitle(),
 				$userId . ' bekommt das Board nicht.',
+			);
+
+			// #246: Die Projekt-Stammdaten vertrauen wie die Board-Metadaten dem
+			// Kontext allein — dieselbe Schicht, dieselbe Erwartung.
+			$this->assertSame(
+				'Leak-Matrix',
+				$projects->findForViewer($context)->getTitle(),
+				$userId . ' bekommt das Projekt nicht.',
 			);
 
 			$memberIds = array_map(static fn ($m): string => (string)$m->getUserId(), $members->findForBoard($context));
@@ -2075,6 +2086,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 		return new BoardController(
 			$this->createStub(IRequest::class),
 			Server::get(BoardMapper::class),
+			Server::get(BoardService::class),
 			Server::get(MemberService::class),
 			Server::get(ColumnMapper::class),
 			Server::get(BoardAccess::class),
@@ -2095,6 +2107,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 			return ViewerContext::forMember(
 				self::FREMD,
 				$this->fixture->boardId,
+				$this->fixture->projectId,
 				ViewerContext::ROLE_INTERNAL,
 				true,
 			);

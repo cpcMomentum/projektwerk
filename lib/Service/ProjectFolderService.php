@@ -13,7 +13,7 @@ use OCA\Projektwerk\AppInfo\Application;
 use OCA\Projektwerk\Access\TicketScope;
 use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Db\Attachment;
-use OCA\Projektwerk\Db\Board;
+use OCA\Projektwerk\Db\Project;
 use OCA\Projektwerk\Db\Ticket;
 use OCP\Config\IUserConfig;
 use OCP\Files\File;
@@ -106,12 +106,17 @@ class ProjectFolderService {
 	}
 
 	/**
-	 * Die am Board hinterlegte Ordner-ID für einen Ablageort.
+	 * Die am **Projekt** hinterlegte Ordner-ID für einen Ablageort (#246 PR 5).
+	 *
+	 * Der Ablageort gehört seit #246 dem Projekt, nicht dem einzelnen Board:
+	 * Alle Boards eines Projekts legen in denselben Austausch- und Intern-Ordner
+	 * ab. Der Aufrufer besorgt das Projekt über
+	 * {@see \OCA\Projektwerk\Db\ProjectMapper::findForViewer()}.
 	 */
-	public function folderIdFor(Board $board, string $location): ?int {
+	public function folderIdFor(Project $project, string $location): ?int {
 		$id = $location === Attachment::LOCATION_INTERNAL
-			? $board->getFolderInternalId()
-			: $board->getFolderPublicId();
+			? $project->getFolderInternalId()
+			: $project->getFolderPublicId();
 
 		return $id === null ? null : (int)$id;
 	}

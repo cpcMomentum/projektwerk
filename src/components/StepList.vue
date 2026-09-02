@@ -65,7 +65,7 @@
 							:disabled="busy"
 							@update:modelValue="setDue(step, $event)" />
 
-						<NcButton variant="tertiary" :ariaLabel="t('projektwerk', 'Fertig')" @click="editing = null">
+						<NcButton variant="tertiary" :ariaLabel="t('projektwerk', 'Fertig')" @click="saveDetails(step)">
 							<template #icon>
 								<CheckIcon :size="20" />
 							</template>
@@ -86,7 +86,7 @@
 						<NcButton
 							variant="tertiary"
 							:ariaLabel="t('projektwerk', 'Zuweisung und Fälligkeit ändern: {title}', { title: step.title })"
-							@click="editing = step.id">
+							@click="beginEdit(step)">
 							<template #icon>
 								<PencilOutlineIcon :size="20" />
 							</template>
@@ -97,7 +97,7 @@
 						v-else
 						variant="tertiary"
 						class="pw-step__flach"
-						@click="editing = step.id">
+						@click="beginEdit(step)">
 						{{ t('projektwerk', 'Zuweisen oder Frist setzen') }}
 					</NcButton>
 
@@ -112,6 +112,42 @@
 						</template>
 					</NcButton>
 				</template>
+			</div>
+
+			<!--
+				Beschreibung und Ergebnis stehen als volle Zeilen unter der
+				Kopfzeile — `.pw-step` bricht um. Angezeigt außerhalb des
+				Bearbeitens; beim Bearbeiten treten die Felder an ihre Stelle.
+				Das Ergebnis wird mehrzeilig gezeigt (CSS `pre-wrap`).
+			-->
+			<p v-if="editing !== step.id && step.description" class="pw-step__beschreibung">
+				{{ step.description }}
+			</p>
+
+			<div v-if="editing !== step.id && step.result" class="pw-step__ergebnis">
+				<span class="pw-step__ergebnis-marke">{{ t('projektwerk', 'Ergebnis') }}</span>
+				<span class="pw-step__ergebnis-text">{{ step.result }}</span>
+			</div>
+
+			<div v-if="editing === step.id" class="pw-step__felder-text">
+				<NcTextField
+					class="pw-step__feld"
+					:modelValue="editDescription"
+					:label="t('projektwerk', 'Beschreibung')"
+					:disabled="busy"
+					@update:modelValue="editDescription = $event"
+					@keydown.enter="saveDetails(step)" />
+
+				<NcTextArea
+					class="pw-step__feld"
+					:modelValue="editResult"
+					:label="t('projektwerk', 'Ergebnis')"
+					:rows="3"
+					resize="vertical"
+					:disabled="busy"
+					@update:modelValue="editResult = $event"
+					@keydown.enter.ctrl.exact="saveDetails(step)"
+					@keydown.enter.meta.exact="saveDetails(step)" />
 			</div>
 		</div>
 
@@ -135,6 +171,18 @@
 				v-model="newTitle"
 				class="pw-step__neu-titel"
 				:label="t('projektwerk', 'Neuer Arbeitsschritt')"
+				:disabled="busy"
+				@keydown.enter="add" />
+
+			<!--
+				Beschreibung optional in einer eigenen Zeile (#247). Enter sendet
+				weiterhin ab, der schnelle Weg (nur Titel, Enter) bleibt also
+				unbelastet.
+			-->
+			<NcTextField
+				v-model="newDescription"
+				class="pw-step__neu-beschreibung"
+				:label="t('projektwerk', 'Beschreibung (optional)')"
 				:disabled="busy"
 				@keydown.enter="add" />
 
@@ -200,6 +248,7 @@ import NcButton from '@nextcloud/vue/components/NcButton'
 import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
 import NcDateTimePicker from '@nextcloud/vue/components/NcDateTimePicker'
 import NcSelectUsers from '@nextcloud/vue/components/NcSelectUsers'
+import NcTextArea from '@nextcloud/vue/components/NcTextArea'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
 import CheckIcon from 'vue-material-design-icons/Check.vue'
 import DeleteOutlineIcon from 'vue-material-design-icons/DeleteOutline.vue'
@@ -252,7 +301,7 @@ function alsIsoTag(date: Date | null): string | null {
 export default defineComponent({
 	name: 'StepList',
 
-	components: { CheckIcon, DeleteOutlineIcon, NcAvatar, NcButton, NcCheckboxRadioSwitch, NcDateTimePicker, NcSelectUsers, NcTextField, PencilOutlineIcon, PlusIcon },
+	components: { CheckIcon, DeleteOutlineIcon, NcAvatar, NcButton, NcCheckboxRadioSwitch, NcDateTimePicker, NcSelectUsers, NcTextArea, NcTextField, PencilOutlineIcon, PlusIcon },
 
 	props: {
 		boardId: { type: Number, required: true },
@@ -271,6 +320,8 @@ export default defineComponent({
 		return {
 			busy: false,
 			newTitle: '',
+			/** Eine Zeile Beschreibung für den neuen Schritt (#247), leer = keine. */
+			newDescription: '',
 			/** `null` heißt „Niemand" — der schnelle Weg bleibt unbelastet. */
 			newAssignee: null as PersonOption | null,
 			newDueDate: null as Date | null,
@@ -282,6 +333,15 @@ export default defineComponent({
 			 * Formularfeldern, die Variante C abgeraeumt hat.
 			 */
 			editing: null as number | null,
+			/**
+			 * Puffer für Beschreibung und Ergebnis des gerade bearbeiteten
+			 * Schritts (#247). Anders als Zuweisung und Frist, die sofort beim
+			 * Ändern speichern, sind das Freitextfelder — hier gilt dasselbe
+			 * Muster wie bei der Ticket-Beschreibung: lokal tippen, mit „Fertig"
+			 * (oder Strg/Cmd+Enter) speichern.
+			 */
+			editDescription: '',
+			editResult: '',
 			/** Der Schritt, dessen Löschen gerade zur Rückfrage offensteht (#203). */
 			removing: null as number | null,
 			/**
@@ -339,6 +399,7 @@ export default defineComponent({
 				// Angefangenes gehört zum vorigen Vorgang und darf nicht stehen
 				// bleiben — sonst trüge der nächste Schritt dessen Zuweisung.
 				this.newTitle = ''
+				this.newDescription = ''
 				this.newAssignee = null
 				this.newDueDate = null
 				this.editing = null
@@ -503,10 +564,16 @@ export default defineComponent({
 				return
 			}
 
+			const description = this.newDescription.trim()
+
 			return this.write(
 				async () => {
 					await createStep(this.boardId, this.ticketId, {
 						title,
+						// Leer heißt „keine Beschreibung": als `null`, nicht als
+						// leere Zeichenkette — so muss die Anzeige nicht zwischen
+						// beidem unterscheiden.
+						description: description === '' ? null : description,
 						// Ausdrücklich `null` statt weglassen: Der Dienst
 						// unterscheidet „nicht genannt" von „keine Zuweisung",
 						// und gemeint ist hier das Zweite.
@@ -514,11 +581,66 @@ export default defineComponent({
 						dueDate: alsIsoTag(this.newDueDate),
 					})
 					this.newTitle = ''
+					this.newDescription = ''
 					this.newAssignee = null
 					this.newDueDate = null
 					this.fokusZiel = '.pw-step--new input[type="text"]'
 				},
 				t('projektwerk', 'Arbeitsschritt konnte nicht angelegt werden'),
+			)
+		},
+
+		/**
+		 * In den Bearbeiten-Modus eines Schritts wechseln (#247).
+		 *
+		 * Zuweisung und Frist speichern sofort beim Ändern; Beschreibung und
+		 * Ergebnis werden erst hier in den Puffer kopiert und mit „Fertig"
+		 * gespeichert. Deshalb der eigene Einstieg statt `editing = step.id`.
+		 *
+		 * @param step Der Schritt, der bearbeitet wird.
+		 */
+		beginEdit(step: Step) {
+			this.editing = step.id
+			this.editDescription = step.description ?? ''
+			this.editResult = step.result ?? ''
+		},
+
+		/**
+		 * Beschreibung und Ergebnis sichern und den Bearbeiten-Modus verlassen
+		 * (#247).
+		 *
+		 * Nur die tatsächlich geänderten Felder gehen mit; sind beide
+		 * unverändert, wird nichts geschrieben und nur geschlossen. Ein leerer
+		 * Wert reist als Leerstring — der Dienst macht daraus `null` (Feld
+		 * geleert), und weil `array_key_exists` am Endpunkt greift, kommt das
+		 * Leeren auch wirklich an.
+		 *
+		 * @param step Der Schritt.
+		 */
+		saveDetails(step: Step) {
+			const beschreibung = this.editDescription.trim()
+			const ergebnis = this.editResult.trim()
+			const changes: { description?: string, result?: string } = {}
+
+			if (beschreibung !== (step.description ?? '')) {
+				changes.description = beschreibung
+			}
+			if (ergebnis !== (step.result ?? '')) {
+				changes.result = ergebnis
+			}
+
+			if (Object.keys(changes).length === 0) {
+				this.editing = null
+
+				return
+			}
+
+			return this.write(
+				async () => {
+					await updateStep(this.boardId, step.id, changes)
+					this.editing = null
+				},
+				t('projektwerk', 'Ändern fehlgeschlagen'),
 			)
 		},
 

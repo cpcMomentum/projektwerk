@@ -41,6 +41,8 @@ use OCP\DB\Types;
  *
  * @method int getBoardId()
  * @method void setBoardId(int $boardId)
+ * @method ?int getProjectId()
+ * @method void setProjectId(?int $projectId)
  * @method int getColumnId()
  * @method void setColumnId(int $columnId)
  * @method int getNumber()
@@ -96,6 +98,8 @@ class Ticket extends Entity implements JsonSerializable {
 	public const OUTCOME_DISCARDED = 'discarded';
 
 	protected ?int $boardId = null;
+	/** Das Projekt-Dach (#246), aus dem Board denormalisiert; noch ungenutzt vom TicketScope. */
+	protected ?int $projectId = null;
 	protected ?int $columnId = null;
 	protected ?int $number = null;
 	protected ?string $title = null;
@@ -140,6 +144,7 @@ class Ticket extends Entity implements JsonSerializable {
 
 	public function __construct() {
 		$this->addType('boardId', Types::INTEGER);
+		$this->addType('projectId', Types::INTEGER);
 		$this->addType('columnId', Types::INTEGER);
 		$this->addType('number', Types::INTEGER);
 		$this->addType('title', Types::STRING);

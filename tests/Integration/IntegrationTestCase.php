@@ -9,6 +9,9 @@ declare(strict_types=1);
 
 namespace OCA\Projektwerk\Tests\Integration;
 
+use OCA\Projektwerk\Db\Board;
+use OCA\Projektwerk\Db\Project;
+use OCA\Projektwerk\Db\ProjectMapper;
 use OCP\IDBConnection;
 use OCP\Server;
 use PHPUnit\Framework\TestCase;
@@ -74,5 +77,41 @@ abstract class IntegrationTestCase extends TestCase {
 		}
 
 		parent::tearDown();
+	}
+
+	/**
+	 * Ein Projekt-Dach für ein noch **nicht** eingefügtes Board anlegen (#246).
+	 *
+	 * Setzt `project_id` am Board und gibt die Projekt-Id zurück; der Aufrufer
+	 * trägt sie danach an Mitglieder und Tickets. Test-Fixtures gehen an den
+	 * Services vorbei — seit der Sichtbarkeitsverbund über `project_id` läuft,
+	 * müssen sie das Projekt selbst stellen, sonst findet er nichts.
+	 *
+	 * @param Board $board Das vorbereitete, noch nicht eingefügte Board.
+	 */
+	protected function projektFuerBoard(Board $board): int {
+		$now = new \DateTime();
+		$project = new Project();
+		$project->setTitle((string)$board->getTitle());
+		$project->setOwnerUserId((string)$board->getOwnerUserId());
+		$project->setOrgInternal($board->getOrgInternal());
+		$project->setOrgExternal($board->getOrgExternal());
+		// Ordner und Chat gehören seit #246 dem Projekt — die Ablage
+		// (ProjectFolderService::folderIdFor) liest sie dort. Vom Board kopieren,
+		// wie Migration 13 es auf echten Daten tut, damit Anhang-Tests ihren
+		// Zielordner finden.
+		$project->setFolderPublicId($board->getFolderPublicId());
+		$project->setFolderPublicPath($board->getFolderPublicPath());
+		$project->setFolderInternalId($board->getFolderInternalId());
+		$project->setFolderInternalPath($board->getFolderInternalPath());
+		$project->setChatUrl($board->getChatUrl());
+		$project->setTicketCounter(0);
+		$project->setArchived(0);
+		$project->setCreatedAt($now);
+		$project->setUpdatedAt($now);
+		$projectId = (int)Server::get(ProjectMapper::class)->insert($project)->getId();
+		$board->setProjectId($projectId);
+
+		return $projectId;
 	}
 }

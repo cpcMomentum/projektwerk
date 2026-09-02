@@ -1,56 +1,99 @@
 <template>
 	<div class="pw-view" :style="{ '--pw-columns': store.columns.length || 1 }">
-		<div class="pw-view__head">
-			<h2>{{ store.board?.title ?? t('projektwerk', 'Projekt') }}</h2>
+		<!--
+			Brotkrume zurück zur Projektübersicht (#245) — dieselbe Form wie im
+			Projekt-Dashboard, ein echtes Ziel statt eines Zurück-Rätsels.
+		-->
+		<router-link
+			class="pw-crumb"
+			:to="{ name: 'project-dashboard', params: { boardId: String(boardId) } }">
+			<ChevronLeftIcon :size="16" />{{ t('projektwerk', 'Projektübersicht') }}
+		</router-link>
 
-			<NcButton variant="primary" :disabled="store.columns.length === 0" @click="creating = true">
-				<template #icon>
-					<PlusIcon :size="20" />
-				</template>
-				{{ t('projektwerk', 'Neuer Vorgang') }}
-			</NcButton>
+		<div class="pw-view__head pw-view__head--split">
+			<div class="pw-view__ident">
+				<h2>{{ store.board?.title ?? t('projektwerk', 'Projekt') }}</h2>
+				<div v-if="orgLine" class="pw-view__org">
+					{{ orgLine }}
+				</div>
+			</div>
 
-			<!--
-				Der Weg in die Einstellungen steht nur internen Mitgliedern mit
-				Verwaltungsrecht offen (§8) — wer ihn nicht hat, sieht keinen
-				Knopf statt einer Absage.
-			-->
-			<NcButton
-				v-if="store.viewer?.isManager"
-				:aria-label="t('projektwerk', 'Projekteinstellungen')"
-				@click="$router.push({ name: 'board-settings', params: { boardId: String(boardId) } })">
-				<template #icon>
-					<CogIcon :size="20" />
-				</template>
-			</NcButton>
+			<div class="pw-view__actions">
+				<NcButton variant="primary" :disabled="store.columns.length === 0" @click="creating = true">
+					<template #icon>
+						<PlusIcon :size="20" />
+					</template>
+					{{ t('projektwerk', 'Neuer Vorgang') }}
+				</NcButton>
 
-			<!-- Ohne hinterlegte Adresse entfaellt der Knopf ersatzlos (§9). -->
-			<NcButton
-				v-if="store.board?.chatUrl"
-				:href="store.board.chatUrl"
-				target="_blank"
-				rel="noopener">
-				{{ t('projektwerk', 'Zum Projektchat') }}
-			</NcButton>
+				<!--
+					Der Board-Wechsler (#246): die Boards dieses Projekts. Er
+					erscheint, sobald es mehr als eins gibt — oder für Verwalter,
+					die ein weiteres anlegen dürfen. Bei genau einem Board und
+					ohne Verwaltungsrecht bleibt er aus.
+				-->
+				<NcActions
+					v-if="store.siblingBoards.length > 1 || store.viewer?.isManager"
+					:menu-name="t('projektwerk', 'Boards')">
+					<template #icon>
+						<ViewDashboardIcon :size="20" />
+					</template>
+					<NcActionButton
+						v-for="b in store.siblingBoards"
+						:key="b.id"
+						:disabled="b.id === boardId"
+						@click="switchBoard(b.id)">
+						{{ b.title }}
+					</NcActionButton>
+					<NcActionButton
+						v-if="store.viewer?.isManager"
+						class="pw-add-board"
+						@click="addingBoard = true">
+						<template #icon>
+							<PlusIcon :size="20" />
+						</template>
+						{{ t('projektwerk', 'Board hinzufügen') }}
+					</NcActionButton>
+				</NcActions>
 
-			<!--
-				Kein eigener Bereich fuer „wartend": Der Zustand liegt quer zu
-				den Spalten, und eine eigene Ansicht risse ihn aus dem
-				Zusammenhang, in dem er entsteht.
-			-->
-			<NcButton
-				v-if="store.waitingCount > 0 || store.onlyWaiting"
-				:variant="store.onlyWaiting ? 'primary' : 'secondary'"
-				@click="store.onlyWaiting = !store.onlyWaiting">
-				<template #icon>
-					<ClockAlertIcon :size="20" />
-				</template>
-				{{ t('projektwerk', 'Nur wartend') }} ({{ store.waitingCount }})
-			</NcButton>
+				<!--
+					Der Weg in die Einstellungen steht nur internen Mitgliedern mit
+					Verwaltungsrecht offen (§8) — wer ihn nicht hat, sieht keinen
+					Knopf statt einer Absage.
+				-->
+				<NcButton
+					v-if="store.viewer?.isManager"
+					:aria-label="t('projektwerk', 'Projekteinstellungen')"
+					@click="$router.push({ name: 'board-settings', params: { boardId: String(boardId) } })">
+					<template #icon>
+						<CogIcon :size="20" />
+					</template>
+				</NcButton>
 
-			<p v-if="orgLine" class="pw-view__sub">
-				{{ orgLine }}
-			</p>
+				<!-- Ohne hinterlegte Adresse entfaellt der Knopf ersatzlos (§9). -->
+				<NcButton
+					v-if="store.board?.chatUrl"
+					:href="store.board.chatUrl"
+					target="_blank"
+					rel="noopener">
+					{{ t('projektwerk', 'Zum Projektchat') }}
+				</NcButton>
+
+				<!--
+					Kein eigener Bereich fuer „wartend": Der Zustand liegt quer zu
+					den Spalten, und eine eigene Ansicht risse ihn aus dem
+					Zusammenhang, in dem er entsteht.
+				-->
+				<NcButton
+					v-if="store.waitingCount > 0 || store.onlyWaiting"
+					:variant="store.onlyWaiting ? 'primary' : 'secondary'"
+					@click="store.onlyWaiting = !store.onlyWaiting">
+					<template #icon>
+						<ClockAlertIcon :size="20" />
+					</template>
+					{{ t('projektwerk', 'Nur wartend') }} ({{ store.waitingCount }})
+				</NcButton>
+			</div>
 		</div>
 
 		<div v-if="store.loading" class="pw-board">
@@ -215,6 +258,36 @@
 				</NcButton>
 			</template>
 		</NcDialog>
+
+		<!-- Ein weiteres Board im selben Projekt anlegen (#246). -->
+		<NcDialog
+			v-if="addingBoard"
+			:open="true"
+			:name="t('projektwerk', 'Board hinzufügen')"
+			size="normal"
+			@update:open="closeAddBoard">
+			<div class="app-projektwerk">
+				<p class="pw-detail__empty">
+					{{ t('projektwerk', 'Das neue Board gehört zu diesem Projekt und teilt sich Mitglieder, Ordner und Vorgangsnummern.') }}
+				</p>
+				<NcTextField
+					:label="t('projektwerk', 'Titel des Boards')"
+					:value="newBoardTitle"
+					@update:value="newBoardTitle = $event"
+					@keydown.enter="confirmAddBoard" />
+			</div>
+			<template #actions>
+				<NcButton @click="closeAddBoard">
+					{{ t('projektwerk', 'Abbrechen') }}
+				</NcButton>
+				<NcButton
+					variant="primary"
+					:disabled="newBoardTitle.trim() === '' || addBusy"
+					@click="confirmAddBoard">
+					{{ t('projektwerk', 'Anlegen') }}
+				</NcButton>
+			</template>
+		</NcDialog>
 	</div>
 </template>
 
@@ -224,13 +297,18 @@ import type { Attachment, Comment, Step, Ticket } from '@/types/ticket'
 
 import { n, t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
+import NcActionButton from '@nextcloud/vue/components/NcActionButton'
+import NcActions from '@nextcloud/vue/components/NcActions'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcDialog from '@nextcloud/vue/components/NcDialog'
 import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
+import NcTextField from '@nextcloud/vue/components/NcTextField'
+import ChevronLeftIcon from 'vue-material-design-icons/ChevronLeft.vue'
 import ClockAlertIcon from 'vue-material-design-icons/ClockAlertOutline.vue'
 import CogIcon from 'vue-material-design-icons/Cog.vue'
 import FolderMultipleIcon from 'vue-material-design-icons/FolderMultiple.vue'
 import PlusIcon from 'vue-material-design-icons/Plus.vue'
+import ViewDashboardIcon from 'vue-material-design-icons/ViewDashboard.vue'
 import BoardDragLayer from '@/components/board/BoardDragLayer.vue'
 import CreateTicketDialog from '@/components/CreateTicketDialog.vue'
 import TicketDetail from '@/components/TicketDetail.vue'
@@ -256,7 +334,7 @@ interface ColumnView {
 export default defineComponent({
 	name: 'BoardView',
 
-	components: { BoardDragLayer, ClockAlertIcon, CogIcon, CreateTicketDialog, FolderMultipleIcon, NcButton, NcDialog, NcEmptyContent, PlusIcon, TicketDetail },
+	components: { BoardDragLayer, ChevronLeftIcon, ClockAlertIcon, CogIcon, CreateTicketDialog, FolderMultipleIcon, NcActionButton, NcActions, NcButton, NcDialog, NcEmptyContent, NcTextField, PlusIcon, TicketDetail, ViewDashboardIcon },
 
 	setup() {
 		return { store: useBoardStore() }
@@ -276,6 +354,10 @@ export default defineComponent({
 			// Der „Auch abschließen?"-Prompt (#172): steht, wenn eine Karte gerade
 			// in eine Endspalte gezogen/verschoben wurde und noch offen ist.
 			finalPrompt: null as { ticket: Ticket, outcome: 'done' | 'discarded' } | null,
+			// „Board hinzufügen" (#246): der Anlege-Dialog und sein Titelfeld.
+			addingBoard: false,
+			newBoardTitle: '',
+			addBusy: false,
 		}
 	},
 
@@ -331,7 +413,7 @@ export default defineComponent({
 			immediate: true,
 			async handler(id: number) {
 				await this.store.open(id)
-				this.openFromQuery()
+				await this.openFromQuery()
 			},
 		},
 	},
@@ -346,6 +428,47 @@ export default defineComponent({
 
 	methods: {
 		t,
+
+		/**
+		 * Zu einem anderen Board desselben Projekts wechseln (#246).
+		 *
+		 * @param id Kennung des Ziel-Boards.
+		 */
+		switchBoard(id: number): void {
+			if (id === this.boardId) {
+				return
+			}
+			this.$router.push({ name: 'board', params: { boardId: String(id) } })
+		},
+
+		/** Den „Board hinzufügen"-Dialog schließen und das Feld leeren (#246). */
+		closeAddBoard(): void {
+			this.addingBoard = false
+			this.newBoardTitle = ''
+		},
+
+		/**
+		 * Ein weiteres Board im Projekt anlegen und dorthin wechseln (#246).
+		 *
+		 * Der Titel darf nicht leer sein; ein Doppelklick läuft dank `addBusy`
+		 * ins Leere. Bei Erfolg springt die Ansicht ins frische Board.
+		 */
+		async confirmAddBoard(): Promise<void> {
+			const title = this.newBoardTitle.trim()
+			if (title === '' || this.addBusy) {
+				return
+			}
+			this.addBusy = true
+			try {
+				const board = await this.store.addSiblingBoard(title)
+				this.closeAddBoard()
+				this.$router.push({ name: 'board', params: { boardId: String(board.id) } })
+			} catch (e) {
+				showError((e as { message?: string }).message ?? t('projektwerk', 'Anlegen fehlgeschlagen'))
+			} finally {
+				this.addBusy = false
+			}
+		},
 
 		/**
 		 * „N ältere anzeigen" — mit Zahl, weil eine Zahl die Frage beantwortet,
@@ -478,24 +601,56 @@ export default defineComponent({
 		/**
 		 * Den Vorgang öffnen, den ein Deep-Link genannt hat.
 		 *
-		 * Läuft **nach** dem Laden, weil das Overlay das Ticket aus dem Speicher
-		 * nimmt. Fehlt es dort, passiert nichts weiter: Der Server hat die
-		 * Sichtbarkeit bereits geprüft, ein Fehlschlag hier wäre eine
-		 * zwischenzeitliche Änderung und keine Auskunft wert — das Board steht
-		 * dann eben offen, ohne Overlay.
+		 * Läuft **nach** dem Laden des Boards. Steht der Vorgang in der geladenen
+		 * Menge, öffnet ihn derselbe Weg wie ein Klick auf die Karte — samt
+		 * Kindern und Lesevermerk.
+		 *
+		 * Steht er **nicht** darin, wird er per ID nachgeladen. Der häufige Fall
+		 * ist ein **geschlossener** Vorgang: Die Board-Ladung blendet ihn aus
+		 * (`TicketMapper` filtert `closed_at`), aber `ticket_closed` ist ein
+		 * Mail-Anlass — der „Zum Vorgang"-Knopf zeigte deshalb ausgerechnet dort
+		 * ins Leere (#248). `ticket#show` geht über `findVisible` und damit durch
+		 * dieselbe Sichtbarkeitsprüfung wie jede Ticket-Abfrage; ist der Vorgang
+		 * verborgen oder fort, wirft der Aufruf und es bleibt fail-closed beim
+		 * offenen Board ohne Overlay. Hier zu unterscheiden hieße zu verraten,
+		 * was die Sichtbarkeitsregel verbirgt — dieselbe Linie wie im
+		 * `DeepLinkController`.
 		 *
 		 * Die Kennung bleibt danach in der Adresse stehen. Das ist gewollt: So
 		 * trägt auch der kopierte Hash-Link innerhalb der App.
 		 */
-		openFromQuery() {
+		async openFromQuery() {
 			const wanted = Number(this.$route.query.ticket)
 			if (!Number.isInteger(wanted) || wanted <= 0) {
 				return
 			}
 
-			const ticket = this.store.tickets.get(wanted)
-			if (ticket !== undefined) {
-				this.openTicketData = ticket
+			const bekannt = this.store.tickets.get(wanted)
+			if (bekannt !== undefined) {
+				await this.openTicket(bekannt)
+
+				return
+			}
+
+			// Die Board-Id beim Eintritt festhalten: Zwischen Anfrage und Antwort
+			// kann die Person das Board gewechselt haben. Dieselbe Ansicht wird
+			// über Board-Grenzen wiederverwendet (kein `:key` an der Route),
+			// deshalb liefe eine veraltete Antwort sonst ins offene Board des
+			// falschen Vorgangs.
+			const beimEintritt = this.boardId
+			try {
+				const detail = await fetchTicket(beimEintritt, wanted)
+				if (this.boardId !== beimEintritt) {
+					return
+				}
+
+				this.openTicketData = detail.ticket
+				this.openSteps = detail.steps
+				this.openComments = detail.comments
+				this.openAttachments = detail.attachments
+				this.store.markRead(wanted)
+			} catch {
+				// Verborgen oder nicht mehr vorhanden — bewusst still.
 			}
 		},
 

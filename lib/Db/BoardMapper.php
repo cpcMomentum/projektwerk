@@ -68,12 +68,17 @@ class BoardMapper extends QBMapper {
 		$qb = $this->db->getQueryBuilder();
 		$qb->select('b.*')
 			->from($this->tableName, 'b')
+			// #246 PR 5: Mitgliedschaft gilt projektweit — der Verbund läuft über
+			// `project_id`, nicht `board_id`. Damit erscheinen ALLE Boards eines
+			// Projekts, in dem die Person Mitglied ist, auch die, deren Heimat-
+			// `board_id` in keiner ihrer Mitgliedszeilen steht. Bei einem Board je
+			// Projekt (bis PR 5) ist das dieselbe Menge wie zuvor.
 			->innerJoin(
 				'b',
 				'pwerk_members',
 				'm',
 				$qb->expr()->andX(
-					$qb->expr()->eq('m.board_id', 'b.id'),
+					$qb->expr()->eq('m.project_id', 'b.project_id'),
 					$qb->expr()->eq('m.user_id', $qb->createNamedParameter($userId)),
 				),
 			)
@@ -91,51 +96,26 @@ class BoardMapper extends QBMapper {
 	}
 
 	/**
-	 * Die naechste Ticketnummer des Boards — atomar (§3.9).
+	 * Den Änderungszähler des Boards erhöhen (§3.8, Ergänzung 4).
 	 *
-	 * Hochzaehlen und Lesen stehen in **einer** Anweisung plus einem Lesen
-	 * dahinter, und beides gehoert in die Transaktion des Aufrufers: Das
-	 * `UPDATE` nimmt die Sperre auf die Board-Zeile, ein zweiter Vorgang wartet
-	 * bis zum Festschreiben und bekommt danach die naechste Zahl.
+	 * `change_seq` zählt jeden Schreibvorgang im Board mit — der Delta-Poll der
+	 * Client-Synchronisation pollt **je Board** und hängt daran. Seit #246 PR 4
+	 * wandert allein die **Nummernvergabe** aufs Projekt
+	 * ({@see ProjectMapper::claimTicketNumber()}); der Board-`change_seq` bleibt,
+	 * weil ein neues Ticket eine Änderung genau dieses Boards ist, nicht des
+	 * ganzen Projekts.
 	 *
-	 * **`SELECT MAX(number) + 1` waere die Bauform, die genau einmal im Jahr
-	 * zwei Tickets dieselbe Nummer gibt** — und damit denselben Dateinamen und
-	 * denselben Direktlink. Der Fehler tritt unter Last auf, also beim Kunden.
-	 *
-	 * Die eigentliche Garantie ist trotzdem nicht diese Methode, sondern der
-	 * eindeutige Index ueber (`board_id`, `number`) auf der Ticket-Tabelle.
-	 * Diese Methode macht den Normalfall schnell; der Index macht den
-	 * Ausnahmefall unmoeglich.
-	 *
-	 * (Der Indexname steht hier absichtlich nicht ausgeschrieben: Der
-	 * Architekturtest sucht den Tabellennamen als Text und soll das bleiben.)
-	 *
-	 * `change_seq` zaehlt mit, weil jeder Schreibvorgang im Board ihn erhoeht —
-	 * der spaetere Delta-Poll haengt daran (§3.8, Ergaenzung 4).
+	 * Das `UPDATE` nimmt die Sperre auf die Board-Zeile und gehört in die
+	 * Transaktion des Aufrufers.
 	 */
-	public function claimTicketNumber(ViewerContext $viewer): int {
+	public function bumpChangeSeq(ViewerContext $viewer): void {
 		$qb = $this->db->getQueryBuilder();
 		$qb->update($this->tableName)
-			->set('ticket_counter', $qb->createFunction('ticket_counter + 1'))
 			->set('change_seq', $qb->createFunction('change_seq + 1'))
 			->where($qb->expr()->eq(
 				'id',
 				$qb->createNamedParameter($viewer->boardId, IQueryBuilder::PARAM_INT),
 			));
 		$qb->executeStatement();
-
-		$read = $this->db->getQueryBuilder();
-		$read->select('ticket_counter')
-			->from($this->tableName)
-			->where($read->expr()->eq(
-				'id',
-				$read->createNamedParameter($viewer->boardId, IQueryBuilder::PARAM_INT),
-			));
-
-		$result = $read->executeQuery();
-		$number = (int)$result->fetchOne();
-		$result->closeCursor();
-
-		return $number;
 	}
 }

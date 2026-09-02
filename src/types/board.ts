@@ -15,6 +15,12 @@ export type Visibility = 'public' | 'internal' | 'private'
 
 export interface Board {
 	id: number
+	/**
+	 * Das Projekt, zu dem dieses Board gehört (#246). Mehrere Boards teilen sich
+	 * ein Projekt — und damit Mitglieder, Ordner und Nummernkreis. Das Frontend
+	 * gruppiert die Board-Liste danach.
+	 */
+	projectId: number | null
 	title: string
 	description: string | null
 	ownerUserId: string

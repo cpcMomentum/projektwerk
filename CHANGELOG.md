@@ -6,6 +6,37 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.4.10] - 2026-09-02
+
+### Added
+
+- **Mehrere Boards pro Projekt** (#246). Ein Projekt kann jetzt mehr als ein Kanban-Board tragen:
+  In der Board-Kopfzeile wählt ein Boards-Menü zwischen den Boards des Projekts, und Verwalter legen
+  über „Board hinzufügen" weitere an. Mitglieder, Rollen, die beiden Projektordner, der Chat-Link und
+  der fortlaufende Nummernkreis gelten projektweit und werden über alle Boards eines Projekts geteilt.
+- **Beschreibung und Ergebnis am Arbeitsschritt** (#247). Ein Arbeitsschritt trägt neben der Aufgabe
+  jetzt eine Beschreibungszeile und ein mehrzeiliges Ergebnis.
+- **Mehr Kontext in Benachrichtigungs-Mails** (#248). Auslöser, Projekt und betroffener Arbeitsschritt
+  stehen jetzt in der Mail.
+
+### Changed
+
+- **Einheitlicher Kopf** von Ticket-Board und Projekt-Dashboard (#245).
+
+### Fixed
+
+- **Deep-Links öffnen auch geschlossene Vorgänge** (#248). Ein per Mail verlinkter, bereits
+  geschlossener Vorgang lässt sich jetzt direkt öffnen statt ins Leere zu führen.
+
+### Security
+
+- **Sichtbarkeit strukturell auf Projektebene verankert** (#246). Die Sichtbarkeitsregel
+  (öffentlich/intern/privat) verbindet die Mitgliedschaft jetzt über das Projekt statt das einzelne
+  Board — eine Datenbank-Invariante statt einer Zusage im Code, mit eindeutigen Indizes auf
+  `(project_id, user_id)` und `(project_id, number)`. Ein Schreibwächter verhindert Vorgänge ohne
+  gültige Projektzuordnung. Verhaltensneutral bei einem Board pro Projekt, durch die Leak-Matrix
+  (180 Integrationstests) belegt.
+
 ## [0.4.9] - 2026-08-30
 
 ### Added

@@ -25,6 +25,8 @@ use OCP\DB\Types;
  *
  * @method int getBoardId()
  * @method void setBoardId(int $boardId)
+ * @method ?int getProjectId()
+ * @method void setProjectId(?int $projectId)
  * @method string getUserId()
  * @method void setUserId(string $userId)
  * @method string getRole()
@@ -41,6 +43,7 @@ use OCP\DB\Types;
 class Member extends Entity implements JsonSerializable {
 
 	protected ?int $boardId = null;
+	protected ?int $projectId = null;
 	protected ?string $userId = null;
 	protected ?string $role = null;
 	protected ?int $isManager = null;
@@ -50,6 +53,7 @@ class Member extends Entity implements JsonSerializable {
 
 	public function __construct() {
 		$this->addType('boardId', Types::INTEGER);
+		$this->addType('projectId', Types::INTEGER);
 		$this->addType('userId', Types::STRING);
 		$this->addType('role', Types::STRING);
 		$this->addType('isManager', Types::SMALLINT);

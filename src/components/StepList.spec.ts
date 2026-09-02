@@ -48,6 +48,14 @@ vi.mock('@nextcloud/vue/components/NcTextField', () => ({
 		template: '<input type="text" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)">',
 	},
 }))
+vi.mock('@nextcloud/vue/components/NcTextArea', () => ({
+	default: {
+		name: 'NcTextArea',
+		props: ['modelValue'],
+		emits: ['update:modelValue'],
+		template: '<textarea :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)"></textarea>',
+	},
+}))
 vi.mock('@nextcloud/vue/components/NcAvatar', () => ({
 	default: { name: 'NcAvatar', template: '<span />' },
 }))
@@ -100,6 +108,8 @@ function mitFrist(dueDate: string): Step {
 		id: 5,
 		ticketId: 42,
 		title: 'Mit Frist',
+		description: null,
+		result: null,
 		assignedUserId: null,
 		assignedRole: null,
 		assignedAt: null,
@@ -225,9 +235,61 @@ describe('StepList', () => {
 
 		expect(createStep).toHaveBeenCalledWith(7, 42, {
 			title: 'Nur ein Titel',
+			description: null,
 			assignedUserId: null,
 			dueDate: null,
 		})
+	})
+
+	/**
+	 * Die optionale Beschreibung (#247) geht beim Anlegen mit — als getrimmter
+	 * Text, oder `null`, wenn nichts dasteht.
+	 */
+	it('nimmt die Beschreibung beim Anlegen mit', async () => {
+		const wrapper = mountList()
+		await fuelleZeile(wrapper, 'Angebot einholen')
+		// Die Mock-Komponente reicht die Klasse auf das Feld selbst durch.
+		await wrapper.find('input.pw-step__neu-beschreibung').setValue('Bei drei Anbietern anfragen')
+		await klickeHinzufuegen(wrapper)
+
+		expect(createStep).toHaveBeenCalledWith(7, 42, expect.objectContaining({
+			title: 'Angebot einholen',
+			description: 'Bei drei Anbietern anfragen',
+		}))
+	})
+
+	/**
+	 * Das Ergebnis (#247) wird beim Bearbeiten gepuffert und erst mit „Fertig"
+	 * geschrieben — anders als Zuweisung und Frist, die sofort speichern.
+	 */
+	it('schreibt das Ergebnis beim Klick auf Fertig', async () => {
+		const wrapper = mountList([mitFrist('2026-08-11')])
+		await oeffneZeile(wrapper)
+
+		await wrapper.find('.pw-step__felder-text textarea').setValue('Hetzner 12, IONOS 15, Empfehlung Hetzner')
+		// Kein Schreiben, solange nur getippt wird.
+		expect(updateStep).not.toHaveBeenCalled()
+
+		// Während des Bearbeitens ist „Fertig" der einzige Knopf in der Zeile
+		// (der Papierkorb ist ausgeblendet).
+		await wrapper.find('.pw-step__rechts button').trigger('click')
+		await new Promise((resolve) => setTimeout(resolve, 0))
+
+		expect(updateStep).toHaveBeenCalledWith(7, 5, { result: 'Hetzner 12, IONOS 15, Empfehlung Hetzner' })
+	})
+
+	/**
+	 * Ein vorhandenes Ergebnis wird mehrzeilig angezeigt, außerhalb des
+	 * Bearbeitens.
+	 */
+	it('zeigt ein vorhandenes Ergebnis an', async () => {
+		const schritt = mitFrist('2026-08-11')
+		schritt.result = 'Zeile eins\nZeile zwei'
+		const wrapper = mountList([schritt])
+
+		const text = wrapper.find('.pw-step__ergebnis-text')
+		expect(text.exists()).toBe(true)
+		expect(text.text()).toContain('Zeile eins')
 	})
 
 	it('leert die Zeile nach dem Anlegen', async () => {

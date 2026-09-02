@@ -51,11 +51,12 @@ class StepController extends Controller {
 		string $title,
 		?string $assignedUserId = null,
 		?string $dueDate = null,
+		?string $description = null,
 	): JSONResponse {
 		return $this->run(
 			$boardId,
 			fn (ViewerContext $viewer): mixed
-				=> $this->service->create($viewer, $ticketId, $title, $assignedUserId, $dueDate),
+				=> $this->service->create($viewer, $ticketId, $title, $assignedUserId, $dueDate, $description),
 			Http::STATUS_CREATED,
 		);
 	}
@@ -68,6 +69,8 @@ class StepController extends Controller {
 		?string $assignedUserId = null,
 		?string $dueDate = null,
 		?bool $done = null,
+		?string $description = null,
+		?string $result = null,
 	): JSONResponse {
 		// Nur das uebernehmen, was tatsaechlich geschickt wurde.
 		$changes = [];
@@ -91,7 +94,10 @@ class StepController extends Controller {
 		// Mal ueberhaupt aus der Oberflaeche heraus zu setzen war. Bis dahin fiel
 		// nicht auf, dass sie sich nicht loeschen liess — es kam nie jemand
 		// hin.
-		foreach (['assignedUserId' => $assignedUserId, 'dueDate' => $dueDate] as $key => $value) {
+		// Beschreibung und Ergebnis gehören hierher, nicht in den `!== null`-Zweig
+		// oben: Ein ausdrücklich gesendeter Leerstring **leert** das Feld, und
+		// dieser Fall muss von „nicht genannt" unterscheidbar bleiben.
+		foreach (['assignedUserId' => $assignedUserId, 'dueDate' => $dueDate, 'description' => $description, 'result' => $result] as $key => $value) {
 			if (array_key_exists($key, $this->request->getParams())) {
 				$changes[$key] = $value;
 			}

@@ -52,13 +52,15 @@ export async function fetchAssignableForNew(boardId: number, visibility: string)
  *
  * @param boardId Kennung des Projekts.
  * @param ticketId Kennung des Tickets.
- * @param data Titel, optionale Zuweisung und Fälligkeit.
- * @param data.title Was zu tun ist.
+ * @param data Titel, optionale Beschreibung, Zuweisung und Fälligkeit.
+ * @param data.title Was zu tun ist (die Aufgabe).
+ * @param data.description Eine Zeile Beschreibung, oder null.
  * @param data.assignedUserId Wer es tut, oder null.
  * @param data.dueDate Fälligkeit als JJJJ-MM-TT, oder null.
  */
 export async function createStep(boardId: number, ticketId: number, data: {
 	title: string
+	description?: string | null
 	assignedUserId?: string | null
 	dueDate?: string | null
 }): Promise<Step> {
@@ -75,12 +77,16 @@ export async function createStep(boardId: number, ticketId: number, data: {
  * @param stepId Kennung des Schritts.
  * @param changes Nur die Felder, die sich ändern sollen.
  * @param changes.title Neuer Titel.
+ * @param changes.description Neue Beschreibung, Leerstring löscht sie.
+ * @param changes.result Neues Ergebnis, Leerstring löscht es.
  * @param changes.assignedUserId Neue Zuweisung, null löscht sie.
  * @param changes.dueDate Neue Fälligkeit, null löscht sie.
  * @param changes.done Erledigt ja/nein.
  */
 export async function updateStep(boardId: number, stepId: number, changes: {
 	title?: string
+	description?: string | null
+	result?: string | null
 	assignedUserId?: string | null
 	dueDate?: string | null
 	done?: boolean

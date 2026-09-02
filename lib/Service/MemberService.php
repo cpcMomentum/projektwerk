@@ -74,6 +74,9 @@ class MemberService {
 
 		$member = new Member();
 		$member->setBoardId($viewer->boardId);
+		// #246: Die Mitgliedschaft gilt projektweit — der Sichtbarkeitsverbund
+		// hängt an `project_id`, nicht mehr am Board.
+		$member->setProjectId($viewer->projectId);
 		$member->setUserId($userId);
 		$member->setRole($role);
 		$member->setIsManager($this->manageableFlag($role, $isManager));

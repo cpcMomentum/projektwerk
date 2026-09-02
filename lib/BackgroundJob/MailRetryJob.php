@@ -9,12 +9,16 @@ declare(strict_types=1);
 
 namespace OCA\Projektwerk\BackgroundJob;
 
+use OCA\Projektwerk\AppInfo\Application;
 use OCA\Projektwerk\Db\MailOutbox;
 use OCA\Projektwerk\Db\MailOutboxMapper;
 use OCA\Projektwerk\Db\TicketMapper;
+use OCA\Projektwerk\Service\MailComposer;
 use OCA\Projektwerk\Service\MailDispatcher;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\BackgroundJob\TimedJob;
+use OCP\IURLGenerator;
+use OCP\L10N\IFactory;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -55,6 +59,9 @@ class MailRetryJob extends TimedJob {
 		private TicketMapper $tickets,
 		private MailDispatcher $mail,
 		private LoggerInterface $logger,
+		private IFactory $l10nFactory,
+		private IURLGenerator $urls,
+		private MailComposer $composer,
 	) {
 		parent::__construct($time);
 
@@ -115,9 +122,37 @@ class MailRetryJob extends TimedJob {
 			return;
 		}
 
-		$nummer = str_pad((string)$ticket->getNumber(), 4, '0', STR_PAD_LEFT);
-		$betreff = 'ProjektWerk: Vorgang #' . $nummer;
+		// **Derselbe Text wie beim Erstversand** (#248, Teil 2): über den
+		// gemeinsamen Composer, samt Metazeile und „Zum Vorgang"-Knopf. Bisher
+		// ging die nachgereichte Mail ohne Knopf und mit dem dürftigen
+		// „Vorgang #N: Titel" raus — schlechter als die beim ersten Versuch.
+		$l = $this->l10nFactory->get(Application::APP_ID, (string)$zeile->getLang());
+		$text = $this->composer->compose($zeile, $ticket, $l);
 
-		$this->mail->flush($zeile, $betreff, $betreff . ': ' . (string)$ticket->getTitle());
+		$this->mail->flush(
+			$zeile,
+			$text['betreff'],
+			$text['einleitung'],
+			$this->linkZu((int)$ticket->getId()),
+			$text['meta'],
+		);
+	}
+
+	/**
+	 * Fragmentfreier Deep-Link zum Vorgang — dieselbe Gegenprobe wie im
+	 * {@see \OCA\Projektwerk\Service\NotificationService}: bleibt ein Fragment im
+	 * Link, überlebt es den Login-Umweg nicht.
+	 *
+	 * @param int $ticketId Kennung des Vorgangs.
+	 */
+	private function linkZu(int $ticketId): string {
+		$link = $this->urls->linkToRouteAbsolute(
+			Application::APP_ID . '.deepLink.ticket',
+			['ticketId' => $ticketId],
+		);
+
+		return str_contains($link, '/t/' . $ticketId)
+			? $link
+			: $this->urls->getAbsoluteURL('/index.php/apps/' . Application::APP_ID . '/t/' . $ticketId);
 	}
 }

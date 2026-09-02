@@ -23,19 +23,21 @@
 				<ChevronLeftIcon :size="16" />{{ t('projektwerk', 'Überblick') }}
 			</router-link>
 
-			<div class="pw-pd__head">
-				<div class="pw-pd__ident">
+			<div class="pw-view__head pw-view__head--split">
+				<div class="pw-view__ident">
 					<h2>{{ board.title }}</h2>
-					<div v-if="orgLine" class="pw-pd__org">
+					<div v-if="orgLine" class="pw-view__org">
 						{{ orgLine }}
 					</div>
 				</div>
-				<NcButton variant="primary" @click="openBoard">
-					{{ t('projektwerk', 'Board öffnen') }}
-					<template #icon>
-						<ArrowRightIcon :size="18" />
-					</template>
-				</NcButton>
+				<div class="pw-view__actions">
+					<NcButton variant="primary" @click="openBoard">
+						{{ t('projektwerk', 'Board öffnen') }}
+						<template #icon>
+							<ArrowRightIcon :size="18" />
+						</template>
+					</NcButton>
+				</div>
 			</div>
 
 			<!-- Status-Kacheln: Label oben, Zahl groß, Überfällig rechts daneben. -->

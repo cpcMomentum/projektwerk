@@ -16,6 +16,7 @@ use OCA\Projektwerk\Access\ViewerContext;
 // gemacht ist.
 use OCA\Projektwerk\Service\PositionService;
 use OCP\AppFramework\Db\DoesNotExistException;
+use OCP\AppFramework\Db\Entity;
 use OCP\AppFramework\Db\QBMapper;
 use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IDBConnection;
@@ -46,6 +47,38 @@ class TicketMapper extends QBMapper {
 		private TicketScope $scope,
 	) {
 		parent::__construct($db, 'pwerk_tickets', Ticket::class);
+	}
+
+	/**
+	 * **Write-Time-Wächter: kein Ticket ohne `project_id`** (#246).
+	 *
+	 * Der Sichtbarkeitsverbund in {@see TicketScope} joint `pwerk_members` über
+	 * `t.project_id`. Ein Ticket ohne gültiges `project_id` wäre damit über den
+	 * regulären Lesepfad **unsichtbar** — und bei einem *falschen* `project_id`
+	 * wäre es sogar der Kundenseite eines fremden Projekts sichtbar. Beides sind
+	 * Klassen von Fehlern, die erst beim Lesen auffielen, oft erst beim falschen
+	 * Betrachter. Der Wächter zieht sie an die Schreibseite: Der Fehler fällt da,
+	 * wo er entsteht, mit einem Stacktrace auf den schuldigen Insert.
+	 *
+	 * `project_id` wird beim Anlegen **unveränderlich** aus dem Board gesetzt
+	 * ({@see \OCA\Projektwerk\Service\TicketService::create()}), der einzige
+	 * Produktiv-Insert-Pfad. Der Wächter ist deshalb für korrekten Code nie
+	 * spürbar — er bewacht künftige Insert-Pfade, die das vergessen könnten.
+	 *
+	 * @param Ticket $entity
+	 */
+	public function insert(Entity $entity): Entity {
+		$projectId = $entity instanceof Ticket ? $entity->getProjectId() : null;
+		if ($projectId === null || $projectId <= 0) {
+			throw new \LogicException(
+				'Vorgang ohne gültiges project_id: Der Sichtbarkeitsverbund (TicketScope) '
+				. 'joint über project_id. Ein Insert ohne project_id wäre unsichtbar, mit '
+				. 'falschem Wert ein Leck. project_id gehört unveränderlich aus dem Board '
+				. 'gesetzt (#246).',
+			);
+		}
+
+		return parent::insert($entity);
 	}
 
 	/**

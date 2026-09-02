@@ -18,6 +18,8 @@ use OCA\Projektwerk\Db\Column;
 use OCA\Projektwerk\Db\ColumnMapper;
 use OCA\Projektwerk\Db\Member;
 use OCA\Projektwerk\Db\MemberMapper;
+use OCA\Projektwerk\Db\Project;
+use OCA\Projektwerk\Db\ProjectMapper;
 use OCP\IDBConnection;
 use OCP\IL10N;
 
@@ -59,6 +61,7 @@ class BoardService {
 	public function __construct(
 		private IDBConnection $db,
 		private BoardMapper $boards,
+		private ProjectMapper $projects,
 		private MemberMapper $members,
 		private ColumnMapper $columns,
 		private BoardAccess $access,
@@ -99,6 +102,24 @@ class BoardService {
 		$this->db->beginTransaction();
 
 		try {
+			// #246: Das Projekt-Dach zuerst — ein Board ohne Projekt hätte
+			// Tickets mit `project_id = NULL`, die der (jetzt projekt-scoped)
+			// Sichtbarkeitsverbund nicht mehr fände. Vorerst ein Projekt je Board
+			// (Engagement-Felder kopiert); mehrere Boards unter einem Projekt legt
+			// erst die eigentliche Projekt-Anlage in einem späteren PR an.
+			$project = new Project();
+			$project->setTitle(trim($title));
+			$project->setDescription($description);
+			$project->setOwnerUserId($userId);
+			$project->setOrgInternal($this->trimOrNull($orgInternal));
+			$project->setOrgExternal($this->trimOrNull($orgExternal));
+			$project->setTicketCounter(0);
+			$project->setArchived(0);
+			$project->setCreatedAt($now);
+			$project->setUpdatedAt($now);
+			$project = $this->projects->insert($project);
+			$projectId = (int)$project->getId();
+
 			$board = new Board();
 			$board->setTitle(trim($title));
 			$board->setDescription($description);
@@ -106,18 +127,77 @@ class BoardService {
 			$board->setOrgInternal($this->trimOrNull($orgInternal));
 			$board->setOrgExternal($this->trimOrNull($orgExternal));
 			$board->setArchived(0);
+			$board->setProjectId($projectId);
 			$board->setCreatedAt($now);
 			$board->setUpdatedAt($now);
 			$board = $this->boards->insert($board);
 
 			$member = new Member();
 			$member->setBoardId((int)$board->getId());
+			$member->setProjectId($projectId);
 			$member->setUserId($userId);
 			$member->setRole(ViewerContext::ROLE_INTERNAL);
 			$member->setIsManager(1);
 			$member->setAddedBy($userId);
 			$member->setAddedAt($now);
 			$this->members->insert($member);
+
+			foreach (self::DEFAULT_COLUMNS as $position => $columnTitle) {
+				$column = new Column();
+				$column->setBoardId((int)$board->getId());
+				$column->setTitle($this->l10n->t($columnTitle));
+				$column->setPosition($position);
+				$this->columns->insert($column);
+			}
+
+			$this->db->commit();
+
+			return $board;
+		} catch (\Throwable $e) {
+			$this->db->rollBack();
+
+			throw $e;
+		}
+	}
+
+	/**
+	 * Ein **weiteres** Board in einem bestehenden Projekt anlegen (#246 PR 5).
+	 *
+	 * Der Unterschied zu {@see create()} ist der Kern von #246: Es entsteht
+	 * **kein** neues Projekt und **keine** neue Mitgliedszeile. Das Board hängt
+	 * am schon bestehenden Projekt des Betrachters; Mitglieder, Rollen, Ordner,
+	 * Chat und der Nummernkreis teilen sich alle Boards des Projekts über
+	 * `project_id` — genau deshalb ist die Mitgliedschaft seit PR 3 projekt-
+	 * scoped. Nur die Kanban-Hülle (Board-Zeile + Standardspalten) kommt hinzu.
+	 *
+	 * Anlegen darf, wer das Projekt verwaltet — dieselbe Regel wie bei jeder
+	 * Mitglieder- und Board-Pflege (§8), „so wie bisher".
+	 *
+	 * @throws NotManagerException
+	 * @throws \InvalidArgumentException Titel leer
+	 */
+	public function createInProject(ViewerContext $viewer, string $title): Board {
+		$this->assertManager($viewer);
+		$this->assertTitle($title);
+		$now = new \DateTime();
+
+		$this->db->beginTransaction();
+
+		try {
+			// Org und Eigentümer stammen aus dem Projekt: Sie gelten projektweit,
+			// ein zweites Board erbt sie, statt sie neu zu erfragen.
+			$project = $this->projects->findForViewer($viewer);
+
+			$board = new Board();
+			$board->setTitle(trim($title));
+			$board->setOwnerUserId((string)$project->getOwnerUserId());
+			$board->setOrgInternal($project->getOrgInternal());
+			$board->setOrgExternal($project->getOrgExternal());
+			$board->setArchived(0);
+			$board->setProjectId($viewer->projectId);
+			$board->setCreatedAt($now);
+			$board->setUpdatedAt($now);
+			$board = $this->boards->insert($board);
 
 			foreach (self::DEFAULT_COLUMNS as $position => $columnTitle) {
 				$column = new Column();
@@ -153,6 +233,11 @@ class BoardService {
 		$this->assertManager($viewer);
 
 		$board = $this->boards->findForViewer($viewer);
+		// Ordner und Chat gehören seit #246 dem PROJEKT — eine Quelle, geteilt
+		// über alle Boards des Projekts. Board-eigene Felder (Titel, Org,
+		// GitHub) bleiben am Board.
+		$project = $this->projects->findForViewer($viewer);
+		$projectChanged = false;
 
 		if (array_key_exists('title', $changes)) {
 			$this->assertTitle($changes['title']);
@@ -168,15 +253,18 @@ class BoardService {
 			$board->setOrgExternal($this->trimOrNull($changes['orgExternal']));
 		}
 		if (array_key_exists('chatUrl', $changes)) {
-			// Reine Adresse für den Knopf „Zum Projektchat". Leer heißt: Knopf
-			// entfällt ersatzlos — kein Hinweis, keine Einrichtungsaufforderung.
-			$board->setChatUrl($this->trimOrNull($changes['chatUrl']));
+			// Reine Adresse für den Knopf „Zum Projektchat", am Projekt (#246).
+			// Leer heißt: Knopf entfällt ersatzlos.
+			$project->setChatUrl($this->trimOrNull($changes['chatUrl']));
+			$projectChanged = true;
 		}
 		if (array_key_exists('folderPublicPath', $changes)) {
-			$this->setFolder($viewer, $board, Attachment::LOCATION_PUBLIC, $changes['folderPublicPath']);
+			$this->setFolder($viewer, $project, Attachment::LOCATION_PUBLIC, $changes['folderPublicPath']);
+			$projectChanged = true;
 		}
 		if (array_key_exists('folderInternalPath', $changes)) {
-			$this->setFolder($viewer, $board, Attachment::LOCATION_INTERNAL, $changes['folderInternalPath']);
+			$this->setFolder($viewer, $project, Attachment::LOCATION_INTERNAL, $changes['folderInternalPath']);
+			$projectChanged = true;
 		}
 		if (array_key_exists('githubEnabled', $changes)) {
 			// SMALLINT 0/1, nie Types::BOOLEAN — siehe {@see Board}.
@@ -193,7 +281,57 @@ class BoardService {
 
 		$board->setUpdatedAt(new \DateTime());
 
-		return $this->boards->update($board);
+		$this->db->beginTransaction();
+		try {
+			$saved = $this->boards->update($board);
+
+			if ($projectChanged) {
+				$project->setUpdatedAt(new \DateTime());
+				$this->projects->update($project);
+			}
+
+			$this->db->commit();
+		} catch (\Throwable $e) {
+			$this->db->rollBack();
+
+			throw $e;
+		}
+
+		// Read-through: Die Antwort trägt Ordner und Chat aus dem Projekt. Das
+		// Board serialisiert sie, die Quelle bleibt aber das Projekt (#246) —
+		// nur in-memory, nicht persistiert.
+		$this->hydrateProjectFields($saved, $project);
+
+		return $saved;
+	}
+
+	/**
+	 * Das Board für die Anzeige — mit Ordner und Chat aus dem Projekt (#246).
+	 *
+	 * Der eine Lesepfad für `board#show`: Er liefert das Board membership-gated
+	 * ({@see BoardMapper::findForViewer()}) und spiegelt die fünf Projekt-Felder
+	 * hinein, sodass die Einstellungen die projektweiten Werte sehen. So bleibt
+	 * die Autorität für Ordner und Chat an EINER Stelle (dem Projekt), auch wenn
+	 * das Board sie in der API-Antwort trägt.
+	 */
+	public function forViewerWithProjectFields(ViewerContext $viewer): Board {
+		$board = $this->boards->findForViewer($viewer);
+		$this->hydrateProjectFields($board, $this->projects->findForViewer($viewer));
+
+		return $board;
+	}
+
+	/**
+	 * Ordner und Chat aus dem Projekt in das Board-Objekt spiegeln — allein für
+	 * die Serialisierung (#246). Nicht persistiert — die Board-Spalten bleiben
+	 * unberührt.
+	 */
+	private function hydrateProjectFields(Board $board, Project $project): void {
+		$board->setChatUrl($project->getChatUrl());
+		$board->setFolderPublicId($project->getFolderPublicId());
+		$board->setFolderPublicPath($project->getFolderPublicPath());
+		$board->setFolderInternalId($project->getFolderInternalId());
+		$board->setFolderInternalPath($project->getFolderInternalPath());
 	}
 
 	/**
@@ -246,12 +384,12 @@ class BoardService {
 	 *
 	 * @throws \OCP\Files\NotPermittedException Ordner nicht erreichbar oder nicht beschreibbar
 	 */
-	private function setFolder(ViewerContext $viewer, Board $board, string $location, ?string $path): void {
+	private function setFolder(ViewerContext $viewer, Project $project, string $location, ?string $path): void {
 		$intern = $location === Attachment::LOCATION_INTERNAL;
 
 		if ($path === null || trim($path) === '') {
-			$intern ? $board->setFolderInternalId(null) : $board->setFolderPublicId(null);
-			$intern ? $board->setFolderInternalPath(null) : $board->setFolderPublicPath(null);
+			$intern ? $project->setFolderInternalId(null) : $project->setFolderPublicId(null);
+			$intern ? $project->setFolderInternalPath(null) : $project->setFolderPublicPath(null);
 
 			return;
 		}
@@ -263,8 +401,8 @@ class BoardService {
 		// Dateibaum nicht gibt, und beim nächsten Vergleich stimmt nichts.
 		$clean = $this->folders->displayPath($viewer->userId, $folder);
 
-		$intern ? $board->setFolderInternalId($folder->getId()) : $board->setFolderPublicId($folder->getId());
-		$intern ? $board->setFolderInternalPath($clean) : $board->setFolderPublicPath($clean);
+		$intern ? $project->setFolderInternalId($folder->getId()) : $project->setFolderPublicId($folder->getId());
+		$intern ? $project->setFolderInternalPath($clean) : $project->setFolderPublicPath($clean);
 	}
 
 	private function trimOrNull(?string $value): ?string {

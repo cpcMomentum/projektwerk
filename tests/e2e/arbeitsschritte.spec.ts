@@ -46,7 +46,7 @@ test('legt einen Schritt samt Zustaendiger und Frist in einem Zug an', async ({ 
 	await page.getByText(projekt.oeffentlich.title).click()
 
 	const zeile = page.locator('.pw-step--new')
-	await zeile.locator('input[type="text"]').fill('Freigabe holen')
+	await zeile.locator('.pw-step__neu-titel input').fill('Freigabe holen')
 	await personWaehlen(page, '#pw-step-new-user', KUNDE.name)
 	const frist = await fristSetzen(page, zeile, 20)
 	await page.locator('.pw-step__neu-plus').click()
@@ -65,6 +65,47 @@ test('legt einen Schritt samt Zustaendiger und Frist in einem Zug an', async ({ 
 })
 
 /**
+ * Beschreibung beim Anlegen, Ergebnis später (#247).
+ *
+ * Die Beschreibung reist schon in der Eingabezeile mit; das Ergebnis wird erst
+ * beim Bearbeiten getippt und mit „Fertig" gespeichert — anders als Zuweisung
+ * und Frist, die sofort schreiben. Beide Male die Gegenprobe am Server, damit
+ * ein grüner Durchlauf nicht bloß heißt „irgendein Feld stand da".
+ */
+test('nimmt eine Beschreibung mit und traegt spaeter ein Ergebnis nach', async ({ page, request }) => {
+	await page.goto(`${APP_PFAD}#/boards/${projekt.boardId}`)
+	await expect(page.getByText(projekt.oeffentlich.title)).toBeVisible({ timeout: 30_000 })
+	await page.getByText(projekt.oeffentlich.title).click()
+
+	const zeile = page.locator('.pw-step--new')
+	await zeile.locator('.pw-step__neu-titel input').fill('Angebot einholen')
+	await zeile.locator('.pw-step__neu-beschreibung input').fill('Bei drei Anbietern anfragen')
+	await page.locator('.pw-step__neu-plus').click()
+
+	await expect(page.getByText('Angebot einholen')).toBeVisible()
+
+	// Die Beschreibung ist angekommen, ein Ergebnis noch nicht.
+	await expect
+		.poll(async () => (await schrittAusDerDatenbank(request, 'Angebot einholen'))?.description)
+		.toBe('Bei drei Anbietern anfragen')
+	expect((await schrittAusDerDatenbank(request, 'Angebot einholen')).result).toBeNull()
+
+	// Ergebnis nachtragen: Zeile öffnen (der Schritt hat weder Zuweisung noch
+	// Frist, also steht dort der flache „Zuweisen oder Frist setzen"-Knopf),
+	// tippen, mit „Fertig" speichern. „Fertig" über das aria-label, nicht über
+	// die Knopf-Reihenfolge: `NcSelectUsers` bringt im Bearbeiten-Modus einen
+	// eigenen „Auswahl leeren"-Knopf mit.
+	const schritt = page.locator('.pw-step', { hasText: 'Angebot einholen' })
+	await schritt.locator('.pw-step__flach').click()
+	await schritt.locator('.pw-step__felder-text textarea').fill('Empfehlung: Hetzner')
+	await schritt.locator('[aria-label="Fertig"]').click()
+
+	await expect
+		.poll(async () => (await schrittAusDerDatenbank(request, 'Angebot einholen'))?.result)
+		.toBe('Empfehlung: Hetzner')
+})
+
+/**
  * Der Fehler, der diesen Test veranlasst hat.
  *
  * `StepController::update` uebernahm nur, was `!== null` war, und verwarf damit
@@ -78,7 +119,7 @@ test('loescht eine Frist wieder, wenn das Feld geleert wird', async ({ page, req
 	await page.getByText(projekt.oeffentlich.title).click()
 
 	const zeile = page.locator('.pw-step--new')
-	await zeile.locator('input[type="text"]').fill('Mit Frist')
+	await zeile.locator('.pw-step__neu-titel input').fill('Mit Frist')
 	const frist = await fristSetzen(page, zeile, 21)
 	await page.locator('.pw-step__neu-plus').click()
 	await expect(page.getByText('Mit Frist')).toBeVisible()
@@ -121,7 +162,7 @@ test('auf dem Handy stehen Zustaendige und Frist nebeneinander', async ({ page }
 	await page.getByText(projekt.oeffentlich.title).click()
 
 	const zeile = page.locator('.pw-step--new')
-	await zeile.locator('input[type="text"]').fill('Nebeneinander')
+	await zeile.locator('.pw-step__neu-titel input').fill('Nebeneinander')
 	await page.locator('.pw-step__neu-plus').click()
 	await expect(page.getByText('Nebeneinander')).toBeVisible()
 

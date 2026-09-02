@@ -112,6 +112,9 @@ return [
 		// board#show, das Board, Mitglieder und Spalten in einem Zug liefert und
 		// in der Leak-Matrix registriert ist.
 		['name' => 'settings#createBoard', 'url' => '/api/v1/boards', 'verb' => 'POST'],
+		// #246 PR 5: ein weiteres Board im Projekt von {boardId} — erbt Projekt,
+		// Mitglieder und Ordner.
+		['name' => 'settings#createSiblingBoard', 'url' => '/api/v1/boards/{boardId}/boards', 'verb' => 'POST'],
 		['name' => 'settings#updateBoard', 'url' => '/api/v1/boards/{boardId}', 'verb' => 'PATCH'],
 		['name' => 'settings#archiveBoard', 'url' => '/api/v1/boards/{boardId}/archived', 'verb' => 'PUT'],
 

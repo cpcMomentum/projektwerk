@@ -12,7 +12,7 @@ namespace OCA\Projektwerk\Tests\Unit\Service;
 use OCA\Projektwerk\Access\TicketScope;
 use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Db\Attachment;
-use OCA\Projektwerk\Db\Board;
+use OCA\Projektwerk\Db\Project;
 use OCA\Projektwerk\Db\Ticket;
 use OCA\Projektwerk\Service\ProjectFolderService;
 use OCP\Config\IUserConfig;
@@ -121,23 +121,23 @@ class ProjectFolderServiceTest extends TestCase {
 		}
 	}
 
-	public function testTheBoardFolderIdIsPickedPerLocation(): void {
-		$board = new Board();
-		$board->setFolderPublicId(11);
-		$board->setFolderInternalId(22);
+	public function testTheProjectFolderIdIsPickedPerLocation(): void {
+		$project = new Project();
+		$project->setFolderPublicId(11);
+		$project->setFolderInternalId(22);
 
-		$this->assertSame(11, $this->service->folderIdFor($board, Attachment::LOCATION_PUBLIC));
-		$this->assertSame(22, $this->service->folderIdFor($board, Attachment::LOCATION_INTERNAL));
+		$this->assertSame(11, $this->service->folderIdFor($project, Attachment::LOCATION_PUBLIC));
+		$this->assertSame(22, $this->service->folderIdFor($project, Attachment::LOCATION_INTERNAL));
 	}
 
 	/**
-	 * Ein Board ohne hinterlegten Ordner liefert `null` statt einer 0.
+	 * Ein Projekt ohne hinterlegten Ordner liefert `null` statt einer 0.
 	 *
 	 * Eine 0 wäre eine Datei-ID, die es zu suchen lohnte — und die Suche
 	 * schlüge irgendwo weiter unten fehl, weit weg von der Ursache.
 	 */
 	public function testAMissingFolderIsNullAndNotZero(): void {
-		$this->assertNull($this->service->folderIdFor(new Board(), Attachment::LOCATION_PUBLIC));
+		$this->assertNull($this->service->folderIdFor(new Project(), Attachment::LOCATION_PUBLIC));
 	}
 
 	/**

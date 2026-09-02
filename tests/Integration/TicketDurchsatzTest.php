@@ -59,6 +59,7 @@ class TicketDurchsatzTest extends IntegrationTestCase {
 
 	private TicketMapper $tickets;
 	private int $boardId;
+	private int $projectId;
 	private int $columnId;
 	private int $number = 0;
 
@@ -77,11 +78,13 @@ class TicketDurchsatzTest extends IntegrationTestCase {
 		$board->setOrgExternal('Kunde');
 		$board->setCreatedAt($now);
 		$board->setUpdatedAt($now);
+		$this->projectId = $this->projektFuerBoard($board);
 		$this->boardId = (int)$boards->insert($board)->getId();
 
 		$members = Server::get(MemberMapper::class);
 		$member = new Member();
 		$member->setBoardId($this->boardId);
+		$member->setProjectId($this->projectId);
 		$member->setUserId(self::VIEWER);
 		$member->setRole(ViewerContext::ROLE_INTERNAL);
 		$member->setIsManager(1);
@@ -203,6 +206,7 @@ class TicketDurchsatzTest extends IntegrationTestCase {
 
 		$ticket = new Ticket();
 		$ticket->setBoardId($this->boardId);
+		$ticket->setProjectId($this->projectId);
 		$ticket->setColumnId($this->columnId);
 		$ticket->setNumber($this->number);
 		$ticket->setTitle('Vorgang ' . $this->number);
