@@ -55,6 +55,7 @@ class AttachmentRelocationTest extends IntegrationTestCase {
 	private AttachmentService $attachmentService;
 	private AttachmentMapper $attachments;
 	private int $boardId;
+	private int $projectId;
 	private int $columnId;
 	private int $ticketId;
 	private int $originalFileId;
@@ -77,6 +78,7 @@ class AttachmentRelocationTest extends IntegrationTestCase {
 		$board->setCreatedAt(new \DateTime());
 		$board->setUpdatedAt(new \DateTime());
 		$projectId = $this->projektFuerBoard($board);
+		$this->projectId = $projectId;
 		$boardId = (int)Server::get(BoardMapper::class)->insert($board)->getId();
 		$this->boardId = $boardId;
 
@@ -152,6 +154,7 @@ class AttachmentRelocationTest extends IntegrationTestCase {
 	private function insertPrivateTicket(): int {
 		$ticket = new Ticket();
 		$ticket->setBoardId($this->boardId);
+		$ticket->setProjectId($this->projectId);
 		$ticket->setColumnId($this->columnId);
 		$ticket->setNumber(2);
 		$ticket->setTitle('Privat mit Anhang');
