@@ -37,6 +37,19 @@ export async function createBoard(data: {
 }
 
 /**
+ * Ein weiteres Board im Projekt eines bestehenden Boards (#246).
+ *
+ * Erbt Projekt, Mitglieder und Ordner von `{boardId}`; es entsteht kein neues
+ * Projekt. Nur Verwalter dürfen anlegen — der Server weist andere mit 403 ab.
+ *
+ * @param boardId Kennung eines Boards des Zielprojekts.
+ * @param title Titel des neuen Boards.
+ */
+export async function createSiblingBoard(boardId: number, title: string): Promise<Board> {
+	return apiPost<Board, { title: string }>(`/boards/${boardId}/boards`, { title })
+}
+
+/**
  * Titel, Beschreibung, Firmennamen, Chat-Adresse.
  *
  * Nur genannte Felder ändern sich. Ein leeres Feld wird zu `null` — der Knopf

@@ -401,6 +401,10 @@ OC.L10N.register(
     "%1$s hat den Vorgang #%2$s „%3$s“ geschlossen." : "%1$s closed ticket #%2$s “%3$s”.",
     "%1$s hat den neuen Vorgang #%2$s „%3$s“ angelegt." : "%1$s created the new ticket #%2$s “%3$s”.",
     "Projekt %1$s · Vorgang #%2$s" : "Project %1$s · Ticket #%2$s",
-    "Projektübersicht" : "Project overview"
+    "Projektübersicht" : "Project overview",
+    "Boards" : "Boards",
+    "Board hinzufügen" : "Add board",
+    "Das neue Board gehört zu diesem Projekt und teilt sich Mitglieder, Ordner und Vorgangsnummern." : "The new board belongs to this project and shares its members, folders and ticket numbers.",
+    "Titel des Boards" : "Board title"
 },
 "nplurals=2; plural=(n != 1);");
