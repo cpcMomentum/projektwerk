@@ -6,6 +6,12 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Added
+
+- **„Seit deinem letzten Blick" im Überblick** (#249). Ganz oben im Dashboard zeigt ein neuer
+  Abschnitt projektübergreifend, welche Vorgänge seit dem eigenen letzten Blick neu angelegt oder
+  geändert wurden — dieselbe Regel wie die Kartenmarke am Board (#79/#175), jüngste Änderung zuerst.
+
 ## [0.4.10] - 2026-09-02
 
 ### Added
