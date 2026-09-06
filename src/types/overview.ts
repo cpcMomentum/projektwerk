@@ -82,6 +82,12 @@ export interface OverviewData {
 	 * Nur Projekte mit mindestens einem neuen Vorgang stehen drin.
 	 */
 	neuDieseWoche: Record<number, number>
+	/**
+	 * Kennungen der Vorgänge, die **seit deinem letzten Blick** neu oder geändert
+	 * sind (#249) — projektübergreifend, dieselbe Regel wie die Kartenmarke am
+	 * Board (#79/#175). Nur die hervorzuhebenden stehen drin.
+	 */
+	changedSince: number[]
 }
 
 /**
@@ -144,7 +150,7 @@ export interface ProjectRow {
 export interface ProjectStatusRow {
 	boardId: number
 	title: string
-	/** Beide Firmennamen, wie in {@see ProjectRow}. */
+	/** Beide Firmennamen, wie in `ProjectRow`. */
 	org: string
 	/** Offen, noch in der Eingangsspalte — neu reingekommen. */
 	neu: number
