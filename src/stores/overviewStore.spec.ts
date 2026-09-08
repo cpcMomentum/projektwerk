@@ -52,7 +52,6 @@ function daten(teile: Partial<OverviewData> = {}): OverviewData {
 		names: {},
 		me: '',
 		withOpenSteps: [],
-		changedSince: [],
 		closedCounts: {},
 		firstColumn: {},
 		durchsatz: { neu: 0, neuDelta: 0, erledigt: 0, erledigtDelta: 0, neuReihe: [], erledigtReihe: [] },
@@ -300,28 +299,6 @@ describe('Überblick', () => {
 		}))
 
 		expect(store.nobodyRows.map((r) => r.ticket.id)).toEqual([1])
-	})
-
-	/**
-	 * **„Seit deinem letzten Blick"** (#249) — der Server nennt die
-	 * hervorzuhebenden Kennungen (`changedSince`, Regel im `ChangeHighlighter`),
-	 * die Ansicht filtert die sichtbare Menge darauf und ordnet sie: jüngste
-	 * Änderung oben. Ein unmarkierter Vorgang fehlt, auch wenn er neuer ist.
-	 */
-	it('zeigt nur die markierten Vorgänge, jüngste Änderung zuerst', () => {
-		const store = useOverviewStore()
-		store.apply(daten({
-			tickets: [
-				ticket(1, 1, 'Alt', '2026-08-01T10:00:00+00:00'), // markiert, älter
-				ticket(2, 1, 'Neu', '2026-08-12T10:00:00+00:00'), // markiert, jünger
-				ticket(3, 1, 'Unmarkiert', '2026-08-13T10:00:00+00:00'), // neuer, aber nicht markiert
-			],
-			changedSince: [1, 2],
-		}))
-
-		const rows = store.changedRows
-		expect(rows.map((r) => r.ticket.id)).toEqual([2, 1])
-		expect(rows[0].board?.title).toBe('Relaunch')
 	})
 
 	/**
