@@ -22,8 +22,19 @@
 				@click="open(row.boardId)">
 				<span class="pw-tile__head">
 					<span class="pw-tile__ident">
-						<StarIcon v-if="isPinned(row.boardId)" class="pw-tile__pin" :size="14" />
-						<span class="pw-tile__title">{{ row.title }}</span>
+						<!--
+							Stern UND Titel in einer Flex-Zeile — dasselbe Muster wie
+							`.pw-vis`/`.pw-crumb` überall sonst (siehe docs/rca/
+							favoritenstern-projektkachel.md). Ohne diese Flex-Box
+							erbt der Stern NCs globales
+							`.material-design-icon { display: flex; justify-content: center }`
+							und stünde als zentrierter Block auf eigener Zeile über
+							dem Namen.
+						-->
+						<span class="pw-tile__name">
+							<StarIcon v-if="isPinned(row.boardId)" class="pw-tile__pin" :size="14" />
+							<span class="pw-tile__title">{{ row.title }}</span>
+						</span>
 						<span v-if="row.org" class="pw-tile__org">{{ row.org }}</span>
 					</span>
 					<span class="pw-tile__headcol">
