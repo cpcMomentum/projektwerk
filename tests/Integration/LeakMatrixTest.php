@@ -2078,6 +2078,9 @@ class LeakMatrixTest extends IntegrationTestCase {
 			Server::get(ColumnMapper::class),
 			Server::get(WaitStateCalculator::class),
 			Server::get(MemberService::class),
+			Server::get(TicketReadMapper::class),
+			Server::get(CommentMapper::class),
+			Server::get(ChangeHighlighter::class),
 			$userId,
 		);
 	}

@@ -41,6 +41,20 @@
 				darunter meine Maßnahmen. Die Rechnung liegt in den Gettern und
 				den Kind-Komponenten; die Seite ordnet nur an.
 			-->
+			<!--
+				**„Seit deinem letzten Blick"** (#249) — ganz oben, vor den
+				Kennzahlen: Was neu ist, will man beim Einstieg zuerst sehen.
+				Nur wenn es überhaupt etwas gibt; sonst entfällt der Abschnitt
+				ersatzlos, statt eine leere Karte zu zeigen.
+			-->
+			<section v-if="changedCount > 0" class="pw-half">
+				<h3 class="pw-col__head">
+					{{ t('projektwerk', 'Seit deinem letzten Blick') }}
+					<span class="pw-n">{{ changedCount }}</span>
+				</h3>
+				<ChangesTable :rows="store.changedRows" :limit="5" />
+			</section>
+
 			<KennzahlenCard />
 
 			<section class="pw-half">
@@ -68,7 +82,7 @@
 </template>
 
 <script lang="ts">
-import type { ProjectStatusRow } from '@/types/overview'
+import type { OverviewTicketRow, ProjectStatusRow } from '@/types/overview'
 import type { MeasureRow } from '@/types/task'
 
 import { t } from '@nextcloud/l10n'
@@ -76,6 +90,7 @@ import { defineComponent } from 'vue'
 import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
 import AlertIcon from 'vue-material-design-icons/AlertOutline.vue'
 import ViewDashboardIcon from 'vue-material-design-icons/ViewDashboardOutline.vue'
+import ChangesTable from '@/components/ChangesTable.vue'
 import KennzahlenCard from '@/components/KennzahlenCard.vue'
 import MeasuresTable from '@/components/MeasuresTable.vue'
 import ProjectTiles from '@/components/ProjectTiles.vue'
@@ -95,7 +110,7 @@ import { useTaskStore } from '@/stores/taskStore'
 export default defineComponent({
 	name: 'OverviewView',
 
-	components: { AlertIcon, KennzahlenCard, MeasuresTable, NcEmptyContent, ProjectTiles, ViewDashboardIcon },
+	components: { AlertIcon, ChangesTable, KennzahlenCard, MeasuresTable, NcEmptyContent, ProjectTiles, ViewDashboardIcon },
 
 	setup() {
 		return { store: useOverviewStore(), taskStore: useTaskStore() }
@@ -115,6 +130,11 @@ export default defineComponent({
 		/** Wie viele Maßnahmen bei mir liegen. */
 		measureCount(): number {
 			return (this.taskStore.measureRows as MeasureRow[]).length
+		},
+
+		/** Wie viele Vorgänge seit dem letzten Blick neu/geändert sind (#249). */
+		changedCount(): number {
+			return (this.store.changedRows as OverviewTicketRow[]).length
 		},
 
 		/** Gibt es überhaupt ein Projekt mit Inhalt zu zeigen? */

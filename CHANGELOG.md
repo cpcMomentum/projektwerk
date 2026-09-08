@@ -4,7 +4,13 @@ Alle nennenswerten Änderungen an ProjektWerk werden hier dokumentiert.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
-## [Unreleased]
+## [0.4.11] - 2026-09-08
+
+### Added
+
+- **„Seit deinem letzten Blick" im Überblick** (#249). Ganz oben im Dashboard zeigt ein neuer
+  Abschnitt projektübergreifend, welche Vorgänge seit dem eigenen letzten Blick neu angelegt oder
+  geändert wurden — dieselbe Regel wie die Kartenmarke am Board (#79/#175), jüngste Änderung zuerst.
 
 ## [0.4.10] - 2026-09-02
 

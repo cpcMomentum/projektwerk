@@ -32,6 +32,8 @@ interface State {
 	me: string
 	/** Vorgänge mit offenem Schritt — für „liegt bei niemandem" (#119). */
 	withOpenSteps: Set<number>
+	/** Vorgänge, die seit deinem letzten Blick neu/geändert sind (#249). */
+	changedSince: Set<number>
 	/** Board => Zähler der erledigten/verworfenen Vorgänge (#226). */
 	closedCounts: OverviewData['closedCounts']
 	/** Board => Kennung der ersten Spalte, für den Status „Neu" (#226). */
@@ -112,6 +114,7 @@ export const useOverviewStore = defineStore('overview', {
 		names: {},
 		me: '',
 		withOpenSteps: new Set(),
+		changedSince: new Set(),
 		closedCounts: {},
 		firstColumn: {},
 		durchsatz: { neu: 0, neuDelta: 0, erledigt: 0, erledigtDelta: 0, neuReihe: [], erledigtReihe: [] },
@@ -373,6 +376,31 @@ export const useOverviewStore = defineStore('overview', {
 			return rows.sort((a, b) => (a.ticket.createdAt ?? '').localeCompare(b.ticket.createdAt ?? '') || a.ticket.id - b.ticket.id)
 		},
 
+		/**
+		 * **Seit deinem letzten Blick** (#249) — was projektübergreifend neu oder
+		 * geändert ist, jüngste Änderung zuerst.
+		 *
+		 * Die Regel steckt im Server (`ChangeHighlighter`, #79/#175); hier wird
+		 * nur die schon gefilterte Menge auf die markierten Kennungen reduziert
+		 * und geordnet. **Dieselbe Zeilenform wie die Ballbesitz-Abschnitte**
+		 * (`OverviewTicketRow`): der Vorgang und sein Projekt.
+		 *
+		 * Sortiert nach `updatedAt` absteigend — die jüngste Bewegung oben. Das
+		 * ist ein Näherungswert: Ein Vorgang, der nur wegen eines neuen Kommentars
+		 * leuchtet, trägt ein älteres `updatedAt` und ordnet sich entsprechend
+		 * tiefer ein. Bei der Größenordnung dieser App (ein Team) ist das eine
+		 * Anzeige-Feinheit, keine Falschaussage — die Liste ist ohnehin kurz.
+		 *
+		 * @param state Der Speicher.
+		 */
+		changedRows: (state): OverviewTicketRow[] => {
+			const rows = state.tickets
+				.filter((ticket) => state.changedSince.has(ticket.id))
+				.map((ticket): OverviewTicketRow => ({ ticket, board: state.boards[ticket.boardId] ?? null }))
+
+			return rows.sort((a, b) => (b.ticket.updatedAt ?? '').localeCompare(a.ticket.updatedAt ?? '') || b.ticket.id - a.ticket.id)
+		},
+
 		/** Nichts offen, nirgends — der Leerzustand der ganzen Seite. */
 		nothingOpen(): boolean {
 			return (this.projectRows as ProjectRow[]).length === 0
@@ -406,6 +434,7 @@ export const useOverviewStore = defineStore('overview', {
 			this.names = data.names
 			this.me = data.me
 			this.withOpenSteps = new Set(data.withOpenSteps)
+			this.changedSince = new Set(data.changedSince)
 			this.closedCounts = data.closedCounts
 			this.firstColumn = data.firstColumn
 			this.durchsatz = data.durchsatz

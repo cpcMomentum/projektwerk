@@ -9,15 +9,18 @@ declare(strict_types=1);
 
 namespace OCA\Projektwerk\Controller;
 
+use OCA\Projektwerk\Access\ChangeHighlighter;
 use OCA\Projektwerk\Access\WaitStateCalculator;
 use OCA\Projektwerk\AppInfo\Application;
 use OCA\Projektwerk\Db\BoardMapper;
 use OCA\Projektwerk\Db\ColumnMapper;
+use OCA\Projektwerk\Db\CommentMapper;
 use OCA\Projektwerk\Db\Step;
 use OCA\Projektwerk\Db\StepMapper;
 use OCA\Projektwerk\Db\TaskFilter;
 use OCA\Projektwerk\Db\Ticket;
 use OCA\Projektwerk\Db\TicketMapper;
+use OCA\Projektwerk\Db\TicketReadMapper;
 use OCA\Projektwerk\Service\MemberService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
@@ -63,6 +66,9 @@ class OverviewController extends Controller {
 		private ColumnMapper $columns,
 		private WaitStateCalculator $waitState,
 		private MemberService $memberService,
+		private TicketReadMapper $reads,
+		private CommentMapper $comments,
+		private ChangeHighlighter $highlighter,
 		private ?string $userId,
 	) {
 		parent::__construct(Application::APP_ID, $request);
@@ -140,6 +146,24 @@ class OverviewController extends Controller {
 			'me' => $this->userId,
 			// Vorgänge mit offenem Schritt (#119).
 			'withOpenSteps' => $withOpenSteps,
+			// **„Seit deinem letzten Blick"** (#249) — die hervorzuhebenden
+			// Vorgänge, projektübergreifend. Dieselbe Regel wie die
+			// Kartenmarke am Board (#79/#175), damit sich Marke und Überblick
+			// nie widersprechen: Der {@see ChangeHighlighter} vergleicht die
+			// sichtbare Menge gegen den eigenen Lesestand und den jüngsten
+			// Kommentar je Vorgang; der eigene Schritt leuchtet nicht.
+			//
+			// **Kein neuer Lesepfad.** `findSeenForTickets`,
+			// `findNewestForTickets` und die Menge selbst kommen aus der schon
+			// gefilterten `$ids` — dieselben Mapper, die auch das Board fährt.
+			// Als Int-Liste ausgeliefert (wie `withOpenSteps`), nicht als
+			// `{id: true}`-Karte: Der Browser braucht nur „welche".
+			'changedSince' => array_map('intval', array_keys($this->highlighter->detect(
+				$tickets,
+				$this->reads->findSeenForTickets($this->userId, $ids),
+				$this->comments->findNewestForTickets($ids),
+				$this->userId,
+			))),
 			// **Erledigte je Projekt** (#226) — für die Status-Zahl „Erledigt"
 			// und den Fortschritt im Dashboard. Die offenen Zahlen (Neu/Offen/
 			// Wartet) entstehen aus `tickets`+`waiting` oben; nur die
