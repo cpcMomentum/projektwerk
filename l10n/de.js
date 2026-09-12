@@ -405,8 +405,6 @@ OC.L10N.register(
     "Boards" : "Boards",
     "Board hinzufügen" : "Board hinzufügen",
     "Das neue Board gehört zu diesem Projekt und teilt sich Mitglieder, Ordner und Vorgangsnummern." : "Das neue Board gehört zu diesem Projekt und teilt sich Mitglieder, Ordner und Vorgangsnummern.",
-    "Titel des Boards" : "Titel des Boards",
-    "Vorgang #{number}: {title}, {board}" : "Vorgang #{number}: {title}, {board}",
-    "Seit deinem letzten Blick" : "Seit deinem letzten Blick"
+    "Titel des Boards" : "Titel des Boards"
 },
 "nplurals=2; plural=(n != 1);");

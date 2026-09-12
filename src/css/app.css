@@ -2307,15 +2307,29 @@
 	min-width: 0;
 }
 
+/*
+ * Stern + Titel in einer Zeile (siehe docs/rca/favoritenstern-projektkachel.md).
+ * Die Flex-Box ist der Fix: Ein `.material-design-icon` erbt sonst NCs globales
+ * `display: flex; justify-content: center` und wird zum zentrierten Block auf
+ * eigener Zeile. Als Flex-Kind wird es harmlos blockifiziert und sitzt inline
+ * vor dem Namen — dasselbe Muster wie `.pw-vis`/`.pw-crumb`.
+ */
+.app-projektwerk .pw-tile__name {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	min-width: 0;
+}
+
 .app-projektwerk .pw-tile__pin {
 	color: var(--color-favorite, var(--color-warning-text));
-	vertical-align: -2px;
-	margin-inline-end: 3px;
+	flex: 0 0 auto;
 }
 
 .app-projektwerk .pw-tile__title {
 	font-weight: 700;
 	font-size: 15px;
+	min-width: 0;
 }
 
 .app-projektwerk .pw-tile__org {

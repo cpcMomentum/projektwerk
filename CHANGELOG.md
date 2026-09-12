@@ -4,6 +4,22 @@ Alle nennenswerten Änderungen an ProjektWerk werden hier dokumentiert.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.4.12] - 2026-09-12
+
+### Fixed
+
+- **Favoritenstern in der Projektkachel** stand bei angepinnten Projekten zentriert auf eigener
+  Zeile über dem Namen und drückte ihn nach unten; jetzt wieder inline vor dem Namen („★ Projekt").
+  Ursache und App-weiter Scan in `docs/rca/favoritenstern-projektkachel.md`.
+
+### Removed
+
+- **„Seit deinem letzten Blick" im Überblick** (#249) wieder entfernt. Nach dem Live-Test auf
+  Produktiv: Das Dashboard ist eine Zustandsfläche („wo steht es"), der Abschnitt beantwortete eine
+  Verlaufsfrage („was ist passiert, seit ich zuletzt schaute") — das passte weder ins Layout noch
+  trug die persönliche Ebene genug gegenüber Kartenmarke im Board, Glocke und der Bewegung, die die
+  Projektkacheln ohnehin schon zeigen.
+
 ## [0.4.11] - 2026-09-08
 
 ### Added
