@@ -4,7 +4,13 @@ Alle nennenswerten Änderungen an ProjektWerk werden hier dokumentiert.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
-## [Unreleased]
+## [0.4.12] - 2026-09-12
+
+### Fixed
+
+- **Favoritenstern in der Projektkachel** stand bei angepinnten Projekten zentriert auf eigener
+  Zeile über dem Namen und drückte ihn nach unten; jetzt wieder inline vor dem Namen („★ Projekt").
+  Ursache und App-weiter Scan in `docs/rca/favoritenstern-projektkachel.md`.
 
 ### Removed
 
