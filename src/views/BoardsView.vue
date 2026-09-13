@@ -39,71 +39,108 @@
 			</template>
 		</NcEmptyContent>
 
-		<div v-else class="pw-boards">
-			<div
-				v-for="board in store.boards"
-				:key="board.id"
-				class="pw-boardcard">
-				<button
-					type="button"
-					class="pw-boardcard__open"
-					@click="open(board.id)">
-					<span class="pw-boardcard__title">{{ board.title }}</span>
-					<!--
-						Beide Firmennamen, nicht nur der des Kunden: Traege nur die
-						Gegenseite einen, waere die eigene stumm „der Normalfall".
-					-->
-					<span v-if="store.orgLine(board)" class="pw-boardcard__org">{{ store.orgLine(board) }}</span>
-				</button>
-
-				<!--
-					Der Stern pinnt das Projekt in die Seitenleiste (#115). Gefuellt
-					und farbig, wenn angepinnt; leer und ruhig sonst. `pressed`
-					sagt Screenreadern den Zustand.
-				-->
-				<NcButton
-					variant="tertiary"
-					class="pw-boardcard__pin"
-					:class="{ 'pw-boardcard__pin--on': board.pinned }"
-					:pressed="board.pinned === true"
-					:ariaLabel="board.pinned
-						? t('projektwerk', 'Von der Seitenleiste lösen')
-						: t('projektwerk', 'An die Seitenleiste anpinnen')"
-					@click="store.togglePin(board.id)">
-					<template #icon>
-						<StarIcon v-if="board.pinned" :size="20" />
-						<StarOutlineIcon v-else :size="20" />
-					</template>
-				</NcButton>
+		<template v-else>
+			<!--
+				Das vollständige Projekt-Verzeichnis (#276): dieselben Kacheln wie
+				im Überblick, aber über **alle** Projekte — auch leere und inaktive,
+				die der Überblick ausblendet und bei sechs kappt. Hier wird
+				angepinnt (Toggle in der Kachel) und angelegt.
+			-->
+			<div class="pw-tiles__legend">
+				<span
+					v-for="s in STATUS"
+					:key="s.key"
+					class="pw-tiles__leg"
+					:class="s.cls">
+					<i class="pw-tiles__legdot" />{{ s.label() }}
+				</span>
 			</div>
-		</div>
+
+			<div class="pw-boards">
+				<ProjectTile
+					v-for="tile in tiles"
+					:key="tile.boardId"
+					:boardId="tile.boardId"
+					:title="tile.title"
+					:org="tile.org"
+					:neu="tile.neu"
+					:offen="tile.offen"
+					:wartet="tile.wartet"
+					:erledigt="tile.erledigt"
+					:neuDieseWoche="tile.neuDieseWoche"
+					:zustand="tile.zustand"
+					:pinned="tile.pinned"
+					pinnable
+					@open="openDashboard"
+					@togglePin="store.togglePin" />
+			</div>
+		</template>
 
 		<CreateBoardWizard
 			:open="creating"
 			@update:open="creating = $event"
-			@finished="open" />
+			@finished="openCreated" />
 	</div>
 </template>
 
 <script lang="ts">
+import type { Board } from '@/types/board'
+import type { ProjectStatusRow } from '@/types/overview'
+
 import { t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
 import FolderMultipleIcon from 'vue-material-design-icons/FolderMultiple.vue'
 import PlusIcon from 'vue-material-design-icons/Plus.vue'
-import StarIcon from 'vue-material-design-icons/Star.vue'
-import StarOutlineIcon from 'vue-material-design-icons/StarOutline.vue'
 import CreateBoardWizard from '@/components/CreateBoardWizard.vue'
+import ProjectTile from '@/components/ProjectTile.vue'
 import { useBoardStore } from '@/stores/boardStore'
+import { useOverviewStore } from '@/stores/overviewStore'
 
+/** Die Anzeigedaten einer Verzeichnis-Kachel. */
+interface TileVM {
+	boardId: number
+	title: string
+	org: string
+	neu: number
+	offen: number
+	wartet: number
+	erledigt: number
+	neuDieseWoche: number
+	zustand: ProjectStatusRow['zustand']
+	pinned: boolean
+}
+
+/** Ein Statuseintrag der Legende — dieselbe Reihenfolge wie der Balken. */
+const STATUS = [
+	{ key: 'neu', cls: 'pw-st--neu', label: (): string => t('projektwerk', 'Neu') },
+	{ key: 'offen', cls: 'pw-st--offen', label: (): string => t('projektwerk', 'Offen') },
+	{ key: 'wartet', cls: 'pw-st--wartet', label: (): string => t('projektwerk', 'Wartet') },
+	{ key: 'erledigt', cls: 'pw-st--erl', label: (): string => t('projektwerk', 'Erledigt') },
+] as const
+
+/**
+ * „Projekte" — das vollständige Projekt-Verzeichnis (#276).
+ *
+ * **Zwei Quellen, hier zusammengeführt.** Welche Projekte es gibt, weiß der
+ * `boardStore` (die Board-Liste, inkl. leerer und inaktiver). Die Statuszahlen
+ * je Projekt liefert der `overviewStore` (`projectStatusRows`). Der Join per
+ * `boardId` macht daraus die Kacheln; ein Projekt ohne Statuszeile (frisch
+ * angelegt, keine Vorgänge) erscheint mit Nullwerten und dem Hinweis „Noch keine
+ * Vorgänge".
+ *
+ * Der Unterschied zum Überblick ist bewusst: Der zeigt das Cockpit (Top-Projekte
+ * gefiltert, gekappt), dieses Verzeichnis zeigt **alles** und ist der Ort zum
+ * Anlegen und Anpinnen.
+ */
 export default defineComponent({
 	name: 'BoardsView',
 
-	components: { CreateBoardWizard, NcButton, NcEmptyContent, FolderMultipleIcon, PlusIcon, StarIcon, StarOutlineIcon },
+	components: { CreateBoardWizard, NcButton, NcEmptyContent, FolderMultipleIcon, PlusIcon, ProjectTile },
 
 	setup() {
-		return { store: useBoardStore() }
+		return { store: useBoardStore(), overview: useOverviewStore(), STATUS }
 	},
 
 	data() {
@@ -112,21 +149,68 @@ export default defineComponent({
 		}
 	},
 
+	computed: {
+		/**
+		 * Alle Projekte als Kacheln — Board-Liste als Quelle der Wahrheit, die
+		 * Statuszahlen aus dem Überblick dazugejoint. Angepinnte zuerst, sonst
+		 * alphabetisch: ein Verzeichnis wird durchgesehen, nicht nach Dringlichkeit
+		 * gelesen (das ist der Überblick).
+		 */
+		tiles(): TileVM[] {
+			const status = new Map((this.overview.projectStatusRows as ProjectStatusRow[]).map((row) => [row.boardId, row]))
+
+			return (this.store.boards as Board[])
+				.map((board): TileVM => {
+					const s = status.get(board.id)
+
+					return {
+						boardId: board.id,
+						title: board.title,
+						org: this.store.orgLine(board),
+						neu: s?.neu ?? 0,
+						offen: s?.offen ?? 0,
+						wartet: s?.wartet ?? 0,
+						erledigt: s?.erledigt ?? 0,
+						neuDieseWoche: s?.neuDieseWoche ?? 0,
+						zustand: s?.zustand ?? 'gruen',
+						pinned: board.pinned === true,
+					}
+				})
+				.sort((a, b) => Number(b.pinned) - Number(a.pinned) || a.title.localeCompare(b.title))
+		},
+	},
+
 	mounted() {
+		// Beide Quellen: die Board-Liste (welche Projekte) und der Überblick
+		// (Statuszahlen). Sie laufen unabhängig; die Kacheln stehen, sobald die
+		// Board-Liste da ist, und füllen sich mit den Zahlen, wenn der Überblick
+		// nachkommt.
 		this.store.loadBoards()
+		this.overview.load()
 	},
 
 	methods: {
 		t,
 
 		/**
-		 * Ins Projekt wechseln — auch nach dem Anlegen: Wer eben eines angelegt
-		 * hat, will es öffnen, nicht in der Liste suchen. Der Assistent meldet
-		 * die Kennung über `@finished`.
+		 * Kachel-Klick → **Projekt-Dashboard** (#276), einheitlich mit dem
+		 * Überblick. Von dort führt „Board öffnen" weiter aufs Kanban.
 		 *
 		 * @param boardId Kennung des Projekts.
 		 */
-		open(boardId: number) {
+		openDashboard(boardId: number) {
+			this.$router.push({ name: 'project-dashboard', params: { boardId: String(boardId) } })
+		},
+
+		/**
+		 * Nach dem Anlegen → direkt ins **Board** (Kanban), nicht ins Dashboard:
+		 * Ein frisches Projekt ist leer, und der erste Schritt ist ein Vorgang,
+		 * nicht der Überblick über keine. Der Assistent meldet die Kennung über
+		 * `@finished`.
+		 *
+		 * @param boardId Kennung des Projekts.
+		 */
+		openCreated(boardId: number) {
 			this.creating = false
 			this.$router.push({ name: 'board', params: { boardId: String(boardId) } })
 		},
