@@ -21,6 +21,7 @@ use OCP\Files\Folder;
 use OCP\Files\IRootFolder;
 use OCP\Files\NotFoundException;
 use OCP\Files\NotPermittedException;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -158,7 +159,7 @@ class ProjectFolderServiceTest extends TestCase {
 	 * abzutasten.
 	 */
 	public function testAMissingPathGivesTheSameAnswerAsAFile(): void {
-		$home = $this->createStub(Folder::class);
+		$home = $this->homeStub();
 		$home->method('get')->willThrowException(new NotFoundException());
 
 		$root = $this->createStub(IRootFolder::class);
@@ -202,7 +203,7 @@ class ProjectFolderServiceTest extends TestCase {
 	 * Die Datei ist noch da: `exists()` sagt `true`.
 	 */
 	public function testExistsIsTrueWhenTheFileIsStillInTheTree(): void {
-		$home = $this->createStub(Folder::class);
+		$home = $this->homeStub();
 		$home->method('getFirstNodeById')->willReturn($this->createStub(File::class));
 
 		$root = $this->createStub(IRootFolder::class);
@@ -216,7 +217,7 @@ class ProjectFolderServiceTest extends TestCase {
 	 * (#9): `exists()` sagt `false`, statt zu werfen.
 	 */
 	public function testExistsIsFalseWhenTheFileIsGoneFromTheTree(): void {
-		$home = $this->createStub(Folder::class);
+		$home = $this->homeStub();
 		$home->method('getFirstNodeById')->willReturn(null);
 
 		$root = $this->createStub(IRootFolder::class);
@@ -244,7 +245,7 @@ class ProjectFolderServiceTest extends TestCase {
 	 * Einstellungen steht, was die Person in ihren Dateien sieht.
 	 */
 	public function testTheDisplayPathDropsTheHomePrefix(): void {
-		$home = $this->createStub(Folder::class);
+		$home = $this->homeStub();
 		$home->method('getPath')->willReturn('/lm-intern/files');
 
 		$folder = $this->createStub(Folder::class);
@@ -260,10 +261,32 @@ class ProjectFolderServiceTest extends TestCase {
 	}
 
 	/**
+	 * Ein Stub des Home-Ordners, wie ihn `IRootFolder::getUserFolder()` liefert.
+	 *
+	 * **Plattformabhängig, wegen des Rückgabetyps.** NC dev-master (Canary,
+	 * #275) engt `getUserFolder()` von `Folder` auf `IUserFolder` ein; NC 34
+	 * kennt das Interface noch nicht. Ein fest auf `Folder` gestubbtes `$home`
+	 * scheiterte auf dev-master an PHPUnits Rückgabetyp-Prüfung, ein fest auf
+	 * `IUserFolder` gestubbtes auf NC 34 an der fehlenden Klasse. Der Stub trägt
+	 * deshalb je nach Plattform die passende Klasse — `IUserFolder` erweitert
+	 * `Folder`, die in den Tests konfigurierten Methoden bleiben dieselben.
+	 *
+	 * `IUserFolder::class` ist eine Konstante zur Übersetzungszeit und lädt die
+	 * Klasse nicht; `interface_exists()` entscheidet zur Laufzeit.
+	 */
+	private function homeStub(): Stub {
+		$class = interface_exists(\OCP\Files\IUserFolder::class)
+			? \OCP\Files\IUserFolder::class
+			: Folder::class;
+
+		return $this->createStub($class);
+	}
+
+	/**
 	 * @param object $node Was der Dateibaum zurückgeben soll.
 	 */
 	private function serviceResolving(object $node): ProjectFolderService {
-		$home = $this->createStub(Folder::class);
+		$home = $this->homeStub();
 		$home->method('get')->willReturn($node);
 
 		$root = $this->createStub(IRootFolder::class);
