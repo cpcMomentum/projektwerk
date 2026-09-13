@@ -10,7 +10,13 @@
 			</NcButton>
 		</div>
 
-		<div v-if="store.loading" class="pw-boards">
+		<!--
+			**Auf beide Quellen warten, nicht nur auf `store.loading`.** Die
+			Kacheln joinen Board-Liste und Überblick; kaeme die Board-Liste
+			zuerst zurueck, zeigten alle Kacheln kurz "Noch keine Vorgaenge",
+			bis der Überblick nachzieht (#276).
+		-->
+		<div v-if="store.loading || overview.loading" class="pw-boards">
 			<div v-for="n in 3" :key="n" class="pw-skel">
 				<i /><i /><i />
 			</div>

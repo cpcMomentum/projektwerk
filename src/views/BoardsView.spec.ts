@@ -57,6 +57,7 @@ const boardStore = {
 }
 const overviewStore = {
 	projectStatusRows: [] as Array<Record<string, unknown>>,
+	loading: false,
 	load: vi.fn(),
 }
 
@@ -84,9 +85,11 @@ function mountView() {
 
 beforeEach(() => {
 	boardStore.boards = []
+	boardStore.loading = false
 	boardStore.loadBoards.mockClear()
 	boardStore.togglePin.mockClear()
 	overviewStore.projectStatusRows = []
+	overviewStore.loading = false
 	overviewStore.load.mockClear()
 	push.mockClear()
 })
@@ -96,6 +99,17 @@ describe('BoardsView', () => {
 		mountView()
 		expect(boardStore.loadBoards).toHaveBeenCalled()
 		expect(overviewStore.load).toHaveBeenCalled()
+	})
+
+	it('zeigt das Lade-Skelett, solange auch nur eine der beiden Quellen noch lädt', () => {
+		boardStore.boards = [board(1, 'Alpha')]
+		boardStore.loading = false
+		overviewStore.loading = true
+
+		const w = mountView()
+
+		expect(w.find('.pw-skel').exists()).toBe(true)
+		expect(w.findComponent(tileStub).exists()).toBe(false)
 	})
 
 	it('joint die Statuszahlen per boardId an die Board-Liste', () => {
