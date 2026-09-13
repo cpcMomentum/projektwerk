@@ -34,7 +34,7 @@
 				-->
 				<NcActions
 					v-if="store.siblingBoards.length > 1 || store.viewer?.isManager"
-					:menu-name="t('projektwerk', 'Boards')">
+					:menuName="t('projektwerk', 'Boards')">
 					<template #icon>
 						<ViewDashboardIcon :size="20" />
 					</template>
@@ -271,9 +271,8 @@
 					{{ t('projektwerk', 'Das neue Board gehört zu diesem Projekt und teilt sich Mitglieder, Ordner und Vorgangsnummern.') }}
 				</p>
 				<NcTextField
+					v-model="newBoardTitle"
 					:label="t('projektwerk', 'Titel des Boards')"
-					:value="newBoardTitle"
-					@update:value="newBoardTitle = $event"
 					@keydown.enter="confirmAddBoard" />
 			</div>
 			<template #actions>

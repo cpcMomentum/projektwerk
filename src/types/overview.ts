@@ -144,7 +144,7 @@ export interface ProjectRow {
 export interface ProjectStatusRow {
 	boardId: number
 	title: string
-	/** Beide Firmennamen, wie in {@see ProjectRow}. */
+	/** Beide Firmennamen, wie in `ProjectRow`. */
 	org: string
 	/** Offen, noch in der Eingangsspalte — neu reingekommen. */
 	neu: number
