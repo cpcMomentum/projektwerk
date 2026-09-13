@@ -96,6 +96,19 @@ describe('ProjectTile', () => {
 			expect(w.emitted('open')).toBeUndefined()
 		})
 
+		it('lässt auch Tastatur-Aktivierung des Toggles nicht zur Kachel durchbubbeln', async () => {
+			const w = mount(ProjectTile, {
+				props: { ...basis, pinnable: true, pinned: false },
+				global: { stubs },
+			})
+
+			const toggle = w.find('.pw-tile__pinbtn')
+			// Ohne @keydown.stop wuerde dieses `keydown` zur Kachel durchbubbeln
+			// und dort `@keydown.enter` ausloesen, obwohl der Toggle gemeint war.
+			await toggle.trigger('keydown.enter')
+			expect(w.emitted('open')).toBeUndefined()
+		})
+
 		it('färbt den Toggle golden und füllt den Stern, wenn angepinnt', () => {
 			const w = mount(ProjectTile, {
 				props: { ...basis, pinnable: true, pinned: true },

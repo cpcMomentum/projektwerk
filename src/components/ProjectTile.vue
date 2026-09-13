@@ -32,7 +32,8 @@
 			:aria-label="pinned
 				? t('projektwerk', 'Von der Seitenleiste lösen')
 				: t('projektwerk', 'An die Seitenleiste anpinnen')"
-			@click.stop="$emit('togglePin', boardId)">
+			@click.stop="$emit('togglePin', boardId)"
+			@keydown.stop>
 			<StarIcon v-if="pinned" :size="20" />
 			<StarOutlineIcon v-else :size="20" />
 		</button>
