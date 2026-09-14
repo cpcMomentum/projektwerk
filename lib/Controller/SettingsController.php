@@ -16,6 +16,7 @@ use OCA\Projektwerk\AppInfo\Application;
 use OCA\Projektwerk\Service\BoardService;
 use OCA\Projektwerk\Service\ColumnService;
 use OCA\Projektwerk\Service\MemberService;
+use OCA\Projektwerk\Service\GuestNotAllowedException;
 use OCA\Projektwerk\Service\NotManagerException;
 use OCA\Projektwerk\Service\NotOwnerException;
 use OCP\AppFramework\Controller;
@@ -71,6 +72,10 @@ class SettingsController extends Controller {
 				$this->boardService->create($this->userId, $title, $description, $orgInternal, $orgExternal),
 				Http::STATUS_CREATED,
 			);
+		} catch (GuestNotAllowedException $e) {
+			// Gäste dürfen keine eigenständigen Projekte anlegen (#280). 403, nicht
+			// 404: Der Gast ist angemeldet, es gibt nichts zu verbergen.
+			return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_FORBIDDEN);
 		} catch (\InvalidArgumentException $e) {
 			return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
 		}

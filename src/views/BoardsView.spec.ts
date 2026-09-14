@@ -27,6 +27,11 @@ vi.mock('@nextcloud/vue/components/NcEmptyContent', () => ({
 vi.mock('@/components/CreateBoardWizard.vue', () => ({
 	default: { name: 'CreateBoardWizard', template: '<div class="wizard" />' },
 }))
+// Der Initial-State „darf anlegen" (#280) — pro Test steuerbar.
+let canCreate = true
+vi.mock('@nextcloud/initial-state', () => ({
+	loadState: () => canCreate,
+}))
 
 // Die geteilte Kachel als schlanker Stub: hält ihre Props für die Assertions
 // fest, ohne die Darstellung mitzuprüfen (das tut ProjectTile.spec).
@@ -89,6 +94,7 @@ beforeEach(() => {
 	overviewStore.projectStatusRows = []
 	overviewStore.load.mockClear()
 	push.mockClear()
+	canCreate = true
 })
 
 describe('BoardsView', () => {
@@ -96,6 +102,20 @@ describe('BoardsView', () => {
 		mountView()
 		expect(boardStore.loadBoards).toHaveBeenCalled()
 		expect(overviewStore.load).toHaveBeenCalled()
+	})
+
+	it('zeigt „Neues Projekt", wenn die Person anlegen darf', () => {
+		canCreate = true
+		boardStore.boards = [board(1, 'Alpha')]
+
+		expect(mountView().text()).toContain('Neues Projekt')
+	})
+
+	it('blendet „Neues Projekt" für Gäste aus (#280)', () => {
+		canCreate = false
+		boardStore.boards = [board(1, 'Alpha')]
+
+		expect(mountView().text()).not.toContain('Neues Projekt')
 	})
 
 	it('joint die Statuszahlen per boardId an die Board-Liste', () => {
