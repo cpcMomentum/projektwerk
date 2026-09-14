@@ -2,7 +2,12 @@
 	<div class="pw-view">
 		<div class="pw-view__head">
 			<h2>{{ t('projektwerk', 'Projekte') }}</h2>
-			<NcButton variant="primary" @click="creating = true">
+			<!--
+				Kein „Neues Projekt" für Gäste (#280): Ein Gast, der ein Projekt
+				anlegt, würde darin intern und Manager. Der Server verweigert die
+				Anlage ohnehin (403); dieses Signal blendet den Knopf gleich aus.
+			-->
+			<NcButton v-if="canCreateProject" variant="primary" @click="creating = true">
 				<template #icon>
 					<PlusIcon :size="20" />
 				</template>
@@ -29,7 +34,7 @@
 			<template #icon>
 				<FolderMultipleIcon :size="20" />
 			</template>
-			<template #action>
+			<template v-if="canCreateProject" #action>
 				<NcButton variant="primary" @click="creating = true">
 					<template #icon>
 						<PlusIcon :size="20" />
@@ -87,6 +92,7 @@
 import type { Board } from '@/types/board'
 import type { ProjectStatusRow } from '@/types/overview'
 
+import { loadState } from '@nextcloud/initial-state'
 import { t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
@@ -146,6 +152,11 @@ export default defineComponent({
 	data() {
 		return {
 			creating: false,
+			// Ob die Person Projekte anlegen darf (#280) — vom Server als
+			// Initial-State geliefert (Gäste: false). Default true ist unkritisch:
+			// die echte Sperre sitzt serverseitig (403), dies blendet nur den
+			// Knopf aus.
+			canCreateProject: loadState<boolean>('projektwerk', 'canCreateProject', true),
 		}
 	},
 

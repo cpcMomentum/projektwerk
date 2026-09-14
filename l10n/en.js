@@ -406,6 +406,7 @@ OC.L10N.register(
     "Board hinzufügen" : "Add board",
     "Das neue Board gehört zu diesem Projekt und teilt sich Mitglieder, Ordner und Vorgangsnummern." : "The new board belongs to this project and shares its members, folders and ticket numbers.",
     "Titel des Boards" : "Board title",
-    "Noch keine Vorgänge" : "No items yet"
+    "Noch keine Vorgänge" : "No items yet",
+    "Als Gast können Sie keine Projekte anlegen." : "As a guest you cannot create projects."
 },
 "nplurals=2; plural=(n != 1);");

@@ -67,6 +67,7 @@ class BoardService {
 		private BoardAccess $access,
 		private IL10N $l10n,
 		private ProjectFolderService $folders,
+		private AccountType $accountType,
 	) {
 	}
 
@@ -79,8 +80,11 @@ class BoardService {
 	 * unerreichbar und ließe sich nicht einmal löschen.
 	 *
 	 * Wer anlegt, wird Eigentümer und internes Mitglied mit Verwaltungsrecht.
-	 * Eine Rechteprüfung gibt es davor nicht: Ein eigenes Projekt anzulegen
-	 * setzt nichts voraus.
+	 * **Genau deshalb dürfen Gäste es nicht** (#280): Ein Gast, der ein Projekt
+	 * anlegt, würde darin intern und Manager — das wäre die Hintertür, die die
+	 * Konto-Trennung aushebelt. Ein vollwertiges Konto (Database/LDAP/…) darf
+	 * ohne weitere Voraussetzung anlegen. Die Unterscheidung trifft
+	 * {@see AccountType} über das User-Backend, nicht über die App-Rolle.
 	 *
 	 * Die Spalten aus {@see DEFAULT_COLUMNS} entstehen gleich mit — **einmalig
 	 * übersetzt in der Sprache der anlegenden Person**, danach sind es normale
@@ -96,6 +100,9 @@ class BoardService {
 		?string $orgInternal = null,
 		?string $orgExternal = null,
 	): Board {
+		if ($this->accountType->isGuest($userId)) {
+			throw new GuestNotAllowedException($this->l10n->t('Als Gast können Sie keine Projekte anlegen.'));
+		}
 		$this->assertTitle($title);
 		$now = new \DateTime();
 
