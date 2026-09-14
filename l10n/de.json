@@ -452,7 +452,9 @@
 		"Mitglieder dürfen eigene Boards in diesem Projekt anlegen": "Mitglieder dürfen eigene Boards in diesem Projekt anlegen",
 		"Damit können Arbeitsgruppen selbst ein Board anlegen und dessen Spalten pflegen. Alle Projektmitglieder sehen weiterhin alle Boards.": "Damit können Arbeitsgruppen selbst ein Board anlegen und dessen Spalten pflegen. Alle Projektmitglieder sehen weiterhin alle Boards.",
 		"In diesem Projekt dürfen nur interne Verwalter Boards anlegen.": "In diesem Projekt dürfen nur interne Verwalter Boards anlegen.",
-		"Dieses Board darf nur der Projekt-Verwalter oder sein Ersteller ändern.": "Dieses Board darf nur der Projekt-Verwalter oder sein Ersteller ändern."
+		"Dieses Board darf nur der Projekt-Verwalter oder sein Ersteller ändern.": "Dieses Board darf nur der Projekt-Verwalter oder sein Ersteller ändern.",
+		"Hintergrundaufträge, Basis-URL, SMTP-Zeitgrenze und E-Mail-Versand sind für ProjektWerk geeignet.": "Hintergrundaufträge, Basis-URL, SMTP-Zeitgrenze und E-Mail-Versand sind für ProjektWerk geeignet.",
+		"Diese Instanz kann keine E-Mails versenden — es ist kein E-Mail-Server hinterlegt („mail_smtpmode\"/„mail_from_address\" fehlen). Kunden-Benachrichtigungen von ProjektWerk bleiben dann liegen. E-Mail-Server in den Grundeinstellungen der Instanz einrichten.": "Diese Instanz kann keine E-Mails versenden — es ist kein E-Mail-Server hinterlegt („mail_smtpmode\"/„mail_from_address\" fehlen). Kunden-Benachrichtigungen von ProjektWerk bleiben dann liegen. E-Mail-Server in den Grundeinstellungen der Instanz einrichten."
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }

@@ -15,10 +15,10 @@ use OCP\SetupCheck\ISetupCheck;
 use OCP\SetupCheck\SetupResult;
 
 /**
- * Drei Instanzeinstellungen, an denen ProjektWerk still scheitert.
+ * Vier Instanzeinstellungen, an denen ProjektWerk still scheitert.
  *
  * „Still" ist das gemeinsame Merkmal und der Grund, warum es diesen Check gibt.
- * Jeder der drei Werte laesst die App im Alltag funktionieren und bricht genau
+ * Jeder der vier Werte laesst die App im Alltag funktionieren und bricht genau
  * das, was niemand sofort bemerkt — Benachrichtigungen an Kunden, die diese App
  * selten oeffnen. Ein Fehler, der beim Kunden auftritt und beim Betreiber nicht,
  * ist der teuerste; ein Feld in der Administrationsuebersicht ist die billigste
@@ -62,11 +62,12 @@ class InstanceConfigCheck implements ISetupCheck {
 			$this->checkBackgroundJobs(),
 			$this->checkCliUrl(),
 			$this->checkMailTimeout(),
+			$this->checkMailConfigured(),
 		]));
 
 		if ($problems === []) {
 			return SetupResult::success(
-				$this->l10n->t('Hintergrundaufträge, Basis-URL und SMTP-Zeitgrenze sind für ProjektWerk geeignet.'),
+				$this->l10n->t('Hintergrundaufträge, Basis-URL, SMTP-Zeitgrenze und E-Mail-Versand sind für ProjektWerk geeignet.'),
 			);
 		}
 
@@ -167,6 +168,36 @@ class InstanceConfigCheck implements ISetupCheck {
 			. 'Antwortet der Mailserver nicht, hängt diese Zeit im Schreibvorgang der Person, '
 			. 'die gerade ein Ticket anlegt. Gemessen funktionsfähig sind %2$s Sekunden.',
 			[(string)$timeout, (string)self::MAX_SMTP_TIMEOUT],
+		);
+	}
+
+	/**
+	 * Ist überhaupt ein E-Mail-Versand eingerichtet?
+	 *
+	 * Die drei anderen Prüfungen fragen, ob die Mail **gut** ankommt — diese
+	 * fragt das Davor: ob sie überhaupt rausgeht. Ohne `mail_smtpmode` und
+	 * `mail_from_address` kann diese Instanz keine E-Mail versenden; ProjektWerk
+	 * merkt es nicht (der Vorgang wird gespeichert, die Outbox-Zeile bleibt auf
+	 * `failed` liegen), und die Kunden-Benachrichtigung kommt schlicht nie an.
+	 *
+	 * Gleiche Linie wie die übrigen: eine **Warnung**, kein Fehler — die App
+	 * läuft, nur die Benachrichtigungen nicht. Und derselbe stille Fehler, der
+	 * beim Betreiber nicht auffällt (er liest die Kundenmails nicht) und beim
+	 * Kunden ankommt (er bekommt gar nichts).
+	 */
+	private function checkMailConfigured(): ?string {
+		$mode = trim($this->config->getSystemValueString('mail_smtpmode', ''));
+		$from = trim($this->config->getSystemValueString('mail_from_address', ''));
+
+		if ($mode !== '' && $from !== '') {
+			return null;
+		}
+
+		return $this->l10n->t(
+			'Diese Instanz kann keine E-Mails versenden — es ist kein E-Mail-Server hinterlegt '
+			. '(„mail_smtpmode"/„mail_from_address" fehlen). '
+			. 'Kunden-Benachrichtigungen von ProjektWerk bleiben dann liegen. '
+			. 'E-Mail-Server in den Grundeinstellungen der Instanz einrichten.',
 		);
 	}
 }

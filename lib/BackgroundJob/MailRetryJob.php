@@ -135,6 +135,7 @@ class MailRetryJob extends TimedJob {
 			$text['einleitung'],
 			$this->linkZu((int)$ticket->getId()),
 			$text['meta'],
+			$text['projekt'],
 		);
 	}
 

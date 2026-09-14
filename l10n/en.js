@@ -411,6 +411,8 @@ OC.L10N.register(
     "Mitglieder dürfen eigene Boards in diesem Projekt anlegen" : "Members may create their own boards in this project",
     "Damit können Arbeitsgruppen selbst ein Board anlegen und dessen Spalten pflegen. Alle Projektmitglieder sehen weiterhin alle Boards." : "This lets working groups create a board themselves and manage its columns. All project members still see every board.",
     "In diesem Projekt dürfen nur interne Verwalter Boards anlegen." : "Only internal administrators may create boards in this project.",
-    "Dieses Board darf nur der Projekt-Verwalter oder sein Ersteller ändern." : "Only the project administrator or the board's creator may change this board."
+    "Dieses Board darf nur der Projekt-Verwalter oder sein Ersteller ändern." : "Only the project administrator or the board's creator may change this board.",
+    "Hintergrundaufträge, Basis-URL, SMTP-Zeitgrenze und E-Mail-Versand sind für ProjektWerk geeignet." : "Background jobs, base URL, SMTP timeout, and email delivery are suitable for ProjektWerk.",
+    "Diese Instanz kann keine E-Mails versenden — es ist kein E-Mail-Server hinterlegt („mail_smtpmode\"/„mail_from_address\" fehlen). Kunden-Benachrichtigungen von ProjektWerk bleiben dann liegen. E-Mail-Server in den Grundeinstellungen der Instanz einrichten." : "This instance cannot send emails — no mail server is configured (\"mail_smtpmode\"/\"mail_from_address\" are missing). Customer notifications from ProjektWerk will then remain undelivered. Configure a mail server in the instance's basic settings."
 },
 "nplurals=2; plural=(n != 1);");

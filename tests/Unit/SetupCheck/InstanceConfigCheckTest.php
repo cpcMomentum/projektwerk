@@ -16,20 +16,22 @@ use OCP\SetupCheck\SetupResult;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Die drei Instanzeinstellungen, einzeln und zusammen.
+ * Die vier Instanzeinstellungen, einzeln und zusammen.
  *
  * Jeder Fall setzt genau **einen** Wert auf den Problemwert und die anderen
- * beiden auf gute Werte. Ein Test, der alles gleichzeitig kaputt macht, ist
- * gruen, sobald irgendeine der drei Pruefungen anschlaegt — und bemerkt nicht,
- * wenn zwei davon nie laufen.
+ * drei auf gute Werte. Ein Test, der alles gleichzeitig kaputt macht, ist
+ * gruen, sobald irgendeine der vier Pruefungen anschlaegt — und bemerkt nicht,
+ * wenn drei davon nie laufen.
  */
 class InstanceConfigCheckTest extends TestCase {
 
-	/** Werte, bei denen keine der drei Pruefungen etwas zu melden hat. */
+	/** Werte, bei denen keine der vier Pruefungen etwas zu melden hat. */
 	private const HEALTHY = [
 		'backgroundjobs_mode' => 'cron',
 		'overwrite.cli.url' => 'https://cloud.example.org',
 		'mail_smtptimeout' => 3,
+		'mail_smtpmode' => 'smtp',
+		'mail_from_address' => 'no-reply@cloud.example.org',
 	];
 
 	public function testHealthyInstanceReportsSuccess(): void {
@@ -145,6 +147,8 @@ class InstanceConfigCheckTest extends TestCase {
 			'backgroundjobs_mode' => 'ajax',
 			'overwrite.cli.url' => 'http://localhost',
 			'mail_smtptimeout' => 10,
+			'mail_smtpmode' => self::HEALTHY['mail_smtpmode'],
+			'mail_from_address' => self::HEALTHY['mail_from_address'],
 		]);
 
 		$description = (string)$result->getDescription();
@@ -155,14 +159,40 @@ class InstanceConfigCheckTest extends TestCase {
 		$this->assertStringContainsString('mail_smtptimeout', $description);
 	}
 
+	public function testMissingMailConfigIsReported(): void {
+		// Kein Mailserver hinterlegt — der haeufigste Grund, warum
+		// Kunden-Benachrichtigungen nie ankommen.
+		$result = $this->runWith(['mail_smtpmode' => '', 'mail_from_address' => ''] + self::HEALTHY);
+
+		$this->assertSame(SetupResult::WARNING, $result->getSeverity());
+		$this->assertStringContainsString('mail_smtpmode', (string)$result->getDescription());
+		$this->assertStringContainsString('keine E-Mails versenden', (string)$result->getDescription());
+	}
+
+	public function testMissingFromAddressAloneIsReported(): void {
+		// Eine der beiden fehlt genuegt — ohne Absenderadresse geht nichts raus.
+		$result = $this->runWith(['mail_from_address' => ''] + self::HEALTHY);
+
+		$this->assertSame(SetupResult::WARNING, $result->getSeverity());
+		$this->assertStringContainsString('mail_from_address', (string)$result->getDescription());
+	}
+
+	public function testConfiguredMailPasses(): void {
+		$result = $this->runWith(self::HEALTHY);
+
+		$this->assertSame(SetupResult::SUCCESS, $result->getSeverity());
+	}
+
 	/**
-	 * @param array{backgroundjobs_mode: string, 'overwrite.cli.url': string, mail_smtptimeout: int} $values
+	 * @param array<string, string|int> $values
 	 */
 	private function runWith(array $values): SetupResult {
 		$config = $this->createStub(IConfig::class);
-		$config->method('getAppValue')->willReturn($values['backgroundjobs_mode']);
-		$config->method('getSystemValueString')->willReturn($values['overwrite.cli.url']);
-		$config->method('getSystemValueInt')->willReturn($values['mail_smtptimeout']);
+		$config->method('getAppValue')->willReturn((string)$values['backgroundjobs_mode']);
+		$config->method('getSystemValueString')->willReturnCallback(
+			static fn (string $key, string $default = ''): string => (string)($values[$key] ?? $default),
+		);
+		$config->method('getSystemValueInt')->willReturn((int)$values['mail_smtptimeout']);
 
 		return (new InstanceConfigCheck($config, $this->l10n()))->run();
 	}
