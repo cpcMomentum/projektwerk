@@ -138,6 +138,9 @@ class MailDispatcher {
 			$unterdrueckt->setCreatedAt(new \DateTime());
 			$unterdrueckt->setActorUid($actorUid);
 			$unterdrueckt->setStepTitle($stepTitle);
+			// Jede neue Zeile trägt einen Token (#285) — auch die unterdrückte,
+			// damit „jede Outbox-Zeile hat einen Token" ohne Ausnahme gilt.
+			$unterdrueckt->setReplyToken(self::neuerReplyToken());
 			$this->outbox->insert($unterdrueckt);
 
 			return null;
@@ -157,6 +160,11 @@ class MailDispatcher {
 		$zeile->setCreatedAt(new \DateTime());
 		$zeile->setActorUid($actorUid);
 		$zeile->setStepTitle($stepTitle);
+		// **Der Antwort-Token entsteht hier, beim Vormerken** (#285) — nicht beim
+		// Senden. Der Nachversand ({@see \OCA\Projektwerk\BackgroundJob\MailRetryJob})
+		// fasst dieselbe Zeile wieder an und darf keinen zweiten Token vergeben,
+		// sonst zeigte eine nachgereichte Mail einen anderen Anker als die erste.
+		$zeile->setReplyToken(self::neuerReplyToken());
 
 		return $this->outbox->insert($zeile);
 	}
@@ -235,6 +243,18 @@ class MailDispatcher {
 		$nachricht->setTo($this->empfaenger($adresse, (string)$zeile->getRecipientUid()));
 		$nachricht->setSubject($betreffMitProjekt);
 		$nachricht->useTemplate($template);
+
+		// **Keine eigene Message-ID, `sent_message_id` bleibt leer** (#285,
+		// verifiziert gegen NC 34). Die Idee war, `<pw-{reply_token}@domain>` als
+		// Message-ID zu setzen, damit eine Antwort über `In-Reply-To` zugeordnet
+		// werden kann. Das ginge nur über die darunterliegende Symfony-Mail —
+		// und die öffentliche `OCP\Mail\IMessage` gibt darauf keinen Zugriff
+		// (kein `getSymfonyEmail()` im Interface). In die konkrete Implementierung
+		// zu greifen wäre ein Bruch der OCP-only-Regel dieser Flotte. Also der in
+		// der Anweisung vorgesehene Fallback: Das Matching läuft allein über den
+		// Betreff-Token `[PW-{reply_token}]` (Serie #287); der Token steckt schon
+		// in der Zeile. `sent_message_id` bleibt Vorrat für eine NC-Version, die
+		// den Zugriff über OCP freigibt.
 
 		try {
 			// **Hier steht die Auswertung, um die es geht.** `send()` wirft bei
@@ -398,5 +418,15 @@ class MailDispatcher {
 	 */
 	private static function einzeilig(string $projekt): string {
 		return trim((string)preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $projekt));
+	}
+
+	/**
+	 * Ein neuer Antwort-Token (#285): 16 Zufallsbytes, hex — 32 Zeichen.
+	 *
+	 * `random_bytes()` ist kryptografisch, der Token ist eine Fähigkeit (wer ihn
+	 * kennt, kann eine Antwort einem Vorgang zuordnen) — CSPRNG, nicht `uniqid`.
+	 */
+	private static function neuerReplyToken(): string {
+		return bin2hex(random_bytes(16));
 	}
 }
