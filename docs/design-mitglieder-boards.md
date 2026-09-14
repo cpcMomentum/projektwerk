@@ -69,7 +69,7 @@ Angepasste Guards:
 |---|---|---|
 | `BoardService::createInProject` | `assertManager` | `isManager \|\| project.member_boards_allowed` |
 | `ColumnService::create/rename/reorder/setFinalOutcome` | `assertManager` | **Board-Einrichter** |
-| `ColumnService::delete` | `assertManager` + `assertOwner` | **Board-Einrichter** (der Ersteller besitzt die Struktur seines Boards; Ziel-Spalte bleibt Pflicht) |
+| `ColumnService::delete` | `assertManager` + `assertOwner` | **unverändert** — bewusst NICHT für den Ersteller: Löschen mit Umhängen fasst evtl. unsichtbare Tickets an (destruktiv). Der Ersteller legt an/benennt um/ordnet, entfernt aber nicht. |
 | Board **umbenennen** (Titel/Beschreibung) | `assertManager` | **Board-Einrichter** |
 | Board **archivieren** (`setArchived`) | `assertManager` | **Board-Einrichter** |
 | Board-**Projektfelder** (Org, Ordner, Chat, GitHub) | `assertManager` | **unverändert Manager** |
@@ -135,8 +135,8 @@ Keine neuen Routen zwingend — bestehende Endpunkte, angepasste Guards:
 - [ ] Bei aktivem Flag legt ein **externes** Mitglied ein Board an; es wird als
       Ersteller vermerkt.
 - [ ] Der Ersteller pflegt die Spalten **seines** Boards (anlegen/umbenennen/
-      ordnen/löschen-mit-Ziel), benennt es um und archiviert es — **ohne**
-      Projekt-Manager zu sein.
+      ordnen), benennt es um und archiviert es — **ohne** Projekt-Manager zu
+      sein. Spalten **entfernen** bleibt Manager/Owner.
 - [ ] Der Ersteller kann **keine** projektweiten Board-Felder (Org/Ordner/Chat/
       GitHub) und **keine** anderen Boards ändern.
 - [ ] Bei ausgeschaltetem Flag ist „Board hinzufügen" für Nicht-Manager weg;

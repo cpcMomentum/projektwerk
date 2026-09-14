@@ -163,13 +163,13 @@ class ColumnService {
 	 * @throws \InvalidArgumentException Ziel ist die Spalte selbst, oder es wäre die letzte
 	 */
 	public function delete(ViewerContext $viewer, int $columnId, int $targetColumnId): void {
-		// #281: Der Board-Ersteller darf Spalten SEINES Boards entfernen. Für alle
-		// anderen bleibt es beim strengen Weg (Manager UND Projekt-Owner) —
-		// Löschen mit Umhängen ist destruktiv.
-		if (!$viewer->isBoardCreator) {
-			$this->assertManager($viewer);
-			$this->assertOwner($viewer);
-		}
+		// **Löschen bleibt Manager UND Projekt-Owner** — bewusst NICHT für den
+		// Board-Ersteller geöffnet (#281): Anders als Anlegen/Umbenennen/Ordnen
+		// fasst das Entfernen mit Umhängen Tickets an, die der Handelnde womöglich
+		// gar nicht sieht (interne Vorgänge anderer im selben Board). Der Ersteller
+		// richtet seine Spalten ein, das destruktive Entfernen bleibt eng gefasst.
+		$this->assertManager($viewer);
+		$this->assertOwner($viewer);
 
 		if ($columnId === $targetColumnId) {
 			// Ohne Datenbankzugriff pruefbar, deshalb vor der Transaktion.

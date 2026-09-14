@@ -11,6 +11,7 @@ namespace OCA\Projektwerk\Tests\Unit\Service;
 
 use OCA\Projektwerk\Access\BoardAccess;
 use OCA\Projektwerk\Access\ViewerContext;
+use OCA\Projektwerk\Db\Board;
 use OCA\Projektwerk\Db\BoardMapper;
 use OCA\Projektwerk\Db\ColumnMapper;
 use OCA\Projektwerk\Db\MemberMapper;
@@ -104,5 +105,101 @@ class BoardServiceTest extends TestCase {
 
 		$this->expectException(NotManagerException::class);
 		$service->createInProject($viewer, 'Arbeitsgruppe A');
+	}
+
+	/**
+	 * #281: Ist das Flag gesetzt, legt auch ein externes Mitglied ein Board an —
+	 * und wird als dessen Ersteller (`created_by`) vermerkt.
+	 */
+	public function testAMemberCreatesABoardWhenTheFlagIsSet(): void {
+		$project = new Project();
+		$project->setMemberBoardsAllowed(1);
+		$project->setOwnerUserId('owner');
+
+		$projects = $this->createStub(ProjectMapper::class);
+		$projects->method('findForViewer')->willReturn($project);
+
+		$l10n = $this->createStub(IL10N::class);
+		$l10n->method('t')->willReturnArgument(0);
+
+		$boards = $this->createStub(BoardMapper::class);
+		$boards->method('insert')->willReturnArgument(0);
+		$columns = $this->createStub(ColumnMapper::class);
+		$columns->method('insert')->willReturnArgument(0);
+
+		$service = new BoardService(
+			$this->createStub(IDBConnection::class),
+			$boards,
+			$projects,
+			$this->createStub(MemberMapper::class),
+			$columns,
+			$this->createStub(BoardAccess::class),
+			$l10n,
+			$this->createStub(ProjectFolderService::class),
+			$this->createStub(AccountType::class),
+		);
+
+		$viewer = ViewerContext::forMember('carla', 1, 9, ViewerContext::ROLE_EXTERNAL, false);
+		$board = $service->createInProject($viewer, 'AG Carla');
+
+		$this->assertSame('carla', $board->getCreatedBy(), 'Das anlegende Mitglied ist der Ersteller');
+	}
+
+	/**
+	 * #281: Der Board-Ersteller darf über `update()` **nur** Titel/Beschreibung
+	 * ändern — ohne Projekt-Manager zu sein.
+	 */
+	public function testTheCreatorMayRenameOwnBoard(): void {
+		$boards = $this->createStub(BoardMapper::class);
+		$boards->method('findForViewer')->willReturn(new Board());
+		$boards->method('update')->willReturnArgument(0);
+
+		$projects = $this->createStub(ProjectMapper::class);
+		$projects->method('findForViewer')->willReturn(new Project());
+
+		$service = new BoardService(
+			$this->createStub(IDBConnection::class),
+			$boards,
+			$projects,
+			$this->createStub(MemberMapper::class),
+			$this->createStub(ColumnMapper::class),
+			$this->createStub(BoardAccess::class),
+			$this->createStub(IL10N::class),
+			$this->createStub(ProjectFolderService::class),
+			$this->createStub(AccountType::class),
+		);
+
+		// Externer Ersteller: kein Manager, aber isBoardCreator.
+		$viewer = ViewerContext::forMember('carla', 1, 9, ViewerContext::ROLE_EXTERNAL, false, true);
+		$board = $service->update($viewer, ['title' => 'AG Carla (neu)']);
+
+		$this->assertSame('AG Carla (neu)', $board->getTitle());
+	}
+
+	/**
+	 * #281: Sobald der Änderungssatz ein projektweites Feld enthält (hier
+	 * `orgInternal`), verlangt `update()` Verwaltungsrecht — der Ersteller wird
+	 * mit NotManagerException abgewiesen, **bevor** etwas geschrieben wird.
+	 */
+	public function testTheCreatorCannotChangeProjectFields(): void {
+		$boards = $this->createMock(BoardMapper::class);
+		$boards->expects($this->never())->method('update');
+
+		$service = new BoardService(
+			$this->createStub(IDBConnection::class),
+			$boards,
+			$this->createStub(ProjectMapper::class),
+			$this->createStub(MemberMapper::class),
+			$this->createStub(ColumnMapper::class),
+			$this->createStub(BoardAccess::class),
+			$this->createStub(IL10N::class),
+			$this->createStub(ProjectFolderService::class),
+			$this->createStub(AccountType::class),
+		);
+
+		$viewer = ViewerContext::forMember('carla', 1, 9, ViewerContext::ROLE_EXTERNAL, false, true);
+
+		$this->expectException(NotManagerException::class);
+		$service->update($viewer, ['orgInternal' => 'Fremd']);
 	}
 }

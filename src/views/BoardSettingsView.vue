@@ -767,11 +767,9 @@ export default defineComponent({
 		 * darf.
 		 */
 		mayRemoveColumns(): boolean {
-			// #281: Der Board-Ersteller darf Spalten seines Boards entfernen; sonst
-			// bleibt es beim Projekt-Owner (der Server erzwingt dasselbe).
-			if (this.store.viewer?.isBoardCreator === true) {
-				return true
-			}
+			// Löschen bleibt dem Projekt-Owner vorbehalten — auch der Board-Ersteller
+			// (#281) darf Spalten anlegen/umbenennen/ordnen, aber nicht entfernen
+			// (destruktiv, fasst evtl. unsichtbare Tickets an).
 			const owner = this.store.board?.ownerUserId
 			return owner !== undefined && owner === this.store.viewer?.userId
 		},
