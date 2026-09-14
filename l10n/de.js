@@ -413,6 +413,8 @@ OC.L10N.register(
     "In diesem Projekt dürfen nur interne Verwalter Boards anlegen." : "In diesem Projekt dürfen nur interne Verwalter Boards anlegen.",
     "Dieses Board darf nur der Projekt-Verwalter oder sein Ersteller ändern." : "Dieses Board darf nur der Projekt-Verwalter oder sein Ersteller ändern.",
     "Hintergrundaufträge, Basis-URL, SMTP-Zeitgrenze und E-Mail-Versand sind für ProjektWerk geeignet." : "Hintergrundaufträge, Basis-URL, SMTP-Zeitgrenze und E-Mail-Versand sind für ProjektWerk geeignet.",
-    "Diese Instanz kann keine E-Mails versenden — es ist kein E-Mail-Server hinterlegt („mail_smtpmode\"/„mail_from_address\" fehlen). Kunden-Benachrichtigungen von ProjektWerk bleiben dann liegen. E-Mail-Server in den Grundeinstellungen der Instanz einrichten." : "Diese Instanz kann keine E-Mails versenden — es ist kein E-Mail-Server hinterlegt („mail_smtpmode\"/„mail_from_address\" fehlen). Kunden-Benachrichtigungen von ProjektWerk bleiben dann liegen. E-Mail-Server in den Grundeinstellungen der Instanz einrichten."
+    "Diese Instanz kann keine E-Mails versenden — es ist kein E-Mail-Server hinterlegt („mail_smtpmode\"/„mail_from_address\" fehlen). Kunden-Benachrichtigungen von ProjektWerk bleiben dann liegen. E-Mail-Server in den Grundeinstellungen der Instanz einrichten." : "Diese Instanz kann keine E-Mails versenden — es ist kein E-Mail-Server hinterlegt („mail_smtpmode\"/„mail_from_address\" fehlen). Kunden-Benachrichtigungen von ProjektWerk bleiben dann liegen. E-Mail-Server in den Grundeinstellungen der Instanz einrichten.",
+    "Im freien Umfang ist ein Kundenprojekt enthalten — WerkPlus schaltet weitere frei." : "Im freien Umfang ist ein Kundenprojekt enthalten — WerkPlus schaltet weitere frei.",
+    "Mehrere Boards je Projekt sind Teil von WerkPlus." : "Mehrere Boards je Projekt sind Teil von WerkPlus."
 },
 "nplurals=2; plural=(n != 1);");

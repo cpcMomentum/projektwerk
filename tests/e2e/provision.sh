@@ -40,3 +40,11 @@ anlegen() {
 
 anlegen pw-e2e-intern 'E2E Dienstleisterseite'
 anlegen pw-e2e-kunde 'E2E Kundenseite'
+
+# WerkPlus-Grenzen (#288) fuer die E2E-Instanz aufheben: Jeder Spec baut sein
+# eigenes Kundenprojekt (ein externes Mitglied) und teils mehrere Boards. Der
+# freie Umfang (je 1) ist hier nicht das Pruefziel — die Enforcement-Logik haengt
+# an EntitlementServiceTest. Hoch statt 0, weil 0 laut Vertrag auf 1 zurueckfaellt.
+# Idempotent wie der Rest des Skripts.
+$OCC config:app:set projektwerk plus_max_customer_projects --value=9999
+$OCC config:app:set projektwerk plus_max_boards_per_project --value=9999

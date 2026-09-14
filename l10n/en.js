@@ -413,6 +413,8 @@ OC.L10N.register(
     "In diesem Projekt dürfen nur interne Verwalter Boards anlegen." : "Only internal administrators may create boards in this project.",
     "Dieses Board darf nur der Projekt-Verwalter oder sein Ersteller ändern." : "Only the project administrator or the board's creator may change this board.",
     "Hintergrundaufträge, Basis-URL, SMTP-Zeitgrenze und E-Mail-Versand sind für ProjektWerk geeignet." : "Background jobs, base URL, SMTP timeout, and email delivery are suitable for ProjektWerk.",
-    "Diese Instanz kann keine E-Mails versenden — es ist kein E-Mail-Server hinterlegt („mail_smtpmode\"/„mail_from_address\" fehlen). Kunden-Benachrichtigungen von ProjektWerk bleiben dann liegen. E-Mail-Server in den Grundeinstellungen der Instanz einrichten." : "This instance cannot send emails — no mail server is configured (\"mail_smtpmode\"/\"mail_from_address\" are missing). Customer notifications from ProjektWerk will then remain undelivered. Configure a mail server in the instance's basic settings."
+    "Diese Instanz kann keine E-Mails versenden — es ist kein E-Mail-Server hinterlegt („mail_smtpmode\"/„mail_from_address\" fehlen). Kunden-Benachrichtigungen von ProjektWerk bleiben dann liegen. E-Mail-Server in den Grundeinstellungen der Instanz einrichten." : "This instance cannot send emails — no mail server is configured (\"mail_smtpmode\"/\"mail_from_address\" are missing). Customer notifications from ProjektWerk will then remain undelivered. Configure a mail server in the instance's basic settings.",
+    "Im freien Umfang ist ein Kundenprojekt enthalten — WerkPlus schaltet weitere frei." : "The free tier includes one customer project — WerkPlus unlocks more.",
+    "Mehrere Boards je Projekt sind Teil von WerkPlus." : "Multiple boards per project are part of WerkPlus."
 },
 "nplurals=2; plural=(n != 1);");

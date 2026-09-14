@@ -68,6 +68,7 @@ class BoardService {
 		private IL10N $l10n,
 		private ProjectFolderService $folders,
 		private AccountType $accountType,
+		private EntitlementService $entitlement,
 	) {
 	}
 
@@ -204,6 +205,13 @@ class BoardService {
 					$this->l10n->t('In diesem Projekt dürfen nur interne Verwalter Boards anlegen.'),
 				);
 			}
+
+			// WerkPlus-Grenze B (#288): Dies ist der **einzige** Zweitboard-Pfad
+			// (Manager wie #281-Mitglied laufen hier durch). Steht das Projekt
+			// schon am Board-Limit, wird das weitere Board abgelehnt — das
+			// Feature bleibt, das Entitlement steuert nur das Ab-wann. Bestehende
+			// Boards über dem Limit werden nicht angefasst.
+			$this->entitlement->assertMayCreateBoardInProject($viewer->projectId);
 
 			$board = new Board();
 			$board->setTitle(trim($title));
