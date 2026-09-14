@@ -79,8 +79,8 @@ class Version000020Date20260914130000 extends SimpleMigrationStep {
 
 		// Index-Name unter dem Oracle-30-Zeichen-Limit (kein `<database>` in
 		// info.xml → Oracle-Namensregeln gelten fleetweit).
-		if (!$table->hasIndex('pwerk_mo_reply_token_idx')) {
-			$table->addUniqueIndex(['reply_token'], 'pwerk_mo_reply_token_idx');
+		if (!$table->hasIndex('pwerk_mo_reply_token_uidx')) {
+			$table->addUniqueIndex(['reply_token'], 'pwerk_mo_reply_token_uidx');
 			$changed = true;
 		}
 
