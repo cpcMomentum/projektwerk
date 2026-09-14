@@ -53,4 +53,20 @@ class MailDispatcherTest extends TestCase {
 			$this->call('betreffMitProjekt', 'Neuer Kommentar zu Vorgang #0007', null),
 		);
 	}
+
+	public function testSenderNameStripsControlChars(): void {
+		// Header-Injection-Schutz (PR #291): ein Zeilenumbruch im Projektnamen
+		// darf nicht in die From-Kopfzeile durchschlagen.
+		$this->assertSame(
+			'ProjektWerk – Relaunch Website',
+			$this->call('absenderName', "Relaunch\r\nWebsite"),
+		);
+	}
+
+	public function testSubjectPrefixStripsControlChars(): void {
+		$this->assertSame(
+			'[Relaunch Website] Neuer Kommentar zu Vorgang #0007',
+			$this->call('betreffMitProjekt', 'Neuer Kommentar zu Vorgang #0007', "Relaunch\nWebsite"),
+		);
+	}
 }

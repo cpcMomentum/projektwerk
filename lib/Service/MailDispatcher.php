@@ -354,7 +354,7 @@ class MailDispatcher {
 	 * @param string|null $projekt Projektname, oder null.
 	 */
 	private static function absenderName(?string $projekt): string {
-		return $projekt !== null ? 'ProjektWerk – ' . $projekt : 'ProjektWerk';
+		return $projekt !== null ? 'ProjektWerk – ' . self::einzeilig($projekt) : 'ProjektWerk';
 	}
 
 	/**
@@ -369,6 +369,24 @@ class MailDispatcher {
 	 * @param string|null $projekt Projektname, oder null.
 	 */
 	private static function betreffMitProjekt(string $betreff, ?string $projekt): string {
-		return $projekt !== null ? '[' . $projekt . '] ' . $betreff : $betreff;
+		return $projekt !== null ? '[' . self::einzeilig($projekt) . '] ' . $betreff : $betreff;
+	}
+
+	/**
+	 * Der Projektname, tauglich für eine Kopfzeile (#284, Review-Hinweis PR #291).
+	 *
+	 * Projektname und Betreff-Präfix landen im Absender-Anzeigenamen und im
+	 * Betreff — beides sind Mail-Kopfzeilen. Ein Zeilenumbruch darin wäre eine
+	 * Header-Injection; Nextclouds Mailer würde eine solche Kopfzeile zwar
+	 * abweisen (und der Versand fiele über {@see flush()} sauber auf `failed`),
+	 * aber das ist Verlass auf eine fremde Schutzschicht. Billiger und
+	 * eindeutiger: Steuerzeichen (CR, LF, Tab, NUL …) hier zu einem Leerzeichen
+	 * glätten und Randleerraum kappen. Board-Titel werden sonst nur auf
+	 * Nicht-Leerheit geprüft, nicht auf Kontrollzeichen.
+	 *
+	 * @param string $projekt Der rohe Projektname.
+	 */
+	private static function einzeilig(string $projekt): string {
+		return trim((string)preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $projekt));
 	}
 }
