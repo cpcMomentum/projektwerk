@@ -242,6 +242,15 @@ class ReplyIntakeJob extends TimedJob {
 		$viewer = $this->access->contextFor($recipientUid, $boardId);
 		$this->comments->create($viewer, $ticketId, $body);
 
+		// **Erst der Kommentar, dann `markSeen` — bewusst diese Richtung** (PR-Review
+		// #295). Scheitert das `markSeen` nach erfolgreichem Kommentar, greift der
+		// Lauf-Catch, und der nächste Lauf sieht die Mail erneut: dann entsteht ein
+		// **zweiter** Kommentar. Das ist der gewollte Ausfall — ein doppelter
+		// Kommentar ist sichtbar und löschbar, während die umgekehrte Reihenfolge
+		// (erst `markSeen`, dann Kommentar) bei einem Fehlschlag die Kundenantwort
+		// **still verlöre**. Für ein Produkt über sichtbare Zuständigkeit ist die
+		// stille Lücke der teurere Fehler. Das Zeitfenster ist schmal (ein
+		// IMAP-Fehler genau zwischen Kommentar und Flag).
 		$client->markSeen($uid);
 		$this->logger->info('ProjektWerk: Antwort per E-Mail als Kommentar am Vorgang ' . $ticketId . ' übernommen');
 	}
