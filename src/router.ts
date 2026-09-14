@@ -13,6 +13,7 @@ import BoardView from '@/views/BoardView.vue'
 import MySettingsView from '@/views/MySettingsView.vue'
 import OverviewView from '@/views/OverviewView.vue'
 import ProjectDashboardView from '@/views/ProjectDashboardView.vue'
+import ReplyMailboxSettingsView from '@/views/ReplyMailboxSettingsView.vue'
 import TasksView from '@/views/TasksView.vue'
 import { useBoardStore } from '@/stores/boardStore'
 
@@ -34,6 +35,10 @@ const routes: RouteRecordRaw[] = [
 	{ path: '/tasks', name: 'tasks', component: TasksView },
 	// Wie in WorkTime: eine eigene Seite, erreichbar unten im Seitenmenue.
 	{ path: '/my-settings', name: 'my-settings', component: MySettingsView },
+	// Antwort-Postfach (#286): Instanz-Einstellung, nur für Administratoren im
+	// Menue sichtbar. Die eigentliche Sperre sitzt serverseitig (die Endpunkte
+	// verlangen ein Admin-Konto); die Route selbst ist kein Geheimnis.
+	{ path: '/reply-mailbox', name: 'reply-mailbox', component: ReplyMailboxSettingsView },
 ]
 
 export const router = createRouter({
