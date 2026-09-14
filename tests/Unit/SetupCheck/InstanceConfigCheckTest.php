@@ -147,6 +147,8 @@ class InstanceConfigCheckTest extends TestCase {
 			'backgroundjobs_mode' => 'ajax',
 			'overwrite.cli.url' => 'http://localhost',
 			'mail_smtptimeout' => 10,
+			'mail_smtpmode' => self::HEALTHY['mail_smtpmode'],
+			'mail_from_address' => self::HEALTHY['mail_from_address'],
 		]);
 
 		$description = (string)$result->getDescription();
