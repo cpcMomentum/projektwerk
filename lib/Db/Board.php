@@ -36,6 +36,8 @@ use OCP\DB\Types;
  * @method void setDescription(?string $description)
  * @method string getOwnerUserId()
  * @method void setOwnerUserId(string $ownerUserId)
+ * @method ?string getCreatedBy()
+ * @method void setCreatedBy(?string $createdBy)
  * @method ?string getOrgInternal()
  * @method void setOrgInternal(?string $orgInternal)
  * @method ?string getOrgExternal()
@@ -72,6 +74,8 @@ class Board extends Entity implements JsonSerializable {
 	protected ?int $projectId = null;
 	protected ?string $description = null;
 	protected ?string $ownerUserId = null;
+	/** #281: Wer dieses Board angelegt hat — trägt das board-scopes Ersteller-Recht. */
+	protected ?string $createdBy = null;
 	protected ?string $orgInternal = null;
 	protected ?string $orgExternal = null;
 	protected ?int $folderPublicId = null;
@@ -92,6 +96,7 @@ class Board extends Entity implements JsonSerializable {
 		$this->addType('projectId', Types::INTEGER);
 		$this->addType('description', Types::TEXT);
 		$this->addType('ownerUserId', Types::STRING);
+		$this->addType('createdBy', Types::STRING);
 		$this->addType('orgInternal', Types::STRING);
 		$this->addType('orgExternal', Types::STRING);
 		$this->addType('folderPublicId', Types::INTEGER);

@@ -48,7 +48,7 @@ class ColumnService {
 	 * @throws NotManagerException
 	 */
 	public function create(ViewerContext $viewer, string $title, ?string $color = null): Column {
-		$this->assertManager($viewer);
+		$this->assertBoardConfigurer($viewer);
 		$this->assertTitle($title);
 
 		$existing = $this->columns->findForBoard($viewer);
@@ -67,7 +67,7 @@ class ColumnService {
 	 * @throws DoesNotExistException die Spalte gehört nicht zu diesem Board
 	 */
 	public function rename(ViewerContext $viewer, int $columnId, string $title): Column {
-		$this->assertManager($viewer);
+		$this->assertBoardConfigurer($viewer);
 		$this->assertTitle($title);
 
 		$column = $this->findInBoard($viewer, $columnId);
@@ -90,7 +90,7 @@ class ColumnService {
 	 * @throws \InvalidArgumentException unbekanntes Ergebnis
 	 */
 	public function setFinalOutcome(ViewerContext $viewer, int $columnId, ?string $outcome): Column {
-		$this->assertManager($viewer);
+		$this->assertBoardConfigurer($viewer);
 
 		if ($outcome !== null && $outcome !== Ticket::OUTCOME_DONE && $outcome !== Ticket::OUTCOME_DISCARDED) {
 			throw new \InvalidArgumentException('Unbekanntes Endspalten-Ergebnis: ' . $outcome);
@@ -116,7 +116,7 @@ class ColumnService {
 	 * @throws \InvalidArgumentException die Liste passt nicht zum Board
 	 */
 	public function reorder(ViewerContext $viewer, array $columnIds): array {
-		$this->assertManager($viewer);
+		$this->assertBoardConfigurer($viewer);
 
 		$existing = [];
 		foreach ($this->columns->findForBoard($viewer) as $column) {
@@ -163,6 +163,11 @@ class ColumnService {
 	 * @throws \InvalidArgumentException Ziel ist die Spalte selbst, oder es wäre die letzte
 	 */
 	public function delete(ViewerContext $viewer, int $columnId, int $targetColumnId): void {
+		// **Löschen bleibt Manager UND Projekt-Owner** — bewusst NICHT für den
+		// Board-Ersteller geöffnet (#281): Anders als Anlegen/Umbenennen/Ordnen
+		// fasst das Entfernen mit Umhängen Tickets an, die der Handelnde womöglich
+		// gar nicht sieht (interne Vorgänge anderer im selben Board). Der Ersteller
+		// richtet seine Spalten ein, das destruktive Entfernen bleibt eng gefasst.
 		$this->assertManager($viewer);
 		$this->assertOwner($viewer);
 
@@ -296,6 +301,19 @@ class ColumnService {
 		if (!$viewer->isManager) {
 			throw new NotManagerException(
 				'Spalten dürfen nur interne Mitglieder mit Verwaltungsrecht pflegen.',
+			);
+		}
+	}
+
+	/**
+	 * Der **Board-Einrichter** (#281): Projekt-Manager ODER Ersteller genau
+	 * dieses Boards. Er pflegt die Spalten seines Boards, auch ohne
+	 * Verwaltungsrecht am Projekt.
+	 */
+	private function assertBoardConfigurer(ViewerContext $viewer): void {
+		if (!$viewer->isManager && !$viewer->isBoardCreator) {
+			throw new NotManagerException(
+				'Spalten dieses Boards darf nur der Projekt-Verwalter oder sein Ersteller pflegen.',
 			);
 		}
 	}

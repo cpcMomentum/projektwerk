@@ -39,6 +39,13 @@ final readonly class ViewerContext {
 		public int $projectId,
 		public string $role,
 		public bool $isManager,
+		/**
+		 * Ob dieser Betrachter **dieses** Board angelegt hat (#281). Trägt das
+		 * board-scopes Ersteller-Recht: Spalten pflegen, umbenennen, archivieren
+		 * — für genau dieses Board, ohne Projekt-Manager zu sein. Die eine
+		 * board-bezogene (statt projektweite) Berechtigung der App.
+		 */
+		public bool $isBoardCreator,
 	) {
 	}
 
@@ -48,7 +55,7 @@ final readonly class ViewerContext {
 	 *
 	 * @internal
 	 */
-	public static function forMember(string $userId, int $boardId, int $projectId, string $role, bool $isManager): self {
+	public static function forMember(string $userId, int $boardId, int $projectId, string $role, bool $isManager, bool $isBoardCreator = false): self {
 		if ($role !== self::ROLE_INTERNAL && $role !== self::ROLE_EXTERNAL) {
 			// Ein unbekannter Rollenwert darf nicht als "irgendwas" durchgehen:
 			// Die Sichtbarkeitsregel vergleicht creator_role mit genau diesem
@@ -59,7 +66,10 @@ final readonly class ViewerContext {
 		// is_manager gilt laut §8 nur fuer interne Mitglieder. Ein externes
 		// Mitglied mit gesetztem Flag waere ein Datenfehler; hier wird er
 		// entschaerft statt weitergereicht.
-		return new self($userId, $boardId, $projectId, $role, $isManager && $role === self::ROLE_INTERNAL);
+		//
+		// isBoardCreator bleibt davon unberuehrt: Ein externes Mitglied DARF sein
+		// selbst angelegtes Board einrichten (#281) — das ist der Sinn des Rechts.
+		return new self($userId, $boardId, $projectId, $role, $isManager && $role === self::ROLE_INTERNAL, $isBoardCreator);
 	}
 
 	public function isInternal(): bool {

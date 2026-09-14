@@ -156,7 +156,13 @@ class BoardController extends Controller {
 					'userId' => $viewer->userId,
 					'role' => $viewer->role,
 					'isManager' => $viewer->isManager,
+					// #281: Ob dieser Betrachter dieses Board angelegt hat — trägt
+					// im Frontend die Einricht-Aktionen (Spalten/Umbenennen/Archiv).
+					'isBoardCreator' => $viewer->isBoardCreator,
 				],
+				// #281: Ob das Projekt „Mitglieder dürfen Boards anlegen" gesetzt
+				// hat — blendet „Board hinzufügen" für Nicht-Manager ein.
+				'memberBoardsAllowed' => $this->boardService->projectAllowsMemberBoards($viewer),
 			]);
 		} catch (NotAMemberException|DoesNotExistException) {
 			return new JSONResponse([], Http::STATUS_NOT_FOUND);
