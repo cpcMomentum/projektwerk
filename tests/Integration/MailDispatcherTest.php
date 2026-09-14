@@ -14,6 +14,7 @@ use OCA\Projektwerk\Db\MailOutboxMapper;
 use OCA\Projektwerk\Db\NotifyPref;
 use OCA\Projektwerk\Db\NotifyPrefMapper;
 use OCA\Projektwerk\Service\MailDispatcher;
+use OCA\Projektwerk\Service\ReplyMailboxSettings;
 use OCP\IUser;
 use OCP\IUserManager;
 use OCP\L10N\IFactory;
@@ -100,6 +101,10 @@ class MailDispatcherTest extends IntegrationTestCase {
 			$users,
 			$l10n,
 			new NullLogger(),
+			// Antwort-Postfach aus (#287): Diese Integrationstests prüfen den
+			// Versandweg ohne Reply-To/Token — ein Stub, dessen isEnabled() false
+			// ist, lässt den bestehenden Pfad unverändert.
+			$this->createStub(ReplyMailboxSettings::class),
 		);
 	}
 
