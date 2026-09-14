@@ -148,6 +148,10 @@ final class ReadPathRegistry {
 		// Der Unterschied zu einer Ausnahmeliste: Eine Ausnahme sagt „hier gilt
 		// die Regel nicht". Das hier sagt „hier gilt sie, und zwar so".
 		'MailOutboxMapper::findRetryable',
+		// Der Antwort-Anker (#287): findet die Ausgangszeile zu einem Token, für
+		// den Einlese-Job. Kein Betrachter (Token statt ViewerContext) — die
+		// Deckung ist wie bei findRetryable strukturell über VIEWERLESS_MAPPERS.
+		'MailOutboxMapper::findByReplyToken',
 		// `NotifyPrefMapper::isEnabled()` steht hier bewusst **nicht**: Es fragt
 		// die Datenbank nicht selbst, sondern ruft `findForUser()` auf. Der
 		// Lesepfad ist der eine darunter; ein zweiter Eintrag waere eine

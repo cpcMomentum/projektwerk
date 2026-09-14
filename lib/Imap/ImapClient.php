@@ -164,6 +164,19 @@ class ImapClient {
 		$this->command('UID EXPUNGE ' . $uid);
 	}
 
+	/**
+	 * Mark a message as \Seen (read) without moving it.
+	 *
+	 * Für ProjektWerks Einlese-Job (#287): eine verarbeitete oder unzuordenbare
+	 * Antwort wird gelesen markiert, damit der nächste Lauf sie nicht erneut
+	 * anfasst — sie bleibt aber im Postfach (nichts wird gelöscht). Bewusst kein
+	 * Verschieben in Unterordner: das setzte deren Anlage voraus und machte den
+	 * Job an einer Nebensache zerbrechlich.
+	 */
+	public function markSeen(int $uid): void {
+		$this->command('UID STORE ' . $uid . ' +FLAGS (\\Seen)');
+	}
+
 	/** Best-effort LOGOUT and socket close. */
 	public function logout(): void {
 		if ($this->stream === null) {

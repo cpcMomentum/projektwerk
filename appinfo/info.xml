@@ -66,6 +66,7 @@ Der eigentliche Zweck ist nicht das Board, sondern die **sichtbare Zustaendigkei
     -->
     <background-jobs>
         <job>OCA\Projektwerk\BackgroundJob\MailRetryJob</job>
+        <job>OCA\Projektwerk\BackgroundJob\ReplyIntakeJob</job>
     </background-jobs>
 
     <!--

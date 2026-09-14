@@ -275,6 +275,9 @@ class LeakMatrixTest extends IntegrationTestCase {
 		// Zusage — die Begruendung steht bei den Eintraegen in der Registry und
 		// bei den beiden Tests selbst.
 		'MailOutboxMapper::findRetryable' => 'testTheOutboxIsNotAViewerPath',
+		// Der Antwort-Anker (#287) ist derselbe betrachterlose Pfad — vom selben
+		// Test gedeckt: der Ausgangskorb nimmt keinen ViewerContext.
+		'MailOutboxMapper::findByReplyToken' => 'testTheOutboxIsNotAViewerPath',
 		'NotifyPrefMapper::findForUser' => 'testChannelPreferencesAreScopedToTheirOwner',
 		'TicketReadMapper::findSeenForTickets' => 'testReadStateIsScopedToItsOwner',
 	];

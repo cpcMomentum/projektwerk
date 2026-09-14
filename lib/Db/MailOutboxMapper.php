@@ -139,4 +139,32 @@ class MailOutboxMapper extends QBMapper {
 
 		return $anzahl > 0;
 	}
+
+	/**
+	 * Die Ausgangszeile zu einem Antwort-Token (#287), oder `null`.
+	 *
+	 * Der Einlese-Job matcht eine eingehende Antwort über den `[PW-{token}]` im
+	 * Betreff auf genau die Zeile, die die Ausgangsmail vorgemerkt hat — und
+	 * liest von ihr `recipient_uid` und `ticket_id` für die Gegenprüfung. Kein
+	 * Betrachter: wie der ganze Mapper läuft auch dies unter einem Job ohne
+	 * Rolle (siehe Klassenkopf); die Berechtigung stellt der Job danach über
+	 * `BoardAccess` und die Absenderadresse her, nicht diese Abfrage.
+	 *
+	 * `reply_token` trägt einen Unique-Index — höchstens eine Zeile.
+	 *
+	 * @param string $token Der Antwort-Token (32 Hex-Zeichen).
+	 */
+	public function findByReplyToken(string $token): ?MailOutbox {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('*')
+			->from($this->getTableName())
+			->where($qb->expr()->eq('reply_token', $qb->createNamedParameter($token)))
+			->setMaxResults(1);
+
+		try {
+			return $this->findEntity($qb);
+		} catch (\OCP\AppFramework\Db\DoesNotExistException) {
+			return null;
+		}
+	}
 }

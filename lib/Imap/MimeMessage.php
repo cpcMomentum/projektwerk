@@ -19,19 +19,71 @@ namespace OCA\Projektwerk\Imap;
 final class MimeMessage {
 
 	/**
-	 * Parse a raw RFC 822 message into the fields the poller matches on.
+	 * Parse a raw RFC 822 message into the fields ProjektWerk's reply intake
+	 * (#287) matches and guards on.
 	 *
-	 * @return array{inReplyTo: string, subject: string, text: string}
+	 * Über den ursprünglichen DATEV-Bedarf hinaus (In-Reply-To/Subject/Text)
+	 * liefert die Fassung für ProjektWerk zusätzlich `from` (nackte Adresse für
+	 * die Absender-Gegenprüfung), `references`/`messageId` (In-Reply-To-Matching),
+	 * `autoSubmitted`/`precedence` (Automaten-/Schleifenschutz) und
+	 * `hasAttachments` (für den Hinweis, dass Anhänge nicht übernommen werden).
+	 *
+	 * @return array{from: string, inReplyTo: string, references: string, messageId: string, subject: string, text: string, autoSubmitted: string, precedence: string, hasAttachments: bool}
 	 */
 	public static function parse(string $raw): array {
 		[$headerBlock, $body] = self::splitHeaders($raw);
 		$headers = self::parseHeaderBlock($headerBlock);
 
 		return [
-			'inReplyTo' => trim($headers['in-reply-to'] ?? ''),
+			'from' => self::address($headers['from'] ?? ''),
+			'inReplyTo' => self::firstMessageId($headers['in-reply-to'] ?? ''),
+			'references' => trim($headers['references'] ?? ''),
+			'messageId' => self::firstMessageId($headers['message-id'] ?? ''),
 			'subject' => self::decodeHeader($headers['subject'] ?? ''),
 			'text' => self::extractText($headers, $body),
+			'autoSubmitted' => strtolower(trim($headers['auto-submitted'] ?? '')),
+			'precedence' => strtolower(trim($headers['precedence'] ?? '')),
+			'hasAttachments' => self::hasAttachments($raw),
 		];
+	}
+
+	/**
+	 * Die nackte E-Mail-Adresse aus einem Adress-Header, klein geschrieben.
+	 *
+	 * `"Anna Reuter" <anna@firma.de>` → `anna@firma.de`. Ohne spitze Klammern
+	 * gilt der getrimmte Wert selbst als Adresse. Für die Gegenprüfung des
+	 * Absenders zählt allein die Adresse, nicht der Anzeigename.
+	 */
+	private static function address(string $value): string {
+		$value = self::decodeHeader(trim($value));
+		if (preg_match('/<([^>]+)>/', $value, $m)) {
+			return strtolower(trim($m[1]));
+		}
+
+		return strtolower($value);
+	}
+
+	/**
+	 * Die erste Message-ID aus einem Header (In-Reply-To/Message-ID können
+	 * mehrere tragen), ohne spitze Klammern.
+	 */
+	private static function firstMessageId(string $value): string {
+		if (preg_match('/<([^>]+)>/', $value, $m)) {
+			return trim($m[1]);
+		}
+
+		return trim(str_replace(['<', '>'], '', $value));
+	}
+
+	/**
+	 * Trägt die Mail einen Anhang? Eine bewusst grobe Heuristik: ein
+	 * `Content-Disposition: attachment` oder ein `filename=`-Parameter irgendwo
+	 * im Rohtext. Sie speist nur den Hinweis „Anhang nicht übernommen"; ein
+	 * Fehlalarm kostet eine überflüssige Zeile, kein Datenverlust.
+	 */
+	private static function hasAttachments(string $raw): bool {
+		return preg_match('/Content-Disposition:\s*attachment/i', $raw) === 1
+			|| preg_match('/\bfilename\s*=/i', $raw) === 1;
 	}
 
 	/**
