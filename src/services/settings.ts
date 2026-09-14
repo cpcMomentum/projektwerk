@@ -86,6 +86,8 @@ export async function updateBoard(boardId: number, changes: {
 	githubEnabled?: boolean
 	/** Ziel-Repository „owner/repo"; leerer String entfernt das Ziel. */
 	githubRepo?: string | null
+	/** #281: Projekt-Schalter „Mitglieder dürfen Boards anlegen" (Manager-only). */
+	memberBoardsAllowed?: boolean
 }): Promise<Board> {
 	return apiPatch<Board, typeof changes>(`/boards/${boardId}`, changes)
 }

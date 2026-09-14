@@ -126,6 +126,8 @@ export interface ViewerInfo {
 	userId: string
 	role: MemberRole
 	isManager: boolean
+	/** Ob dieser Betrachter dieses Board angelegt hat (#281) — trägt das Einricht-Recht. */
+	isBoardCreator: boolean
 }
 
 export interface BoardDetail {
@@ -133,4 +135,6 @@ export interface BoardDetail {
 	members: Member[]
 	columns: Column[]
 	viewer: ViewerInfo
+	/** Ob das Projekt „Mitglieder dürfen Boards anlegen" gesetzt hat (#281). */
+	memberBoardsAllowed: boolean
 }

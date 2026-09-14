@@ -33,7 +33,7 @@
 					ohne Verwaltungsrecht bleibt er aus.
 				-->
 				<NcActions
-					v-if="store.siblingBoards.length > 1 || store.viewer?.isManager"
+					v-if="store.siblingBoards.length > 1 || store.canAddBoard"
 					:menuName="t('projektwerk', 'Boards')">
 					<template #icon>
 						<ViewDashboardIcon :size="20" />
@@ -46,7 +46,7 @@
 						{{ b.title }}
 					</NcActionButton>
 					<NcActionButton
-						v-if="store.viewer?.isManager"
+						v-if="store.canAddBoard"
 						class="pw-add-board"
 						@click="addingBoard = true">
 						<template #icon>
@@ -57,12 +57,12 @@
 				</NcActions>
 
 				<!--
-					Der Weg in die Einstellungen steht nur internen Mitgliedern mit
-					Verwaltungsrecht offen (§8) — wer ihn nicht hat, sieht keinen
-					Knopf statt einer Absage.
+					Der Weg in die Einstellungen steht Managern offen — und seit
+					#281 auch dem Ersteller eines Boards, der dort nur seinen
+					board-scopeden Teil (Titel, Spalten, Archiv) sieht.
 				-->
 				<NcButton
-					v-if="store.viewer?.isManager"
+					v-if="store.canConfigureBoard"
 					:aria-label="t('projektwerk', 'Projekteinstellungen')"
 					@click="$router.push({ name: 'board-settings', params: { boardId: String(boardId) } })">
 					<template #icon>

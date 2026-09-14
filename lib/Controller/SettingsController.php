@@ -110,6 +110,7 @@ class SettingsController extends Controller {
 		?string $folderInternalPath = null,
 		?bool $githubEnabled = null,
 		?string $githubRepo = null,
+		?bool $memberBoardsAllowed = null,
 	): JSONResponse {
 		// **Die beiden Ordner kommen als Pfad, gespeichert wird die Datei-ID.**
 		// Der Pfad benennt den Ordner nur; was in der Datenbank landet, loest
@@ -130,6 +131,10 @@ class SettingsController extends Controller {
 			// kommt als leerer String und wird zu „kein Ziel".
 			'githubEnabled' => $githubEnabled,
 			'githubRepo' => $githubRepo,
+			// #281: Projekt-Schalter „Mitglieder dürfen Boards anlegen". `null` =
+			// nicht mitgeschickt; sonst true/false. Manager-only setzt der Service
+			// durch (projektweites Feld).
+			'memberBoardsAllowed' => $memberBoardsAllowed,
 		]);
 
 		return $this->write($boardId, fn (ViewerContext $viewer): mixed

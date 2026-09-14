@@ -10,13 +10,16 @@ declare(strict_types=1);
 namespace OCA\Projektwerk\Tests\Unit\Service;
 
 use OCA\Projektwerk\Access\BoardAccess;
+use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Db\BoardMapper;
 use OCA\Projektwerk\Db\ColumnMapper;
 use OCA\Projektwerk\Db\MemberMapper;
+use OCA\Projektwerk\Db\Project;
 use OCA\Projektwerk\Db\ProjectMapper;
 use OCA\Projektwerk\Service\AccountType;
 use OCA\Projektwerk\Service\BoardService;
 use OCA\Projektwerk\Service\GuestNotAllowedException;
+use OCA\Projektwerk\Service\NotManagerException;
 use OCA\Projektwerk\Service\ProjectFolderService;
 use OCP\IDBConnection;
 use OCP\IL10N;
@@ -58,5 +61,48 @@ class BoardServiceTest extends TestCase {
 		$this->expectException(GuestNotAllowedException::class);
 
 		$service->create('pw-guest', 'Neues Projekt');
+	}
+
+	/**
+	 * #281: Ein Mitglied darf **nur** dann ein weiteres Board im Projekt anlegen,
+	 * wenn das Projekt-Flag gesetzt ist. Ohne Flag und ohne Verwaltungsrecht →
+	 * NotManagerException, bevor irgendetwas eingefügt wird.
+	 */
+	public function testAMemberCannotCreateABoardWithoutTheProjectFlag(): void {
+		$project = new Project();
+		$project->setMemberBoardsAllowed(0);
+		$project->setOwnerUserId('owner');
+
+		$projects = $this->createStub(ProjectMapper::class);
+		$projects->method('findForViewer')->willReturn($project);
+
+		$l10n = $this->createStub(IL10N::class);
+		$l10n->method('t')->willReturnArgument(0);
+
+		// createInProject öffnet die Transaktion vor dem Guard; scheitert der
+		// Guard, wird zurückgerollt — eingefügt wird nichts.
+		$db = $this->createMock(IDBConnection::class);
+		$db->expects($this->once())->method('rollBack');
+
+		$boards = $this->createMock(BoardMapper::class);
+		$boards->expects($this->never())->method('insert');
+
+		$service = new BoardService(
+			$db,
+			$boards,
+			$projects,
+			$this->createStub(MemberMapper::class),
+			$this->createStub(ColumnMapper::class),
+			$this->createStub(BoardAccess::class),
+			$l10n,
+			$this->createStub(ProjectFolderService::class),
+			$this->createStub(AccountType::class),
+		);
+
+		// Externes Mitglied ohne Verwaltungsrecht.
+		$viewer = ViewerContext::forMember('u', 1, 9, ViewerContext::ROLE_EXTERNAL, false);
+
+		$this->expectException(NotManagerException::class);
+		$service->createInProject($viewer, 'Arbeitsgruppe A');
 	}
 }

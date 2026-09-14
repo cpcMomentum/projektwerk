@@ -42,6 +42,7 @@ class BoardAccess {
 		$qb = $this->db->getQueryBuilder();
 		$qb->select('m.role', 'm.is_manager')
 			->selectAlias('b.project_id', 'project_id')
+			->selectAlias('b.created_by', 'created_by')
 			->from('pwerk_boards', 'b')
 			->innerJoin('b', 'pwerk_members', 'm', $qb->expr()->andX(
 				$qb->expr()->eq('m.project_id', 'b.project_id'),
@@ -66,6 +67,9 @@ class BoardAccess {
 			(int)$row['project_id'],
 			(string)$row['role'],
 			(int)$row['is_manager'] === 1,
+			// #281: Ersteller-Recht — nur wer dieses Board angelegt hat. Altbestand
+			// ohne created_by ergibt hier false (nur der Manager richtet ein).
+			$row['created_by'] !== null && (string)$row['created_by'] === $userId,
 		);
 	}
 
@@ -87,6 +91,7 @@ class BoardAccess {
 		$qb = $this->db->getQueryBuilder();
 		$qb->selectAlias('b.id', 'board_id')
 			->selectAlias('b.project_id', 'project_id')
+			->selectAlias('b.created_by', 'created_by')
 			->addSelect('m.role', 'm.is_manager')
 			->from('pwerk_members', 'm')
 			->innerJoin('m', 'pwerk_boards', 'b', $qb->expr()->eq('b.project_id', 'm.project_id'))
@@ -102,6 +107,7 @@ class BoardAccess {
 				(int)$row['project_id'],
 				(string)$row['role'],
 				(int)$row['is_manager'] === 1,
+				$row['created_by'] !== null && (string)$row['created_by'] === $userId,
 			);
 		}
 		$result->closeCursor();
