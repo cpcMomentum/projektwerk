@@ -123,6 +123,23 @@ class MailOutboxMapper extends QBMapper {
 	 * @param string $event Einer der `EVENT_*`-Werte.
 	 * @param \DateTimeInterface $seit Ab wann gezaehlt wird.
 	 */
+	public function existsSince(string $recipientUid, int $ticketId, string $event, \DateTimeInterface $seit): bool {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select($qb->func()->count('*', 'anzahl'))
+			->from($this->getTableName())
+			->where($qb->expr()->eq('recipient_uid', $qb->createNamedParameter($recipientUid)))
+			->andWhere($qb->expr()->eq('ticket_id', $qb->createNamedParameter($ticketId, IQueryBuilder::PARAM_INT)))
+			->andWhere($qb->expr()->eq('event', $qb->createNamedParameter($event)))
+			->andWhere($qb->expr()->gte('created_at', $qb->createNamedParameter($seit, IQueryBuilder::PARAM_DATETIME_MUTABLE)))
+			->andWhere($qb->expr()->neq('status', $qb->createNamedParameter(MailOutbox::STATUS_SUPPRESSED)));
+
+		$ergebnis = $qb->executeQuery();
+		$anzahl = (int)$ergebnis->fetchOne();
+		$ergebnis->closeCursor();
+
+		return $anzahl > 0;
+	}
+
 	/**
 	 * Die Ausgangszeile zu einem Antwort-Token (#287), oder `null`.
 	 *
@@ -149,22 +166,5 @@ class MailOutboxMapper extends QBMapper {
 		} catch (\OCP\AppFramework\Db\DoesNotExistException) {
 			return null;
 		}
-	}
-
-	public function existsSince(string $recipientUid, int $ticketId, string $event, \DateTimeInterface $seit): bool {
-		$qb = $this->db->getQueryBuilder();
-		$qb->select($qb->func()->count('*', 'anzahl'))
-			->from($this->getTableName())
-			->where($qb->expr()->eq('recipient_uid', $qb->createNamedParameter($recipientUid)))
-			->andWhere($qb->expr()->eq('ticket_id', $qb->createNamedParameter($ticketId, IQueryBuilder::PARAM_INT)))
-			->andWhere($qb->expr()->eq('event', $qb->createNamedParameter($event)))
-			->andWhere($qb->expr()->gte('created_at', $qb->createNamedParameter($seit, IQueryBuilder::PARAM_DATETIME_MUTABLE)))
-			->andWhere($qb->expr()->neq('status', $qb->createNamedParameter(MailOutbox::STATUS_SUPPRESSED)));
-
-		$ergebnis = $qb->executeQuery();
-		$anzahl = (int)$ergebnis->fetchOne();
-		$ergebnis->closeCursor();
-
-		return $anzahl > 0;
 	}
 }
