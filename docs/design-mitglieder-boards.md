@@ -39,11 +39,11 @@ Schreibrechte projektweit über `is_manager`). Sie bleibt minimal: ein
 `created_by` am Board plus ein abgeleitetes Flag im Betrachter-Kontext — **keine**
 zweite Mitgliederliste.
 
-### Datenmodell (2 Migrationen)
+### Datenmodell (1 Migration, 2 Spalten)
 
-- `pwerk_projects.member_boards_allowed` — `Types::SMALLINT`, `default 0`,
-  `notnull` **nein** (NC-Boolean-Regel: nie `Types::BOOLEAN` mit `notnull`).
-  Das Projekt-Flag.
+- `pwerk_projects.member_boards_allowed` — `Types::SMALLINT`, `notnull true`,
+  `default 0` (wie `archived`; nie `Types::BOOLEAN` mit `notnull`). Das
+  Projekt-Flag.
 - `pwerk_boards.created_by` — `Types::STRING`, nullable. Kennung des Erstellers.
   - Gesetzt in `createInProject()` (= `$viewer->userId`) und in `create()`
     (= `$userId`, Konsistenz).
@@ -148,7 +148,7 @@ Keine neuen Routen zwingend — bestehende Endpunkte, angepasste Guards:
 
 ## Aufwand / Risiko
 
-**Mittel.** Zwei Migrationen, eine neue Berechtigungs-Achse (board-scoped, klein
+**Mittel.** Eine Migration mit zwei Spalten, eine neue Berechtigungs-Achse (board-scoped, klein
 gehalten), Guard-Anpassungen in `BoardService`/`ColumnService`/`SettingsController`,
 `board#show`-Erweiterung und UI in `BoardView`/`BoardSettingsView`. Risiko
 beherrschbar, weil die Sichtbarkeits-Engine unberührt bleibt und die neue
