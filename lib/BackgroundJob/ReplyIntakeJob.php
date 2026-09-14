@@ -229,7 +229,7 @@ class ReplyIntakeJob extends TimedJob {
 			return;
 		}
 
-		// 6. Anhänge v1: nicht übernehmen, nur vermerken — in der Sprache des Kontos.
+		// 4b. Anhänge v1: nicht übernehmen, nur vermerken — in der Sprache des Kontos.
 		if ($mail['hasAttachments']) {
 			$l = $this->l10nFactory->get(
 				Application::APP_ID,
