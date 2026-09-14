@@ -41,6 +41,8 @@ interface State {
 	members: Member[]
 	columns: Column[]
 	viewer: ViewerInfo | null
+	/** Ob das Projekt „Mitglieder dürfen Boards anlegen" gesetzt hat (#281). */
+	memberBoardsAllowed: boolean
 	tickets: Map<number, Ticket>
 	/** Ticket-IDs je Spalte, in Serverreihenfolge. */
 	columnOrder: Map<number, number[]>
@@ -73,6 +75,7 @@ export const useBoardStore = defineStore('board', {
 		members: [],
 		columns: [],
 		viewer: null,
+		memberBoardsAllowed: false,
 		tickets: new Map(),
 		columnOrder: new Map(),
 		counts: null,
@@ -97,6 +100,19 @@ export const useBoardStore = defineStore('board', {
 		 * @param state Der Speicher.
 		 */
 		isInternal: (state): boolean => state.viewer?.role === 'internal',
+
+		/**
+		 * Ob der Betrachter dieses Board einrichten darf (#281): Projekt-Manager
+		 * ODER Ersteller genau dieses Boards. Trägt Spalten-/Umbenennen-/Archiv-
+		 * Aktionen im Frontend; der Server setzt dasselbe durch.
+		 */
+		canConfigureBoard: (state): boolean => state.viewer?.isManager === true || state.viewer?.isBoardCreator === true,
+
+		/**
+		 * Ob der Betrachter hier ein weiteres Board anlegen darf (#281): Manager
+		 * oder wo das Projekt „Mitglieder dürfen Boards anlegen" gesetzt hat.
+		 */
+		canAddBoard: (state): boolean => state.viewer?.isManager === true || state.memberBoardsAllowed,
 
 		/**
 		 * Hat das Board überhaupt eine Gegenseite?
@@ -332,6 +348,7 @@ export const useBoardStore = defineStore('board', {
 				this.members = detail.members
 				this.columns = detail.columns
 				this.viewer = detail.viewer
+				this.memberBoardsAllowed = detail.memberBoardsAllowed ?? false
 
 				this.applyTickets(await fetchTickets(boardId))
 			} catch (e) {

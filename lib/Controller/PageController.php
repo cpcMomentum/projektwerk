@@ -10,21 +10,34 @@ declare(strict_types=1);
 namespace OCA\Projektwerk\Controller;
 
 use OCA\Projektwerk\AppInfo\Application;
+use OCA\Projektwerk\Service\AccountType;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\TemplateResponse;
+use OCP\AppFramework\Services\IInitialState;
 use OCP\IRequest;
 
 class PageController extends Controller {
 
-	public function __construct(IRequest $request) {
+	public function __construct(
+		IRequest $request,
+		private IInitialState $initialState,
+		private AccountType $accountType,
+		private ?string $userId,
+	) {
 		parent::__construct(Application::APP_ID, $request);
 	}
 
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
 	public function index(): TemplateResponse {
+		// Ob die Person Projekte anlegen darf (#280): Gäste dürfen nicht. Das
+		// Signal blendet den „Neues Projekt"-Knopf aus; die eigentliche Sperre
+		// sitzt serverseitig in BoardService::create(). Als Initial-State, damit
+		// der Knopf ohne zweite Runde entscheidet.
+		$this->initialState->provideInitialState('canCreateProject', !$this->accountType->isGuest($this->userId));
+
 		return new TemplateResponse(Application::APP_ID, 'index');
 	}
 }

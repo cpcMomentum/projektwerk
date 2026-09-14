@@ -580,61 +580,11 @@
 }
 
 /*
- * Die Karte ist der Rahmen, der Knopf darin oeffnet — getrennt seit #115, weil
- * der Stern ein zweites Bedienelement ist und ein Knopf nicht in einem Knopf
- * stehen darf.
+ * Die Projekte-Seite ist seit #276 ein Kachel-Verzeichnis: `.pw-boards` traegt
+ * jetzt `ProjectTile`-Kacheln (dieselben wie im Überblick), nicht mehr eigene
+ * Board-Karten. Die alten `.pw-boardcard*`-Klassen sind damit entfallen; der
+ * Favoritenstern lebt als Toggle in der Kachel (siehe `.pw-tile__pinbtn`).
  */
-.app-projektwerk .pw-boardcard {
-	position: relative;
-	display: flex;
-	background: var(--color-main-background);
-	border: 1px solid transparent;
-	border-radius: var(--border-radius-large);
-	box-shadow: 0 1px 2px rgba(0, 0, 0, .06), 0 1px 1px rgba(0, 0, 0, .04);
-	transition: box-shadow .12s ease;
-}
-
-.app-projektwerk .pw-boardcard:hover {
-	box-shadow: 0 2px 4px rgba(0, 0, 0, .1), 0 4px 12px rgba(0, 0, 0, .06);
-}
-
-.app-projektwerk .pw-boardcard__open {
-	flex: 1;
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
-	/* Rechts Platz fuer den Stern. */
-	padding: 18px 52px 18px 20px;
-	min-height: var(--default-clickable-area, 44px);
-	background: none;
-	border: none;
-	border-radius: var(--border-radius-large);
-	cursor: pointer;
-	text-align: left;
-	font: inherit;
-	color: inherit;
-}
-
-.app-projektwerk .pw-boardcard__pin {
-	position: absolute;
-	top: 8px;
-	inset-inline-end: 8px;
-}
-
-/* Der angepinnte Stern traegt die Signalfarbe, der leere bleibt ruhig. */
-.app-projektwerk .pw-boardcard__pin--on {
-	color: var(--color-favorite, var(--color-warning));
-}
-
-.app-projektwerk .pw-boardcard__title {
-	font-size: 16px;
-	font-weight: 600;
-}
-
-.app-projektwerk .pw-boardcard__org {
-	font-size: 13px;
-	color: var(--color-text-maxcontrast);
-}
 
 /* ---- Formular ----------------------------------------------------------- */
 
@@ -2020,45 +1970,80 @@
 	margin-bottom: 24px;
 }
 
-.app-projektwerk .pw-task {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	padding: 6px 8px;
-	border-bottom: 1px solid var(--color-border);
+/*
+ * „Meine Aufgaben" (#276): Die Zeilen stehen in einer **gerahmten Karte** —
+ * dieselbe Rahmen-Basis wie die Maßnahmen-Tabelle (`pw-ptable-card`) und die
+ * Kacheln. Loest die schmucklose Liste mit Unterstrichen ab.
+ */
+.app-projektwerk .pw-taskcard {
+	border: 1px solid var(--color-border-dark, var(--color-border));
+	border-radius: var(--border-radius-large, 12px);
+	overflow: hidden;
 }
 
-.app-projektwerk .pw-task:last-child {
-	border-bottom: none;
+.app-projektwerk .pw-taskrow {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 6px 14px;
+	border-top: 1px solid var(--color-border);
+	transition: background 0.12s ease;
+}
+
+.app-projektwerk .pw-taskrow:first-child {
+	border-top: none;
+}
+
+.app-projektwerk .pw-taskrow:hover {
+	background: var(--color-background-hover);
+}
+
+/*
+ * Das Kaestchen ist die haeufigste Handlung der Seite (§9) und braucht eine
+ * volle Klickflaeche.
+ *
+ * **Die Flaeche kommt aus `margin`, nicht aus `width`/`height`.** Beides direkt
+ * auf ein `input[type=checkbox]` zu setzen skaliert das native Steuerelement
+ * selbst — das Kaestchen waere drei- bis viermal so gross wie jedes andere der
+ * App. Der Rahmen darum vergroessert die Trefferflaeche, ohne das Kaestchen
+ * anzufassen. Etwas weniger als die halbe Klickflaeche, weil die Karte selbst
+ * schon senkrechten Innenabstand traegt.
+ */
+.app-projektwerk .pw-taskrow__box {
+	flex: 0 0 auto;
+	margin: calc((var(--default-clickable-area, 44px) - 16px) / 2 - 6px);
+	cursor: pointer;
 }
 
 /*
  * Die Klickflaeche traegt zwei Zeilen und muss die volle Breite nehmen —
  * sonst liegt sie neben dem Text statt darunter.
  */
-.app-projektwerk .pw-task__body {
+.app-projektwerk .pw-taskrow__body {
 	display: flex;
 	flex-direction: column;
 	align-items: flex-start;
 	gap: 2px;
 	flex: 1 1 auto;
 	min-width: 0;
-	padding: 4px 0;
+	padding: 2px 0;
 	border: none;
 	background: none;
 	text-align: start;
+	font: inherit;
+	color: inherit;
 	cursor: pointer;
 }
 
-.app-projektwerk .pw-task__body:hover .pw-task__title {
+.app-projektwerk .pw-taskrow__body:hover .pw-taskrow__title {
 	text-decoration: underline;
 }
 
-.app-projektwerk .pw-task__title {
+.app-projektwerk .pw-taskrow__title {
 	font-weight: 600;
 }
 
-.app-projektwerk .pw-task__meta {
+.app-projektwerk .pw-taskrow__meta {
 	color: var(--color-text-maxcontrast);
 	font-size: 0.85em;
 	overflow: hidden;
@@ -2067,31 +2052,23 @@
 	max-width: 100%;
 }
 
-.app-projektwerk .pw-task__board {
+.app-projektwerk .pw-taskrow__board {
 	white-space: nowrap;
 }
 
-/*
- * Das Kaestchen ist die haeufigste Handlung der Seite (§9) und braucht die
- * volle Klickflaeche, auch auf dem Handy.
- *
- * **Die Flaeche kommt aus `margin`, nicht aus `width`/`height`.** Beides direkt
- * auf ein `input[type=checkbox]` zu setzen skaliert das native Steuerelement
- * selbst — das Kaestchen waere dann drei- bis viermal so gross wie jedes andere
- * der App. Der Rahmen darum vergroessert die Trefferflaeche, ohne das Kaestchen
- * anzufassen.
- */
-.app-projektwerk .pw-task__check {
+/* Rechts an der Zeile: Art-Pille (nur Schritte) und Faelligkeit. */
+.app-projektwerk .pw-taskrow__right {
 	flex: 0 0 auto;
-	margin: calc((var(--default-clickable-area, 44px) - 16px) / 2);
-	cursor: pointer;
+	display: flex;
+	align-items: center;
+	gap: 10px;
 }
 
-.app-projektwerk .pw-task__due {
-	flex: 0 0 auto;
+.app-projektwerk .pw-taskrow__due {
 	color: var(--color-text-maxcontrast);
 	font-size: 0.85em;
 	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
 }
 
 /*
@@ -2100,12 +2077,10 @@
  * allein an der Farbe haengt.
  *
  * **`--color-error-text`, nicht `--color-error`.** Letzteres ist in Nextcloud
- * eine FLAECHENfarbe (`#FFE7E7`, blasses Rosa) und als Textfarbe auf weissem
- * Grund praktisch unsichtbar; `--color-error-text` (`#8A0000`) ist die dafuer
- * vorgesehene. Der Fehler bricht nichts und faellt in keiner DOM-Pruefung auf
- * — er war nur auf einem Screenshot zu sehen.
+ * eine FLAECHENfarbe (blasses Rosa) und als Textfarbe kaum sichtbar;
+ * `--color-error-text` ist die dafuer vorgesehene.
  */
-.app-projektwerk .pw-task--overdue .pw-task__due {
+.app-projektwerk .pw-taskrow--overdue .pw-taskrow__due {
 	color: var(--color-error-text, var(--color-error));
 	font-weight: 600;
 }
@@ -2270,6 +2245,7 @@
 }
 
 .app-projektwerk .pw-tile {
+	position: relative;
 	display: block;
 	width: 100%;
 	padding: 14px 16px;
@@ -2279,6 +2255,60 @@
 	text-align: start;
 	cursor: pointer;
 	transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+/* Im Verzeichnis (#276) haelt der Kopf rechts Platz fuer den Pin-Toggle frei. */
+.app-projektwerk .pw-tile--pinnable .pw-tile__head {
+	padding-inline-end: 30px;
+}
+
+/*
+ * Der Pin-Toggle (#276): ein blanker Icon-Knopf oben rechts, in der
+ * Favoritenfarbe wenn angepinnt, ruhiger Umriss sonst. Bewusst **kein**
+ * NcButton — dessen gedrueckter Zustand legte in @nextcloud/vue 9 eine gefuellte
+ * Primaerfarbe hinter das Icon (der „blaue Block", #276). Die Klickflaeche kommt
+ * aus der Groesse des Knopfs, nicht aus dem Icon.
+ */
+.app-projektwerk .pw-tile__pinbtn {
+	position: absolute;
+	top: 6px;
+	inset-inline-end: 6px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--default-clickable-area, 44px);
+	height: var(--default-clickable-area, 44px);
+	padding: 0;
+	border: none;
+	background: none;
+	border-radius: 50%;
+	color: var(--color-text-maxcontrast);
+	cursor: pointer;
+	transition: background 0.12s ease, color 0.12s ease;
+}
+
+.app-projektwerk .pw-tile__pinbtn:hover {
+	background: var(--color-background-hover);
+	color: var(--color-main-text);
+}
+
+.app-projektwerk .pw-tile__pinbtn:focus-visible {
+	outline: 2px solid var(--color-primary-element);
+	outline-offset: -2px;
+}
+
+/* Angepinnt: die Favoritenfarbe; das gefuellte Icon kommt aus der Komponente. */
+.app-projektwerk .pw-tile__pinbtn--on,
+.app-projektwerk .pw-tile__pinbtn--on:hover {
+	color: var(--color-favorite, var(--color-warning-text));
+}
+
+/* Leeres Projekt (#276): statt eines leeren Balkens ein Wort. */
+.app-projektwerk .pw-tile__empty {
+	display: block;
+	font-size: 13px;
+	color: var(--color-text-maxcontrast);
+	font-style: italic;
 }
 
 .app-projektwerk .pw-tile:hover {

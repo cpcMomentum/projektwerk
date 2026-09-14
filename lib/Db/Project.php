@@ -50,6 +50,8 @@ use OCP\DB\Types;
  * @method void setChatUrl(?string $chatUrl)
  * @method int getTicketCounter()
  * @method void setTicketCounter(int $ticketCounter)
+ * @method int getMemberBoardsAllowed()
+ * @method void setMemberBoardsAllowed(int $memberBoardsAllowed)
  * @method int getArchived()
  * @method void setArchived(int $archived)
  * @method DateTime getCreatedAt()
@@ -70,6 +72,8 @@ class Project extends Entity {
 	protected ?string $folderInternalPath = null;
 	protected ?string $chatUrl = null;
 	protected ?int $ticketCounter = null;
+	/** #281: Dürfen Mitglieder (intern wie extern) hier Boards anlegen? 0/1. */
+	protected ?int $memberBoardsAllowed = null;
 	protected ?int $archived = null;
 	protected ?DateTime $createdAt = null;
 	protected ?DateTime $updatedAt = null;
@@ -86,6 +90,8 @@ class Project extends Entity {
 		$this->addType('folderInternalPath', Types::STRING);
 		$this->addType('chatUrl', Types::STRING);
 		$this->addType('ticketCounter', Types::INTEGER);
+		// SMALLINT 0/1, nie Types::BOOLEAN mit notnull (#281).
+		$this->addType('memberBoardsAllowed', Types::SMALLINT);
 		$this->addType('archived', Types::SMALLINT);
 		$this->addType('createdAt', Types::DATETIME);
 		$this->addType('updatedAt', Types::DATETIME);

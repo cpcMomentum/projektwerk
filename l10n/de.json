@@ -446,7 +446,13 @@
 		"Boards": "Boards",
 		"Board hinzufügen": "Board hinzufügen",
 		"Das neue Board gehört zu diesem Projekt und teilt sich Mitglieder, Ordner und Vorgangsnummern.": "Das neue Board gehört zu diesem Projekt und teilt sich Mitglieder, Ordner und Vorgangsnummern.",
-		"Titel des Boards": "Titel des Boards"
+		"Titel des Boards": "Titel des Boards",
+		"Noch keine Vorgänge": "Noch keine Vorgänge",
+		"Als Gast können Sie keine Projekte anlegen.": "Als Gast können Sie keine Projekte anlegen.",
+		"Mitglieder dürfen eigene Boards in diesem Projekt anlegen": "Mitglieder dürfen eigene Boards in diesem Projekt anlegen",
+		"Damit können Arbeitsgruppen selbst ein Board anlegen und dessen Spalten pflegen. Alle Projektmitglieder sehen weiterhin alle Boards.": "Damit können Arbeitsgruppen selbst ein Board anlegen und dessen Spalten pflegen. Alle Projektmitglieder sehen weiterhin alle Boards.",
+		"In diesem Projekt dürfen nur interne Verwalter Boards anlegen.": "In diesem Projekt dürfen nur interne Verwalter Boards anlegen.",
+		"Dieses Board darf nur der Projekt-Verwalter oder sein Ersteller ändern.": "Dieses Board darf nur der Projekt-Verwalter oder sein Ersteller ändern."
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }

@@ -85,7 +85,7 @@ function ticketOf(overrides: Partial<Ticket> = {}): Ticket {
  * @param overrides Was für den jeweiligen Fall abweicht.
  */
 function viewerOf(overrides: Partial<ViewerInfo> = {}): ViewerInfo {
-	return { userId: 'anna', role: 'internal', isManager: true, ...overrides }
+	return { userId: 'anna', role: 'internal', isManager: true, isBoardCreator: false, ...overrides }
 }
 
 /**

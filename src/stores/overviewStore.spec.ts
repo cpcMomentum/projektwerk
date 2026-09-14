@@ -104,7 +104,10 @@ describe('Überblick', () => {
 	 */
 	it('leitet Status, Fortschritt und Zustand je Projekt ab', () => {
 		const tk = (teile: Partial<Ticket>): Ticket => ({
-			columnId: 0, dueDate: null, updatedAt: null, ...teile,
+			columnId: 0,
+			dueDate: null,
+			updatedAt: null,
+			...teile,
 		} as unknown as Ticket)
 
 		const store = useOverviewStore()

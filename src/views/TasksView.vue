@@ -42,6 +42,10 @@
 				Erst die Schritte: Das ist das, was jemand von mir erwartet, und
 				laut §9 der haeufigste Vorgang des Kunden. „Meine Tickets" ist
 				der weitere Rahmen und steht deshalb darunter.
+
+				**Die Zeilen stehen in einer gerahmten Karte** (#276) — dieselbe
+				Optik wie der Rest der App (Überblick, Maßnahmen-Tabelle), statt
+				der schmucklosen Liste von vorher.
 			-->
 			<section v-if="store.stepRows.length > 0" class="pw-tasks__block">
 				<h3 class="pw-col__head">
@@ -49,59 +53,69 @@
 					<span class="pw-n">{{ store.stepRows.length }}</span>
 				</h3>
 
-				<div
-					v-for="row in store.stepRows"
-					:key="row.step.id"
-					class="pw-task"
-					:class="{ 'pw-task--overdue': row.overdue }">
-					<!--
-						Das Kaestchen erledigt den Schritt an Ort und Stelle
-						(§9) — der haeufigste Vorgang des Kunden darf keine drei
-						Klicks kosten. Gesperrt wird nur diese Zeile: Wer fuenf
-						Haken hintereinander setzt, soll nicht auf jeden warten.
-					-->
-					<!--
-						**Der Haken wird nach dem Aufruf zurueckgesetzt, nicht
-						nur gebunden.** `:checked` allein genuegt nicht: Vue
-						schreibt das DOM nur neu, wenn sich der *gebundene Wert*
-						aendert. Beim Scheitern bleibt der Schritt offen, der
-						Wert also `false` wie vorher — und der Haken, den der
-						Browser beim Klick von sich aus gesetzt hat, stuende
-						weiter an einem unerledigten Schritt. Gemessen, nicht
-						vermutet: mit kuenstlich scheiterndem PATCH geprueft.
+				<div class="pw-taskcard">
+					<div
+						v-for="row in store.stepRows"
+						:key="row.step.id"
+						class="pw-taskrow"
+						:class="{ 'pw-taskrow--overdue': row.overdue }">
+						<!--
+							Das Kaestchen erledigt den Schritt an Ort und Stelle
+							(§9) — der haeufigste Vorgang des Kunden darf keine drei
+							Klicks kosten. Gesperrt wird nur diese Zeile: Wer fuenf
+							Haken hintereinander setzt, soll nicht auf jeden warten.
+						-->
+						<!--
+							**Der Haken wird nach dem Aufruf zurueckgesetzt, nicht
+							nur gebunden.** `:checked` allein genuegt nicht: Vue
+							schreibt das DOM nur neu, wenn sich der *gebundene Wert*
+							aendert. Beim Scheitern bleibt der Schritt offen, der
+							Wert also `false` wie vorher — und der Haken, den der
+							Browser beim Klick von sich aus gesetzt hat, stuende
+							weiter an einem unerledigten Schritt. Gemessen, nicht
+							vermutet: mit kuenstlich scheiterndem PATCH geprueft.
 
-						Bei Erfolg faellt die Zeile ohnehin aus der Liste — ein
-						Schritt steht hier nur, solange er offen ist.
+							Bei Erfolg faellt die Zeile ohnehin aus der Liste — ein
+							Schritt steht hier nur, solange er offen ist.
 
-						Gesperrt wird nur DIESE Zeile. Alle zu sperren hiesse,
-						den Folgeklick zu schlucken, waehrend sich die Liste
-						darunter neu ordnet.
-					-->
-					<input
-						type="checkbox"
-						class="pw-task__check"
-						:checked="row.step.done"
-						:disabled="store.busySteps.includes(row.step.id)"
-						:aria-label="checkLabel(row)"
-						@change="complete(row, $event)">
+							Gesperrt wird nur DIESE Zeile. Alle zu sperren hiesse,
+							den Folgeklick zu schlucken, waehrend sich die Liste
+							darunter neu ordnet.
+						-->
+						<input
+							type="checkbox"
+							class="pw-taskrow__box"
+							:checked="row.step.done"
+							:disabled="store.busySteps.includes(row.step.id)"
+							:aria-label="checkLabel(row)"
+							@change="complete(row, $event)">
 
-					<button type="button" class="pw-task__body" @click="open(row.ticket)">
-						<span class="pw-task__title">{{ row.step.title }}</span>
-						<span class="pw-task__meta">
-							<span class="pw-num">#{{ padded(row.ticket.number) }}</span>
-							{{ row.ticket.title }}
+						<button type="button" class="pw-taskrow__body" @click="open(row.ticket)">
+							<span class="pw-taskrow__title">{{ row.step.title }}</span>
+							<span class="pw-taskrow__meta">
+								<span class="pw-num">#{{ padded(row.ticket.number) }}</span>
+								{{ row.ticket.title }}
+								<!--
+									Die Herkunft gehoert an die Zeile: „Freigabe
+									erteilen" allein sagt nichts, mit Vorgang und
+									Projekt sagt es alles.
+								-->
+								<span v-if="row.board" class="pw-taskrow__board">· {{ row.board.title }}</span>
+							</span>
+						</button>
+
+						<span class="pw-taskrow__right">
 							<!--
-								Die Herkunft gehoert an die Zeile: „Freigabe
-								erteilen" allein sagt nichts, mit Vorgang und
-								Projekt sagt es alles.
+								Die „Art"-Pille wie in der Maßnahmen-Tabelle: benennt
+								die Obligation, damit Schritt und Vorgang auf einen
+								Blick unterscheidbar sind.
 							-->
-							<span v-if="row.board" class="pw-task__board">· {{ row.board.title }}</span>
+							<span class="pw-art pw-art--schritt">{{ t('projektwerk', 'Schritt') }}</span>
+							<span v-if="row.step.dueDate" class="pw-taskrow__due">
+								{{ dueLabel(row) }}
+							</span>
 						</span>
-					</button>
-
-					<span v-if="row.step.dueDate" class="pw-task__due">
-						{{ dueLabel(row) }}
-					</span>
+					</div>
 				</div>
 			</section>
 
@@ -111,25 +125,29 @@
 					<span class="pw-n">{{ store.ticketRows.length }}</span>
 				</h3>
 
-				<div
-					v-for="row in store.ticketRows"
-					:key="row.ticket.id"
-					class="pw-task"
-					:class="{ 'pw-task--overdue': row.overdue }">
-					<button type="button" class="pw-task__body" @click="open(row.ticket)">
-						<span class="pw-task__title">
-							<span class="pw-num">#{{ padded(row.ticket.number) }}</span>
-							{{ row.ticket.title }}
-						</span>
-						<span v-if="row.board" class="pw-task__meta">
-							{{ row.board.title }}
-							<span v-if="orgLine(row.ticket)" class="pw-task__board">· {{ orgLine(row.ticket) }}</span>
-						</span>
-					</button>
+				<div class="pw-taskcard">
+					<div
+						v-for="row in store.ticketRows"
+						:key="row.ticket.id"
+						class="pw-taskrow"
+						:class="{ 'pw-taskrow--overdue': row.overdue }">
+						<button type="button" class="pw-taskrow__body" @click="open(row.ticket)">
+							<span class="pw-taskrow__title">
+								<span class="pw-num">#{{ padded(row.ticket.number) }}</span>
+								{{ row.ticket.title }}
+							</span>
+							<span v-if="row.board" class="pw-taskrow__meta">
+								{{ row.board.title }}
+								<span v-if="orgLine(row.ticket)" class="pw-taskrow__board">· {{ orgLine(row.ticket) }}</span>
+							</span>
+						</button>
 
-					<span v-if="row.ticket.dueDate" class="pw-task__due">
-						{{ ticketDueLabel(row) }}
-					</span>
+						<span class="pw-taskrow__right">
+							<span v-if="row.ticket.dueDate" class="pw-taskrow__due">
+								{{ ticketDueLabel(row) }}
+							</span>
+						</span>
+					</div>
 				</div>
 			</section>
 		</template>

@@ -14,7 +14,7 @@
 			ausfuellt, das er nicht abschicken darf.
 		-->
 		<NcEmptyContent
-			v-if="!store.loading && !mayManage"
+			v-if="!store.loading && !mayConfigureBoard"
 			:name="t('projektwerk', 'Keine Berechtigung')"
 			:description="t('projektwerk', 'Projekteinstellungen pflegen interne Mitglieder mit Verwaltungsrecht.')">
 			<template #icon>
@@ -22,7 +22,7 @@
 			</template>
 		</NcEmptyContent>
 
-		<div v-else-if="mayManage" class="pw-settingspage__body">
+		<div v-else-if="mayConfigureBoard" class="pw-settingspage__body">
 			<!--
 				Linke Bereichs-Navigation wie in „Meine Einstellungen" (#196
 				Teil 2): dieselben `pw-subnav`/`pw-settingspage`-Klassen, damit
@@ -54,25 +54,48 @@
 					Truege nur die Kundenseite eine Firma, waere die interne
 					stumm „der Normalfall" (§8).
 				-->
-					<div class="pw-settings__pair">
-						<div class="pw-field">
-							<label for="pw-set-orgi">{{ t('projektwerk', 'Firma (eigene Seite)') }}</label>
-							<NcTextField id="pw-set-orgi" v-model="board.orgInternal" :label="t('projektwerk', 'Firma (eigene Seite)')" />
+					<!--
+						Org, Projektchat und der Anlage-Schalter sind projektweit
+						(#281) — nur der Manager sieht sie. Ein reiner Board-Ersteller
+						bearbeitet hier nur Titel und Beschreibung seines Boards.
+					-->
+					<template v-if="mayManage">
+						<div class="pw-settings__pair">
+							<div class="pw-field">
+								<label for="pw-set-orgi">{{ t('projektwerk', 'Firma (eigene Seite)') }}</label>
+								<NcTextField id="pw-set-orgi" v-model="board.orgInternal" :label="t('projektwerk', 'Firma (eigene Seite)')" />
+							</div>
+							<div class="pw-field">
+								<label for="pw-set-orge">{{ t('projektwerk', 'Firma (Kundenseite)') }}</label>
+								<NcTextField id="pw-set-orge" v-model="board.orgExternal" :label="t('projektwerk', 'Firma (Kundenseite)')" />
+							</div>
 						</div>
-						<div class="pw-field">
-							<label for="pw-set-orge">{{ t('projektwerk', 'Firma (Kundenseite)') }}</label>
-							<NcTextField id="pw-set-orge" v-model="board.orgExternal" :label="t('projektwerk', 'Firma (Kundenseite)')" />
-						</div>
-					</div>
 
-					<div class="pw-field">
-						<label for="pw-set-chat">{{ t('projektwerk', 'Adresse des Projektchats') }}</label>
-						<NcTextField id="pw-set-chat" v-model="board.chatUrl" :label="t('projektwerk', 'Adresse des Projektchats')" />
-						<!-- Ohne Adresse entfaellt der Knopf ersatzlos (§9). -->
-						<span class="pw-settings__hint">
-							{{ t('projektwerk', 'Leer lassen blendet den Knopf „Zum Projektchat“ aus.') }}
-						</span>
-					</div>
+						<div class="pw-field">
+							<label for="pw-set-chat">{{ t('projektwerk', 'Adresse des Projektchats') }}</label>
+							<NcTextField id="pw-set-chat" v-model="board.chatUrl" :label="t('projektwerk', 'Adresse des Projektchats')" />
+							<!-- Ohne Adresse entfaellt der Knopf ersatzlos (§9). -->
+							<span class="pw-settings__hint">
+								{{ t('projektwerk', 'Leer lassen blendet den Knopf „Zum Projektchat“ aus.') }}
+							</span>
+						</div>
+
+						<!--
+							#281: Der Projekt-Schalter. Ist er an, dürfen alle
+							Mitglieder (auch externe) hier weitere Boards anlegen und
+							einrichten (Arbeitsgruppen). Aus = nur der Manager.
+						-->
+						<div class="pw-field">
+							<NcCheckboxRadioSwitch
+								v-model="board.memberBoardsAllowed"
+								type="switch">
+								{{ t('projektwerk', 'Mitglieder dürfen eigene Boards in diesem Projekt anlegen') }}
+							</NcCheckboxRadioSwitch>
+							<span class="pw-settings__hint">
+								{{ t('projektwerk', 'Damit können Arbeitsgruppen selbst ein Board anlegen und dessen Spalten pflegen. Alle Projektmitglieder sehen weiterhin alle Boards.') }}
+							</span>
+						</div>
+					</template>
 
 					<div class="pw-viscontrol__actions">
 						<NcButton variant="primary" :disabled="busy || board.title.trim() === ''" @click="saveBoard">
@@ -571,6 +594,7 @@ import { n, t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
 import NcAvatar from '@nextcloud/vue/components/NcAvatar'
 import NcButton from '@nextcloud/vue/components/NcButton'
+import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
 import NcDialog from '@nextcloud/vue/components/NcDialog'
 import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
@@ -610,7 +634,7 @@ import { useBoardStore } from '@/stores/boardStore'
 export default defineComponent({
 	name: 'BoardSettingsView',
 
-	components: { ArrowDownIcon, ArrowUpIcon, DeleteIcon, FolderIcon, FolderPicker, LockIcon, NcAvatar, NcButton, NcDialog, NcEmptyContent, NcTextField, PwSettingsNav },
+	components: { ArrowDownIcon, ArrowUpIcon, DeleteIcon, FolderIcon, FolderPicker, LockIcon, NcAvatar, NcButton, NcCheckboxRadioSwitch, NcDialog, NcEmptyContent, NcTextField, PwSettingsNav },
 
 	setup() {
 		return { store: useBoardStore() }
@@ -648,7 +672,7 @@ export default defineComponent({
 			// Ein eigener Entwurf statt direkter Bindung an den Speicher: Sonst
 			// stuenden Tippfehler sofort in der Kopfzeile des Boards, und ein
 			// Abbruch waere nicht mehr moeglich.
-			board: { title: '', description: '', orgInternal: '', orgExternal: '', chatUrl: '', githubEnabled: false, githubRepo: '' },
+			board: { title: '', description: '', orgInternal: '', orgExternal: '', chatUrl: '', githubEnabled: false, githubRepo: '', memberBoardsAllowed: false },
 			// Eigene Entwuerfe wie beim Board oben, aus demselben Grund: Der
 			// Pfad muss erst geprueft werden, und bis dahin darf er nirgends
 			// als der gespeicherte gelten.
@@ -671,11 +695,25 @@ export default defineComponent({
 		},
 
 		/**
+		 * Ob der Betrachter dieses Board **einrichten** darf (#281): Manager oder
+		 * Ersteller. Der Ersteller sieht nur seinen board-scopeden Teil (Projekt-
+		 * Titel, Spalten, Archiv); die Manager-Abschnitte bleiben ihm verborgen.
+		 */
+		mayConfigureBoard(): boolean {
+			return this.mayManage || this.store.viewer?.isBoardCreator === true
+		},
+
+		/**
 		 * Die Bereiche der linken Navigation (#196 Teil 2) — wie in „Meine
 		 * Einstellungen". „GitHub" ist ein Eigenname und bleibt unübersetzt.
+		 *
+		 * Ein reiner Board-Ersteller (kein Manager, #281) sieht nur die
+		 * board-scopeden Bereiche: Projekt (dort nur Titel/Beschreibung), Spalten,
+		 * Archiv. Org, Dateiablage, GitHub und Mitglieder sind projektweit und
+		 * bleiben dem Manager vorbehalten.
 		 */
 		sections(): { key: string, label: string }[] {
-			return [
+			const alle = [
 				{ key: 'projekt', label: t('projektwerk', 'Projekt') },
 				{ key: 'github', label: 'GitHub' },
 				{ key: 'dateiablage', label: t('projektwerk', 'Dateiablage') },
@@ -683,6 +721,11 @@ export default defineComponent({
 				{ key: 'mitglieder', label: t('projektwerk', 'Mitglieder') },
 				{ key: 'archiv', label: t('projektwerk', 'Archiv') },
 			]
+			if (this.mayManage) {
+				return alle
+			}
+			const nurErsteller = ['projekt', 'spalten', 'archiv']
+			return alle.filter((s) => nurErsteller.includes(s.key))
 		},
 
 		/**
@@ -724,6 +767,9 @@ export default defineComponent({
 		 * darf.
 		 */
 		mayRemoveColumns(): boolean {
+			// Löschen bleibt dem Projekt-Owner vorbehalten — auch der Board-Ersteller
+			// (#281) darf Spalten anlegen/umbenennen/ordnen, aber nicht entfernen
+			// (destruktiv, fasst evtl. unsichtbare Tickets an).
 			const owner = this.store.board?.ownerUserId
 			return owner !== undefined && owner === this.store.viewer?.userId
 		},
@@ -819,6 +865,8 @@ export default defineComponent({
 				chatUrl: board.chatUrl ?? '',
 				githubEnabled: board.githubEnabled,
 				githubRepo: board.githubRepo ?? '',
+				// #281: projektweiter Schalter, kommt aus dem Store (nicht am Board).
+				memberBoardsAllowed: this.store.memberBoardsAllowed,
 			}
 			this.folderDrafts = {
 				public: board.folderPublicPath ?? '',
@@ -883,20 +931,28 @@ export default defineComponent({
 		},
 
 		saveBoard() {
+			// #281: Titel/Beschreibung sind board-scoped (auch der Ersteller darf
+			// sie); die projektweiten Felder sendet nur der Manager. Der Server
+			// erzwingt dasselbe feld-genau — würde der Ersteller ein Projektfeld
+			// mitschicken, käme 403.
+			const managerFields = this.mayManage
+				? {
+						orgInternal: this.blankToNull(this.board.orgInternal),
+						orgExternal: this.blankToNull(this.board.orgExternal),
+						chatUrl: this.blankToNull(this.board.chatUrl),
+						githubEnabled: this.board.githubEnabled,
+						// **Roher String, nicht blankToNull:** Ein leeres Repo soll das
+						// Ziel entfernen; onlyGiven wirft nur `null` heraus.
+						githubRepo: this.board.githubRepo.trim(),
+						memberBoardsAllowed: this.board.memberBoardsAllowed,
+					}
+				: {}
+
 			return this.write(
 				() => updateBoard(this.boardId, {
 					title: this.board.title.trim(),
 					description: this.blankToNull(this.board.description),
-					orgInternal: this.blankToNull(this.board.orgInternal),
-					orgExternal: this.blankToNull(this.board.orgExternal),
-					chatUrl: this.blankToNull(this.board.chatUrl),
-					githubEnabled: this.board.githubEnabled,
-					// **Roher String, nicht blankToNull:** Ein leeres Repo soll
-					// das Ziel entfernen (der Hinweis darunter verspricht genau
-					// das). onlyGiven wirft nur `null` heraus; der leere String
-					// kommt durch und wird serverseitig zu „kein Ziel" — dieselbe
-					// Mechanik wie bei den Ordnerpfaden.
-					githubRepo: this.board.githubRepo.trim(),
+					...managerFields,
 				}),
 				t('projektwerk', 'Speichern fehlgeschlagen'),
 			)

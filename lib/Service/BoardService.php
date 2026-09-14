@@ -67,6 +67,7 @@ class BoardService {
 		private BoardAccess $access,
 		private IL10N $l10n,
 		private ProjectFolderService $folders,
+		private AccountType $accountType,
 	) {
 	}
 
@@ -79,8 +80,11 @@ class BoardService {
 	 * unerreichbar und ließe sich nicht einmal löschen.
 	 *
 	 * Wer anlegt, wird Eigentümer und internes Mitglied mit Verwaltungsrecht.
-	 * Eine Rechteprüfung gibt es davor nicht: Ein eigenes Projekt anzulegen
-	 * setzt nichts voraus.
+	 * **Genau deshalb dürfen Gäste es nicht** (#280): Ein Gast, der ein Projekt
+	 * anlegt, würde darin intern und Manager — das wäre die Hintertür, die die
+	 * Konto-Trennung aushebelt. Ein vollwertiges Konto (Database/LDAP/…) darf
+	 * ohne weitere Voraussetzung anlegen. Die Unterscheidung trifft
+	 * {@see AccountType} über das User-Backend, nicht über die App-Rolle.
 	 *
 	 * Die Spalten aus {@see DEFAULT_COLUMNS} entstehen gleich mit — **einmalig
 	 * übersetzt in der Sprache der anlegenden Person**, danach sind es normale
@@ -96,6 +100,9 @@ class BoardService {
 		?string $orgInternal = null,
 		?string $orgExternal = null,
 	): Board {
+		if ($this->accountType->isGuest($userId)) {
+			throw new GuestNotAllowedException($this->l10n->t('Als Gast können Sie keine Projekte anlegen.'));
+		}
 		$this->assertTitle($title);
 		$now = new \DateTime();
 
@@ -124,6 +131,8 @@ class BoardService {
 			$board->setTitle(trim($title));
 			$board->setDescription($description);
 			$board->setOwnerUserId($userId);
+			// #281: Ersteller festhalten — trägt das board-scopes Einricht-Recht.
+			$board->setCreatedBy($userId);
 			$board->setOrgInternal($this->trimOrNull($orgInternal));
 			$board->setOrgExternal($this->trimOrNull($orgExternal));
 			$board->setArchived(0);
@@ -177,7 +186,6 @@ class BoardService {
 	 * @throws \InvalidArgumentException Titel leer
 	 */
 	public function createInProject(ViewerContext $viewer, string $title): Board {
-		$this->assertManager($viewer);
 		$this->assertTitle($title);
 		$now = new \DateTime();
 
@@ -188,9 +196,21 @@ class BoardService {
 			// ein zweites Board erbt sie, statt sie neu zu erfragen.
 			$project = $this->projects->findForViewer($viewer);
 
+			// #281: Ein weiteres Board darf anlegen, wer Manager ist ODER wo das
+			// Projekt „Mitglieder dürfen Boards anlegen" gesetzt hat. Der Guard
+			// braucht das Projekt (Flag) und steht deshalb erst hier.
+			if (!$viewer->isManager && (int)$project->getMemberBoardsAllowed() !== 1) {
+				throw new NotManagerException(
+					$this->l10n->t('In diesem Projekt dürfen nur interne Verwalter Boards anlegen.'),
+				);
+			}
+
 			$board = new Board();
 			$board->setTitle(trim($title));
 			$board->setOwnerUserId((string)$project->getOwnerUserId());
+			// #281: Ersteller ist das anlegende Mitglied (nicht der Projekt-Owner)
+			// — es trägt das Einricht-Recht für genau dieses Board.
+			$board->setCreatedBy($viewer->userId);
 			$board->setOrgInternal($project->getOrgInternal());
 			$board->setOrgExternal($project->getOrgExternal());
 			$board->setArchived(0);
@@ -230,7 +250,17 @@ class BoardService {
 	 * @throws \OCP\Files\NotPermittedException Ordner nicht erreichbar oder nicht beschreibbar
 	 */
 	public function update(ViewerContext $viewer, array $changes): Board {
-		$this->assertManager($viewer);
+		// #281: Feld-genaue Berechtigung. Titel/Beschreibung sind board-scoped —
+		// der Ersteller darf sie an SEINEM Board ändern. Alles andere (Org,
+		// Ordner, Chat, GitHub, der Anlage-Schalter) ist projektweit und bleibt
+		// Manager-only. Enthält der Änderungssatz ein solches Feld, muss der
+		// Betrachter Manager sein.
+		$boardScopedOnly = array_diff(array_keys($changes), ['title', 'description']) === [];
+		if ($boardScopedOnly) {
+			$this->assertBoardConfigurer($viewer);
+		} else {
+			$this->assertManager($viewer);
+		}
 
 		$board = $this->boards->findForViewer($viewer);
 		// Ordner und Chat gehören seit #246 dem PROJEKT — eine Quelle, geteilt
@@ -256,6 +286,13 @@ class BoardService {
 			// Reine Adresse für den Knopf „Zum Projektchat", am Projekt (#246).
 			// Leer heißt: Knopf entfällt ersatzlos.
 			$project->setChatUrl($this->trimOrNull($changes['chatUrl']));
+			$projectChanged = true;
+		}
+		if (array_key_exists('memberBoardsAllowed', $changes)) {
+			// #281: Der Projekt-Schalter „Mitglieder dürfen Boards anlegen".
+			// Projektweit, deshalb Manager-only (durch $boardScopedOnly oben).
+			// SMALLINT 0/1, nie Types::BOOLEAN.
+			$project->setMemberBoardsAllowed($changes['memberBoardsAllowed'] ? 1 : 0);
 			$projectChanged = true;
 		}
 		if (array_key_exists('folderPublicPath', $changes)) {
@@ -343,7 +380,8 @@ class BoardService {
 	 * @throws NotManagerException
 	 */
 	public function setArchived(ViewerContext $viewer, bool $archived): Board {
-		$this->assertManager($viewer);
+		// #281: Auch der Board-Ersteller darf sein Board archivieren.
+		$this->assertBoardConfigurer($viewer);
 
 		$board = $this->boards->findForViewer($viewer);
 		$board->setArchived($archived ? 1 : 0);
@@ -361,6 +399,28 @@ class BoardService {
 				'Die Board-Einstellungen dürfen nur interne Mitglieder mit Verwaltungsrecht ändern.',
 			);
 		}
+	}
+
+	/**
+	 * Der **Board-Einrichter** (#281): Projekt-Manager ODER Ersteller genau
+	 * dieses Boards. Nur er richtet die board-scopeden Dinge ein — Spalten,
+	 * Titel/Beschreibung, Archivieren. Projektweite Felder bleiben Manager-only
+	 * (der Aufrufer entscheidet, welche Prüfung greift).
+	 */
+	private function assertBoardConfigurer(ViewerContext $viewer): void {
+		if (!$viewer->isManager && !$viewer->isBoardCreator) {
+			throw new NotManagerException(
+				$this->l10n->t('Dieses Board darf nur der Projekt-Verwalter oder sein Ersteller ändern.'),
+			);
+		}
+	}
+
+	/**
+	 * Ob das Projekt des Boards „Mitglieder dürfen Boards anlegen" gesetzt hat
+	 * (#281) — für die Anzeige des „Board hinzufügen" im Frontend.
+	 */
+	public function projectAllowsMemberBoards(ViewerContext $viewer): bool {
+		return (int)$this->projects->findForViewer($viewer)->getMemberBoardsAllowed() === 1;
 	}
 
 	private function assertTitle(string $title): void {

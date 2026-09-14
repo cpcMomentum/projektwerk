@@ -15,6 +15,7 @@ use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\AppInfo\Application;
 use OCA\Projektwerk\Service\BoardService;
 use OCA\Projektwerk\Service\ColumnService;
+use OCA\Projektwerk\Service\GuestNotAllowedException;
 use OCA\Projektwerk\Service\MemberService;
 use OCA\Projektwerk\Service\NotManagerException;
 use OCA\Projektwerk\Service\NotOwnerException;
@@ -71,6 +72,10 @@ class SettingsController extends Controller {
 				$this->boardService->create($this->userId, $title, $description, $orgInternal, $orgExternal),
 				Http::STATUS_CREATED,
 			);
+		} catch (GuestNotAllowedException $e) {
+			// Gäste dürfen keine eigenständigen Projekte anlegen (#280). 403, nicht
+			// 404: Der Gast ist angemeldet, es gibt nichts zu verbergen.
+			return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_FORBIDDEN);
 		} catch (\InvalidArgumentException $e) {
 			return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
 		}
@@ -105,6 +110,7 @@ class SettingsController extends Controller {
 		?string $folderInternalPath = null,
 		?bool $githubEnabled = null,
 		?string $githubRepo = null,
+		?bool $memberBoardsAllowed = null,
 	): JSONResponse {
 		// **Die beiden Ordner kommen als Pfad, gespeichert wird die Datei-ID.**
 		// Der Pfad benennt den Ordner nur; was in der Datenbank landet, loest
@@ -125,6 +131,10 @@ class SettingsController extends Controller {
 			// kommt als leerer String und wird zu „kein Ziel".
 			'githubEnabled' => $githubEnabled,
 			'githubRepo' => $githubRepo,
+			// #281: Projekt-Schalter „Mitglieder dürfen Boards anlegen". `null` =
+			// nicht mitgeschickt; sonst true/false. Manager-only setzt der Service
+			// durch (projektweites Feld).
+			'memberBoardsAllowed' => $memberBoardsAllowed,
 		]);
 
 		return $this->write($boardId, fn (ViewerContext $viewer): mixed

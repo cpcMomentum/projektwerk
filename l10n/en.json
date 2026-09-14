@@ -446,7 +446,13 @@
 		"Boards": "Boards",
 		"Board hinzufügen": "Add board",
 		"Das neue Board gehört zu diesem Projekt und teilt sich Mitglieder, Ordner und Vorgangsnummern.": "The new board belongs to this project and shares its members, folders and ticket numbers.",
-		"Titel des Boards": "Board title"
+		"Titel des Boards": "Board title",
+		"Noch keine Vorgänge": "No items yet",
+		"Als Gast können Sie keine Projekte anlegen.": "As a guest you cannot create projects.",
+		"Mitglieder dürfen eigene Boards in diesem Projekt anlegen": "Members may create their own boards in this project",
+		"Damit können Arbeitsgruppen selbst ein Board anlegen und dessen Spalten pflegen. Alle Projektmitglieder sehen weiterhin alle Boards.": "This lets working groups create a board themselves and manage its columns. All project members still see every board.",
+		"In diesem Projekt dürfen nur interne Verwalter Boards anlegen.": "Only internal administrators may create boards in this project.",
+		"Dieses Board darf nur der Projekt-Verwalter oder sein Ersteller ändern.": "Only the project administrator or the board's creator may change this board."
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }
