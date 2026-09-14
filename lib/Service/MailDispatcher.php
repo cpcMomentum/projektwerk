@@ -17,6 +17,7 @@ use OCA\Projektwerk\Db\NotifyPrefMapper;
 use OCP\IUserManager;
 use OCP\L10N\IFactory;
 use OCP\Mail\IMailer;
+use OCP\Util;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -173,8 +174,9 @@ class MailDispatcher {
 	 * @param string $einleitung Fertiger Einleitungssatz für den Rumpf.
 	 * @param string $link Deep-Link zum Vorgang; leer heißt: kein „Zum Vorgang"-Knopf.
 	 * @param string $meta Kontextzeile über dem Text (Projekt · Vorgang); leer heißt: keine.
+	 * @param string|null $projekt Projektname für Absendername und Betreff-Präfix; null heißt: keiner auflösbar.
 	 */
-	public function flush(MailOutbox $zeile, string $betreff, string $einleitung, string $link = '', string $meta = ''): MailOutbox {
+	public function flush(MailOutbox $zeile, string $betreff, string $einleitung, string $link = '', string $meta = '', ?string $projekt = null): MailOutbox {
 		$adresse = $this->adresseVon((string)$zeile->getRecipientUid());
 
 		if ($adresse === null) {
@@ -189,12 +191,21 @@ class MailDispatcher {
 
 		$zeile->setAttempts((int)$zeile->getAttempts() + 1);
 
+		// **Der Betreff bekommt das Projekt vorangestellt** (#284): `[{Projekt}]`
+		// macht den Posteingang scannbar — welches Projekt, bevor man die Mail
+		// öffnet. Angesetzt wird der Präfix hier, nicht in der `betreff()`-Matrix
+		// des Composers: so bleiben die l10n-Strings unangetastet, und ohne
+		// auflösbaren Projektnamen fällt der Präfix ersatzlos weg. Die H1 im
+		// Rumpf bleibt ohne Präfix — die Metazeile darunter nennt das Projekt
+		// ohnehin (Betreff = Scannen, Meta = Lesen).
+		$betreffMitProjekt = self::betreffMitProjekt($betreff, $projekt);
+
 		// **NC-gestyltes HTML statt nacktem Text** (#189): dieselbe Optik wie
 		// jede andere Nextcloud-Mail, mit Überschrift, Satz und — sofern ein
 		// Link vorliegt — einem „Zum Vorgang"-Knopf. Das Template rendert Text
 		// **und** HTML; ein Client ohne HTML bekommt weiter eine lesbare Mail.
 		$template = $this->mailer->createEMailTemplate('projektwerk.notification');
-		$template->setSubject($betreff);
+		$template->setSubject($betreffMitProjekt);
 		$template->addHeading($betreff);
 		// Die Kontextzeile (Projekt · Vorgang) steht über dem Satz — wo einer da
 		// ist. Sie ordnet die Mail ein, bevor man den Satz liest.
@@ -208,11 +219,21 @@ class MailDispatcher {
 		}
 
 		$nachricht = $this->mailer->createMessage();
+		// **Gleiche Adresse, besserer Name** (#284). Ohne eigenes `setFrom` käme
+		// die Mail als nackte Instanz-Adresse mit dem Instanznamen an. Die
+		// **Adresse** bleibt exakt die, die der Mailer ohnehin als Absender
+		// nutzt — `Util::getDefaultEmailAddress('no-reply')` ist genau der Wert,
+		// den Nextclouds Mailer beim Versand einsetzt, wenn kein Absender gesetzt
+		// ist (aus `mail_from_address`+`mail_domain`, verifiziert gegen NC 34).
+		// Eine andere Adresse bräche SPF/DKIM. Verändert wird nur der
+		// **Anzeigename**: „ProjektWerk – {Projekt}", ohne auflösbaren
+		// Projektnamen nur „ProjektWerk".
+		$nachricht->setFrom([Util::getDefaultEmailAddress('no-reply') => self::absenderName($projekt)]);
 		// **Der Anzeigename ist der Name der Person, nicht ihre Kennung** (#189).
 		// Gastkonten tragen als Kennung einen Hash; stünde der als Anzeigename in
 		// der An-Zeile, läse die Mail sich für den Empfänger wie Spam.
 		$nachricht->setTo($this->empfaenger($adresse, (string)$zeile->getRecipientUid()));
-		$nachricht->setSubject($betreff);
+		$nachricht->setSubject($betreffMitProjekt);
 		$nachricht->useTemplate($template);
 
 		try {
@@ -320,5 +341,34 @@ class MailDispatcher {
 		$seit = (new \DateTime())->modify('-' . self::FENSTER_MINUTEN . ' minutes');
 
 		return $this->outbox->existsSince($recipientUid, $ticketId, $event, $seit);
+	}
+
+	/**
+	 * Der Absender-Anzeigename (#284): „ProjektWerk – {Projekt}", oder — ohne
+	 * auflösbaren Projektnamen — nur „ProjektWerk".
+	 *
+	 * **Rein und statisch**, damit die eine Entscheidung, um die es geht (mit
+	 * oder ohne Projekt), ohne Mailer und ohne Server prüfbar ist. Die Adresse
+	 * bleibt außen vor — sie ist die des Mailers und darf sich nicht ändern.
+	 *
+	 * @param string|null $projekt Projektname, oder null.
+	 */
+	private static function absenderName(?string $projekt): string {
+		return $projekt !== null ? 'ProjektWerk – ' . $projekt : 'ProjektWerk';
+	}
+
+	/**
+	 * Der Betreff mit vorangestelltem `[{Projekt}]` (#284), oder unverändert,
+	 * wenn kein Projektname vorliegt.
+	 *
+	 * Ebenfalls rein und statisch: der Präfix ist eine Textentscheidung, keine
+	 * Transportsache, und wird hier — eine Ebene über der `betreff()`-Matrix des
+	 * Composers — angesetzt, ohne einen einzigen l10n-String anzufassen.
+	 *
+	 * @param string $betreff Der fertige Betreff aus dem Composer.
+	 * @param string|null $projekt Projektname, oder null.
+	 */
+	private static function betreffMitProjekt(string $betreff, ?string $projekt): string {
+		return $projekt !== null ? '[' . $projekt . '] ' . $betreff : $betreff;
 	}
 }
