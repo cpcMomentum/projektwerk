@@ -150,9 +150,11 @@ class MailOutbox extends Entity {
 	 * Pro-Zeile-Anker für Antworten per E-Mail (#285).
 	 *
 	 * Erzeugt beim Vormerken in {@see \OCA\Projektwerk\Service\MailDispatcher::queue()}
-	 * als `bin2hex(random_bytes(16))` und im Betreff als `[PW-{token}]`
-	 * mitgeschickt. Eine eingehende Antwort wird darüber ihrer Ausgangsmail
-	 * zugeordnet (Serie #287). Nullable: Altbestand hat keinen.
+	 * als `bin2hex(random_bytes(16))`. Reist künftig im Betreff als
+	 * `[PW-{token}]` mit, sobald Serie #287 den Versand darauf umstellt; eine
+	 * eingehende Antwort wird darüber ihrer Ausgangsmail zugeordnet. Bis dahin
+	 * wird der Token vergeben, aber noch nirgends verwendet. Nullable:
+	 * Altbestand hat keinen.
 	 */
 	protected ?string $replyToken = null;
 
