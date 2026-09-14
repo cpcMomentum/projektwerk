@@ -12,6 +12,7 @@ namespace OCA\Projektwerk\Tests\Integration;
 use OCA\Projektwerk\Db\Board;
 use OCA\Projektwerk\Db\Project;
 use OCA\Projektwerk\Db\ProjectMapper;
+use OCP\IAppConfig;
 use OCP\IDBConnection;
 use OCP\Server;
 use PHPUnit\Framework\TestCase;
@@ -69,6 +70,16 @@ abstract class IntegrationTestCase extends TestCase {
 
 		$this->db = Server::get(IDBConnection::class);
 		$this->db->beginTransaction();
+
+		// WerkPlus-Grenzen (#288) für die Integrationssuite aufheben: Die
+		// Feature-Tests legen viele Boards und Kundenprojekte an, der freie
+		// Umfang (je 1) ist hier nicht das Prüfziel — die Enforcement-Logik hütet
+		// EntitlementServiceTest. Hoch statt 0, weil 0 laut Vertrag auf 1
+		// zurückfällt. AppConfig liegt außerhalb der DB-Transaktion; das ist
+		// unkritisch, weil idempotent und instanzweit gleich.
+		$config = Server::get(IAppConfig::class);
+		$config->setValueInt('projektwerk', 'plus_max_customer_projects', 9999);
+		$config->setValueInt('projektwerk', 'plus_max_boards_per_project', 9999);
 	}
 
 	protected function tearDown(): void {
