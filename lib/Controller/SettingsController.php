@@ -19,6 +19,7 @@ use OCA\Projektwerk\Service\GuestNotAllowedException;
 use OCA\Projektwerk\Service\MemberService;
 use OCA\Projektwerk\Service\NotManagerException;
 use OCA\Projektwerk\Service\NotOwnerException;
+use OCA\Projektwerk\Service\WerkPlusLimitException;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
@@ -283,6 +284,11 @@ class SettingsController extends Controller {
 
 		try {
 			return new JSONResponse($write($viewer), $status);
+		} catch (WerkPlusLimitException $e) {
+			// 402, nicht 403: Es fehlt kein Recht, sondern der freie Umfang ist
+			// erschöpft (#288). Die Meldung nennt WerkPlus; die Oberfläche zeigt
+			// sie unverändert an.
+			return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_PAYMENT_REQUIRED);
 		} catch (NotManagerException | NotOwnerException $e) {
 			// 403, nicht 404: Der Betrachter ist Mitglied und sieht das Board.
 			// Zu verbergen gibt es nichts mehr — nur zu erklären. Zwei

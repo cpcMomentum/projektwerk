@@ -46,6 +46,7 @@ class MemberService {
 		private BoardMapper $boards,
 		private IUserManager $users,
 		private MemberLifecycleService $lifecycle,
+		private EntitlementService $entitlement,
 	) {
 	}
 
@@ -70,6 +71,15 @@ class MemberService {
 			// Kennung wäre eine Zeile, die niemand je einlöst — und sie fiele
 			// erst auf, wenn sich jemand wundert, warum der Kunde nichts sieht.
 			throw new \InvalidArgumentException('Unbekanntes Konto: ' . $userId);
+		}
+
+		// WerkPlus-Grenze A (#288): Das **erste** externe Mitglied macht ein
+		// Projekt zum Kundenprojekt. Ist der freie Umfang an Kundenprojekten
+		// erschöpft, wird genau dieser Schritt abgelehnt — mit verständlicher
+		// Meldung, kein technischer Fehler. Weitere externe Mitglieder an einem
+		// bereits als Kundenprojekt geführten Projekt sind frei.
+		if ($role === ViewerContext::ROLE_EXTERNAL) {
+			$this->entitlement->assertMayAddExternalMember($viewer->projectId);
 		}
 
 		$member = new Member();
