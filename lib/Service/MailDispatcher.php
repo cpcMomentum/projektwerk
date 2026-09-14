@@ -351,10 +351,18 @@ class MailDispatcher {
 	 * oder ohne Projekt), ohne Mailer und ohne Server prüfbar ist. Die Adresse
 	 * bleibt außen vor — sie ist die des Mailers und darf sich nicht ändern.
 	 *
+	 * Ein Projektname, der ausschließlich aus Steuerzeichen besteht, bleibt nach
+	 * {@see einzeilig()} leer — Board-Titel werden nur mit `trim()` auf
+	 * Nicht-Leerheit geprüft, und das erfasst nicht jedes Steuerzeichen. Ein
+	 * solcher Rest zählt wie „kein Projekt", statt „ProjektWerk – " mit leerem
+	 * Namensteil zu erzeugen.
+	 *
 	 * @param string|null $projekt Projektname, oder null.
 	 */
 	private static function absenderName(?string $projekt): string {
-		return $projekt !== null ? 'ProjektWerk – ' . self::einzeilig($projekt) : 'ProjektWerk';
+		$sauber = $projekt !== null ? self::einzeilig($projekt) : '';
+
+		return $sauber !== '' ? 'ProjektWerk – ' . $sauber : 'ProjektWerk';
 	}
 
 	/**
@@ -369,7 +377,9 @@ class MailDispatcher {
 	 * @param string|null $projekt Projektname, oder null.
 	 */
 	private static function betreffMitProjekt(string $betreff, ?string $projekt): string {
-		return $projekt !== null ? '[' . self::einzeilig($projekt) . '] ' . $betreff : $betreff;
+		$sauber = $projekt !== null ? self::einzeilig($projekt) : '';
+
+		return $sauber !== '' ? '[' . $sauber . '] ' . $betreff : $betreff;
 	}
 
 	/**

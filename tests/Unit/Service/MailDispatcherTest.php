@@ -69,4 +69,19 @@ class MailDispatcherTest extends TestCase {
 			$this->call('betreffMitProjekt', 'Neuer Kommentar zu Vorgang #0007', "Relaunch\nWebsite"),
 		);
 	}
+
+	public function testAbsenderNameFallsBackWhenProjectIsOnlyControlChars(): void {
+		// Ein Board-Titel wird nur mit trim() auf Nicht-Leerheit geprueft, das
+		// erfasst nicht jedes Steuerzeichen (z. B. \x01). Bleibt nach dem
+		// Glaetten nichts uebrig, zaehlt das wie „kein Projekt" — nicht wie
+		// „ProjektWerk – " mit leerem Namensteil.
+		$this->assertSame('ProjektWerk', $this->call('absenderName', "\x01\x01\x01"));
+	}
+
+	public function testSubjectUnchangedWhenProjectIsOnlyControlChars(): void {
+		$this->assertSame(
+			'Neuer Kommentar zu Vorgang #0007',
+			$this->call('betreffMitProjekt', 'Neuer Kommentar zu Vorgang #0007', "\x01\x01\x01"),
+		);
+	}
 }
