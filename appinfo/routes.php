@@ -156,5 +156,13 @@ return [
 		// Anmeldung ein zweites Mal durchlaufen und das Fragment am selben
 		// Punkt wieder verlieren.
 		['name' => 'deepLink#ticket', 'url' => '/t/{ticketId}', 'verb' => 'GET'],
+
+		// Antwort-Postfach (#286) — Instanz-Einstellungen, admin-only (die
+		// Controller-Methoden tragen bewusst KEIN #[NoAdminRequired]). Der GET
+		// liefert keine Board-/Vorgangsdaten, sondern die IMAP-Konfiguration ohne
+		// Passwort; er steht darum in ReadPathRegistry::ROUTES_WITHOUT_DATA.
+		['name' => 'replyMailbox#config', 'url' => '/api/v1/reply-mailbox', 'verb' => 'GET'],
+		['name' => 'replyMailbox#save', 'url' => '/api/v1/reply-mailbox', 'verb' => 'PUT'],
+		['name' => 'replyMailbox#test', 'url' => '/api/v1/reply-mailbox/test', 'verb' => 'POST'],
 	],
 ];

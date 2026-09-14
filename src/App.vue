@@ -82,6 +82,21 @@
 				eine Tabelle, in der man vergleichen will.
 			-->
 			<template #footer>
+				<!--
+					Antwort-Postfach (#286): Instanz-Einstellung, nur für
+					Administratoren. Der Eintrag blendet sich per `OC.isUserAdmin()`
+					aus, wo er ohnehin ins Leere liefe — die Sperre selbst sitzt
+					serverseitig an den Endpunkten.
+				-->
+				<NcAppNavigationItem
+					v-if="isAdmin"
+					:name="t('projektwerk', 'Antworten per E-Mail')"
+					:to="{ name: 'reply-mailbox' }"
+					@click="closeNavigationOnMobile">
+					<template #icon>
+						<EmailIcon :size="20" />
+					</template>
+				</NcAppNavigationItem>
 				<NcAppNavigationItem
 					:name="t('projektwerk', 'Meine Einstellungen')"
 					:to="{ name: 'my-settings' }"
@@ -110,6 +125,7 @@ import NcAppNavigationCaption from '@nextcloud/vue/components/NcAppNavigationCap
 import NcAppNavigationItem from '@nextcloud/vue/components/NcAppNavigationItem'
 import NcContent from '@nextcloud/vue/components/NcContent'
 import CogIcon from 'vue-material-design-icons/Cog.vue'
+import EmailIcon from 'vue-material-design-icons/EmailOutline.vue'
 import FolderMultipleIcon from 'vue-material-design-icons/FolderMultiple.vue'
 import FormatListChecksIcon from 'vue-material-design-icons/FormatListChecks.vue'
 import StarIcon from 'vue-material-design-icons/Star.vue'
@@ -118,10 +134,28 @@ import { useBoardStore } from '@/stores/boardStore'
 
 export default {
 	name: 'App',
-	components: { NcContent, NcAppNavigation, NcAppNavigationCaption, NcAppNavigationItem, NcAppContent, FolderMultipleIcon, FormatListChecksIcon, StarIcon, ViewDashboardIcon, CogIcon },
+	components: { NcContent, NcAppNavigation, NcAppNavigationCaption, NcAppNavigationItem, NcAppContent, FolderMultipleIcon, FormatListChecksIcon, StarIcon, ViewDashboardIcon, CogIcon, EmailIcon },
 
 	setup() {
 		return { isMobile: useIsMobile(), store: useBoardStore() }
+	},
+
+	computed: {
+		/**
+		 * Ob die angemeldete Person Instanz-Administrator ist — steuert allein
+		 * die Sichtbarkeit des Menueeintrags „Antworten per E-Mail" (#286). Aus
+		 * der Nextcloud-Laufzeit (`OC.isUserAdmin()`), nicht aus einem eigenen
+		 * Server-Signal: Ein `IGroupManager`-Aufruf in `lib/` verstiesse gegen
+		 * die „keine Admin-Ausnahme"-Invariante (Architektur-Test). Der Schutz
+		 * der Daten sitzt ohnehin serverseitig an den Endpunkten; hier geht es
+		 * nur darum, keinen toten Eintrag zu zeigen.
+		 *
+		 * Reines JS (diese Datei ist kein `lang="ts"`): keine Typannotationen.
+		 */
+		isAdmin() {
+			const oc = globalThis.OC
+			return !!(oc && typeof oc.isUserAdmin === 'function' && oc.isUserAdmin())
+		},
 	},
 
 	created() {

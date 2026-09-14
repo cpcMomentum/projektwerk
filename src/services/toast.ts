@@ -32,6 +32,23 @@ export function showError(message: string): void {
 }
 
 /**
+ * Eine Erfolgsmeldung — dieselbe Hülle wie `showError`, nur die grüne
+ * Variante. Fällt ohne `OCP` auf die Konsole zurück.
+ *
+ * @param message Der Text für die Person vor dem Schirm.
+ */
+export function showSuccess(message: string): void {
+	const toast = (globalThis as { OCP?: { Toast?: { success?(m: string): void } } }).OCP?.Toast
+	if (toast?.success !== undefined) {
+		toast.success(message)
+		return
+	}
+
+	// eslint-disable-next-line no-console
+	console.info('[projektwerk]', message)
+}
+
+/**
  * Ein Undo-Toast (#167): meldet eine erledigte Aktion und bietet an, sie
  * rückgängig zu machen. Ein Klick auf den Toast ruft `onUndo` und schließt ihn.
  *
