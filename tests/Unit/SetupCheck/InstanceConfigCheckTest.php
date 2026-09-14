@@ -16,12 +16,12 @@ use OCP\SetupCheck\SetupResult;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Die drei Instanzeinstellungen, einzeln und zusammen.
+ * Die vier Instanzeinstellungen, einzeln und zusammen.
  *
  * Jeder Fall setzt genau **einen** Wert auf den Problemwert und die anderen
- * beiden auf gute Werte. Ein Test, der alles gleichzeitig kaputt macht, ist
- * gruen, sobald irgendeine der drei Pruefungen anschlaegt — und bemerkt nicht,
- * wenn zwei davon nie laufen.
+ * drei auf gute Werte. Ein Test, der alles gleichzeitig kaputt macht, ist
+ * gruen, sobald irgendeine der vier Pruefungen anschlaegt — und bemerkt nicht,
+ * wenn drei davon nie laufen.
  */
 class InstanceConfigCheckTest extends TestCase {
 

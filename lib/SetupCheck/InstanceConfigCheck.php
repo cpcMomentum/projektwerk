@@ -15,10 +15,10 @@ use OCP\SetupCheck\ISetupCheck;
 use OCP\SetupCheck\SetupResult;
 
 /**
- * Drei Instanzeinstellungen, an denen ProjektWerk still scheitert.
+ * Vier Instanzeinstellungen, an denen ProjektWerk still scheitert.
  *
  * „Still" ist das gemeinsame Merkmal und der Grund, warum es diesen Check gibt.
- * Jeder der drei Werte laesst die App im Alltag funktionieren und bricht genau
+ * Jeder der vier Werte laesst die App im Alltag funktionieren und bricht genau
  * das, was niemand sofort bemerkt — Benachrichtigungen an Kunden, die diese App
  * selten oeffnen. Ein Fehler, der beim Kunden auftritt und beim Betreiber nicht,
  * ist der teuerste; ein Feld in der Administrationsuebersicht ist die billigste
