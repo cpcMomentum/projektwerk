@@ -90,6 +90,7 @@ class MailDispatcher {
 		private IUserManager $users,
 		private IFactory $l10nFactory,
 		private LoggerInterface $logger,
+		private ReplyMailboxSettings $replyMailbox,
 	) {
 	}
 
@@ -208,6 +209,16 @@ class MailDispatcher {
 		// ohnehin (Betreff = Scannen, Meta = Lesen).
 		$betreffMitProjekt = self::betreffMitProjekt($betreff, $projekt);
 
+		// **Antworten per E-Mail** (#287): Ist ein Antwort-Postfach eingerichtet,
+		// reist der Token dieser Zeile im Betreff mit — `[PW-{token}]`. Eine
+		// Antwort des Kunden trägt ihn (die meisten Clients zitieren den Betreff)
+		// und der Einlese-Job findet darüber den Vorgang zurück. Ohne
+		// eingerichtetes Postfach bleibt alles wie bisher.
+		$antwortAktiv = $this->replyMailbox->isEnabled();
+		if ($antwortAktiv) {
+			$betreffMitProjekt = self::betreffMitToken($betreffMitProjekt, $zeile->getReplyToken());
+		}
+
 		// **NC-gestyltes HTML statt nacktem Text** (#189): dieselbe Optik wie
 		// jede andere Nextcloud-Mail, mit Überschrift, Satz und — sofern ein
 		// Link vorliegt — einem „Zum Vorgang"-Knopf. Das Template rendert Text
@@ -237,6 +248,16 @@ class MailDispatcher {
 		// **Anzeigename**: „ProjektWerk – {Projekt}", ohne auflösbaren
 		// Projektnamen nur „ProjektWerk".
 		$nachricht->setFrom([Util::getDefaultEmailAddress('no-reply') => self::absenderName($projekt)]);
+		// **Reply-To nur mit Antwort-Postfach** (#287) — kein `noreply@`-Theater,
+		// wenn ohnehin niemand die Antworten liest. Die Adresse gehört dem
+		// Betreiber (z. B. projekte@firma.de) und ist die, die der Einlese-Job
+		// abfragt.
+		if ($antwortAktiv) {
+			$antwortAdresse = $this->replyMailbox->getReplyAddress();
+			if ($antwortAdresse !== '') {
+				$nachricht->setReplyTo([$antwortAdresse]);
+			}
+		}
 		// **Der Anzeigename ist der Name der Person, nicht ihre Kennung** (#189).
 		// Gastkonten tragen als Kennung einen Hash; stünde der als Anzeigename in
 		// der An-Zeile, läse die Mail sich für den Empfänger wie Spam.
@@ -418,6 +439,22 @@ class MailDispatcher {
 	 */
 	private static function einzeilig(string $projekt): string {
 		return trim((string)preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $projekt));
+	}
+
+	/**
+	 * Der Betreff mit angehängtem Antwort-Token `[PW-{token}]` (#287), oder
+	 * unverändert, wenn kein Token vorliegt.
+	 *
+	 * **Am Ende**, nicht am Anfang: Das `[{Projekt}]` vorn ist zum Scannen da,
+	 * der Token ist Maschinerie und gehört ans hintere Ende, wo er beim Lesen
+	 * nicht stört. Rein und statisch, damit das Format (`[PW-…]`, an dem der
+	 * Einlese-Job matcht) eine Maschine hütet.
+	 *
+	 * @param string $betreff Der bereits mit Projekt versehene Betreff.
+	 * @param string|null $token Der Antwort-Token der Zeile, oder null.
+	 */
+	private static function betreffMitToken(string $betreff, ?string $token): string {
+		return ($token !== null && $token !== '') ? $betreff . ' [PW-' . $token . ']' : $betreff;
 	}
 
 	/**

@@ -14,6 +14,7 @@ use OCA\Projektwerk\Db\MailOutboxMapper;
 use OCA\Projektwerk\Db\NotifyPref;
 use OCA\Projektwerk\Db\NotifyPrefMapper;
 use OCA\Projektwerk\Service\MailDispatcher;
+use OCA\Projektwerk\Service\ReplyMailboxSettings;
 use OCP\IUserManager;
 use OCP\L10N\IFactory;
 use OCP\Mail\IMailer;
@@ -94,6 +95,22 @@ class MailDispatcherTest extends TestCase {
 		);
 	}
 
+	// --- #287: Antwort-Token im Betreff -------------------------------------
+
+	public function testSubjectGetsReplyTokenSuffix(): void {
+		$this->assertSame(
+			'[Projekt] Neuer Kommentar [PW-abc123]',
+			$this->call('betreffMitToken', '[Projekt] Neuer Kommentar', 'abc123'),
+		);
+	}
+
+	public function testSubjectUnchangedWithoutToken(): void {
+		$this->assertSame(
+			'[Projekt] Neuer Kommentar',
+			$this->call('betreffMitToken', '[Projekt] Neuer Kommentar', null),
+		);
+	}
+
 	// --- #285: Antwort-Token beim Vormerken ---------------------------------
 
 	public function testReplyTokenIsThirtyTwoHexChars(): void {
@@ -168,6 +185,7 @@ class MailDispatcherTest extends TestCase {
 			$this->createMock(IUserManager::class),
 			$l10nFactory,
 			$this->createMock(LoggerInterface::class),
+			$this->createMock(ReplyMailboxSettings::class),
 		);
 	}
 }

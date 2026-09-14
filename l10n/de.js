@@ -436,6 +436,7 @@ OC.L10N.register(
     "Verbindung erfolgreich." : "Verbindung erfolgreich.",
     "Verbindung fehlgeschlagen." : "Verbindung fehlgeschlagen.",
     "Einstellungen gespeichert." : "Einstellungen gespeichert.",
-    "Einstellungen konnten nicht gespeichert werden" : "Einstellungen konnten nicht gespeichert werden"
+    "Einstellungen konnten nicht gespeichert werden" : "Einstellungen konnten nicht gespeichert werden",
+    "[Anhang aus E-Mail nicht übernommen – bitte im Vorgang hochladen]" : "[Anhang aus E-Mail nicht übernommen – bitte im Vorgang hochladen]"
 },
 "nplurals=2; plural=(n != 1);");
