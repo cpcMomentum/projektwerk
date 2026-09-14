@@ -4,6 +4,33 @@ Alle nennenswerten Änderungen an ProjektWerk werden hier dokumentiert.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.4.13] - 2026-09-14
+
+### Added
+
+- **„Meine Aufgaben" und „Projekte" in neuer Optik** (#276): beide Seiten in der einheitlichen
+  Karten-Optik der App. „Projekte" ist jetzt ein vollständiges Verzeichnis mit denselben Kacheln
+  wie der Überblick (Statusbalken, Zustand, „N diese Woche"); „Meine Aufgaben" zeigt gerahmte
+  Karten-Listen mit Art-Pille und Fälligkeit.
+- **Mitglieder dürfen Boards im Projekt anlegen** (#281): Ein neuer Projekt-Schalter erlaubt
+  Mitgliedern (auch externen), ein weiteres Board im Projekt anzulegen und dessen Spalten und Titel
+  selbst zu pflegen. Standardmäßig aus; die Sichtbarkeit bleibt unverändert (alle Projektmitglieder
+  sehen alle Boards).
+
+### Changed
+
+- **Gäste können keine eigenständigen Projekte mehr anlegen** (#280): Nur vollwertige Konten legen
+  Projekte an; für Gäste ist der Knopf ausgeblendet und die Anlage serverseitig gesperrt.
+
+### Fixed
+
+- **Favoritenstern auf der Projekte-Seite**: dezenter Icon-Toggle (gold, sonst Umriss) statt eines
+  blau gefüllten Blocks (#276).
+- **„Board hinzufügen"-Feld** übernahm den getippten Titel nicht (veraltete `:value`-Bindung), der
+  Knopf blieb deaktiviert — auf `v-model` umgestellt.
+- **Vorbereitung auf die kommende Nextcloud-Version** (#275): Test-Mocks für `getUserFolder()`
+  plattformabhängig an den neuen `IUserFolder`-Rückgabetyp angepasst.
+
 ## [0.4.12] - 2026-09-12
 
 ### Fixed
