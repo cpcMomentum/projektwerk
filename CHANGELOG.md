@@ -4,6 +4,28 @@ Alle nennenswerten Änderungen an ProjektWerk werden hier dokumentiert.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.4.14] - 2026-09-15
+
+### Added
+
+- **Antworten per E-Mail** (#284–#287): Kundinnen und Kunden können direkt auf eine
+  Benachrichtigungs-E-Mail antworten — die Antwort erscheint als Kommentar am Vorgang, und die
+  Gegenseite wird wie gewohnt benachrichtigt. Der Deep-Link „Zum Vorgang" bleibt der Hauptweg, die
+  Mail-Antwort ist der Bequemweg.
+  - **Absender & Betreff** (#284): Mails tragen jetzt den Anzeigenamen „ProjektWerk – {Projekt}"
+    (Adresse unverändert) und den Betreff-Präfix „[{Projekt}]".
+  - **Antwort-Postfach (IMAP)** (#286): Neue Admin-Einstellung „Antworten per E-Mail" mit eigenem
+    Postfach des Betreibers und „Verbindung testen"-Knopf. Es verlässt nichts die Instanz; das
+    Passwort wird verschlüsselt gespeichert.
+  - **Sichere Zuordnung** (#287): Antworten werden über einen Betreff-Token dem Vorgang zugeordnet,
+    mit doppelter Absender-Gegenprüfung (Adresse **und** Mitgliedschaft) sowie Schutz gegen
+    Automaten- und Schleifen-Mails.
+- **Setup-Check „E-Mail-Server"** (#284): Die Administrationsübersicht warnt, wenn die Instanz
+  keine E-Mails versenden kann — Kunden-Benachrichtigungen bleiben sonst still liegen.
+- **WerkPlus-Grundlage** (#288): Stub für zwei Grenzen (Kundenprojekte, Boards je Projekt).
+  **Standardmäßig ohne Wirkung** — die Grenzen greifen erst, wenn das künftige Entitlement-Backend
+  sie setzt.
+
 ## [0.4.13] - 2026-09-14
 
 ### Added
