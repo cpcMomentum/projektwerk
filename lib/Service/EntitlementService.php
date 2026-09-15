@@ -33,7 +33,15 @@ use OCP\IL10N;
  *   #281-Mitglieder-Weg ab.
  *
  * **Bestandsschutz:** Nur *Neues* wird verhindert; bestehende Projekte/Boards
- * über dem Limit bleiben unangetastet. `0`/leer fällt auf `1` zurück.
+ * über dem Limit bleiben unangetastet.
+ *
+ * **Standardmäßig greift nichts** (Entscheidung mit Axel, 2026-09-15): Solange
+ * **kein** Wert konfiguriert ist, gelten beide Grenzen als **unbegrenzt** — die
+ * Durchsetzung schläft, bis das Entitlement-Backend die Grenzen setzt. „WerkPlus
+ * darf erst kommen, wenn das Backend dazu da ist." Sonst sperrte jede frische
+ * Installation lautlos ein Paywall, das niemand freischalten kann. Erst ein
+ * **positiver** Config-Wert (den der Backend-Client setzt) macht die Grenze
+ * scharf — dann ist `1` der freie Umfang. `0`/leer = unbegrenzt.
  *
  * **Viewerlos und instanzweit.** Die Zählungen fragen keinen Betrachter — es
  * geht um den Umfang der Instanz, nicht darum, was jemand sehen darf. Deshalb
@@ -55,14 +63,34 @@ class EntitlementService {
 	) {
 	}
 
-	/** Wie viele Kundenprojekte im freien Umfang enthalten sind (mind. 1). */
+	/**
+	 * Wie viele Kundenprojekte im freien Umfang enthalten sind — oder
+	 * {@see PHP_INT_MAX}, solange nichts konfiguriert ist (dann greift nichts).
+	 */
 	public function maxCustomerProjects(): int {
-		return max(1, $this->config->getValueInt(self::APP, 'plus_max_customer_projects', 1));
+		return $this->limit('plus_max_customer_projects');
 	}
 
-	/** Wie viele Boards je Projekt im freien Umfang enthalten sind (mind. 1). */
+	/**
+	 * Wie viele Boards je Projekt im freien Umfang enthalten sind — oder
+	 * {@see PHP_INT_MAX}, solange nichts konfiguriert ist.
+	 */
 	public function maxBoardsPerProject(): int {
-		return max(1, $this->config->getValueInt(self::APP, 'plus_max_boards_per_project', 1));
+		return $this->limit('plus_max_boards_per_project');
+	}
+
+	/**
+	 * Der konfigurierte Grenzwert, oder {@see PHP_INT_MAX} als „unbegrenzt".
+	 *
+	 * Nur ein **positiver** Wert (den das Entitlement-Backend setzt) macht die
+	 * Grenze scharf; ohne Eintrag (Vorgabe `0`) schläft die Durchsetzung.
+	 *
+	 * @param string $key App-Config-Schlüssel.
+	 */
+	private function limit(string $key): int {
+		$configured = $this->config->getValueInt(self::APP, $key, 0);
+
+		return $configured > 0 ? $configured : PHP_INT_MAX;
 	}
 
 	/**
