@@ -437,6 +437,8 @@ OC.L10N.register(
     "Verbindung fehlgeschlagen." : "Verbindung fehlgeschlagen.",
     "Einstellungen gespeichert." : "Einstellungen gespeichert.",
     "Einstellungen konnten nicht gespeichert werden" : "Einstellungen konnten nicht gespeichert werden",
-    "[Anhang aus E-Mail nicht übernommen – bitte im Vorgang hochladen]" : "[Anhang aus E-Mail nicht übernommen – bitte im Vorgang hochladen]"
+    "[Anhang aus E-Mail nicht übernommen – bitte im Vorgang hochladen]" : "[Anhang aus E-Mail nicht übernommen – bitte im Vorgang hochladen]",
+    "Kein IMAP-Server angegeben." : "Kein IMAP-Server angegeben.",
+    "Der Verbindungstest ist mit einem unerwarteten Fehler fehlgeschlagen." : "Der Verbindungstest ist mit einem unerwarteten Fehler fehlgeschlagen."
 },
 "nplurals=2; plural=(n != 1);");

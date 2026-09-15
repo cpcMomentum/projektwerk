@@ -15,7 +15,9 @@ use OCA\Projektwerk\Service\ReplyMailboxSettings;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\JSONResponse;
+use OCP\IL10N;
 use OCP\IRequest;
+use Psr\Log\LoggerInterface;
 
 /**
  * Das Antwort-Postfach (#286) — Admin-Einstellungen.
@@ -34,6 +36,8 @@ class ReplyMailboxController extends Controller {
 	public function __construct(
 		IRequest $request,
 		private ReplyMailboxSettings $settings,
+		private IL10N $l10n,
+		private LoggerInterface $logger,
 	) {
 		parent::__construct(Application::APP_ID, $request);
 	}
@@ -93,7 +97,7 @@ class ReplyMailboxController extends Controller {
 		string $imapPassword = '',
 	): JSONResponse {
 		if (trim($imapHost) === '') {
-			return new JSONResponse(['error' => 'Kein IMAP-Server angegeben.'], Http::STATUS_BAD_REQUEST);
+			return new JSONResponse(['error' => $this->l10n->t('Kein IMAP-Server angegeben.')], Http::STATUS_BAD_REQUEST);
 		}
 
 		try {
@@ -108,11 +112,19 @@ class ReplyMailboxController extends Controller {
 
 			return new JSONResponse(['ok' => true]);
 		} catch (ImapException $e) {
+			// Die IMAP-Meldung ist fuer den Admin gedacht (Host falsch, Login
+			// abgelehnt, Ordner fehlt) — sie darf er sehen.
 			return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
 		} catch (\Throwable $e) {
-			// Alles andere (z. B. eine kaputte Konfiguration) ebenso als Meldung,
-			// nicht als 500 — der Admin soll den Grund lesen, nicht raten.
-			return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+			// **Unerwartetes bleibt intern** (PR-Review #294): eine fremde Ausnahme
+			// (z. B. ein Datenbankfehler) koennte im `getMessage()` interne Details
+			// tragen. Ins Log damit, an die Oberflaeche nur eine generische Meldung.
+			$this->logger->warning('ProjektWerk: IMAP-Verbindungstest mit unerwartetem Fehler', ['exception' => $e]);
+
+			return new JSONResponse(
+				['error' => $this->l10n->t('Der Verbindungstest ist mit einem unerwarteten Fehler fehlgeschlagen.')],
+				Http::STATUS_BAD_REQUEST,
+			);
 		}
 	}
 }

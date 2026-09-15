@@ -23,6 +23,9 @@ namespace OCA\Projektwerk\Imap;
  */
 class ImapClient {
 
+	/** Obergrenze fuer eine einzelne Antwortzeile (PR-Review #294). */
+	private const MAX_LINE_BYTES = 65536;
+
 	/** @var resource|null */
 	private $stream = null;
 	private int $tagCounter = 0;
@@ -249,9 +252,20 @@ class ImapClient {
 	}
 
 	private function readLine(): string {
-		$line = fgets($this->stream);
+		// Zeilenlimit gegen einen Server, der eine Zeile ohne CRLF-Terminator
+		// schickt (PR-Review #294): `fgets` ohne Laenge puffert sonst unbegrenzt.
+		// Protokollzeilen (getaggte Antworten, LIST-Eintraege) sind kurz; ein
+		// Nachrichtenrumpf kommt als Literal ueber readBytes() (eigenes 10-MB-Limit).
+		// 64 KiB ist grosszuegig fuer jede legitime Protokollzeile.
+		$line = fgets($this->stream, self::MAX_LINE_BYTES);
 		if ($line === false) {
 			throw new ImapException('IMAP: Verbindung unerwartet geschlossen');
+		}
+		// `fgets` stoppt am Zeilenende ODER bei MAX-1 Bytes. Endet die Zeile nicht
+		// auf \n und ist voll, hat der Server das Limit gesprengt — abbrechen,
+		// statt in Endlosschleife weiterzulesen.
+		if (!str_ends_with($line, "\n") && strlen($line) >= self::MAX_LINE_BYTES - 1) {
+			throw new ImapException('IMAP: Antwortzeile ueberschreitet das Limit');
 		}
 		return $line;
 	}
