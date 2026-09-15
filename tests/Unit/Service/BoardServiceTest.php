@@ -19,6 +19,7 @@ use OCA\Projektwerk\Db\Project;
 use OCA\Projektwerk\Db\ProjectMapper;
 use OCA\Projektwerk\Service\AccountType;
 use OCA\Projektwerk\Service\BoardService;
+use OCA\Projektwerk\Service\EntitlementService;
 use OCA\Projektwerk\Service\GuestNotAllowedException;
 use OCA\Projektwerk\Service\NotManagerException;
 use OCA\Projektwerk\Service\ProjectFolderService;
@@ -57,6 +58,7 @@ class BoardServiceTest extends TestCase {
 			$l10n,
 			$this->createStub(ProjectFolderService::class),
 			$accountType,
+			$this->createStub(EntitlementService::class),
 		);
 
 		$this->expectException(GuestNotAllowedException::class);
@@ -98,6 +100,7 @@ class BoardServiceTest extends TestCase {
 			$l10n,
 			$this->createStub(ProjectFolderService::class),
 			$this->createStub(AccountType::class),
+			$this->createStub(EntitlementService::class),
 		);
 
 		// Externes Mitglied ohne Verwaltungsrecht.
@@ -137,6 +140,7 @@ class BoardServiceTest extends TestCase {
 			$l10n,
 			$this->createStub(ProjectFolderService::class),
 			$this->createStub(AccountType::class),
+			$this->createStub(EntitlementService::class),
 		);
 
 		$viewer = ViewerContext::forMember('carla', 1, 9, ViewerContext::ROLE_EXTERNAL, false);
@@ -167,6 +171,7 @@ class BoardServiceTest extends TestCase {
 			$this->createStub(IL10N::class),
 			$this->createStub(ProjectFolderService::class),
 			$this->createStub(AccountType::class),
+			$this->createStub(EntitlementService::class),
 		);
 
 		// Externer Ersteller: kein Manager, aber isBoardCreator.
@@ -195,6 +200,7 @@ class BoardServiceTest extends TestCase {
 			$this->createStub(IL10N::class),
 			$this->createStub(ProjectFolderService::class),
 			$this->createStub(AccountType::class),
+			$this->createStub(EntitlementService::class),
 		);
 
 		$viewer = ViewerContext::forMember('carla', 1, 9, ViewerContext::ROLE_EXTERNAL, false, true);

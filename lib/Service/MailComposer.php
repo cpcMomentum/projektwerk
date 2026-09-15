@@ -72,7 +72,7 @@ class MailComposer {
 	 * @param MailOutbox $zeile Die vorgemerkte Mail (trägt Anlass, Auslöser, Schritt).
 	 * @param Ticket $ticket Der aktuelle Stand des Vorgangs (Nummer, Titel, Board).
 	 * @param IL10N $l Die Sprache des Empfängers.
-	 * @return array{betreff: string, einleitung: string, meta: string}
+	 * @return array{betreff: string, einleitung: string, meta: string, projekt: ?string}
 	 */
 	public function compose(MailOutbox $zeile, Ticket $ticket, IL10N $l): array {
 		$event = (string)$zeile->getEvent();
@@ -86,6 +86,12 @@ class MailComposer {
 			'betreff' => $this->betreff($l, $event, $nummer),
 			'einleitung' => $this->einleitung($l, $event, $nummer, $titel, $actor, $schritt),
 			'meta' => $this->meta($l, $nummer, $projekt),
+			// **Der Projektname wandert eine Ebene weiter** (#284): der Versand
+			// setzt daraus den Absender-Anzeigenamen („ProjektWerk – {Projekt}")
+			// und den Betreff-Präfix „[{Projekt}]". Er ist hier schon aufgelöst
+			// (Empfänger-Sicht, Cache) — ihn mitzugeben ist billiger als ein
+			// zweiter Lookup im Dispatcher.
+			'projekt' => $projekt,
 		];
 	}
 

@@ -140,6 +140,48 @@ class MailComposerTest extends TestCase {
 		$this->assertSame('', $text['meta'], 'Ohne Projektname keine Metazeile.');
 	}
 
+	public function testProjektKeyCarriesBoardTitleWhenVisible(): void {
+		// #284: Der Projektname wird zusätzlich als eigener Schlüssel
+		// herausgegeben — der Versand baut daraus Absendername und Betreff.
+		$composer = new MailComposer($this->users([]), $this->boards([7 => 'Relaunch Website']));
+
+		$text = $composer->compose(
+			$this->zeile(MailOutbox::EVENT_TICKET_ASSIGNED, null),
+			$this->ticket(7, 'Logo liefern', 7),
+			$this->l10n(),
+		);
+
+		$this->assertSame('Relaunch Website', $text['projekt']);
+	}
+
+	public function testProjektKeyResolvesForGuestRecipient(): void {
+		// Gast-Empfänger: die Kennung ist ein Hash, kein Name. Der Projektname
+		// hängt trotzdem nur an der Mitgliedschaft (findAllForUser) — ein Gast
+		// ist Mitglied des Boards, also trägt seine Mail denselben Präfix.
+		$composer = new MailComposer($this->users([]), $this->boards([7 => 'Relaunch Website']));
+
+		$zeile = $this->zeile(MailOutbox::EVENT_COMMENT_ADDED, null);
+		$zeile->setRecipientUid('a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4');
+
+		$text = $composer->compose($zeile, $this->ticket(7, 'Logo liefern', 7), $this->l10n());
+
+		$this->assertSame('Relaunch Website', $text['projekt']);
+	}
+
+	public function testProjektKeyIsNullWhenBoardNotVisible(): void {
+		// Sieht der Empfänger das Board nicht (mehr), gibt es keinen
+		// Projektnamen — der Versand fällt dann auf „ProjektWerk" ohne Präfix.
+		$composer = new MailComposer($this->users([]), $this->boards([]));
+
+		$text = $composer->compose(
+			$this->zeile(MailOutbox::EVENT_TICKET_ASSIGNED, null),
+			$this->ticket(7, 'Logo liefern', 7),
+			$this->l10n(),
+		);
+
+		$this->assertNull($text['projekt']);
+	}
+
 	public function testUnknownActorUidIsNotShownAsName(): void {
 		// Das Konto zur actor_uid gibt es nicht (mehr) — statt der rohen Kennung
 		// steht kein Auslöser im Satz.

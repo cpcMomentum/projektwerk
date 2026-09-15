@@ -69,6 +69,11 @@ abstract class IntegrationTestCase extends TestCase {
 
 		$this->db = Server::get(IDBConnection::class);
 		$this->db->beginTransaction();
+
+		// Kein Aufheben der WerkPlus-Grenzen mehr nötig (#288): Ohne
+		// konfigurierten Wert greift die Durchsetzung standardmäßig nicht, die
+		// Feature-Tests laufen also ohnehin unbegrenzt. Die Enforcement-Logik
+		// selbst hütet EntitlementServiceTest.
 	}
 
 	protected function tearDown(): void {

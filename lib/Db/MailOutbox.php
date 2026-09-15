@@ -68,6 +68,10 @@ use OCP\DB\Types;
  * @method void setActorUid(?string $actorUid)
  * @method ?string getStepTitle()
  * @method void setStepTitle(?string $stepTitle)
+ * @method ?string getReplyToken()
+ * @method void setReplyToken(?string $replyToken)
+ * @method ?string getSentMessageId()
+ * @method void setSentMessageId(?string $sentMessageId)
  */
 class MailOutbox extends Entity {
 
@@ -142,6 +146,26 @@ class MailOutbox extends Entity {
 	protected ?string $actorUid = null;
 	protected ?string $stepTitle = null;
 
+	/**
+	 * Pro-Zeile-Anker für Antworten per E-Mail (#285).
+	 *
+	 * Erzeugt beim Vormerken in {@see \OCA\Projektwerk\Service\MailDispatcher::queue()}
+	 * als `bin2hex(random_bytes(16))`. Reist künftig im Betreff als
+	 * `[PW-{token}]` mit, sobald Serie #287 den Versand darauf umstellt; eine
+	 * eingehende Antwort wird darüber ihrer Ausgangsmail zugeordnet. Bis dahin
+	 * wird der Token vergeben, aber noch nirgends verwendet. Nullable:
+	 * Altbestand hat keinen.
+	 */
+	protected ?string $replyToken = null;
+
+	/**
+	 * Message-ID der versendeten Mail — Vorrat für `In-Reply-To`-Matching (#285).
+	 *
+	 * Derzeit nicht befüllt (siehe {@see \OCA\Projektwerk\Service\MailDispatcher::flush()}):
+	 * die öffentliche Mail-API gibt keinen Zugriff auf die Message-ID her.
+	 */
+	protected ?string $sentMessageId = null;
+
 	public function __construct() {
 		$this->addType('recipientUid', Types::STRING);
 		$this->addType('ticketId', Types::INTEGER);
@@ -156,5 +180,7 @@ class MailOutbox extends Entity {
 		$this->addType('sentAt', Types::DATETIME);
 		$this->addType('actorUid', Types::STRING);
 		$this->addType('stepTitle', Types::STRING);
+		$this->addType('replyToken', Types::STRING);
+		$this->addType('sentMessageId', Types::STRING);
 	}
 }

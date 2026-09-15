@@ -148,6 +148,10 @@ final class ReadPathRegistry {
 		// Der Unterschied zu einer Ausnahmeliste: Eine Ausnahme sagt „hier gilt
 		// die Regel nicht". Das hier sagt „hier gilt sie, und zwar so".
 		'MailOutboxMapper::findRetryable',
+		// Der Antwort-Anker (#287): findet die Ausgangszeile zu einem Token, für
+		// den Einlese-Job. Kein Betrachter (Token statt ViewerContext) — die
+		// Deckung ist wie bei findRetryable strukturell über VIEWERLESS_MAPPERS.
+		'MailOutboxMapper::findByReplyToken',
 		// `NotifyPrefMapper::isEnabled()` steht hier bewusst **nicht**: Es fragt
 		// die Datenbank nicht selbst, sondern ruft `findForUser()` auf. Der
 		// Lesepfad ist der eine darunter; ein zweiter Eintrag waere eine
@@ -266,6 +270,13 @@ final class ReadPathRegistry {
 		// laesst sich die Route zudem nicht integrationstesten.
 		'githubToken#repos' => 'Liefert externe GitHub-Repo-Namen (keine ProjektWerk-Daten), '
 			. 'token-scoped an die Sitzung. Kein Zugriff auf Board-/Vorgangsdaten.',
+		// Das Antwort-Postfach (#286) ist Instanz-Konfiguration, kein Lesepfad auf
+		// Projektdaten: Die Route ist admin-only (kein #[NoAdminRequired]) und
+		// gibt die IMAP-Einstellungen OHNE Passwort heraus. Board, Rolle und
+		// Sichtbarkeit spielen keine Rolle; ein Leak-Vektor auf Vorgangsdaten
+		// existiert nicht.
+		'replyMailbox#config' => 'Instanz-weite IMAP-Einstellungen (admin-only, ohne Passwort), '
+			. 'keine Board-/Vorgangsdaten.',
 	];
 
 	/**

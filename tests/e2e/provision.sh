@@ -40,3 +40,7 @@ anlegen() {
 
 anlegen pw-e2e-intern 'E2E Dienstleisterseite'
 anlegen pw-e2e-kunde 'E2E Kundenseite'
+
+# Kein Aufheben der WerkPlus-Grenzen mehr noetig (#288): Ohne konfigurierten Wert
+# greift die Durchsetzung standardmaessig nicht — die E2E-Specs bauen ihre
+# Kundenprojekte/Boards ohnehin unbegrenzt.

@@ -17,6 +17,7 @@ use OCA\Projektwerk\Db\NotifyPrefMapper;
 use OCP\IUserManager;
 use OCP\L10N\IFactory;
 use OCP\Mail\IMailer;
+use OCP\Util;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -89,6 +90,7 @@ class MailDispatcher {
 		private IUserManager $users,
 		private IFactory $l10nFactory,
 		private LoggerInterface $logger,
+		private ReplyMailboxSettings $replyMailbox,
 	) {
 	}
 
@@ -137,6 +139,9 @@ class MailDispatcher {
 			$unterdrueckt->setCreatedAt(new \DateTime());
 			$unterdrueckt->setActorUid($actorUid);
 			$unterdrueckt->setStepTitle($stepTitle);
+			// Jede neue Zeile trägt einen Token (#285) — auch die unterdrückte,
+			// damit „jede Outbox-Zeile hat einen Token" ohne Ausnahme gilt.
+			$unterdrueckt->setReplyToken(self::neuerReplyToken());
 			$this->outbox->insert($unterdrueckt);
 
 			return null;
@@ -156,6 +161,11 @@ class MailDispatcher {
 		$zeile->setCreatedAt(new \DateTime());
 		$zeile->setActorUid($actorUid);
 		$zeile->setStepTitle($stepTitle);
+		// **Der Antwort-Token entsteht hier, beim Vormerken** (#285) — nicht beim
+		// Senden. Der Nachversand ({@see \OCA\Projektwerk\BackgroundJob\MailRetryJob})
+		// fasst dieselbe Zeile wieder an und darf keinen zweiten Token vergeben,
+		// sonst zeigte eine nachgereichte Mail einen anderen Anker als die erste.
+		$zeile->setReplyToken(self::neuerReplyToken());
 
 		return $this->outbox->insert($zeile);
 	}
@@ -173,8 +183,9 @@ class MailDispatcher {
 	 * @param string $einleitung Fertiger Einleitungssatz für den Rumpf.
 	 * @param string $link Deep-Link zum Vorgang; leer heißt: kein „Zum Vorgang"-Knopf.
 	 * @param string $meta Kontextzeile über dem Text (Projekt · Vorgang); leer heißt: keine.
+	 * @param string|null $projekt Projektname für Absendername und Betreff-Präfix; null heißt: keiner auflösbar.
 	 */
-	public function flush(MailOutbox $zeile, string $betreff, string $einleitung, string $link = '', string $meta = ''): MailOutbox {
+	public function flush(MailOutbox $zeile, string $betreff, string $einleitung, string $link = '', string $meta = '', ?string $projekt = null): MailOutbox {
 		$adresse = $this->adresseVon((string)$zeile->getRecipientUid());
 
 		if ($adresse === null) {
@@ -189,12 +200,31 @@ class MailDispatcher {
 
 		$zeile->setAttempts((int)$zeile->getAttempts() + 1);
 
+		// **Der Betreff bekommt das Projekt vorangestellt** (#284): `[{Projekt}]`
+		// macht den Posteingang scannbar — welches Projekt, bevor man die Mail
+		// öffnet. Angesetzt wird der Präfix hier, nicht in der `betreff()`-Matrix
+		// des Composers: so bleiben die l10n-Strings unangetastet, und ohne
+		// auflösbaren Projektnamen fällt der Präfix ersatzlos weg. Die H1 im
+		// Rumpf bleibt ohne Präfix — die Metazeile darunter nennt das Projekt
+		// ohnehin (Betreff = Scannen, Meta = Lesen).
+		$betreffMitProjekt = self::betreffMitProjekt($betreff, $projekt);
+
+		// **Antworten per E-Mail** (#287): Ist ein Antwort-Postfach eingerichtet,
+		// reist der Token dieser Zeile im Betreff mit — `[PW-{token}]`. Eine
+		// Antwort des Kunden trägt ihn (die meisten Clients zitieren den Betreff)
+		// und der Einlese-Job findet darüber den Vorgang zurück. Ohne
+		// eingerichtetes Postfach bleibt alles wie bisher.
+		$antwortAktiv = $this->replyMailbox->isEnabled();
+		if ($antwortAktiv) {
+			$betreffMitProjekt = self::betreffMitToken($betreffMitProjekt, $zeile->getReplyToken());
+		}
+
 		// **NC-gestyltes HTML statt nacktem Text** (#189): dieselbe Optik wie
 		// jede andere Nextcloud-Mail, mit Überschrift, Satz und — sofern ein
 		// Link vorliegt — einem „Zum Vorgang"-Knopf. Das Template rendert Text
 		// **und** HTML; ein Client ohne HTML bekommt weiter eine lesbare Mail.
 		$template = $this->mailer->createEMailTemplate('projektwerk.notification');
-		$template->setSubject($betreff);
+		$template->setSubject($betreffMitProjekt);
 		$template->addHeading($betreff);
 		// Die Kontextzeile (Projekt · Vorgang) steht über dem Satz — wo einer da
 		// ist. Sie ordnet die Mail ein, bevor man den Satz liest.
@@ -208,12 +238,44 @@ class MailDispatcher {
 		}
 
 		$nachricht = $this->mailer->createMessage();
+		// **Gleiche Adresse, besserer Name** (#284). Ohne eigenes `setFrom` käme
+		// die Mail als nackte Instanz-Adresse mit dem Instanznamen an. Die
+		// **Adresse** bleibt exakt die, die der Mailer ohnehin als Absender
+		// nutzt — `Util::getDefaultEmailAddress('no-reply')` ist genau der Wert,
+		// den Nextclouds Mailer beim Versand einsetzt, wenn kein Absender gesetzt
+		// ist (aus `mail_from_address`+`mail_domain`, verifiziert gegen NC 34).
+		// Eine andere Adresse bräche SPF/DKIM. Verändert wird nur der
+		// **Anzeigename**: „ProjektWerk – {Projekt}", ohne auflösbaren
+		// Projektnamen nur „ProjektWerk".
+		$nachricht->setFrom([Util::getDefaultEmailAddress('no-reply') => self::absenderName($projekt)]);
+		// **Reply-To nur mit Antwort-Postfach** (#287) — kein `noreply@`-Theater,
+		// wenn ohnehin niemand die Antworten liest. Die Adresse gehört dem
+		// Betreiber (z. B. projekte@firma.de) und ist die, die der Einlese-Job
+		// abfragt.
+		if ($antwortAktiv) {
+			$antwortAdresse = $this->replyMailbox->getReplyAddress();
+			if ($antwortAdresse !== '') {
+				$nachricht->setReplyTo([$antwortAdresse]);
+			}
+		}
 		// **Der Anzeigename ist der Name der Person, nicht ihre Kennung** (#189).
 		// Gastkonten tragen als Kennung einen Hash; stünde der als Anzeigename in
 		// der An-Zeile, läse die Mail sich für den Empfänger wie Spam.
 		$nachricht->setTo($this->empfaenger($adresse, (string)$zeile->getRecipientUid()));
-		$nachricht->setSubject($betreff);
+		$nachricht->setSubject($betreffMitProjekt);
 		$nachricht->useTemplate($template);
+
+		// **Keine eigene Message-ID, `sent_message_id` bleibt leer** (#285,
+		// verifiziert gegen NC 34). Die Idee war, `<pw-{reply_token}@domain>` als
+		// Message-ID zu setzen, damit eine Antwort über `In-Reply-To` zugeordnet
+		// werden kann. Das ginge nur über die darunterliegende Symfony-Mail —
+		// und die öffentliche `OCP\Mail\IMessage` gibt darauf keinen Zugriff
+		// (kein `getSymfonyEmail()` im Interface). In die konkrete Implementierung
+		// zu greifen wäre ein Bruch der OCP-only-Regel dieser Flotte. Also der in
+		// der Anweisung vorgesehene Fallback: Das Matching läuft allein über den
+		// Betreff-Token `[PW-{reply_token}]` (Serie #287); der Token steckt schon
+		// in der Zeile. `sent_message_id` bleibt Vorrat für eine NC-Version, die
+		// den Zugriff über OCP freigibt.
 
 		try {
 			// **Hier steht die Auswertung, um die es geht.** `send()` wirft bei
@@ -320,5 +382,88 @@ class MailDispatcher {
 		$seit = (new \DateTime())->modify('-' . self::FENSTER_MINUTEN . ' minutes');
 
 		return $this->outbox->existsSince($recipientUid, $ticketId, $event, $seit);
+	}
+
+	/**
+	 * Der Absender-Anzeigename (#284): „ProjektWerk – {Projekt}", oder — ohne
+	 * auflösbaren Projektnamen — nur „ProjektWerk".
+	 *
+	 * **Rein und statisch**, damit die eine Entscheidung, um die es geht (mit
+	 * oder ohne Projekt), ohne Mailer und ohne Server prüfbar ist. Die Adresse
+	 * bleibt außen vor — sie ist die des Mailers und darf sich nicht ändern.
+	 *
+	 * Ein Projektname, der ausschließlich aus Steuerzeichen besteht, bleibt nach
+	 * {@see einzeilig()} leer — Board-Titel werden nur mit `trim()` auf
+	 * Nicht-Leerheit geprüft, und das erfasst nicht jedes Steuerzeichen. Ein
+	 * solcher Rest zählt wie „kein Projekt", statt „ProjektWerk – " mit leerem
+	 * Namensteil zu erzeugen.
+	 *
+	 * @param string|null $projekt Projektname, oder null.
+	 */
+	private static function absenderName(?string $projekt): string {
+		$sauber = $projekt !== null ? self::einzeilig($projekt) : '';
+
+		return $sauber !== '' ? 'ProjektWerk – ' . $sauber : 'ProjektWerk';
+	}
+
+	/**
+	 * Der Betreff mit vorangestelltem `[{Projekt}]` (#284), oder unverändert,
+	 * wenn kein Projektname vorliegt.
+	 *
+	 * Ebenfalls rein und statisch: der Präfix ist eine Textentscheidung, keine
+	 * Transportsache, und wird hier — eine Ebene über der `betreff()`-Matrix des
+	 * Composers — angesetzt, ohne einen einzigen l10n-String anzufassen.
+	 *
+	 * @param string $betreff Der fertige Betreff aus dem Composer.
+	 * @param string|null $projekt Projektname, oder null.
+	 */
+	private static function betreffMitProjekt(string $betreff, ?string $projekt): string {
+		$sauber = $projekt !== null ? self::einzeilig($projekt) : '';
+
+		return $sauber !== '' ? '[' . $sauber . '] ' . $betreff : $betreff;
+	}
+
+	/**
+	 * Der Projektname, tauglich für eine Kopfzeile (#284, Review-Hinweis PR #291).
+	 *
+	 * Projektname und Betreff-Präfix landen im Absender-Anzeigenamen und im
+	 * Betreff — beides sind Mail-Kopfzeilen. Ein Zeilenumbruch darin wäre eine
+	 * Header-Injection; Nextclouds Mailer würde eine solche Kopfzeile zwar
+	 * abweisen (und der Versand fiele über {@see flush()} sauber auf `failed`),
+	 * aber das ist Verlass auf eine fremde Schutzschicht. Billiger und
+	 * eindeutiger: Steuerzeichen (CR, LF, Tab, NUL …) hier zu einem Leerzeichen
+	 * glätten und Randleerraum kappen. Board-Titel werden sonst nur auf
+	 * Nicht-Leerheit geprüft, nicht auf Kontrollzeichen.
+	 *
+	 * @param string $projekt Der rohe Projektname.
+	 */
+	private static function einzeilig(string $projekt): string {
+		return trim((string)preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $projekt));
+	}
+
+	/**
+	 * Der Betreff mit angehängtem Antwort-Token `[PW-{token}]` (#287), oder
+	 * unverändert, wenn kein Token vorliegt.
+	 *
+	 * **Am Ende**, nicht am Anfang: Das `[{Projekt}]` vorn ist zum Scannen da,
+	 * der Token ist Maschinerie und gehört ans hintere Ende, wo er beim Lesen
+	 * nicht stört. Rein und statisch, damit das Format (`[PW-…]`, an dem der
+	 * Einlese-Job matcht) eine Maschine hütet.
+	 *
+	 * @param string $betreff Der bereits mit Projekt versehene Betreff.
+	 * @param string|null $token Der Antwort-Token der Zeile, oder null.
+	 */
+	private static function betreffMitToken(string $betreff, ?string $token): string {
+		return ($token !== null && $token !== '') ? $betreff . ' [PW-' . $token . ']' : $betreff;
+	}
+
+	/**
+	 * Ein neuer Antwort-Token (#285): 16 Zufallsbytes, hex — 32 Zeichen.
+	 *
+	 * `random_bytes()` ist kryptografisch, der Token ist eine Fähigkeit (wer ihn
+	 * kennt, kann eine Antwort einem Vorgang zuordnen) — CSPRNG, nicht `uniqid`.
+	 */
+	private static function neuerReplyToken(): string {
+		return bin2hex(random_bytes(16));
 	}
 }
