@@ -19,18 +19,24 @@ use PHPUnit\Framework\TestCase;
  * WerkPlus-Grenzen (#288) — die Regeln, ohne Datenbank.
  *
  * Die Zählungen (wie viele Kundenprojekte, wie viele Boards) fragen die DB und
- * gehören in den Integrations-/Rauchtest. Prüfbar ohne Netz sind die beiden
- * Entscheidungen selbst und der Config-Fallback (`0`/leer → `1`) — bewusst als
- * reine Methoden gekapselt, damit genau die Grenzlogik eine Maschine hütet.
+ * gehören in den Integrations-/Rauchtest. Prüfbar ohne Netz ist die Grenzlogik
+ * selbst: **standardmäßig greift nichts** (unbegrenzt, bis das Entitlement-
+ * Backend einen positiven Wert setzt), und ab einem gesetzten Wert blockt die
+ * jeweilige Regel. Bewusst als reine Methoden gekapselt.
  */
 class EntitlementServiceTest extends TestCase {
 
-	private function service(int $maxCustomer = 1, int $maxBoards = 1): EntitlementService {
+	/**
+	 * `null` heißt „nicht konfiguriert" — dann liefert der Config-Mock den
+	 * Vorgabewert zurück (wie das echte {@see IAppConfig}), und die Grenze gilt
+	 * als unbegrenzt.
+	 */
+	private function service(?int $maxCustomer = null, ?int $maxBoards = null): EntitlementService {
 		$config = $this->createMock(IAppConfig::class);
 		$config->method('getValueInt')->willReturnCallback(
 			static fn (string $app, string $key, int $default = 0): int => match ($key) {
-				'plus_max_customer_projects' => $maxCustomer,
-				'plus_max_boards_per_project' => $maxBoards,
+				'plus_max_customer_projects' => $maxCustomer ?? $default,
+				'plus_max_boards_per_project' => $maxBoards ?? $default,
 				default => $default,
 			},
 		);
@@ -41,38 +47,47 @@ class EntitlementServiceTest extends TestCase {
 		return new EntitlementService($config, $this->createMock(IDBConnection::class), $l10n);
 	}
 
-	public function testDefaultsToOne(): void {
+	public function testUnconfiguredMeansUnlimited(): void {
 		$service = $this->service();
-		$this->assertSame(1, $service->maxCustomerProjects());
-		$this->assertSame(1, $service->maxBoardsPerProject());
+		$this->assertSame(PHP_INT_MAX, $service->maxCustomerProjects());
+		$this->assertSame(PHP_INT_MAX, $service->maxBoardsPerProject());
 	}
 
-	public function testZeroFallsBackToOne(): void {
+	public function testZeroMeansUnlimited(): void {
 		$service = $this->service(maxCustomer: 0, maxBoards: 0);
-		$this->assertSame(1, $service->maxCustomerProjects());
-		$this->assertSame(1, $service->maxBoardsPerProject());
+		$this->assertSame(PHP_INT_MAX, $service->maxCustomerProjects());
+		$this->assertSame(PHP_INT_MAX, $service->maxBoardsPerProject());
 	}
 
-	public function testHonoursRaisedLimits(): void {
+	public function testUnconfiguredNeverBlocks(): void {
+		$service = $this->service();
+		// Auch bei vielen bestehenden Kundenprojekten/Boards: keine Grenze.
+		$this->assertFalse($service->blocksNewExternalMember(0, 999));
+		$this->assertFalse($service->blocksAdditionalBoard(999));
+	}
+
+	public function testConfiguredLimitIsHonoured(): void {
 		$service = $this->service(maxCustomer: 5, maxBoards: 3);
 		$this->assertSame(5, $service->maxCustomerProjects());
 		$this->assertSame(3, $service->maxBoardsPerProject());
 	}
 
+	// --- Ab hier: Grenze scharf (positiver Wert vom Backend gesetzt) ---------
+
 	public function testFirstCustomerProjectIsFree(): void {
 		// Erstes externes Mitglied (0 vorhanden), noch kein Kundenprojekt.
-		$this->assertFalse($this->service()->blocksNewExternalMember(0, 0));
+		$this->assertFalse($this->service(maxCustomer: 1)->blocksNewExternalMember(0, 0));
 	}
 
 	public function testSecondCustomerProjectIsBlocked(): void {
 		// Erstes externes Mitglied hier, aber es gibt schon ein Kundenprojekt.
-		$this->assertTrue($this->service()->blocksNewExternalMember(0, 1));
+		$this->assertTrue($this->service(maxCustomer: 1)->blocksNewExternalMember(0, 1));
 	}
 
 	public function testFurtherExternalOnExistingCustomerProjectIsFree(): void {
 		// Das Projekt ist bereits Kundenprojekt (>=1 externes Mitglied) — weitere
 		// externe sind frei, auch am Limit.
-		$this->assertFalse($this->service()->blocksNewExternalMember(2, 1));
+		$this->assertFalse($this->service(maxCustomer: 1)->blocksNewExternalMember(2, 1));
 	}
 
 	public function testRaisedCustomerLimitAllowsSecond(): void {
@@ -80,11 +95,11 @@ class EntitlementServiceTest extends TestCase {
 	}
 
 	public function testSecondBoardIsBlocked(): void {
-		$this->assertTrue($this->service()->blocksAdditionalBoard(1));
+		$this->assertTrue($this->service(maxBoards: 1)->blocksAdditionalBoard(1));
 	}
 
 	public function testFirstBoardIsFree(): void {
-		$this->assertFalse($this->service()->blocksAdditionalBoard(0));
+		$this->assertFalse($this->service(maxBoards: 1)->blocksAdditionalBoard(0));
 	}
 
 	public function testRaisedBoardLimitAllowsSecond(): void {
