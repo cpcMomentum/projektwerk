@@ -73,7 +73,12 @@ class ReplyMailboxSettings {
 			'replyEnabled' => $this->config->getValueBool(self::APP, self::KEY_ENABLED, false),
 			'replyAddress' => $this->config->getValueString(self::APP, self::KEY_ADDRESS),
 			'imapHost' => $this->config->getValueString(self::APP, self::KEY_HOST),
-			'imapPort' => $this->config->getValueInt(self::APP, self::KEY_PORT, self::DEFAULT_PORT),
+			// Der Port wird von save() als STRING abgelegt (setValueString) — er
+			// muss hier auch als String gelesen und dann gecastet werden. Ein
+			// getValueInt() auf einem string-typisierten Schluessel wirft in NCs
+			// typisiertem AppConfig eine AppConfigTypeConflictException, die den
+			// ganzen Aufruf mit HTTP 500 reisst (#303).
+			'imapPort' => (int)$this->config->getValueString(self::APP, self::KEY_PORT, (string)self::DEFAULT_PORT),
 			'imapSecurity' => $this->config->getValueString(self::APP, self::KEY_SECURITY, self::DEFAULT_SECURITY),
 			'imapUser' => $this->config->getValueString(self::APP, self::KEY_USER),
 			'imapFolder' => $this->config->getValueString(self::APP, self::KEY_FOLDER, self::DEFAULT_FOLDER),
@@ -140,7 +145,9 @@ class ReplyMailboxSettings {
 
 		return [
 			'host' => $host,
-			'port' => $this->config->getValueInt(self::APP, self::KEY_PORT, self::DEFAULT_PORT),
+			// Wie in getPublicConfig(): als String lesen und casten, weil save()
+			// den Port string-typisiert ablegt (#303).
+			'port' => (int)$this->config->getValueString(self::APP, self::KEY_PORT, (string)self::DEFAULT_PORT),
 			'security' => $this->config->getValueString(self::APP, self::KEY_SECURITY, self::DEFAULT_SECURITY),
 			'user' => $this->config->getValueString(self::APP, self::KEY_USER),
 			'password' => $this->storedPassword(),
