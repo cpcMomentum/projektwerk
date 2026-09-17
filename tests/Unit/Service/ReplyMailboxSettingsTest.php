@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OCA\Projektwerk\Tests\Unit\Service;
 
 use OCA\Projektwerk\Service\ReplyMailboxSettings;
+use OCP\Exceptions\AppConfigTypeConflictException;
 use OCP\IAppConfig;
 use OCP\Security\ICrypto;
 use PHPUnit\Framework\TestCase;
@@ -24,33 +25,72 @@ use Psr\Log\LoggerInterface;
  * Klartext herausgegeben wird, und dass ein leeres Passwort das gespeicherte
  * nicht löscht. `IAppConfig` ist ein In-Memory-Double, `ICrypto` markiert den
  * Klartext sichtbar (`ENC(...)`), damit die Verschlüsselung im Test belegbar ist.
+ *
+ * **Das Double bildet NCs Typbindung nach** (#303): Ein Schlüssel merkt sich den
+ * Typ, mit dem er geschrieben wurde, und ein Lesen mit falschem Typ wirft — wie
+ * das echte AppConfig — eine {@see AppConfigTypeConflictException}. Ohne das
+ * schlüpfte genau der Fehler durch, der `getPublicConfig()`/`getImapConfig()` mit
+ * HTTP 500 riss: Port als String schreiben, als Int lesen. Ein Double, das jeden
+ * Wert als String hält und beim Lesen frei castet, kann diese Klasse von Fehlern
+ * strukturell nicht sehen.
  */
 class ReplyMailboxSettingsTest extends TestCase {
 
-	/** @var array<string, string> */
+	/** @var array<string, string|int|bool> */
 	private array $store = [];
+
+	/** @var array<string, 'string'|'int'|'bool'> Typ, mit dem der Key geschrieben wurde. */
+	private array $types = [];
+
+	private function assertType(string $key, string $want): void {
+		if (isset($this->types[$key]) && $this->types[$key] !== $want) {
+			throw new AppConfigTypeConflictException('conflict with value type from database');
+		}
+	}
 
 	private function settings(): ReplyMailboxSettings {
 		$config = $this->createMock(IAppConfig::class);
 		$config->method('getValueString')->willReturnCallback(
-			fn (string $app, string $key, string $default = ''): string => $this->store[$key] ?? $default,
+			function (string $app, string $key, string $default = ''): string {
+				$this->assertType($key, 'string');
+
+				return isset($this->store[$key]) ? (string)$this->store[$key] : $default;
+			},
 		);
 		$config->method('getValueInt')->willReturnCallback(
-			fn (string $app, string $key, int $default = 0): int => isset($this->store[$key]) ? (int)$this->store[$key] : $default,
+			function (string $app, string $key, int $default = 0): int {
+				$this->assertType($key, 'int');
+
+				return isset($this->store[$key]) ? (int)$this->store[$key] : $default;
+			},
 		);
 		$config->method('getValueBool')->willReturnCallback(
-			fn (string $app, string $key, bool $default = false): bool => isset($this->store[$key]) ? $this->store[$key] === '1' : $default,
+			function (string $app, string $key, bool $default = false): bool {
+				$this->assertType($key, 'bool');
+
+				return isset($this->store[$key]) ? (bool)$this->store[$key] : $default;
+			},
 		);
 		$config->method('setValueString')->willReturnCallback(
 			function (string $app, string $key, string $value): bool {
 				$this->store[$key] = $value;
+				$this->types[$key] = 'string';
+
+				return true;
+			},
+		);
+		$config->method('setValueInt')->willReturnCallback(
+			function (string $app, string $key, int $value): bool {
+				$this->store[$key] = $value;
+				$this->types[$key] = 'int';
 
 				return true;
 			},
 		);
 		$config->method('setValueBool')->willReturnCallback(
 			function (string $app, string $key, bool $value): bool {
-				$this->store[$key] = $value ? '1' : '0';
+				$this->store[$key] = $value;
+				$this->types[$key] = 'bool';
 
 				return true;
 			},
@@ -73,6 +113,24 @@ class ReplyMailboxSettingsTest extends TestCase {
 		$this->assertSame('ssl', $config['imapSecurity']);
 		$this->assertSame('INBOX', $config['imapFolder']);
 		$this->assertFalse($config['imapPasswordSet']);
+	}
+
+	/**
+	 * #303: save() legt den Port string-typisiert ab. Beide Lesepfade müssen ihn
+	 * danach als int zurückgeben, ohne am Typkonflikt zu zerbrechen. Mit dem
+	 * fehlerhaften getValueInt() würfe das typtreue Double hier — genau der
+	 * HTTP-500-Fall aus der Produktivinstanz.
+	 */
+	public function testPortSurvivesSaveRoundTrip(): void {
+		$settings = $this->settings();
+		$settings->save(['imapHost' => 'imap.firma.de', 'imapPort' => 143]);
+
+		$public = $settings->getPublicConfig();
+		$this->assertSame(143, $public['imapPort']);
+
+		$cfg = $settings->getImapConfig();
+		$this->assertNotNull($cfg);
+		$this->assertSame(143, $cfg['port']);
 	}
 
 	public function testSaveStoresFieldsAndEncryptsPassword(): void {

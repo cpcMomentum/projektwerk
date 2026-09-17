@@ -4,6 +4,18 @@ Alle nennenswerten Änderungen an ProjektWerk werden hier dokumentiert.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.4.15] - 2026-09-17
+
+### Fixed
+
+- **Antwort-Postfach ließ sich nicht speichern** (#303): Das Laden und Speichern der Einstellungen
+  unter „Antworten per E-Mail" scheiterte mit einem internen Serverfehler (HTTP 500), den die
+  Oberfläche irreführend als „für Gastkonten nicht freigeschaltet" meldete. Ursache war ein
+  Typkonflikt in Nextclouds App-Konfiguration: Der IMAP-Port wurde als Text gespeichert, aber als
+  Zahl gelesen — was in Nextclouds typisiertem AppConfig eine Ausnahme wirft. Der Port wird jetzt
+  typkonsistent gelesen; bestehende Einstellungen funktionieren ohne Eingriff. Der Verbindungstest
+  war nie betroffen.
+
 ## [0.4.14] - 2026-09-15
 
 ### Added
