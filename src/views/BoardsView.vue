@@ -51,6 +51,18 @@
 				die der Überblick ausblendet und bei sechs kappt. Hier wird
 				angepinnt (Toggle in der Kachel) und angelegt.
 			-->
+			<div v-if="store.customerSuggestions.length >= 2" class="pw-tiles__filter">
+				<label class="pw-tiles__filterlabel" for="pw-customer-filter">{{ t('projektwerk', 'Kunde') }}</label>
+				<select id="pw-customer-filter" v-model="customerFilter" class="pw-tiles__filterselect">
+					<option value="">
+						{{ t('projektwerk', 'Alle Kunden') }}
+					</option>
+					<option v-for="c in store.customerSuggestions" :key="c" :value="c">
+						{{ c }}
+					</option>
+				</select>
+			</div>
+
 			<div class="pw-tiles__legend">
 				<span
 					v-for="s in STATUS"
@@ -152,6 +164,9 @@ export default defineComponent({
 	data() {
 		return {
 			creating: false,
+			// Kundenfilter (#309): leer = alle. Rein clientseitig über die schon
+			// geladene Board-Liste, kein eigener Lesepfad.
+			customerFilter: '',
 			// Ob die Person Projekte anlegen darf (#280) — vom Server als
 			// Initial-State geliefert (Gäste: false). Default true ist unkritisch:
 			// die echte Sperre sitzt serverseitig (403), dies blendet nur den
@@ -171,13 +186,16 @@ export default defineComponent({
 			const status = new Map((this.overview.projectStatusRows as ProjectStatusRow[]).map((row) => [row.boardId, row]))
 
 			return (this.store.boards as Board[])
+				.filter((board) => this.customerFilter === '' || board.customer === this.customerFilter)
 				.map((board): TileVM => {
 					const s = status.get(board.id)
 
 					return {
 						boardId: board.id,
 						title: board.title,
-						org: this.store.orgLine(board),
+						// Der Kunde des Projekts (#309); solange keiner gepflegt ist,
+						// die alte Firmenzeile als Rückfall.
+						org: board.customer ?? this.store.orgLine(board),
 						neu: s?.neu ?? 0,
 						offen: s?.offen ?? 0,
 						wartet: s?.wartet ?? 0,

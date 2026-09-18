@@ -59,6 +59,7 @@ const boardStore = {
 	loadBoards: vi.fn(),
 	togglePin: vi.fn(),
 	orgLine: (b: { orgInternal?: string | null, orgExternal?: string | null }) => [b.orgInternal, b.orgExternal].filter(Boolean).join(' · '),
+	customerSuggestions: [] as string[],
 }
 const overviewStore = {
 	projectStatusRows: [] as Array<Record<string, unknown>>,
@@ -172,6 +173,36 @@ describe('BoardsView', () => {
 		tile.vm.$emit('togglePin', 4)
 		await w.vm.$nextTick()
 		expect(boardStore.togglePin).toHaveBeenCalledWith(4)
+	})
+
+	it('zeigt den Kunden als Kachel-Zeile, mit Rückfall auf die Firmenzeile (#309)', () => {
+		boardStore.boards = [
+			board(1, 'MitKunde', { customer: 'MI', orgInternal: 'cpc', orgExternal: 'Kunde' }),
+			board(2, 'OhneKunde', { orgInternal: 'cpc', orgExternal: 'Kunde' }),
+		]
+
+		const w = mountView()
+		const orgs = w.findAllComponents(tileStub).map((t) => t.props('org'))
+
+		expect(orgs).toContain('MI')
+		expect(orgs).toContain('cpc · Kunde')
+	})
+
+	it('filtert die Kacheln nach ausgewähltem Kunden (#309)', async () => {
+		boardStore.boards = [
+			board(1, 'Alpha', { customer: 'MI' }),
+			board(2, 'Beta', { customer: 'BMW' }),
+		]
+
+		const w = mountView()
+		expect(w.findAllComponents(tileStub)).toHaveLength(2)
+
+		;(w.vm as unknown as { customerFilter: string }).customerFilter = 'MI'
+		await w.vm.$nextTick()
+
+		const tiles = w.findAllComponents(tileStub)
+		expect(tiles).toHaveLength(1)
+		expect(tiles[0].props('title')).toBe('Alpha')
 	})
 
 	it('führt beim Kachel-Klick ins Projekt-Dashboard', () => {
