@@ -135,6 +135,8 @@ class Board extends Entity implements JsonSerializable {
 			'ownerUserId' => $this->getOwnerUserId(),
 			'orgInternal' => $this->getOrgInternal(),
 			'orgExternal' => $this->getOrgExternal(),
+			// Kunde des Projekts (#309), Anzeige-Kopie am Board für den Überblick.
+			'customer' => $this->getCustomer(),
 			'folderPublicId' => $this->getFolderPublicId(),
 			'folderPublicPath' => $this->getFolderPublicPath(),
 			'folderInternalId' => $this->getFolderInternalId(),

@@ -264,7 +264,7 @@ class OverviewController extends Controller {
 	 * Eintrag.
 	 *
 	 * @param bool $mitArchivierten Ob archivierte Projekte dazugehören.
-	 * @return array<int, array{title: string, orgInternal: ?string, orgExternal: ?string}>
+	 * @return array<int, array{title: string, orgInternal: ?string, orgExternal: ?string, customer: ?string}>
 	 */
 	private function boardLine(bool $mitArchivierten): array {
 		$line = [];
@@ -274,6 +274,8 @@ class OverviewController extends Controller {
 				'title' => (string)$board->getTitle(),
 				'orgInternal' => $board->getOrgInternal(),
 				'orgExternal' => $board->getOrgExternal(),
+				// Kunde des Projekts (#309) — Anzeige/Filter, org bleibt bis Phase 5.
+				'customer' => $board->getCustomer(),
 			];
 		}
 

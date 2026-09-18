@@ -134,6 +134,29 @@ export const useBoardStore = defineStore('board', {
 		orgLine: () => (board: Pick<Board, 'orgInternal' | 'orgExternal'>): string => [board.orgInternal, board.orgExternal].filter(Boolean).join(' · '),
 
 		/**
+		 * Firmen-Vorschläge (#309): die schon vergebenen Firmen der geladenen
+		 * Mitglieder, alphabetisch und ohne Dubletten. Speist das
+		 * selbst-füllende Auswahlfeld — **kein** eigener Lesepfad, nur aus dem
+		 * State destilliert, den `board#show` ohnehin liefert.
+		 *
+		 * @param state Der Speicher.
+		 */
+		companySuggestions: (state): string[] => [...new Set(
+			state.members.map((m) => m.company?.trim()).filter((c): c is string => !!c),
+		)].sort((a, b) => a.localeCompare(b)),
+
+		/**
+		 * Kunden-Vorschläge (#309): die schon vergebenen Kunden der geladenen
+		 * Boards, alphabetisch und ohne Dubletten — aus dem Board-Index-State,
+		 * kein eigener Lesepfad.
+		 *
+		 * @param state Der Speicher.
+		 */
+		customerSuggestions: (state): string[] => [...new Set(
+			state.boards.map((b) => b.customer?.trim()).filter((c): c is string => !!c),
+		)].sort((a, b) => a.localeCompare(b)),
+
+		/**
 		 * Die Boards des geöffneten Projekts (#246) — für den Board-Wechsler.
 		 *
 		 * Ein Projekt kann mehrere Boards haben; sie teilen sich `projectId`.

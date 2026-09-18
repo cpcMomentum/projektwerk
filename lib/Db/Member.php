@@ -90,6 +90,9 @@ class Member extends Entity implements JsonSerializable {
 			'isManager' => $this->isManagerEffective(),
 			// NULL heisst: Anzeigename aus Nextcloud verwenden.
 			'displayName' => $this->getDisplayName(),
+			// Firma je Mitglied (#309). Reine Anzeige — geht nie in die
+			// Sichtbarkeitsklausel.
+			'company' => $this->getCompany(),
 			'addedBy' => $this->getAddedBy(),
 			'addedAt' => $this->getAddedAt()?->format(DateTime::ATOM),
 		];

@@ -208,9 +208,10 @@ class SettingsController extends Controller {
 		string $role,
 		bool $isManager = false,
 		?string $displayName = null,
+		?string $company = null,
 	): JSONResponse {
 		return $this->write($boardId, fn (ViewerContext $viewer): mixed
-			=> $this->memberService->add($viewer, $userId, $role, $isManager, $displayName), Http::STATUS_CREATED);
+			=> $this->memberService->add($viewer, $userId, $role, $isManager, $displayName, $company), Http::STATUS_CREATED);
 	}
 
 	#[NoAdminRequired]
@@ -220,11 +221,13 @@ class SettingsController extends Controller {
 		?string $role = null,
 		?bool $isManager = null,
 		?string $displayName = null,
+		?string $company = null,
 	): JSONResponse {
 		$changes = $this->onlyGiven([
 			'role' => $role,
 			'isManager' => $isManager,
 			'displayName' => $displayName,
+			'company' => $company,
 		]);
 
 		return $this->write($boardId, fn (ViewerContext $viewer): mixed
