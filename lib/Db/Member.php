@@ -35,6 +35,8 @@ use OCP\DB\Types;
  * @method void setIsManager(int $isManager)
  * @method ?string getDisplayName()
  * @method void setDisplayName(?string $displayName)
+ * @method ?string getCompany()
+ * @method void setCompany(?string $company)
  * @method string getAddedBy()
  * @method void setAddedBy(string $addedBy)
  * @method DateTime getAddedAt()
@@ -48,6 +50,8 @@ class Member extends Entity implements JsonSerializable {
 	protected ?string $role = null;
 	protected ?int $isManager = null;
 	protected ?string $displayName = null;
+	/** Anzeige-Firma je Mitglied (#309 Phase 1). Noch nicht in jsonSerialize — Phase 2. */
+	protected ?string $company = null;
 	protected ?string $addedBy = null;
 	protected ?DateTime $addedAt = null;
 
@@ -58,6 +62,7 @@ class Member extends Entity implements JsonSerializable {
 		$this->addType('role', Types::STRING);
 		$this->addType('isManager', Types::SMALLINT);
 		$this->addType('displayName', Types::STRING);
+		$this->addType('company', Types::STRING);
 		$this->addType('addedBy', Types::STRING);
 		$this->addType('addedAt', Types::DATETIME);
 	}
