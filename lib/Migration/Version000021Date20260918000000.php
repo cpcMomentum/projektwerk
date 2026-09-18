@@ -72,17 +72,28 @@ class Version000021Date20260918000000 extends SimpleMigrationStep {
 
 		$added = false;
 
-		foreach ([
-			'pwerk_members' => 'company',
-			'pwerk_projects' => 'customer',
-			'pwerk_boards' => 'customer',
-		] as $tableName => $column) {
-			if (!$schema->hasTable($tableName)) {
-				continue;
+		// Literale Tabellen-/Spaltennamen (kein Schleifen-Variablenzugriff):
+		// der Entity↔Migration-Wächter (EntitySchemaTest) parst genau
+		// `getTable('…')` + `addColumn('…', Types::…)` und übersähe dynamische
+		// Namen — dann meldete er das Entity als „zu breit".
+		if ($schema->hasTable('pwerk_members')) {
+			$members = $schema->getTable('pwerk_members');
+			if (!$members->hasColumn('company')) {
+				$members->addColumn('company', Types::STRING, ['notnull' => false, 'length' => self::LEN]);
+				$added = true;
 			}
-			$table = $schema->getTable($tableName);
-			if (!$table->hasColumn($column)) {
-				$table->addColumn($column, Types::STRING, ['notnull' => false, 'length' => self::LEN]);
+		}
+		if ($schema->hasTable('pwerk_projects')) {
+			$projects = $schema->getTable('pwerk_projects');
+			if (!$projects->hasColumn('customer')) {
+				$projects->addColumn('customer', Types::STRING, ['notnull' => false, 'length' => self::LEN]);
+				$added = true;
+			}
+		}
+		if ($schema->hasTable('pwerk_boards')) {
+			$boards = $schema->getTable('pwerk_boards');
+			if (!$boards->hasColumn('customer')) {
+				$boards->addColumn('customer', Types::STRING, ['notnull' => false, 'length' => self::LEN]);
 				$added = true;
 			}
 		}

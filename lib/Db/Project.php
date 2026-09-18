@@ -38,6 +38,8 @@ use OCP\DB\Types;
  * @method void setOrgInternal(?string $orgInternal)
  * @method ?string getOrgExternal()
  * @method void setOrgExternal(?string $orgExternal)
+ * @method ?string getCustomer()
+ * @method void setCustomer(?string $customer)
  * @method ?int getFolderPublicId()
  * @method void setFolderPublicId(?int $folderPublicId)
  * @method ?string getFolderPublicPath()
@@ -66,6 +68,8 @@ class Project extends Entity {
 	protected ?string $ownerUserId = null;
 	protected ?string $orgInternal = null;
 	protected ?string $orgExternal = null;
+	/** Kunde des Projekts (#309 Phase 1). Noch nicht in jsonSerialize — Phase 2. */
+	protected ?string $customer = null;
 	protected ?int $folderPublicId = null;
 	protected ?string $folderPublicPath = null;
 	protected ?int $folderInternalId = null;
@@ -84,6 +88,7 @@ class Project extends Entity {
 		$this->addType('ownerUserId', Types::STRING);
 		$this->addType('orgInternal', Types::STRING);
 		$this->addType('orgExternal', Types::STRING);
+		$this->addType('customer', Types::STRING);
 		$this->addType('folderPublicId', Types::INTEGER);
 		$this->addType('folderPublicPath', Types::STRING);
 		$this->addType('folderInternalId', Types::INTEGER);
