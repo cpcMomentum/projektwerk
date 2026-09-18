@@ -43,7 +43,7 @@ class CompanyBackfillTest extends IntegrationTestCase {
 	}
 
 	public function testMitgliedOhneProjectIdUeberDasBoardHergeleitet(): void {
-		[$projectId, $boardId] = $this->projektMitBoard('cpcMomentum', 'Kunde MI');
+		[, $boardId] = $this->projektMitBoard('cpcMomentum', 'Kunde MI');
 		// project_id am Mitglied bewusst null — der Backfill muss das Projekt
 		// über board_id → board.project_id finden.
 		$externId = $this->mitgliedEinfuegen($boardId, null, 'lm-timo', 'external');
