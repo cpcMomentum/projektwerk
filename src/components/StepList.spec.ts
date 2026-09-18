@@ -94,8 +94,8 @@ vi.mock('@nextcloud/vue/components/NcCheckboxRadioSwitch', () => ({
 const StepList = (await import('@/components/StepList.vue')).default
 
 const MEMBERS: Member[] = [
-	{ id: 1, boardId: 7, userId: 'anna', role: 'internal', isManager: true, displayName: 'Anna Ahrens', resolvedName: 'Anna Ahrens', addedBy: 'anna', addedAt: null },
-	{ id: 2, boardId: 7, userId: 'carla', role: 'external', isManager: false, displayName: 'Carla Cordes', resolvedName: 'Carla Cordes', addedBy: 'anna', addedAt: null },
+	{ id: 1, boardId: 7, userId: 'anna', role: 'internal', isManager: true, displayName: 'Anna Ahrens', resolvedName: 'Anna Ahrens', company: 'cpcMomentum', addedBy: 'anna', addedAt: null },
+	{ id: 2, boardId: 7, userId: 'carla', role: 'external', isManager: false, displayName: 'Carla Cordes', resolvedName: 'Carla Cordes', company: 'Kunde GmbH', addedBy: 'anna', addedAt: null },
 ]
 
 /**

@@ -80,7 +80,7 @@ class Board extends Entity implements JsonSerializable {
 	protected ?string $createdBy = null;
 	protected ?string $orgInternal = null;
 	protected ?string $orgExternal = null;
-	/** Kunde-Anzeige-Kopie am Board (#309 Phase 1). Noch nicht in jsonSerialize — Phase 2. */
+	/** Kunde-Anzeige-Kopie am Board (#309 Phase 1), seit Phase 2 in jsonSerialize. */
 	protected ?string $customer = null;
 	protected ?int $folderPublicId = null;
 	protected ?string $folderPublicPath = null;
@@ -135,6 +135,8 @@ class Board extends Entity implements JsonSerializable {
 			'ownerUserId' => $this->getOwnerUserId(),
 			'orgInternal' => $this->getOrgInternal(),
 			'orgExternal' => $this->getOrgExternal(),
+			// Kunde des Projekts (#309), Anzeige-Kopie am Board für den Überblick.
+			'customer' => $this->getCustomer(),
 			'folderPublicId' => $this->getFolderPublicId(),
 			'folderPublicPath' => $this->getFolderPublicPath(),
 			'folderInternalId' => $this->getFolderInternalId(),

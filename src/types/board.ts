@@ -35,6 +35,8 @@ export interface Board {
 	 */
 	orgInternal: string | null
 	orgExternal: string | null
+	/** Kunde des Projekts (#309). Anzeige/Filter; `null` = keiner hinterlegt. */
+	customer: string | null
 	folderPublicId: number | null
 	folderPublicPath: string | null
 	folderInternalId: number | null
@@ -96,6 +98,8 @@ export interface Member {
 	 * Nachschlagen im Browser bliebe also ausgerechnet beim Kunden stumm.
 	 */
 	resolvedName: string
+	/** Firma dieser Person (#309). Reine Anzeige; `null` = keine hinterlegt. */
+	company: string | null
 	addedBy: string
 	addedAt: string | null
 }

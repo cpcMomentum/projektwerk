@@ -50,7 +50,7 @@ class Member extends Entity implements JsonSerializable {
 	protected ?string $role = null;
 	protected ?int $isManager = null;
 	protected ?string $displayName = null;
-	/** Anzeige-Firma je Mitglied (#309 Phase 1). Noch nicht in jsonSerialize — Phase 2. */
+	/** Anzeige-Firma je Mitglied (#309 Phase 1), seit Phase 2 in jsonSerialize. */
 	protected ?string $company = null;
 	protected ?string $addedBy = null;
 	protected ?DateTime $addedAt = null;
@@ -90,6 +90,9 @@ class Member extends Entity implements JsonSerializable {
 			'isManager' => $this->isManagerEffective(),
 			// NULL heisst: Anzeigename aus Nextcloud verwenden.
 			'displayName' => $this->getDisplayName(),
+			// Firma je Mitglied (#309). Reine Anzeige — geht nie in die
+			// Sichtbarkeitsklausel.
+			'company' => $this->getCompany(),
 			'addedBy' => $this->getAddedBy(),
 			'addedAt' => $this->getAddedAt()?->format(DateTime::ATOM),
 		];
