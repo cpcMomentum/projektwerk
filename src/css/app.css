@@ -2218,6 +2218,28 @@
 	font-size: 12.5px;
 }
 
+/* Kundenfilter (#309) über der Legende. */
+.app-projektwerk .pw-tiles__filter {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 2px 0 10px;
+	font-size: 13px;
+}
+
+.app-projektwerk .pw-tiles__filterlabel {
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-tiles__filterselect {
+	min-height: 34px;
+	padding: 4px 8px;
+	border: 2px solid var(--color-border-maxcontrast);
+	border-radius: var(--border-radius-element, 8px);
+	background-color: var(--color-main-background);
+	color: var(--color-main-text);
+}
+
 .app-projektwerk .pw-tiles__leg {
 	display: inline-flex;
 	align-items: center;
