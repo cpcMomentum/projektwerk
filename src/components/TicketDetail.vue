@@ -1194,7 +1194,7 @@ export default defineComponent({
 		 */
 		companyOf(userId: string | null): string {
 			const member = this.members.find((m) => m.userId === userId)
-			return member?.company ?? (member?.role === 'external' ? this.orgExternal : this.orgInternal)
+			return member?.company ?? (this.roleOf(userId) === 'external' ? this.orgExternal : this.orgInternal)
 		},
 
 		/**
