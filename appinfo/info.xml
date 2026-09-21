@@ -23,7 +23,7 @@ Der eigentliche Zweck ist nicht das Board, sondern die **sichtbare Zustaendigkei
 - **Kunden ohne Fremdkonto** — Zusammenarbeit auf der eigenen Nextcloud, wahlweise per Gastzugang
     ]]></description>
 
-    <version>0.4.15</version>
+    <version>0.4.16</version>
     <licence>AGPL-3.0-or-later</licence>
 
     <author mail="axel.deffner@cpcmomentum.com" homepage="https://github.com/cpcMomentum">Axel Deffner</author>
@@ -78,6 +78,13 @@ Der eigentliche Zweck ist nicht das Board, sondern die **sichtbare Zustaendigkei
     <repair-steps>
         <post-migration>
             <step>OCA\Projektwerk\Repair\RelocateAttachments</step>
+            <!--
+                „Was ist neu?"-Fenster (#315): merkt beim Update einer
+                Bestandsinstallation, dass sie schon vor dem Fenster bestand.
+                post-migration laeuft nur beim Update, nie bei Neuinstallation —
+                so bleibt das Fenster bei frischen Installationen still.
+            -->
+            <step>OCA\Projektwerk\Repair\WhatsNewBootstrap</step>
         </post-migration>
     </repair-steps>
 

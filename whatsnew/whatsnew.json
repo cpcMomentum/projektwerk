@@ -1,0 +1,50 @@
+{
+	"0.4.16": [
+		{
+			"title": {
+				"de": "Neuerungen erscheinen ab jetzt in diesem Fenster",
+				"en": "From now on new features appear in this window"
+			},
+			"text": {
+				"de": "Nach einem Update zeigt ProjektWerk hier kurz, was sich geändert hat. Einmal je Version, wegklickbar, danach kommt es nicht wieder.",
+				"en": "After an update ProjektWerk briefly shows you what has changed. Once per version, dismissable, and it will not come back."
+			},
+			"icon": "star",
+			"plus": false
+		},
+		{
+			"title": {
+				"de": "Firma an der Person, Kunde am Projekt",
+				"en": "Company on the person, customer on the project"
+			},
+			"text": {
+				"de": "Jedes Mitglied trägt jetzt seine Firma, und jedes Projekt hält seinen Kunden fest. In den Vorgängen steht damit sichtbar, wer zu wem gehört, und der Überblick lässt sich nach Kunde filtern.",
+				"en": "Every member now carries their company, and every project keeps its customer. Tickets show at a glance who belongs to whom, and the overview can be filtered by customer."
+			},
+			"icon": "account-group",
+			"where": {
+				"de": "Projekte",
+				"en": "Projects"
+			},
+			"adminOnly": false,
+			"plus": false
+		},
+		{
+			"title": {
+				"de": "Personensuche zeigt jetzt die E-Mail-Adresse",
+				"en": "Person search now shows the email address"
+			},
+			"text": {
+				"de": "Beim Zuweisen von Mitgliedern und Arbeitsschritten erscheint statt einer kryptischen Kennung die E-Mail-Adresse, Gastkonten sind als „Gast\" gekennzeichnet. So trifft man die richtige Person auf Anhieb.",
+				"en": "When assigning members and steps you now see the email address instead of a cryptic identifier, and guest accounts are marked as \"Guest\". Picking the right person becomes obvious."
+			},
+			"icon": "magnify",
+			"where": {
+				"de": "Projekte",
+				"en": "Projects"
+			},
+			"adminOnly": false,
+			"plus": false
+		}
+	]
+}

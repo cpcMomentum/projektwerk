@@ -1,6 +1,12 @@
 OC.L10N.register(
     "projektwerk",
     {
+    "Was ist neu in ProjektWerk" : "What's new in ProjektWerk",
+    "Version {version}" : "Version {version}",
+    "Zu finden unter" : "Found under",
+    "(nur für Administratoren)" : "(administrators only)",
+    "Mehr zu WerkPlus" : "More about WerkPlus",
+    "Alles klar" : "Got it",
     "Eingegangen" : "Received",
     "Bestätigt" : "Confirmed",
     "Eingeplant" : "Scheduled",

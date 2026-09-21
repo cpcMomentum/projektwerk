@@ -164,5 +164,13 @@ return [
 		['name' => 'replyMailbox#config', 'url' => '/api/v1/reply-mailbox', 'verb' => 'GET'],
 		['name' => 'replyMailbox#save', 'url' => '/api/v1/reply-mailbox', 'verb' => 'PUT'],
 		['name' => 'replyMailbox#test', 'url' => '/api/v1/reply-mailbox/test', 'verb' => 'POST'],
+
+		// „Was ist neu?"-Fenster (#315). Der GET liest nur die ausgelieferte
+		// whatsnew.json und die Nutzer-Marke, keine Board-/Vorgangsdaten — er
+		// steht darum in ReadPathRegistry::ROUTES_WITHOUT_DATA. Der Routenname
+		// traegt das grosse N (`whatsNew`), damit Nextcloud auf die Klasse
+		// `WhatsNewController` abbildet (ucfirst des Routennamens).
+		['name' => 'whatsNew#index', 'url' => '/api/v1/whatsnew', 'verb' => 'GET'],
+		['name' => 'whatsNew#seen', 'url' => '/api/v1/whatsnew/seen', 'verb' => 'POST'],
 	],
 ];
