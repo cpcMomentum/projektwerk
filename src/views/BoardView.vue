@@ -207,7 +207,6 @@
 			:members="store.members"
 			:viewer="store.viewer"
 			:orgInternal="store.board?.orgInternal ?? ''"
-			:orgExternal="store.board?.orgExternal ?? ''"
 			:customer="store.board?.customer ?? ''"
 			:showVisibility="showVisibility"
 			:fromClientSide="!store.isInternal"
@@ -230,7 +229,6 @@
 			:columns="store.columns"
 			:members="store.members"
 			:orgInternal="store.board?.orgInternal ?? ''"
-			:orgExternal="store.board?.orgExternal ?? ''"
 			:customer="store.board?.customer ?? ''"
 			@update:open="creating = $event"
 			@create="create" />

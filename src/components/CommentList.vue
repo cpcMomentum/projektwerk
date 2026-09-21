@@ -226,8 +226,6 @@ export default defineComponent({
 		/** Für die Zweitzeile in der Erwähnungs-Auswahl. */
 		customer: { type: String, default: '' },
 		orgInternal: { type: String, default: '' },
-		/** Für die Zweitzeile in der Erwähnungs-Auswahl. */
-		orgExternal: { type: String, default: '' },
 	},
 
 	emits: ['changed'],

@@ -140,7 +140,6 @@ export default defineComponent({
 		columns: { type: Array as PropType<Column[]>, default: () => [] },
 		members: { type: Array as PropType<Member[]>, default: () => [] },
 		orgInternal: { type: String, default: '' },
-		orgExternal: { type: String, default: '' },
 		/** Kunde des Projekts (#309) — Rückfall für externe Mitglieder ohne eigene Firma. */
 		customer: { type: String, default: '' },
 	},

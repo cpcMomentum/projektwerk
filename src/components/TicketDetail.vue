@@ -494,7 +494,6 @@
 					:steps="steps"
 					:members="members"
 					:orgInternal="orgInternal"
-					:orgExternal="orgExternal"
 					:customer="customer"
 					@changed="$emit('stepsChanged')" />
 
@@ -518,7 +517,6 @@
 					:members="members"
 					:viewer="viewer"
 					:orgInternal="orgInternal"
-					:orgExternal="orgExternal"
 					:customer="customer"
 					@changed="$emit('commentsChanged')" />
 			</div>
@@ -589,7 +587,6 @@ export default defineComponent({
 		members: { type: Array as PropType<Member[]>, default: () => [] },
 		viewer: { type: Object as PropType<ViewerInfo | null>, default: null },
 		orgInternal: { type: String, default: '' },
-		orgExternal: { type: String, default: '' },
 		/** Kunde des Projekts (#309) — Rückfall für externe Personen ohne eigene Firma. */
 		customer: { type: String, default: '' },
 		/** Nur die interne Seite sieht die Kennzeichnung (§9). */
