@@ -41,7 +41,7 @@ Der eigentliche Zweck ist nicht das Board, sondern die **sichtbare Zustaendigkei
         <database>sqlite</database>
         <database>mysql</database>
         <database>pgsql</database>
-        <nextcloud min-version="33" max-version="34"/>
+        <nextcloud min-version="33" max-version="35"/>
     </dependencies>
     <!-- Die <database>-Deklaration ist PFLICHT (Lehre rechnungswerk #118):
          Ohne sie nimmt NC an, die App unterstuetze auch Oracle, und erzwingt
