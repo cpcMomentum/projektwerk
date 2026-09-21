@@ -25,7 +25,7 @@ import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from '@/services/api'
  * @param data.title
  * @param data.description
  * @param data.orgInternal
- * @param data.orgExternal
+ * @param data.customer
  */
 export async function createBoard(data: {
 	title: string
@@ -60,7 +60,7 @@ export async function createSiblingBoard(boardId: number, title: string): Promis
  * @param changes.title
  * @param changes.description
  * @param changes.orgInternal
- * @param changes.orgExternal
+ * @param changes.customer
  * @param changes.chatUrl
  * @param changes.folderPublicPath
  * @param changes.folderInternalPath

@@ -405,9 +405,6 @@
 							:placeholder="t('projektwerk', 'Firma')"
 							:disabled="busy"
 							@change="changeCompany(member, $event)">
-						<datalist id="pw-company-suggestions">
-							<option v-for="c in store.companySuggestions" :key="c" :value="c" />
-						</datalist>
 
 						<!--
 						Das Verwaltungsrecht gibt es nur fuer interne Mitglieder,
@@ -439,6 +436,10 @@
 							</template>
 						</NcButton>
 					</div>
+
+					<datalist id="pw-company-suggestions">
+						<option v-for="c in store.companySuggestions" :key="c" :value="c" />
+					</datalist>
 
 					<div class="pw-settings__row">
 						<!--

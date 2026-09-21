@@ -260,7 +260,7 @@ class BoardService {
 	 * nichts gesetzt — die Anhänge aus Phase 5 sind der erste Anlass. Ohne sie
 	 * hätte ein Anhang keinen Ort, an den er gehört.
 	 *
-	 * @param array{title?: string, description?: ?string, orgInternal?: ?string, orgExternal?: ?string, chatUrl?: ?string, folderPublicPath?: ?string, folderInternalPath?: ?string, githubEnabled?: bool, githubRepo?: ?string} $changes
+	 * @param array{title?: string, description?: ?string, orgInternal?: ?string, customer?: ?string, chatUrl?: ?string, folderPublicPath?: ?string, folderInternalPath?: ?string, githubEnabled?: bool, githubRepo?: ?string} $changes
 	 * @throws NotManagerException
 	 * @throws \OCP\Files\NotPermittedException Ordner nicht erreichbar oder nicht beschreibbar
 	 */
