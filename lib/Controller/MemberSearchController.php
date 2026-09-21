@@ -13,6 +13,7 @@ use OCA\Projektwerk\Access\BoardAccess;
 use OCA\Projektwerk\Access\NotAMemberException;
 use OCA\Projektwerk\AppInfo\Application;
 use OCA\Projektwerk\Db\MemberMapper;
+use OCA\Projektwerk\Service\AccountType;
 use OCA\Projektwerk\Service\NotManagerException;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
@@ -119,11 +120,19 @@ class MemberSearchController extends Controller {
 				continue;
 			}
 
+			// E-Mail statt der internen Konto-ID als Unterscheidung (#309): lesbar
+			// und für Menschen brauchbar. **Bei Gästen unterdrückt** (F2): deren
+			// System-E-Mail ist die Einladungsadresse, die nicht als Klartext in
+			// der Suchliste stehen soll — stattdessen kennzeichnet die Oberfläche
+			// sie über `isGuest` als „Gast". Die Hash-UID verlässt den Server hier
+			// weiterhin (technischer Schlüssel), wird aber nicht mehr angezeigt.
+			$isGuest = $user->getBackendClassName() === AccountType::GUEST_BACKEND;
+			$email = $user->getEMailAddress();
 			$treffer[] = [
 				'userId' => $user->getUID(),
-				// Beides, nicht nur der Name: Zwei Konten mit gleichem
-				// Anzeigenamen waeren sonst nicht unterscheidbar.
 				'displayName' => $user->getDisplayName(),
+				'email' => $isGuest ? null : ($email !== '' ? $email : null),
+				'isGuest' => $isGuest,
 			];
 
 			if (count($treffer) >= self::LIMIT) {
