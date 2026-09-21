@@ -441,11 +441,16 @@
 							:aria-pressed="newMember === person.userId"
 							@click="newMember = person.userId">
 							<!--
-							Name UND Kennung: Zwei Konten mit gleichem
-							Anzeigenamen waeren sonst nicht unterscheidbar.
+							Name plus E-Mail zur Unterscheidung (#309): zwei Konten
+							mit gleichem Anzeigenamen sind sonst nicht auseinander-
+							zuhalten. Die interne Konto-ID (bei Gästen ein Hash)
+							erscheint NICHT mehr; Gäste sind als „Gast" markiert
+							(F2 — ihre System-E-Mail ist die Einladungsadresse).
 						-->
 							<span class="pw-person__name">{{ person.displayName }}</span>
-							<span class="pw-person__org" :title="person.userId">{{ person.userId }}</span>
+							<span v-if="person.email || person.isGuest" class="pw-person__org">
+								{{ person.email || t('projektwerk', 'Gast') }}
+							</span>
 						</button>
 					</div>
 					<span v-else-if="memberSearch.trim() !== '' && !searching" class="pw-settings__hint">

@@ -441,6 +441,7 @@ OC.L10N.register(
     "Kein IMAP-Server angegeben." : "Kein IMAP-Server angegeben.",
     "Der Verbindungstest ist mit einem unerwarteten Fehler fehlgeschlagen." : "Der Verbindungstest ist mit einem unerwarteten Fehler fehlgeschlagen.",
     "Kunde" : "Kunde",
-    "Alle Kunden" : "Alle Kunden"
+    "Alle Kunden" : "Alle Kunden",
+    "Gast" : "Gast"
 },
 "nplurals=2; plural=(n != 1);");

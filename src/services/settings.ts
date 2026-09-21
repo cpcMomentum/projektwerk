@@ -237,6 +237,10 @@ export async function removeMember(boardId: number, userId: string): Promise<voi
 export interface Candidate {
 	userId: string
 	displayName: string
+	/** E-Mail zur Unterscheidung (#309); `null` bei Gästen (Einladungsadresse) oder ohne Mail. */
+	email: string | null
+	/** Gast-Konto (Guests-Backend) — die Oberfläche zeigt „Gast" statt der ID. */
+	isGuest: boolean
 }
 
 /**
