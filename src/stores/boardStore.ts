@@ -295,10 +295,10 @@ export const useBoardStore = defineStore('board', {
 		 * @param data.title Titel des Projekts.
 		 * @param data.description Optionale Beschreibung.
 		 * @param data.orgInternal Firmenname der eigenen Seite.
-		 * @param data.orgExternal Firmenname der Kundenseite.
+		 * @param data.customer Name des Kunden des Projekts.
 		 * @return Das angelegte Projekt.
 		 */
-		async createBoard(data: { title: string, description?: string | null, orgInternal?: string | null, orgExternal?: string | null }): Promise<Board> {
+		async createBoard(data: { title: string, description?: string | null, orgInternal?: string | null, customer?: string | null }): Promise<Board> {
 			const board = await createBoardRequest(data)
 			this.boards = [...this.boards, board]
 			return board

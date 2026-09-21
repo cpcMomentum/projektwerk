@@ -68,7 +68,14 @@ class SettingsWritePathTest extends IntegrationTestCase {
 		$this->assertSame(ViewerContext::ROLE_INTERNAL, $viewer->role);
 		$this->assertTrue($viewer->isManager, 'Wer anlegt, muss verwalten dürfen.');
 		$this->assertSame('cpcMomentum', $board->getOrgInternal());
-		$this->assertSame('Kunde GmbH', $board->getOrgExternal());
+		// #309: Der fünfte Parameter ist jetzt der Kunde (customer), nicht mehr
+		// orgExternal. Er landet als Anzeige-Kopie am Board.
+		$this->assertSame('Kunde GmbH', $board->getCustomer());
+		// Der Ersteller trägt die eigene Firma als company (#309).
+		$creator = Server::get(MemberMapper::class)
+			->findForBoard($viewer);
+		$mine = array_values(array_filter($creator, fn ($m) => $m->getUserId() === 'lm-neu'))[0];
+		$this->assertSame('cpcMomentum', $mine->getCompany());
 	}
 
 	public function testABoardNeedsATitle(): void {
@@ -85,10 +92,10 @@ class SettingsWritePathTest extends IntegrationTestCase {
 	 * Adresse hinterlegt ist.
 	 */
 	public function testEmptyFieldsBecomeNull(): void {
-		$board = $this->boardService->update($this->manager(), ['chatUrl' => '   ', 'orgExternal' => '']);
+		$board = $this->boardService->update($this->manager(), ['chatUrl' => '   ', 'customer' => '']);
 
 		$this->assertNull($board->getChatUrl());
-		$this->assertNull($board->getOrgExternal());
+		$this->assertNull($board->getCustomer());
 	}
 
 	public function testUpdatingTheBoardKeepsUntouchedFields(): void {

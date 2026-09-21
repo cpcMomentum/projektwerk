@@ -442,6 +442,11 @@ OC.L10N.register(
     "Der Verbindungstest ist mit einem unerwarteten Fehler fehlgeschlagen." : "The connection test failed with an unexpected error.",
     "Kunde" : "Customer",
     "Alle Kunden" : "All customers",
-    "Gast" : "Guest"
+    "Gast" : "Guest",
+    "Eigene Firma und Kunde des Projekts. Beides ist optional und jederzeit änderbar." : "The project's own company and customer. Both are optional and can be changed at any time.",
+    "Eigene Firma" : "Own company",
+    "Kunde (optional)" : "Customer (optional)",
+    "Firma" : "Company",
+    "Firma konnte nicht geändert werden" : "Company could not be changed"
 },
 "nplurals=2; plural=(n != 1);");
