@@ -224,6 +224,7 @@ export default defineComponent({
 		/** Wer gerade schaut — entscheidet, wo Ändern und Löschen erscheinen. */
 		viewer: { type: Object as PropType<ViewerInfo | null>, default: null },
 		/** Für die Zweitzeile in der Erwähnungs-Auswahl. */
+		customer: { type: String, default: '' },
 		orgInternal: { type: String, default: '' },
 		/** Für die Zweitzeile in der Erwähnungs-Auswahl. */
 		orgExternal: { type: String, default: '' },
@@ -368,7 +369,10 @@ export default defineComponent({
 		 * @param userId Kennung der Person.
 		 */
 		orgOf(userId: string): string {
-			return this.roleOf(userId) === 'internal' ? this.orgInternal : this.orgExternal
+			// Firma der Person (#309); Rückfall aus der Rolle — extern auf den
+			// Kunden (nicht das eingefrorene orgExternal), intern auf die eigene Firma.
+			const member = this.members.find((m) => m.userId === userId)
+			return member?.company ?? (this.roleOf(userId) === 'external' ? this.customer : this.orgInternal)
 		},
 
 		/**

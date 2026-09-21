@@ -208,6 +208,7 @@
 			:viewer="store.viewer"
 			:orgInternal="store.board?.orgInternal ?? ''"
 			:orgExternal="store.board?.orgExternal ?? ''"
+			:customer="store.board?.customer ?? ''"
 			:showVisibility="showVisibility"
 			:fromClientSide="!store.isInternal"
 			:githubEnabled="store.board?.githubEnabled ?? false"
@@ -230,6 +231,7 @@
 			:members="store.members"
 			:orgInternal="store.board?.orgInternal ?? ''"
 			:orgExternal="store.board?.orgExternal ?? ''"
+			:customer="store.board?.customer ?? ''"
 			@update:open="creating = $event"
 			@create="create" />
 

@@ -141,6 +141,8 @@ export default defineComponent({
 		members: { type: Array as PropType<Member[]>, default: () => [] },
 		orgInternal: { type: String, default: '' },
 		orgExternal: { type: String, default: '' },
+		/** Kunde des Projekts (#309) — Rückfall für externe Mitglieder ohne eigene Firma. */
+		customer: { type: String, default: '' },
 	},
 
 	emits: ['update:open', 'create'],
@@ -232,7 +234,7 @@ export default defineComponent({
 		 */
 		companyOf(userId: string): string {
 			const member = this.members.find((m) => m.userId === userId)
-			return member?.company ?? (this.roleOf(userId) === 'external' ? this.orgExternal : this.orgInternal)
+			return member?.company ?? (this.roleOf(userId) === 'external' ? this.customer : this.orgInternal)
 		},
 
 		async loadAssignable() {

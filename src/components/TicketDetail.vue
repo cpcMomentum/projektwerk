@@ -495,6 +495,7 @@
 					:members="members"
 					:orgInternal="orgInternal"
 					:orgExternal="orgExternal"
+					:customer="customer"
 					@changed="$emit('stepsChanged')" />
 
 				<!--
@@ -518,6 +519,7 @@
 					:viewer="viewer"
 					:orgInternal="orgInternal"
 					:orgExternal="orgExternal"
+					:customer="customer"
 					@changed="$emit('commentsChanged')" />
 			</div>
 		</div>
@@ -588,6 +590,8 @@ export default defineComponent({
 		viewer: { type: Object as PropType<ViewerInfo | null>, default: null },
 		orgInternal: { type: String, default: '' },
 		orgExternal: { type: String, default: '' },
+		/** Kunde des Projekts (#309) — Rückfall für externe Personen ohne eigene Firma. */
+		customer: { type: String, default: '' },
 		/** Nur die interne Seite sieht die Kennzeichnung (§9). */
 		showVisibility: { type: Boolean, default: false },
 		steps: { type: Array as PropType<Step[]>, default: () => [] },
@@ -1194,7 +1198,7 @@ export default defineComponent({
 		 */
 		companyOf(userId: string | null): string {
 			const member = this.members.find((m) => m.userId === userId)
-			return member?.company ?? (this.roleOf(userId) === 'external' ? this.orgExternal : this.orgInternal)
+			return member?.company ?? (this.roleOf(userId) === 'external' ? this.customer : this.orgInternal)
 		},
 
 		/**
@@ -1208,7 +1212,7 @@ export default defineComponent({
 		 */
 		orgLine(userId: string | null, role: string, suffix: string): string {
 			const member = this.members.find((m) => m.userId === userId)
-			const org = member?.company ?? (role === 'internal' ? this.orgInternal : this.orgExternal)
+			const org = member?.company ?? (role === 'internal' ? this.orgInternal : this.customer)
 			return !org ? suffix : org + ' · ' + suffix
 		},
 	},
