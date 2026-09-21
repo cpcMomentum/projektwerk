@@ -177,7 +177,7 @@ export default defineComponent({
 				id: userId,
 				displayName: this.nameOf(userId),
 				user: userId,
-				subname: this.roleOf(userId) === 'internal' ? this.orgInternal : this.orgExternal,
+				subname: this.companyOf(userId),
 			}))
 		},
 
@@ -222,6 +222,17 @@ export default defineComponent({
 
 		roleOf(userId: string): string {
 			return this.members.find((m) => m.userId === userId)?.role ?? 'external'
+		},
+
+		/**
+		 * Die Firma dieser Person (#309), mit Rückfall auf die aus der Rolle
+		 * abgeleitete Board-Firma, solange noch keine gepflegt ist.
+		 *
+		 * @param userId Kennung der Person.
+		 */
+		companyOf(userId: string): string {
+			const member = this.members.find((m) => m.userId === userId)
+			return member?.company ?? (this.roleOf(userId) === 'external' ? this.orgExternal : this.orgInternal)
 		},
 
 		async loadAssignable() {

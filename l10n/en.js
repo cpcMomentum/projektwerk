@@ -439,6 +439,8 @@ OC.L10N.register(
     "Einstellungen konnten nicht gespeichert werden" : "Settings could not be saved",
     "[Anhang aus E-Mail nicht übernommen – bitte im Vorgang hochladen]" : "[Attachment from email not imported – please upload it in the item]",
     "Kein IMAP-Server angegeben." : "No IMAP server specified.",
-    "Der Verbindungstest ist mit einem unerwarteten Fehler fehlgeschlagen." : "The connection test failed with an unexpected error."
+    "Der Verbindungstest ist mit einem unerwarteten Fehler fehlgeschlagen." : "The connection test failed with an unexpected error.",
+    "Kunde" : "Customer",
+    "Alle Kunden" : "All customers"
 },
 "nplurals=2; plural=(n != 1);");
