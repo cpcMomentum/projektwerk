@@ -72,7 +72,7 @@ class SettingsWritePathTest extends IntegrationTestCase {
 		// orgExternal. Er landet als Anzeige-Kopie am Board.
 		$this->assertSame('Kunde GmbH', $board->getCustomer());
 		// Der Ersteller trägt die eigene Firma als company (#309).
-		$creator = Server::get(\OCA\Projektwerk\Db\MemberMapper::class)
+		$creator = Server::get(MemberMapper::class)
 			->findForBoard($viewer);
 		$mine = array_values(array_filter($creator, fn ($m) => $m->getUserId() === 'lm-neu'))[0];
 		$this->assertSame('cpcMomentum', $mine->getCompany());
