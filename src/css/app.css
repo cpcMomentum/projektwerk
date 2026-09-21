@@ -1330,6 +1330,24 @@
 	gap: 10px;
 }
 
+/* Native Auswahl-Inputs mit datalist (#309): Firma je Mitglied, Kunde. */
+.app-projektwerk .pw-plaininput {
+	min-height: 34px;
+	padding: 6px 8px;
+	border: 2px solid var(--color-border-maxcontrast);
+	border-radius: var(--border-radius-element, 8px);
+	background-color: var(--color-main-background);
+	color: var(--color-main-text);
+	width: 100%;
+	box-sizing: border-box;
+}
+
+.app-projektwerk .pw-settings__memcompany {
+	width: auto;
+	min-width: 140px;
+	flex: 0 1 180px;
+}
+
 .app-projektwerk .pw-settings__member {
 	padding: 6px 0;
 	border-bottom: 1px solid var(--color-border);

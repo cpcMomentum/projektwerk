@@ -37,26 +37,32 @@
 			<!-- Schritt 2: Die zwei Seiten -->
 			<section v-else-if="step === 1" class="pw-wizard__step">
 				<!--
-					Beide Firmennamen gleichberechtigt: Trüge nur die Kundenseite
-					eine Firma, wäre die eigene stumm „der Normalfall". Beide sind
-					optional und lassen sich später ändern.
+					Die eigene Firma ist die Vorbelegung für interne Mitglieder; der
+					Kunde ist das Projekt-Label (wofür das Projekt läuft), filterbar
+					im Überblick. Beteiligte können aus anderen Firmen kommen — deren
+					Firma trägt jede Person selbst (#309). Beides optional, änderbar.
 				-->
 				<p class="pw-settings__hint">
-					{{ t('projektwerk', 'Die beiden Seiten des Projekts. Beides ist optional und jederzeit änderbar.') }}
+					{{ t('projektwerk', 'Eigene Firma und Kunde des Projekts. Beides ist optional und jederzeit änderbar.') }}
 				</p>
 				<div class="pw-field">
-					<label for="pw-wiz-orgi">{{ t('projektwerk', 'Firma (eigene Seite)') }}</label>
+					<label for="pw-wiz-orgi">{{ t('projektwerk', 'Eigene Firma') }}</label>
 					<NcTextField
 						id="pw-wiz-orgi"
 						v-model="orgInternal"
-						:label="t('projektwerk', 'Firma (eigene Seite)')" />
+						:label="t('projektwerk', 'Eigene Firma')" />
 				</div>
 				<div class="pw-field">
-					<label for="pw-wiz-orge">{{ t('projektwerk', 'Firma (Kundenseite)') }}</label>
-					<NcTextField
-						id="pw-wiz-orge"
-						v-model="orgExternal"
-						:label="t('projektwerk', 'Firma (Kundenseite)')" />
+					<label for="pw-wiz-customer">{{ t('projektwerk', 'Kunde') }}</label>
+					<input
+						id="pw-wiz-customer"
+						v-model="customer"
+						class="pw-plaininput"
+						list="pw-wiz-customer-suggestions"
+						:placeholder="t('projektwerk', 'Kunde (optional)')">
+					<datalist id="pw-wiz-customer-suggestions">
+						<option v-for="c in store.customerSuggestions" :key="c" :value="c" />
+					</datalist>
 				</div>
 			</section>
 
@@ -89,7 +95,9 @@
 						:aria-pressed="newMember === person.userId"
 						@click="selectCandidate(person)">
 						<span class="pw-person__name">{{ person.displayName }}</span>
-						<span class="pw-person__org" :title="person.userId">{{ person.userId }}</span>
+						<span v-if="person.email || person.isGuest" class="pw-person__org">
+							{{ person.email || t('projektwerk', 'Gast') }}
+						</span>
 					</button>
 				</div>
 				<span v-else-if="memberSearch.trim() !== '' && !searching" class="pw-settings__hint">
@@ -239,7 +247,7 @@ export default defineComponent({
 			title: '',
 			description: '',
 			orgInternal: '',
-			orgExternal: '',
+			customer: '',
 			memberSearch: '',
 			searching: false,
 			candidates: [] as Candidate[],
@@ -313,7 +321,7 @@ export default defineComponent({
 			this.title = ''
 			this.description = ''
 			this.orgInternal = ''
-			this.orgExternal = ''
+			this.customer = ''
 			this.memberSearch = ''
 			this.newMember = ''
 			this.newMemberName = ''
@@ -447,7 +455,7 @@ export default defineComponent({
 			} else if (this.step === 1 && this.boardId !== null) {
 				await updateBoard(this.boardId, {
 					orgInternal: this.trimOrNull(this.orgInternal),
-					orgExternal: this.trimOrNull(this.orgExternal),
+					customer: this.trimOrNull(this.customer),
 				})
 			} else if (this.step === 4 && this.boardId !== null) {
 				await updateBoard(this.boardId, {
@@ -533,7 +541,11 @@ export default defineComponent({
 			const name = this.newMemberName
 			this.saving = true
 			try {
-				const member = await addMember(this.boardId, { userId, role: this.newMemberRole })
+				// Firma vorbelegen (#309): intern = eigene Firma, extern = Kunde.
+				const company = this.newMemberRole === 'external'
+					? this.trimOrNull(this.customer)
+					: this.trimOrNull(this.orgInternal)
+				const member = await addMember(this.boardId, { userId, role: this.newMemberRole, company })
 				// `resolvedName` kommt leer zurück; der Name aus dem Treffer,
 				// sonst die Kennung, damit die Zeile nie namenlos dasteht.
 				this.addedMembers = [...this.addedMembers, {

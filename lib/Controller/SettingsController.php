@@ -62,7 +62,7 @@ class SettingsController extends Controller {
 		string $title,
 		?string $description = null,
 		?string $orgInternal = null,
-		?string $orgExternal = null,
+		?string $customer = null,
 	): JSONResponse {
 		if ($this->userId === null) {
 			return new JSONResponse([], Http::STATUS_UNAUTHORIZED);
@@ -70,7 +70,7 @@ class SettingsController extends Controller {
 
 		try {
 			return new JSONResponse(
-				$this->boardService->create($this->userId, $title, $description, $orgInternal, $orgExternal),
+				$this->boardService->create($this->userId, $title, $description, $orgInternal, $customer),
 				Http::STATUS_CREATED,
 			);
 		} catch (GuestNotAllowedException $e) {
@@ -105,7 +105,7 @@ class SettingsController extends Controller {
 		?string $title = null,
 		?string $description = null,
 		?string $orgInternal = null,
-		?string $orgExternal = null,
+		?string $customer = null,
 		?string $chatUrl = null,
 		?string $folderPublicPath = null,
 		?string $folderInternalPath = null,
@@ -123,7 +123,7 @@ class SettingsController extends Controller {
 			'title' => $title,
 			'description' => $description,
 			'orgInternal' => $orgInternal,
-			'orgExternal' => $orgExternal,
+			'customer' => $customer,
 			'chatUrl' => $chatUrl,
 			'folderPublicPath' => $folderPublicPath,
 			'folderInternalPath' => $folderInternalPath,
