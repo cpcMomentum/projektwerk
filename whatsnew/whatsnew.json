@@ -45,6 +45,23 @@
 			},
 			"adminOnly": false,
 			"plus": false
+		},
+		{
+			"title": {
+				"de": "Bereit für Nextcloud 35",
+				"en": "Ready for Nextcloud 35"
+			},
+			"text": {
+				"de": "ProjektWerk läuft jetzt auch auf Nextcloud 35. Ihre Nextcloud lässt sich auf Version 35 aktualisieren, ohne dass die App dabei deaktiviert wird.",
+				"en": "ProjektWerk now runs on Nextcloud 35 as well. Your Nextcloud can be updated to version 35 without the app being disabled."
+			},
+			"icon": "cog",
+			"where": {
+				"de": "Nextcloud-Verwaltung",
+				"en": "Nextcloud administration"
+			},
+			"adminOnly": true,
+			"plus": false
 		}
 	]
 }
