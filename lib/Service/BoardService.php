@@ -99,7 +99,7 @@ class BoardService {
 		string $title,
 		?string $description = null,
 		?string $orgInternal = null,
-		?string $orgExternal = null,
+		?string $customer = null,
 	): Board {
 		if ($this->accountType->isGuest($userId)) {
 			throw new GuestNotAllowedException($this->l10n->t('Als Gast können Sie keine Projekte anlegen.'));
@@ -119,8 +119,11 @@ class BoardService {
 			$project->setTitle(trim($title));
 			$project->setDescription($description);
 			$project->setOwnerUserId($userId);
+			// Eigene Firma bleibt die Default-Quelle für interne Mitglieder (#309);
+			// der Kunde ist das filterbare Projekt-Label. `orgExternal` wird nicht
+			// mehr gesetzt (durch `customer` ersetzt, Wegfall in Phase 5).
 			$project->setOrgInternal($this->trimOrNull($orgInternal));
-			$project->setOrgExternal($this->trimOrNull($orgExternal));
+			$project->setCustomer($this->trimOrNull($customer));
 			$project->setTicketCounter(0);
 			$project->setArchived(0);
 			$project->setCreatedAt($now);
@@ -135,7 +138,8 @@ class BoardService {
 			// #281: Ersteller festhalten — trägt das board-scopes Einricht-Recht.
 			$board->setCreatedBy($userId);
 			$board->setOrgInternal($this->trimOrNull($orgInternal));
-			$board->setOrgExternal($this->trimOrNull($orgExternal));
+			// Anzeige-Kopie des Kunden am Board (der Überblick liest sie).
+			$board->setCustomer($this->trimOrNull($customer));
 			$board->setArchived(0);
 			$board->setProjectId($projectId);
 			$board->setCreatedAt($now);
@@ -148,6 +152,8 @@ class BoardService {
 			$member->setUserId($userId);
 			$member->setRole(ViewerContext::ROLE_INTERNAL);
 			$member->setIsManager(1);
+			// Firma des Erstellers = eigene Firma (#309); pro Mitglied überschreibbar.
+			$member->setCompany($this->trimOrNull($orgInternal));
 			$member->setAddedBy($userId);
 			$member->setAddedAt($now);
 			$this->members->insert($member);
@@ -220,7 +226,8 @@ class BoardService {
 			// — es trägt das Einricht-Recht für genau dieses Board.
 			$board->setCreatedBy($viewer->userId);
 			$board->setOrgInternal($project->getOrgInternal());
-			$board->setOrgExternal($project->getOrgExternal());
+			// Kunde-Anzeige-Kopie aus dem Projekt (#309).
+			$board->setCustomer($project->getCustomer());
 			$board->setArchived(0);
 			$board->setProjectId($viewer->projectId);
 			$board->setCreatedAt($now);
@@ -253,7 +260,7 @@ class BoardService {
 	 * nichts gesetzt — die Anhänge aus Phase 5 sind der erste Anlass. Ohne sie
 	 * hätte ein Anhang keinen Ort, an den er gehört.
 	 *
-	 * @param array{title?: string, description?: ?string, orgInternal?: ?string, orgExternal?: ?string, chatUrl?: ?string, folderPublicPath?: ?string, folderInternalPath?: ?string, githubEnabled?: bool, githubRepo?: ?string} $changes
+	 * @param array{title?: string, description?: ?string, orgInternal?: ?string, customer?: ?string, chatUrl?: ?string, folderPublicPath?: ?string, folderInternalPath?: ?string, githubEnabled?: bool, githubRepo?: ?string} $changes
 	 * @throws NotManagerException
 	 * @throws \OCP\Files\NotPermittedException Ordner nicht erreichbar oder nicht beschreibbar
 	 */
@@ -287,8 +294,14 @@ class BoardService {
 		if (array_key_exists('orgInternal', $changes)) {
 			$board->setOrgInternal($this->trimOrNull($changes['orgInternal']));
 		}
-		if (array_key_exists('orgExternal', $changes)) {
-			$board->setOrgExternal($this->trimOrNull($changes['orgExternal']));
+		if (array_key_exists('customer', $changes)) {
+			// Kunde (#309): Autorität am Projekt, Anzeige-Kopie am Board (der
+			// Überblick liest die Board-Kopie). Beide an derselben Stelle
+			// geschrieben, damit sie nicht auseinanderlaufen.
+			$customer = $this->trimOrNull($changes['customer']);
+			$project->setCustomer($customer);
+			$board->setCustomer($customer);
+			$projectChanged = true;
 		}
 		if (array_key_exists('chatUrl', $changes)) {
 			// Reine Adresse für den Knopf „Zum Projektchat", am Projekt (#246).

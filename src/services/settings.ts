@@ -25,13 +25,13 @@ import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from '@/services/api'
  * @param data.title
  * @param data.description
  * @param data.orgInternal
- * @param data.orgExternal
+ * @param data.customer
  */
 export async function createBoard(data: {
 	title: string
 	description?: string | null
 	orgInternal?: string | null
-	orgExternal?: string | null
+	customer?: string | null
 }): Promise<Board> {
 	return apiPost<Board, typeof data>('/boards', data)
 }
@@ -60,7 +60,7 @@ export async function createSiblingBoard(boardId: number, title: string): Promis
  * @param changes.title
  * @param changes.description
  * @param changes.orgInternal
- * @param changes.orgExternal
+ * @param changes.customer
  * @param changes.chatUrl
  * @param changes.folderPublicPath
  * @param changes.folderInternalPath
@@ -71,7 +71,7 @@ export async function updateBoard(boardId: number, changes: {
 	title?: string
 	description?: string | null
 	orgInternal?: string | null
-	orgExternal?: string | null
+	customer?: string | null
 	chatUrl?: string | null
 	/**
 	 * Die beiden Projektordner als **Pfad**.
@@ -186,6 +186,7 @@ export async function addMember(boardId: number, data: {
 	role: MemberRole
 	isManager?: boolean
 	displayName?: string | null
+	company?: string | null
 }): Promise<Member> {
 	return apiPost<Member, typeof data>(`/boards/${boardId}/members`, data)
 }
@@ -208,6 +209,7 @@ export async function updateMember(boardId: number, userId: string, changes: {
 	role?: MemberRole
 	isManager?: boolean
 	displayName?: string | null
+	company?: string | null
 }): Promise<Member> {
 	return apiPatch<Member, typeof changes>(`/boards/${boardId}/members/${encodeURIComponent(userId)}`, changes)
 }
@@ -237,6 +239,10 @@ export async function removeMember(boardId: number, userId: string): Promise<voi
 export interface Candidate {
 	userId: string
 	displayName: string
+	/** E-Mail zur Unterscheidung (#309); `null` bei Gästen (Einladungsadresse) oder ohne Mail. */
+	email: string | null
+	/** Gast-Konto (Guests-Backend) — die Oberfläche zeigt „Gast" statt der ID. */
+	isGuest: boolean
 }
 
 /**

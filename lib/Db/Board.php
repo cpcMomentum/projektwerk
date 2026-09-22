@@ -42,6 +42,8 @@ use OCP\DB\Types;
  * @method void setOrgInternal(?string $orgInternal)
  * @method ?string getOrgExternal()
  * @method void setOrgExternal(?string $orgExternal)
+ * @method ?string getCustomer()
+ * @method void setCustomer(?string $customer)
  * @method ?int getFolderPublicId()
  * @method void setFolderPublicId(?int $folderPublicId)
  * @method ?string getFolderPublicPath()
@@ -78,6 +80,8 @@ class Board extends Entity implements JsonSerializable {
 	protected ?string $createdBy = null;
 	protected ?string $orgInternal = null;
 	protected ?string $orgExternal = null;
+	/** Kunde-Anzeige-Kopie am Board (#309 Phase 1), seit Phase 2 in jsonSerialize. */
+	protected ?string $customer = null;
 	protected ?int $folderPublicId = null;
 	protected ?string $folderPublicPath = null;
 	protected ?int $folderInternalId = null;
@@ -99,6 +103,7 @@ class Board extends Entity implements JsonSerializable {
 		$this->addType('createdBy', Types::STRING);
 		$this->addType('orgInternal', Types::STRING);
 		$this->addType('orgExternal', Types::STRING);
+		$this->addType('customer', Types::STRING);
 		$this->addType('folderPublicId', Types::INTEGER);
 		$this->addType('folderPublicPath', Types::STRING);
 		$this->addType('folderInternalId', Types::INTEGER);
@@ -130,6 +135,8 @@ class Board extends Entity implements JsonSerializable {
 			'ownerUserId' => $this->getOwnerUserId(),
 			'orgInternal' => $this->getOrgInternal(),
 			'orgExternal' => $this->getOrgExternal(),
+			// Kunde des Projekts (#309), Anzeige-Kopie am Board für den Überblick.
+			'customer' => $this->getCustomer(),
 			'folderPublicId' => $this->getFolderPublicId(),
 			'folderPublicPath' => $this->getFolderPublicPath(),
 			'folderInternalId' => $this->getFolderInternalId(),

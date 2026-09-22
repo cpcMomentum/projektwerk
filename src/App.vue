@@ -110,6 +110,14 @@
 		<NcAppContent>
 			<router-view />
 		</NcAppContent>
+
+		<!--
+			„Was ist neu?"-Fenster (#315). Prueft sich beim Mounten selbst: Es
+			oeffnet nur, wenn der Server Eintraege liefert (fuer Gaeste nie), und
+			blockiert nie. NcModal teleportiert ohnehin an den `body`, die
+			Platzierung hier ist darum nur die logische Heimat.
+		-->
+		<WhatsNewDialog />
 	</NcContent>
 </template>
 
@@ -130,11 +138,12 @@ import FolderMultipleIcon from 'vue-material-design-icons/FolderMultiple.vue'
 import FormatListChecksIcon from 'vue-material-design-icons/FormatListChecks.vue'
 import StarIcon from 'vue-material-design-icons/Star.vue'
 import ViewDashboardIcon from 'vue-material-design-icons/ViewDashboardOutline.vue'
+import WhatsNewDialog from '@/components/WhatsNewDialog.vue'
 import { useBoardStore } from '@/stores/boardStore'
 
 export default {
 	name: 'App',
-	components: { NcContent, NcAppNavigation, NcAppNavigationCaption, NcAppNavigationItem, NcAppContent, FolderMultipleIcon, FormatListChecksIcon, StarIcon, ViewDashboardIcon, CogIcon, EmailIcon },
+	components: { NcContent, NcAppNavigation, NcAppNavigationCaption, NcAppNavigationItem, NcAppContent, FolderMultipleIcon, FormatListChecksIcon, StarIcon, ViewDashboardIcon, CogIcon, EmailIcon, WhatsNewDialog },
 
 	setup() {
 		return { isMobile: useIsMobile(), store: useBoardStore() }

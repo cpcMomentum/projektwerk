@@ -62,6 +62,7 @@ class MemberService {
 		string $role,
 		bool $isManager = false,
 		?string $displayName = null,
+		?string $company = null,
 	): Member {
 		$this->assertManager($viewer);
 		$this->assertKnownRole($role);
@@ -91,6 +92,7 @@ class MemberService {
 		$member->setRole($role);
 		$member->setIsManager($this->manageableFlag($role, $isManager));
 		$member->setDisplayName($this->trimOrNull($displayName));
+		$member->setCompany($this->trimOrNull($company));
 		$member->setAddedBy($viewer->userId);
 		$member->setAddedAt(new \DateTime());
 
@@ -184,7 +186,7 @@ class MemberService {
 	 * verlangt dafür einen **Hinweis** im Dialog, keine Umbuchung — sonst
 	 * bräche die Symmetrie von `internal` rückwirkend.
 	 *
-	 * @param array{role?: string, isManager?: bool, displayName?: ?string} $changes
+	 * @param array{role?: string, isManager?: bool, displayName?: ?string, company?: ?string} $changes
 	 * @throws NotManagerException
 	 * @throws DoesNotExistException das Mitglied gehört nicht zu diesem Board
 	 */
@@ -214,6 +216,10 @@ class MemberService {
 
 		if (array_key_exists('displayName', $changes)) {
 			$member->setDisplayName($this->trimOrNull($changes['displayName']));
+		}
+
+		if (array_key_exists('company', $changes)) {
+			$member->setCompany($this->trimOrNull($changes['company']));
 		}
 
 		return $this->members->update($member);

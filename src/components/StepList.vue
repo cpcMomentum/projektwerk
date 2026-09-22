@@ -311,7 +311,8 @@ export default defineComponent({
 		members: { type: Array as PropType<Member[]>, default: () => [] },
 		/** Fuer die Zweitzeile in der Personenauswahl. */
 		orgInternal: { type: String, default: '' },
-		orgExternal: { type: String, default: '' },
+		/** Kunde des Projekts (#309) — Rückfall für externe Mitglieder ohne eigene Firma. */
+		customer: { type: String, default: '' },
 	},
 
 	emits: ['changed'],
@@ -386,7 +387,7 @@ export default defineComponent({
 				id: userId,
 				displayName: this.nameOf(userId),
 				user: userId,
-				subname: this.roleOf(userId) === 'internal' ? this.orgInternal : this.orgExternal,
+				subname: this.companyOf(userId),
 			}))
 		},
 	},
@@ -444,6 +445,18 @@ export default defineComponent({
 		 */
 		roleOf(userId: string): string {
 			return this.members.find((m) => m.userId === userId)?.role ?? 'internal'
+		},
+
+		/**
+		 * Die Firma dieser Person (#309): pro Mitglied gepflegt. Fällt eine noch
+		 * nicht gepflegte Firma auf die alte, aus der Rolle abgeleitete Board-Firma
+		 * zurück — so bleibt die Anzeige lückenlos, bis Phase 3b die Pflege liefert.
+		 *
+		 * @param userId Kennung der Person.
+		 */
+		companyOf(userId: string): string {
+			const member = this.members.find((m) => m.userId === userId)
+			return member?.company ?? (this.roleOf(userId) === 'external' ? this.customer : this.orgInternal)
 		},
 
 		/**

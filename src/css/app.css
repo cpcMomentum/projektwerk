@@ -1330,6 +1330,24 @@
 	gap: 10px;
 }
 
+/* Native Auswahl-Inputs mit datalist (#309): Firma je Mitglied, Kunde. */
+.app-projektwerk .pw-plaininput {
+	min-height: 34px;
+	padding: 6px 8px;
+	border: 2px solid var(--color-border-maxcontrast);
+	border-radius: var(--border-radius-element, 8px);
+	background-color: var(--color-main-background);
+	color: var(--color-main-text);
+	width: 100%;
+	box-sizing: border-box;
+}
+
+.app-projektwerk .pw-settings__memcompany {
+	width: auto;
+	min-width: 140px;
+	flex: 0 1 180px;
+}
+
 .app-projektwerk .pw-settings__member {
 	padding: 6px 0;
 	border-bottom: 1px solid var(--color-border);
@@ -2216,6 +2234,28 @@
 	gap: 6px 14px;
 	margin: 2px 0 12px;
 	font-size: 12.5px;
+}
+
+/* Kundenfilter (#309) über der Legende. */
+.app-projektwerk .pw-tiles__filter {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 2px 0 10px;
+	font-size: 13px;
+}
+
+.app-projektwerk .pw-tiles__filterlabel {
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-tiles__filterselect {
+	min-height: 34px;
+	padding: 4px 8px;
+	border: 2px solid var(--color-border-maxcontrast);
+	border-radius: var(--border-radius-element, 8px);
+	background-color: var(--color-main-background);
+	color: var(--color-main-text);
 }
 
 .app-projektwerk .pw-tiles__leg {

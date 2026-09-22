@@ -62,12 +62,26 @@
 					<template v-if="mayManage">
 						<div class="pw-settings__pair">
 							<div class="pw-field">
-								<label for="pw-set-orgi">{{ t('projektwerk', 'Firma (eigene Seite)') }}</label>
-								<NcTextField id="pw-set-orgi" v-model="board.orgInternal" :label="t('projektwerk', 'Firma (eigene Seite)')" />
+								<label for="pw-set-orgi">{{ t('projektwerk', 'Eigene Firma') }}</label>
+								<NcTextField id="pw-set-orgi" v-model="board.orgInternal" :label="t('projektwerk', 'Eigene Firma')" />
 							</div>
+							<!--
+								Der Kunde des Projekts (#309) — filterbares Label, wofür das
+								Projekt läuft. Auswahl mit vorhandenen Kunden (datalist) oder
+								frei getippt. Nicht zu verwechseln mit der Firma je Mitglied:
+								Beteiligte können aus anderen Firmen kommen (z. B. Subunternehmer).
+							-->
 							<div class="pw-field">
-								<label for="pw-set-orge">{{ t('projektwerk', 'Firma (Kundenseite)') }}</label>
-								<NcTextField id="pw-set-orge" v-model="board.orgExternal" :label="t('projektwerk', 'Firma (Kundenseite)')" />
+								<label for="pw-set-customer">{{ t('projektwerk', 'Kunde') }}</label>
+								<input
+									id="pw-set-customer"
+									v-model="board.customer"
+									class="pw-plaininput"
+									list="pw-customer-suggestions"
+									:placeholder="t('projektwerk', 'Kunde (optional)')">
+								<datalist id="pw-customer-suggestions">
+									<option v-for="c in store.customerSuggestions" :key="c" :value="c" />
+								</datalist>
 							</div>
 						</div>
 
@@ -378,6 +392,21 @@
 						</select>
 
 						<!--
+						Firma je Mitglied (#309): inline wie die Rolle. Vorbelegt beim
+						Anlegen (intern = eigene Firma, extern = Kunde), hier
+						überschreibbar — z. B. ein Subunternehmer auf Kundenseite mit
+						eigener Firma. Auswahl mit vorhandenen Firmen oder frei getippt.
+					-->
+						<input
+							:value="member.company || ''"
+							class="pw-plaininput pw-settings__memcompany"
+							list="pw-company-suggestions"
+							:aria-label="t('projektwerk', 'Firma')"
+							:placeholder="t('projektwerk', 'Firma')"
+							:disabled="busy"
+							@change="changeCompany(member, $event)">
+
+						<!--
 						Das Verwaltungsrecht gibt es nur fuer interne Mitglieder,
 						und der Eigentuemer behaelt es immer (§8). Beides steht
 						auch im Dienst — hier faellt nur der Schalter weg.
@@ -407,6 +436,10 @@
 							</template>
 						</NcButton>
 					</div>
+
+					<datalist id="pw-company-suggestions">
+						<option v-for="c in store.companySuggestions" :key="c" :value="c" />
+					</datalist>
 
 					<div class="pw-settings__row">
 						<!--
@@ -441,11 +474,16 @@
 							:aria-pressed="newMember === person.userId"
 							@click="newMember = person.userId">
 							<!--
-							Name UND Kennung: Zwei Konten mit gleichem
-							Anzeigenamen waeren sonst nicht unterscheidbar.
+							Name plus E-Mail zur Unterscheidung (#309): zwei Konten
+							mit gleichem Anzeigenamen sind sonst nicht auseinander-
+							zuhalten. Die interne Konto-ID (bei Gästen ein Hash)
+							erscheint NICHT mehr; Gäste sind als „Gast" markiert
+							(F2 — ihre System-E-Mail ist die Einladungsadresse).
 						-->
 							<span class="pw-person__name">{{ person.displayName }}</span>
-							<span class="pw-person__org" :title="person.userId">{{ person.userId }}</span>
+							<span v-if="person.email || person.isGuest" class="pw-person__org">
+								{{ person.email || t('projektwerk', 'Gast') }}
+							</span>
 						</button>
 					</div>
 					<span v-else-if="memberSearch.trim() !== '' && !searching" class="pw-settings__hint">
@@ -672,7 +710,7 @@ export default defineComponent({
 			// Ein eigener Entwurf statt direkter Bindung an den Speicher: Sonst
 			// stuenden Tippfehler sofort in der Kopfzeile des Boards, und ein
 			// Abbruch waere nicht mehr moeglich.
-			board: { title: '', description: '', orgInternal: '', orgExternal: '', chatUrl: '', githubEnabled: false, githubRepo: '', memberBoardsAllowed: false },
+			board: { title: '', description: '', orgInternal: '', customer: '', chatUrl: '', githubEnabled: false, githubRepo: '', memberBoardsAllowed: false },
 			// Eigene Entwuerfe wie beim Board oben, aus demselben Grund: Der
 			// Pfad muss erst geprueft werden, und bis dahin darf er nirgends
 			// als der gespeicherte gelten.
@@ -861,7 +899,7 @@ export default defineComponent({
 				title: board.title,
 				description: board.description ?? '',
 				orgInternal: board.orgInternal ?? '',
-				orgExternal: board.orgExternal ?? '',
+				customer: board.customer ?? '',
 				chatUrl: board.chatUrl ?? '',
 				githubEnabled: board.githubEnabled,
 				githubRepo: board.githubRepo ?? '',
@@ -938,7 +976,7 @@ export default defineComponent({
 			const managerFields = this.mayManage
 				? {
 						orgInternal: this.blankToNull(this.board.orgInternal),
-						orgExternal: this.blankToNull(this.board.orgExternal),
+						customer: this.blankToNull(this.board.customer),
 						chatUrl: this.blankToNull(this.board.chatUrl),
 						githubEnabled: this.board.githubEnabled,
 						// **Roher String, nicht blankToNull:** Ein leeres Repo soll das
@@ -1341,9 +1379,15 @@ export default defineComponent({
 			if (userId === '') {
 				return
 			}
+			// Firma vorbelegen (#309): intern = eigene Firma, extern = Kunde des
+			// Projekts. Danach in der Zeile überschreibbar (z. B. Subunternehmer).
+			const company = this.newMemberRole === 'external'
+				? this.blankToNull(this.board.customer)
+				: this.blankToNull(this.board.orgInternal)
+
 			return this.write(
 				async () => {
-					await addMember(this.boardId, { userId, role: this.newMemberRole })
+					await addMember(this.boardId, { userId, role: this.newMemberRole, company })
 					this.newMember = ''
 					this.memberSearch = ''
 					this.candidates = []
@@ -1375,6 +1419,21 @@ export default defineComponent({
 			return this.write(
 				() => updateMember(this.boardId, member.userId, { isManager }),
 				t('projektwerk', 'Verwaltungsrecht konnte nicht geändert werden'),
+			)
+		},
+
+		/**
+		 * Firma eines Mitglieds ändern (#309) — leer entfernt sie.
+		 *
+		 * @param member Die Mitgliedschaft.
+		 * @param event Das Änderungsereignis des Firmenfelds.
+		 */
+		changeCompany(member: Member, event: Event) {
+			const company = this.blankToNull((event.target as HTMLInputElement).value)
+
+			return this.write(
+				() => updateMember(this.boardId, member.userId, { company }),
+				t('projektwerk', 'Firma konnte nicht geändert werden'),
 			)
 		},
 

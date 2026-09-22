@@ -277,6 +277,12 @@ final class ReadPathRegistry {
 		// existiert nicht.
 		'replyMailbox#config' => 'Instanz-weite IMAP-Einstellungen (admin-only, ohne Passwort), '
 			. 'keine Board-/Vorgangsdaten.',
+		// Das „Was ist neu?"-Fenster (#315) liest allein die ausgelieferte
+		// whatsnew.json und die Nutzer-Marke (`whatsnew_last_seen`). Kein Mapper,
+		// kein Board im Pfad, keine Rolle: Ein Leak-Vektor auf Vorgangsdaten
+		// existiert nicht. Der Gast-Riegel sitzt im WhatsNewService.
+		'whatsNew#index' => 'Liest nur die ausgelieferte whatsnew.json und die Nutzer-Marke, '
+			. 'keine Board-/Vorgangsdaten.',
 	];
 
 	/**

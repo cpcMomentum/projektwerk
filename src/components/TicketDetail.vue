@@ -389,7 +389,7 @@
 								internen — sonst waere die eine Seite stumm „der
 								Normalfall".
 							-->
-							<span class="pw-person__org">{{ orgLine(ticket.creatorRole, t('projektwerk', 'angelegt')) }}</span>
+							<span class="pw-person__org">{{ orgLine(ticket.creatorUserId, ticket.creatorRole, t('projektwerk', 'angelegt')) }}</span>
 						</span>
 					</div>
 
@@ -435,7 +435,7 @@
 								:hideStatus="true" />
 							<span class="pw-person__body">
 								<span class="pw-person__name">{{ nameOf(ticket.responsibleUserId) }}</span>
-								<span class="pw-person__org">{{ orgLine(roleOf(ticket.responsibleUserId), t('projektwerk', 'zuständig')) }}</span>
+								<span class="pw-person__org">{{ orgLine(ticket.responsibleUserId, roleOf(ticket.responsibleUserId), t('projektwerk', 'zuständig')) }}</span>
 							</span>
 							<NcButton
 								variant="tertiary"
@@ -494,7 +494,7 @@
 					:steps="steps"
 					:members="members"
 					:orgInternal="orgInternal"
-					:orgExternal="orgExternal"
+					:customer="customer"
 					@changed="$emit('stepsChanged')" />
 
 				<!--
@@ -517,7 +517,7 @@
 					:members="members"
 					:viewer="viewer"
 					:orgInternal="orgInternal"
-					:orgExternal="orgExternal"
+					:customer="customer"
 					@changed="$emit('commentsChanged')" />
 			</div>
 		</div>
@@ -587,7 +587,8 @@ export default defineComponent({
 		members: { type: Array as PropType<Member[]>, default: () => [] },
 		viewer: { type: Object as PropType<ViewerInfo | null>, default: null },
 		orgInternal: { type: String, default: '' },
-		orgExternal: { type: String, default: '' },
+		/** Kunde des Projekts (#309) — Rückfall für externe Personen ohne eigene Firma. */
+		customer: { type: String, default: '' },
 		/** Nur die interne Seite sieht die Kennzeichnung (§9). */
 		showVisibility: { type: Boolean, default: false },
 		steps: { type: Array as PropType<Step[]>, default: () => [] },
@@ -706,7 +707,7 @@ export default defineComponent({
 				id: userId,
 				displayName: this.nameOf(userId),
 				user: userId,
-				subname: this.roleOf(userId) === 'internal' ? this.orgInternal : this.orgExternal,
+				subname: this.companyOf(userId),
 			}))
 		},
 
@@ -1187,12 +1188,29 @@ export default defineComponent({
 		},
 
 		/**
-		 * @param role Rolle der Person auf diesem Board.
+		 * Die Firma dieser Person (#309), mit Rückfall auf die aus der Rolle
+		 * abgeleitete Board-Firma.
+		 *
+		 * @param userId Kennung der Person.
+		 */
+		companyOf(userId: string | null): string {
+			const member = this.members.find((m) => m.userId === userId)
+			return member?.company ?? (this.roleOf(userId) === 'external' ? this.customer : this.orgInternal)
+		},
+
+		/**
+		 * Firmenzeile mit Tätigkeit: die Firma **der Person** (#309), nicht mehr
+		 * aus der Rolle abgeleitet. Der Ersteller ist evtl. kein aktuelles
+		 * Mitglied mehr — dann trägt `role` (am Ticket gespeichert) den Rückfall.
+		 *
+		 * @param userId Kennung der Person.
+		 * @param role Rolle als Rückfall, falls keine Firma gepflegt ist.
 		 * @param suffix Was diese Person hier getan hat.
 		 */
-		orgLine(role: string, suffix: string): string {
-			const org = role === 'internal' ? this.orgInternal : this.orgExternal
-			return org === '' ? suffix : org + ' · ' + suffix
+		orgLine(userId: string | null, role: string, suffix: string): string {
+			const member = this.members.find((m) => m.userId === userId)
+			const org = member?.company ?? (role === 'internal' ? this.orgInternal : this.customer)
+			return !org ? suffix : org + ' · ' + suffix
 		},
 	},
 })

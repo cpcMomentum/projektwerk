@@ -1,6 +1,12 @@
 OC.L10N.register(
     "projektwerk",
     {
+    "Was ist neu in ProjektWerk" : "Was ist neu in ProjektWerk",
+    "Version {version}" : "Version {version}",
+    "Zu finden unter" : "Zu finden unter",
+    "(nur für Administratoren)" : "(nur für Administratoren)",
+    "Mehr zu WerkPlus" : "Mehr zu WerkPlus",
+    "Alles klar" : "Alles klar",
     "Eingegangen" : "Eingegangen",
     "Bestätigt" : "Bestätigt",
     "Eingeplant" : "Eingeplant",
@@ -439,6 +445,14 @@ OC.L10N.register(
     "Einstellungen konnten nicht gespeichert werden" : "Einstellungen konnten nicht gespeichert werden",
     "[Anhang aus E-Mail nicht übernommen – bitte im Vorgang hochladen]" : "[Anhang aus E-Mail nicht übernommen – bitte im Vorgang hochladen]",
     "Kein IMAP-Server angegeben." : "Kein IMAP-Server angegeben.",
-    "Der Verbindungstest ist mit einem unerwarteten Fehler fehlgeschlagen." : "Der Verbindungstest ist mit einem unerwarteten Fehler fehlgeschlagen."
+    "Der Verbindungstest ist mit einem unerwarteten Fehler fehlgeschlagen." : "Der Verbindungstest ist mit einem unerwarteten Fehler fehlgeschlagen.",
+    "Kunde" : "Kunde",
+    "Alle Kunden" : "Alle Kunden",
+    "Gast" : "Gast",
+    "Eigene Firma und Kunde des Projekts. Beides ist optional und jederzeit änderbar." : "Eigene Firma und Kunde des Projekts. Beides ist optional und jederzeit änderbar.",
+    "Eigene Firma" : "Eigene Firma",
+    "Kunde (optional)" : "Kunde (optional)",
+    "Firma" : "Firma",
+    "Firma konnte nicht geändert werden" : "Firma konnte nicht geändert werden"
 },
 "nplurals=2; plural=(n != 1);");
