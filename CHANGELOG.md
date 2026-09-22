@@ -4,6 +4,28 @@ Alle nennenswerten Änderungen an ProjektWerk werden hier dokumentiert.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.4.16] - 2026-09-22
+
+### Added
+
+- **Firma an der Person, Kunde am Projekt** (#309): Jedes Mitglied trägt jetzt seine Firma, und
+  jedes Projekt hält seinen Kunden fest. In den Vorgängen steht damit sichtbar, wer zu wem gehört,
+  und der Überblick lässt sich nach Kunde filtern. Firma je Mitglied und Kunde je Projekt sind im
+  Anlege-Assistenten und in den Projekteinstellungen pflegbar; bestehende Projekte werden bei der
+  Aktualisierung automatisch aus der bisherigen Organisationsangabe befüllt (Migration 021).
+- **„Was ist neu?"-Fenster** (#315): Nach einem Update zeigt ProjektWerk einmal je Version kurz,
+  was sich geändert hat — wegklickbar, danach kommt es nicht wieder. Gast- und Kundennutzer sehen
+  das Fenster nie.
+
+### Changed
+
+- **Personensuche zeigt die E-Mail-Adresse** (#313): Beim Zuweisen von Mitgliedern und
+  Arbeitsschritten erscheint statt einer kryptischen Kennung die E-Mail-Adresse; Gastkonten sind
+  als „Gast" gekennzeichnet. So trifft man die richtige Person auf Anhieb.
+- **Freigegeben für Nextcloud 35**: Die App läuft jetzt auch auf Nextcloud 35; das
+  Plattformfenster ist auf 33–35 erweitert. Administratoren können ihre Nextcloud auf Version 35
+  aktualisieren, ohne dass die App deaktiviert wird.
+
 ## [0.4.15] - 2026-09-17
 
 ### Fixed
