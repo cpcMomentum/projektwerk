@@ -2,17 +2,20 @@
  * SPDX-FileCopyrightText: 2026 cpcMomentum
  * SPDX-License-Identifier: AGPL-3.0-or-later
  *
- * Die Eingabezeile der Arbeitsschritte.
+ * Die Arbeitsschritte-Liste: Anlegen und Bearbeiten.
  *
- * Geprüft wird hier vor allem **eine** Sache: dass ein gewähltes Datum als
+ * Seit #308 legt die Eingabezeile **nur den Titel** an; Zuweisung, Frist,
+ * Beschreibung und Ergebnis werden über den Stift des Schritts nachgetragen.
+ *
+ * Geprüft wird beim Bearbeiten vor allem, dass ein gewähltes Datum als
  * derselbe Tag beim Server ankommt. Der Picker liefert ein `Date`, der Server
  * will `JJJJ-MM-TT`, und der naheliegende Weg dorthin (`toISOString()`) rechnet
  * über UTC — östlich von Greenwich wird aus dem 11. der 10., weil Mitternacht
  * Ortszeit noch der Vortag in UTC ist. Die Frist stünde dann einen Tag zu früh
  * im Kalender, und niemand sähe warum.
  *
- * Dazu die zweite Zusage aus #86: Der schnelle Weg bleibt unbelastet. Wer nur
- * tippt und Enter drückt, schickt keine Zuweisung und keine Frist mit.
+ * Dazu, dass der Titel im Bearbeiten-Modus änderbar ist (#308) — vorher ließ
+ * sich ein Tippfehler nur durch Löschen und Neuanlegen beheben.
  */
 
 import type { Member } from '@/types/board'
@@ -137,26 +140,17 @@ function mountList(steps: Step[] = []) {
  * am öffentlichen Instanztyp nicht sichtbar, und ein Test, der sie trotzdem
  * anfasst, prüft an der Vorlage vorbei — genau dort sitzt aber die Verdrahtung.
  *
+ * Seit #308 hat die Zeile nur noch das Titelfeld.
+ *
  * @param wrapper Die montierte Komponente.
  * @param titel Was in das Titelfeld getippt wird.
- * @param person Kennung der zuständigen Person, leer für „Niemand".
- * @param datum Die Frist als JJJJ-MM-TT, leer für keine.
  */
 async function fuelleZeile(
 	wrapper: ReturnType<typeof mountList>,
 	titel: string,
-	person = '',
-	datum = '',
 ) {
 	const zeile = wrapper.find('.pw-step--new')
 	await zeile.find('input[type="text"]').setValue(titel)
-
-	if (person !== '') {
-		await zeile.find('.pw-test-person').setValue(person)
-	}
-	if (datum !== '') {
-		await zeile.find('.pw-test-datum').setValue(datum)
-	}
 }
 
 /**
@@ -193,69 +187,17 @@ beforeEach(() => {
 
 describe('StepList', () => {
 	/**
-	 * **Der Tag, der im Feld stand, muss beim Server ankommen.**
-	 *
-	 * `new Date(2026, 7, 11)` ist der 11. August, Ortszeit. `toISOString()`
-	 * machte daraus in Mitteleuropa `2026-08-10T22:00:00Z` und damit den 10. —
-	 * eine Frist einen Tag zu früh. Der Test läuft in der Zeitzone des Rechners
-	 * und deckt den Fehler überall dort auf, wo der Versatz nicht null ist.
+	 * Seit #308 legt die Zeile nur den Titel an — kein Feld für Zuweisung,
+	 * Frist oder Beschreibung mehr. Der Dienst bekommt genau `{ title }`; die
+	 * übrigen Felder trägt der Server als `null`/Default nach, das Nachpflegen
+	 * läuft über den Stift.
 	 */
-	it('schickt das gewählte Datum als denselben Tag, nicht als UTC-Vortag', async () => {
-		const wrapper = mountList()
-		await fuelleZeile(wrapper, 'Logo liefern', '', '2026-08-11')
-		await klickeHinzufuegen(wrapper)
-
-		expect(createStep).toHaveBeenCalledWith(7, 42, expect.objectContaining({
-			title: 'Logo liefern',
-			dueDate: '2026-08-11',
-		}))
-	})
-
-	it('nimmt die Zuweisung gleich beim Anlegen mit', async () => {
-		const wrapper = mountList()
-		await wrapper.vm.$nextTick()
-		await fuelleZeile(wrapper, 'Freigabe holen', 'carla')
-		await klickeHinzufuegen(wrapper)
-
-		expect(createStep).toHaveBeenCalledWith(7, 42, expect.objectContaining({
-			assignedUserId: 'carla',
-		}))
-	})
-
-	/**
-	 * Der schnelle Weg bleibt unbelastet: tippen, absenden, fertig.
-	 *
-	 * `null` und nicht „weggelassen": Der Dienst unterscheidet beides, und
-	 * gemeint ist „keine Zuweisung", nicht „nicht genannt".
-	 */
-	it('schickt ohne Auswahl weder Zuweisung noch Frist', async () => {
+	it('legt einen Schritt mit nur einem Titel an', async () => {
 		const wrapper = mountList()
 		await fuelleZeile(wrapper, 'Nur ein Titel')
 		await klickeHinzufuegen(wrapper)
 
-		expect(createStep).toHaveBeenCalledWith(7, 42, {
-			title: 'Nur ein Titel',
-			description: null,
-			assignedUserId: null,
-			dueDate: null,
-		})
-	})
-
-	/**
-	 * Die optionale Beschreibung (#247) geht beim Anlegen mit — als getrimmter
-	 * Text, oder `null`, wenn nichts dasteht.
-	 */
-	it('nimmt die Beschreibung beim Anlegen mit', async () => {
-		const wrapper = mountList()
-		await fuelleZeile(wrapper, 'Angebot einholen')
-		// Die Mock-Komponente reicht die Klasse auf das Feld selbst durch.
-		await wrapper.find('input.pw-step__neu-beschreibung').setValue('Bei drei Anbietern anfragen')
-		await klickeHinzufuegen(wrapper)
-
-		expect(createStep).toHaveBeenCalledWith(7, 42, expect.objectContaining({
-			title: 'Angebot einholen',
-			description: 'Bei drei Anbietern anfragen',
-		}))
+		expect(createStep).toHaveBeenCalledWith(7, 42, { title: 'Nur ein Titel' })
 	})
 
 	/**
@@ -295,12 +237,47 @@ describe('StepList', () => {
 	it('leert die Zeile nach dem Anlegen', async () => {
 		const wrapper = mountList()
 		await wrapper.vm.$nextTick()
-		await fuelleZeile(wrapper, 'Kurz', 'anna', '2026-08-11')
+		await fuelleZeile(wrapper, 'Kurz')
 		await klickeHinzufuegen(wrapper)
 
 		const zeile = wrapper.find('.pw-step--new')
 		expect((zeile.find('input[type="text"]').element as HTMLInputElement).value).toBe('')
-		expect((zeile.find('.pw-test-person').element as HTMLSelectElement).value).toBe('')
+	})
+
+	/**
+	 * **Der Titel ist im Bearbeiten-Modus änderbar** (#308).
+	 *
+	 * Vorher gab es den Titel nur als Anzeige-`<span>`; ein Tippfehler ließ sich
+	 * nur durch Löschen und Neuanlegen beheben. Jetzt steht im Stift ein
+	 * Titelfeld, das gepuffert über „Fertig" speichert — wie Beschreibung und
+	 * Ergebnis. Das Titelfeld ist das erste Textfeld im `.pw-step__felder-text`.
+	 */
+	it('macht den Titel im Bearbeiten-Modus änderbar', async () => {
+		const wrapper = mountList([mitFrist('2026-08-11')])
+		await oeffneZeile(wrapper)
+
+		const titel = wrapper.findAll('.pw-step__felder-text input[type="text"]')[0]
+		await titel.setValue('Mit Frist korrigiert')
+		await wrapper.find('.pw-step__rechts button').trigger('click')
+		await new Promise((resolve) => setTimeout(resolve, 0))
+
+		expect(updateStep).toHaveBeenCalledWith(7, 5, { title: 'Mit Frist korrigiert' })
+	})
+
+	/**
+	 * Ein leergeräumtes Titelfeld wird ignoriert — der Titel ist Pflicht (#308).
+	 * Getippt und wieder gelöscht darf den Schritt nicht namenlos machen.
+	 */
+	it('ignoriert einen leergeräumten Titel', async () => {
+		const wrapper = mountList([mitFrist('2026-08-11')])
+		await oeffneZeile(wrapper)
+
+		const titel = wrapper.findAll('.pw-step__felder-text input[type="text"]')[0]
+		await titel.setValue('   ')
+		await wrapper.find('.pw-step__rechts button').trigger('click')
+		await new Promise((resolve) => setTimeout(resolve, 0))
+
+		expect(updateStep).not.toHaveBeenCalled()
 	})
 
 	/**

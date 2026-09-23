@@ -397,7 +397,6 @@ OC.L10N.register(
     "{done} von {total} erledigt · {pct} %" : "{done} von {total} erledigt · {pct} %",
     "_%n überfällig_::_%n überfällig_" : ["%n überfällig","%n überfällig"],
     "Ergebnis" : "Ergebnis",
-    "Beschreibung (optional)" : "Beschreibung (optional)",
     "%1$s hat Ihnen den Vorgang #%2$s „%3$s“ zugewiesen." : "%1$s hat Ihnen den Vorgang #%2$s „%3$s“ zugewiesen.",
     "%1$s hat Ihnen den Arbeitsschritt „%2$s“ im Vorgang #%3$s „%4$s“ zugewiesen." : "%1$s hat Ihnen den Arbeitsschritt „%2$s“ im Vorgang #%3$s „%4$s“ zugewiesen.",
     "%1$s hat Ihnen einen Arbeitsschritt im Vorgang #%2$s „%3$s“ zugewiesen." : "%1$s hat Ihnen einen Arbeitsschritt im Vorgang #%2$s „%3$s“ zugewiesen.",
