@@ -30,7 +30,7 @@ const APP_ID = 'projektwerk'
 export interface ApiError {
 	status: number
 	message: string
-	/** Die Antwort war HTML statt JSON — fast immer die Guests-Freigabeliste. */
+	/** Die Antwort war HTML statt JSON — die Guests-Freigabeliste oder ein Serverfehler (#307). */
 	notJson: boolean
 	/**
 	 * Der geparste Fehlerrumpf, soweit es einen gab.
@@ -96,15 +96,63 @@ function looksLikeJson(response: AxiosResponse | undefined): boolean {
 }
 
 /**
- * Die Meldung, die den wahrscheinlichsten Erst-Kunden-Fehlschlag erklärt.
+ * Sieht diese schon als Nicht-JSON erkannte Antwort nach der Guests-Freigabeliste aus?
  *
- * Sie nennt die Ursache und nicht das Symptom — wer sie liest, weiß, wen er
- * fragen muss.
+ * **Der Unterscheider ist der Inhalt, nicht der Status** (#307). Spike S1 hat
+ * gemessen, dass ein abgewiesener Gast eine HTML-Seite mit „forbidden for
+ * guests" bekommt — mit Status 500, nicht 403. Ein echter Serverfehler (#303:
+ * AppConfig-Typkonflikt) liefert **ebenfalls** 500 und HTML, aber die generische
+ * Nextcloud-Fehlerseite ohne diesen Marker. Am Status sind die beiden nicht zu
+ * trennen, am Rumpf schon.
+ *
+ * @param response Die Antwort, deren Rumpf bereits als Nicht-JSON feststeht.
  */
-function reportNotJson(): void {
-	// Ein einziges Literal, keine Verkettung: Übersetzungswerkzeuge lesen den
-	// Aufruf statisch aus und fänden einen zusammengesetzten String nicht.
-	showError(t(APP_ID, 'ProjektWerk ist für Gastkonten nicht freigeschaltet. Die Administration muss die App auf die Freigabeliste der Guests-App setzen.'))
+function looksLikeGuestsForbidden(response: AxiosResponse | undefined): boolean {
+	const body = response?.data
+	return typeof body === 'string' && body.toLowerCase().includes('forbidden for guests')
+}
+
+/**
+ * Die Guests-Freigabeliste als Ursache melden — der wahrscheinlichste
+ * Erst-Kunden-Fehlschlag. Sie nennt die Ursache und nicht das Symptom: Wer sie
+ * liest, weiß, wen er fragen muss.
+ *
+ * **Die App-ID steht als Literal im Aufruf**, nicht über die Konstante
+ * `APP_ID`: Der l10n-Extraktor (`nc-l10n-check`) erkennt nur die literale Form
+ * mit vorangestelltem `projektwerk`; über die Konstante bliebe der Text
+ * unsichtbar, und der Katalogeintrag würde nirgends nachgeschlagen. Aus
+ * demselben Grund kein zusammengesetzter String.
+ */
+function reportGuestsForbidden(): void {
+	showError(t('projektwerk', 'ProjektWerk ist für Gastkonten nicht freigeschaltet. Die Administration muss die App auf die Freigabeliste der Guests-App setzen.'))
+}
+
+/**
+ * Eine Nicht-JSON-Antwort ohne Guests-Marker: fast immer ein echter
+ * Serverfehler (HTTP 500, HTML-Fehlerseite). Bis #307 lief auch dieser Fall in
+ * die Guests-Meldung und schickte die Fehlersuche in die Irre (#303:
+ * AppConfig-Typkonflikt, gemeldet als Freigabelisten-Problem).
+ */
+function reportServerError(): void {
+	showError(t('projektwerk', 'Der Server hat kein JSON geliefert. Bitte das Server-Protokoll prüfen.'))
+}
+
+/**
+ * Meldet den passenden Nicht-JSON-Fall (siehe {@link looksLikeGuestsForbidden}).
+ *
+ * @param response Die als Nicht-JSON erkannte Antwort.
+ * @return true, wenn es die Guests-Freigabeliste war — für die passende
+ *   `ApiError.message` des Aufrufers.
+ */
+function reportNotJson(response: AxiosResponse | undefined): boolean {
+	if (looksLikeGuestsForbidden(response)) {
+		reportGuestsForbidden()
+
+		return true
+	}
+	reportServerError()
+
+	return false
 }
 
 /**
@@ -118,13 +166,15 @@ function wrapError(error: unknown): ApiError {
 	const status = response?.status ?? 0
 
 	if (!looksLikeJson(response)) {
-		// Absichtlich vor jeder Statusauswertung: Der gemessene Fall ist 500,
-		// und ein 500 mit HTML ist hier der Normalfall, nicht die Ausnahme.
-		reportNotJson()
+		// Absichtlich vor jeder Statusauswertung: Guests-Absage wie Serverfehler
+		// kommen beide als 500 mit HTML; getrennt wird am Rumpf, nicht am Status.
+		const guests = reportNotJson(response)
 
 		return {
 			status,
-			message: 'Antwort war kein JSON — App vermutlich nicht für Gäste freigeschaltet',
+			message: guests
+				? 'Antwort war kein JSON — App vermutlich nicht für Gäste freigeschaltet'
+				: 'Antwort war kein JSON — Serverfehler',
 			notJson: true,
 		}
 	}
@@ -138,7 +188,7 @@ function wrapError(error: unknown): ApiError {
 		// Gemessen an der Aufgabenansicht, gilt aber für jeden Aufruf der App.
 		return {
 			status,
-			message: t(APP_ID, 'Keine Verbindung zum Server. Bitte später erneut versuchen.'),
+			message: t('projektwerk', 'Keine Verbindung zum Server. Bitte später erneut versuchen.'),
 			notJson: false,
 		}
 	}
@@ -166,7 +216,7 @@ function wrapError(error: unknown): ApiError {
  */
 function unwrap<T>(response: AxiosResponse<T>): T {
 	if (!looksLikeJson(response)) {
-		reportNotJson()
+		reportNotJson(response)
 		throw {
 			status: response.status,
 			message: 'Antwort war kein JSON',

@@ -9,6 +9,11 @@
  * beantwortet — nicht mit 403. Ein Wächter, der auf 403 prüft, schwiege genau
  * dann, wenn er gebraucht wird. Deshalb steht dieser Statuscode hier als
  * Testdatum und nicht als Annahme im Code.
+ *
+ * Weil aber ein **echter** Serverfehler (#303) ebenfalls 500 und HTML liefert,
+ * darf nicht jede HTML-Antwort als Freigabelisten-Problem gelten (#307). Getrennt
+ * wird am Rumpf: nur der Marker „forbidden for guests" ist die Guests-Absage,
+ * alles andere ein Serverfehler.
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -41,6 +46,14 @@ const { apiGet } = await import('@/services/api')
 const GUEST_ERROR_PAGE
 	= '<!DOCTYPE html><html><body>Access to this resource (projektwerk) is forbidden for guests</body></html>'
 
+/**
+ * Die generische Nextcloud-Fehlerseite bei einem **echten** HTTP 500 — ohne den
+ * Guests-Marker. Genau diese Antwort kam bei #303 (AppConfig-Typkonflikt) und
+ * wurde fälschlich als Freigabelisten-Problem gemeldet.
+ */
+const SERVER_ERROR_PAGE
+	= '<!DOCTYPE html><html><head><title>Nextcloud</title></head><body>Internal Server Error</body></html>'
+
 interface FakeResponse {
 	status: number
 	headers: Record<string, string>
@@ -70,6 +83,29 @@ describe('Nicht-JSON-Wächter', () => {
 
 		await expect(apiGet('/boards')).rejects.toMatchObject({ notJson: true, status: 500 })
 		expect(showError).toHaveBeenCalledOnce()
+		expect(showError.mock.calls[0][0]).toContain('Freigabeliste')
+	})
+
+	it('meldet einen echten 500 als Serverfehler, nicht als Freigabeliste-Problem (#307)', async () => {
+		rejectWith({
+			status: 500,
+			headers: { 'content-type': 'text/html; charset=UTF-8' },
+			data: SERVER_ERROR_PAGE,
+		})
+
+		await expect(apiGet('/boards')).rejects.toMatchObject({ notJson: true, status: 500 })
+		expect(showError).toHaveBeenCalledOnce()
+		// Kein Verweis auf Gäste/Freigabeliste — das war die falsche Fährte bei #303.
+		const gemeldet = showError.mock.calls[0][0] as string
+		expect(gemeldet).not.toContain('Freigabeliste')
+		expect(gemeldet).not.toContain('Gastkonten')
+		expect(gemeldet).toContain('Protokoll')
+	})
+
+	it('unterscheidet Guests-HTML und Serverfehler-HTML nur am Inhalt, nicht am Status (#307)', async () => {
+		// Gleicher Status (500), unterschiedlicher Rumpf → unterschiedliche Meldung.
+		rejectWith({ status: 500, headers: { 'content-type': 'text/html' }, data: GUEST_ERROR_PAGE })
+		await expect(apiGet('/boards')).rejects.toMatchObject({ notJson: true })
 		expect(showError.mock.calls[0][0]).toContain('Freigabeliste')
 	})
 
