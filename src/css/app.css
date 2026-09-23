@@ -1662,19 +1662,11 @@
 	width: 100%;
 }
 
-/* Die optionale Beschreibung nimmt in der Neuanlage eine eigene Zeile. */
-.app-projektwerk .pw-step__neu-beschreibung {
-	flex-basis: 100%;
-}
-
 /*
- * Die Neuanlage in EINER Zeile (#99) statt in dreien: Titel, Person, Frist,
- * Plus. Vorher lag das Textfeld ueber die volle Breite, darunter eine zweite
- * Zeile mit den beiden Feldern und einem breiten „Hinzufuegen".
- *
- * Auf schmalen Schirmen faellt der Umbruch **vor** dem Feldpaar, nicht
- * zwischen seinen Teilen: Das Textfeld nimmt die erste Zeile, Person, Frist und
- * Plus teilen sich die zweite. Zwei Zeilen statt drei.
+ * Die Neuanlage in EINER Zeile (#308): nur noch das Titelfeld und das Plus.
+ * Zuvor standen hier vier Felder (Titel, Beschreibung, Person, Frist) plus ein
+ * Knopf; #308 hat Zuweisung, Frist, Beschreibung und Ergebnis in den Stift des
+ * Schritts verlegt. Das Titelfeld nimmt den Platz, das Plus steht daneben.
  */
 .app-projektwerk .pw-step--new {
 	padding-block-start: 12px;
@@ -1689,48 +1681,23 @@
 
 /*
  * **`NcSelectUsers` bringt `min-width: 260px` mit** und sprengt damit jede
- * enge Zeile: Auf 390 px (Inhaltsbreite 358) beansprucht die Auswahl allein
- * schon mehr, als neben Frist und Plus uebrig bleibt — die Zeile brach um, und
- * aus der einen Zeile wurden wieder drei.
+ * enge Zeile. Zurueckgenommen an den beiden Stellen, an denen die Auswahl steht
+ * (Stift-Modus des Schritts, Personen-Picker). Ohne `min-width: 0` schrumpfen
+ * Flex-Kinder ausserdem nur bis zu ihrer Inhaltsbreite und nicht darunter.
  *
- * Zurueckgenommen an allen drei Stellen, an denen die Auswahl steht. Ohne
- * `min-width: 0` schrumpfen Flex-Kinder ausserdem nur bis zu ihrer
- * Inhaltsbreite und nicht darunter.
- */
-/*
  * `.v-select` steht mit im Selektor, und das ist kein Zierat: Die Regel der
  * Komponente lautet `.v-select.select { min-width: 260px }` — zwei Klassen,
- * also **dieselbe** Spezifitaet wie `.app-projektwerk .pw-step__neu-person`.
- * Bei Gleichstand gewinnt, was spaeter im Bündel steht, und das ist die
- * Komponente. Erst die dritte Klasse dreht das um.
+ * also **dieselbe** Spezifitaet wie unsere Klasse allein. Bei Gleichstand
+ * gewinnt, was spaeter im Bündel steht, und das ist die Komponente. Erst die
+ * dritte Klasse dreht das um.
  */
-.app-projektwerk .pw-step__neu-person.v-select,
 .app-projektwerk .pw-step__picker.v-select,
 .app-projektwerk .pw-person__picker.v-select {
 	min-width: 0;
 }
 
-.app-projektwerk .pw-step__neu-person {
-	flex: 0 1 200px;
-}
-
-.app-projektwerk .pw-step__neu-datum {
-	flex: 0 0 auto;
-	width: 150px;
-}
-
 .app-projektwerk .pw-step__neu-plus {
 	flex: 0 0 var(--default-clickable-area, 34px);
-}
-
-@media (max-width: 480px) {
-	.app-projektwerk .pw-step__neu-titel {
-		flex: 1 1 100%;
-	}
-
-	.app-projektwerk .pw-step__neu-person {
-		flex: 1 1 120px;
-	}
 }
 
 /* ---- Anhänge ------------------------------------------------------------- */

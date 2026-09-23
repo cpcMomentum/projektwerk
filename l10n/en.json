@@ -438,7 +438,6 @@
 			"%n overdue"
 		],
 		"Ergebnis": "Result",
-		"Beschreibung (optional)": "Description (optional)",
 		"%1$s hat Ihnen den Vorgang #%2$s „%3$s“ zugewiesen.": "%1$s assigned ticket #%2$s “%3$s” to you.",
 		"%1$s hat Ihnen den Arbeitsschritt „%2$s“ im Vorgang #%3$s „%4$s“ zugewiesen.": "%1$s assigned the work step “%2$s” in ticket #%3$s “%4$s” to you.",
 		"%1$s hat Ihnen einen Arbeitsschritt im Vorgang #%2$s „%3$s“ zugewiesen.": "%1$s assigned a work step in ticket #%2$s “%3$s” to you.",
