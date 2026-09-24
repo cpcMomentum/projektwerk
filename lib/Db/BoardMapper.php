@@ -137,6 +137,7 @@ class BoardMapper extends QBMapper {
 	 * @param ViewerContext $viewer Der geprüfte Betrachter (liefert die project_id).
 	 * @param string $column Die Spalte — nur `org_internal` oder `customer`.
 	 * @param ?string $value Der neue Wert.
+	 * @throws \InvalidArgumentException wenn $column nicht auf der Weißliste steht
 	 */
 	public function syncProjectDisplayCopy(ViewerContext $viewer, string $column, ?string $value): void {
 		// Weißliste statt Durchreichen: Der Spaltenname landet unquotiert im
