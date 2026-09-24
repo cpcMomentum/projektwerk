@@ -48,7 +48,7 @@ function daten(teile: Partial<OverviewData> = {}): OverviewData {
 	return {
 		tickets: [],
 		waiting: {},
-		boards: { 1: { title: 'Relaunch', orgInternal: 'Wir', orgExternal: 'Kunde' } },
+		boards: { 1: { title: 'Relaunch', orgInternal: 'Wir', customer: 'Kunde' } },
 		names: {},
 		me: '',
 		withOpenSteps: [],
@@ -113,10 +113,10 @@ describe('Überblick', () => {
 		const store = useOverviewStore()
 		store.apply(daten({
 			boards: {
-				1: { title: 'Rot', orgInternal: 'Wir', orgExternal: 'A' },
-				2: { title: 'Gelb', orgInternal: 'Wir', orgExternal: 'B' },
-				3: { title: 'Grau', orgInternal: 'Wir', orgExternal: 'C' },
-				4: { title: 'Grün', orgInternal: 'Wir', orgExternal: 'D' },
+				1: { title: 'Rot', orgInternal: 'Wir', customer: 'A' },
+				2: { title: 'Gelb', orgInternal: 'Wir', customer: 'B' },
+				3: { title: 'Grau', orgInternal: 'Wir', customer: 'C' },
+				4: { title: 'Grün', orgInternal: 'Wir', customer: 'D' },
 			},
 			firstColumn: { 1: 10, 2: 20, 3: 30, 4: 40 },
 			tickets: [
@@ -172,8 +172,8 @@ describe('Überblick', () => {
 		store.apply(daten({
 			tickets: [ticket(1, 1), ticket(2, 2)],
 			boards: {
-				1: { title: 'Relaunch', orgInternal: null, orgExternal: null },
-				2: { title: 'Umzug', orgInternal: null, orgExternal: null },
+				1: { title: 'Relaunch', orgInternal: null, customer: null },
+				2: { title: 'Umzug', orgInternal: null, customer: null },
 			},
 			waiting: {
 				1: { since: '2026-08-10T08:00:00+00:00', userIds: ['carla', 'ohne-namen'], overdue: false },
@@ -203,9 +203,9 @@ describe('Überblick', () => {
 		store.apply(daten({
 			tickets: [ticket(1, 1), ticket(2, 1), ticket(3, 2)],
 			boards: {
-				1: { title: 'Relaunch', orgInternal: 'Wir', orgExternal: 'Kunde' },
-				2: { title: 'Umzug', orgInternal: null, orgExternal: null },
-				3: { title: 'Nichts los', orgInternal: null, orgExternal: null },
+				1: { title: 'Relaunch', orgInternal: 'Wir', customer: 'Kunde' },
+				2: { title: 'Umzug', orgInternal: null, customer: null },
+				3: { title: 'Nichts los', orgInternal: null, customer: null },
 			},
 			waiting: { 3: { since: '2026-08-10T08:00:00+00:00', userIds: ['carla'], overdue: false } },
 		}))
@@ -314,8 +314,8 @@ describe('Überblick', () => {
 		store.apply(daten({
 			tickets: [ticket(1, 1), ticket(2, 2)],
 			boards: {
-				1: { title: 'Mit Zuwachs', orgInternal: 'Wir', orgExternal: 'Kunde' },
-				2: { title: 'Ohne Zuwachs', orgInternal: 'Wir', orgExternal: 'Kunde' },
+				1: { title: 'Mit Zuwachs', orgInternal: 'Wir', customer: 'Kunde' },
+				2: { title: 'Ohne Zuwachs', orgInternal: 'Wir', customer: 'Kunde' },
 			},
 			neuDieseWoche: { 1: 3 },
 		}))

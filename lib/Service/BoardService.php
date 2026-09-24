@@ -292,7 +292,15 @@ class BoardService {
 			$board->setDescription($changes['description']);
 		}
 		if (array_key_exists('orgInternal', $changes)) {
-			$board->setOrgInternal($this->trimOrNull($changes['orgInternal']));
+			// Eigene Firma (#309 Phase 5): Autorität am Projekt, Anzeige-Kopie am
+			// Board — dasselbe Paar wie beim Kunden, an derselben Stelle
+			// geschrieben. Vorher stand sie nur am Board, während
+			// `createInProject()` sie aus dem Projekt liest: Ein zweites Board
+			// erbte dann die Firma von vor der letzten Änderung.
+			$orgInternal = $this->trimOrNull($changes['orgInternal']);
+			$project->setOrgInternal($orgInternal);
+			$board->setOrgInternal($orgInternal);
+			$projectChanged = true;
 		}
 		if (array_key_exists('customer', $changes)) {
 			// Kunde (#309): Autorität am Projekt, Anzeige-Kopie am Board (der

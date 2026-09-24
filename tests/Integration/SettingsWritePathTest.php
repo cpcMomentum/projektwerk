@@ -15,6 +15,7 @@ use OCA\Projektwerk\Controller\SettingsController;
 use OCA\Projektwerk\Db\BoardMapper;
 use OCA\Projektwerk\Db\ColumnMapper;
 use OCA\Projektwerk\Db\MemberMapper;
+use OCA\Projektwerk\Db\ProjectMapper;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Service\BoardService;
 use OCA\Projektwerk\Service\ColumnService;
@@ -96,6 +97,39 @@ class SettingsWritePathTest extends IntegrationTestCase {
 
 		$this->assertNull($board->getChatUrl());
 		$this->assertNull($board->getCustomer());
+	}
+
+	/**
+	 * **Die eigene Firma landet am Projekt, nicht nur am Board (#309 Phase 5).**
+	 *
+	 * Sie ist projektweit — `createInProject()` liest sie aus dem Projekt,
+	 * wenn ein zweites Board dazukommt. Stand sie nur am Board, erbte das
+	 * zweite Board den Wert von *vor* der letzten Änderung, und die beiden
+	 * Boards eines Projekts zeigten verschiedene Firmen.
+	 */
+	public function testUpdatingOrgInternalReachesTheProject(): void {
+		$viewer = $this->manager();
+
+		$this->boardService->update($viewer, ['orgInternal' => 'cpcMomentum neu']);
+
+		$board = Server::get(BoardMapper::class)->findForViewer($viewer);
+		$project = Server::get(ProjectMapper::class)->findForViewer($viewer);
+
+		$this->assertSame('cpcMomentum neu', $board->getOrgInternal(), 'Anzeige-Kopie am Board.');
+		$this->assertSame('cpcMomentum neu', $project->getOrgInternal(), 'Autorität am Projekt.');
+	}
+
+	/**
+	 * Und das zweite Board erbt genau diesen Wert — die Probe aufs Exempel für
+	 * den Test darüber.
+	 */
+	public function testASecondBoardInheritsTheUpdatedOrgInternal(): void {
+		$viewer = $this->manager();
+
+		$this->boardService->update($viewer, ['orgInternal' => 'cpcMomentum neu']);
+		$zweites = $this->boardService->createInProject($viewer, 'Zweites Board');
+
+		$this->assertSame('cpcMomentum neu', $zweites->getOrgInternal());
 	}
 
 	public function testUpdatingTheBoardKeepsUntouchedFields(): void {
