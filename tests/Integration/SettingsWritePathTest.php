@@ -132,6 +132,31 @@ class SettingsWritePathTest extends IntegrationTestCase {
 		$this->assertSame('cpcMomentum neu', $zweites->getOrgInternal());
 	}
 
+	/**
+	 * **Und das bestehende Geschwister-Board zieht mit (#309 Phase 5).**
+	 *
+	 * Die Anzeige-Kopie steht auf jedem Board, weil der Überblick die
+	 * Herkunftszeile ohne Join bildet. Schriebe `update()` nur das gerade
+	 * bearbeitete Board, zeigte der Überblick seit #246 zwei verschiedene
+	 * Firmen für **ein** Projekt — je nachdem, von welchem Board aus jemand
+	 * gespeichert hat. Der Test davor deckt nur das *neu angelegte* Board ab.
+	 */
+	public function testUpdatingOrgInternalReachesSiblingBoards(): void {
+		$viewer = $this->manager();
+		$zweites = $this->boardService->createInProject($viewer, 'Geschwister');
+
+		$this->boardService->update($viewer, ['orgInternal' => 'cpcMomentum neu', 'customer' => 'Kunde neu']);
+
+		$nachher = Server::get(BoardMapper::class)->findAllForUser($viewer->userId, true);
+		$geschwister = array_values(array_filter(
+			$nachher,
+			fn ($b) => (int)$b->getId() === (int)$zweites->getId(),
+		))[0];
+
+		$this->assertSame('cpcMomentum neu', $geschwister->getOrgInternal(), 'Firma am Geschwister-Board.');
+		$this->assertSame('Kunde neu', $geschwister->getCustomer(), 'Kunde am Geschwister-Board.');
+	}
+
 	public function testUpdatingTheBoardKeepsUntouchedFields(): void {
 		$before = Server::get(BoardMapper::class)->findForViewer($this->manager());
 
