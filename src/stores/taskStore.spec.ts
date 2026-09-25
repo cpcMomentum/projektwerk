@@ -189,7 +189,7 @@ describe('Meine Aufgaben — Sortierung', () => {
 			stepTickets: [ticket(1, '2026-01-01T00:00:00+00:00')],
 			steps: [step(1, null)],
 			tickets: [],
-			boards: { 1: { title: 'Relaunch Website', orgInternal: 'cpcMomentum', orgExternal: 'Müller' } },
+			boards: { 1: { title: 'Relaunch Website', orgInternal: 'cpcMomentum', customer: 'Müller' } },
 		})
 
 		expect(store.stepRows[0].board?.title).toBe('Relaunch Website')

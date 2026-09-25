@@ -207,7 +207,8 @@ export const useOverviewStore = defineStore('overview', {
 					title: board?.title ?? '',
 					// Beide Firmennamen, nicht nur der des Kunden: Trüge nur die
 					// Gegenseite einen, wäre die eigene stumm „der Normalfall".
-					org: [board?.orgInternal, board?.orgExternal].filter(Boolean).join(' · '),
+					// Die Gegenseite ist seit #309 Phase 5 `customer`.
+					org: [board?.orgInternal, board?.customer].filter(Boolean).join(' · '),
 					open: zahlen.open,
 					waiting: zahlen.waiting,
 					lastMovementDays: Number.isFinite(zahlen.movedDays) ? zahlen.movedDays : null,
@@ -299,7 +300,7 @@ export const useOverviewStore = defineStore('overview', {
 					return {
 						boardId,
 						title: board?.title ?? '',
-						org: [board?.orgInternal, board?.orgExternal].filter(Boolean).join(' · '),
+						org: [board?.orgInternal, board?.customer].filter(Boolean).join(' · '),
 						neu: z.neu,
 						offen: z.offen,
 						wartet: z.wartet,

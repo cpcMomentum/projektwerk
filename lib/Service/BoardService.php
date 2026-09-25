@@ -278,11 +278,13 @@ class BoardService {
 		}
 
 		$board = $this->boards->findForViewer($viewer);
-		// Ordner und Chat gehören seit #246 dem PROJEKT — eine Quelle, geteilt
-		// über alle Boards des Projekts. Board-eigene Felder (Titel, Org,
-		// GitHub) bleiben am Board.
+		// über alle Boards des Projekts. Firma und Kunde ebenso (#309 Phase 5),
+		// mit einer Anzeige-Kopie je Board. Board-eigen bleiben Titel,
+		// Beschreibung und GitHub.
 		$project = $this->projects->findForViewer($viewer);
 		$projectChanged = false;
+		/** @var array<string, ?string> Projektweite Anzeige-Kopien fuer alle Boards. */
+		$syncCopies = [];
 
 		if (array_key_exists('title', $changes)) {
 			$this->assertTitle($changes['title']);
@@ -292,15 +294,25 @@ class BoardService {
 			$board->setDescription($changes['description']);
 		}
 		if (array_key_exists('orgInternal', $changes)) {
-			$board->setOrgInternal($this->trimOrNull($changes['orgInternal']));
+			// Eigene Firma (#309 Phase 5): Autorität am Projekt, Anzeige-Kopie auf
+			// allen Boards des Projekts — dasselbe Paar wie beim Kunden.
+			// Vorher stand sie nur am bearbeiteten Board, während
+			// `createInProject()` sie aus dem Projekt liest: Ein zweites Board
+			// erbte dann die Firma von vor der letzten Änderung.
+			$orgInternal = $this->trimOrNull($changes['orgInternal']);
+			$project->setOrgInternal($orgInternal);
+			$board->setOrgInternal($orgInternal);
+			$syncCopies['org_internal'] = $orgInternal;
+			$projectChanged = true;
 		}
 		if (array_key_exists('customer', $changes)) {
-			// Kunde (#309): Autorität am Projekt, Anzeige-Kopie am Board (der
-			// Überblick liest die Board-Kopie). Beide an derselben Stelle
-			// geschrieben, damit sie nicht auseinanderlaufen.
+			// Kunde (#309): Autorität am Projekt, Anzeige-Kopie auf allen Boards
+			// des Projekts (der Überblick liest die Board-Kopie). An derselben
+			// Stelle geschrieben, damit sie nicht auseinanderlaufen.
 			$customer = $this->trimOrNull($changes['customer']);
 			$project->setCustomer($customer);
 			$board->setCustomer($customer);
+			$syncCopies['customer'] = $customer;
 			$projectChanged = true;
 		}
 		if (array_key_exists('chatUrl', $changes)) {
@@ -342,6 +354,13 @@ class BoardService {
 		$this->db->beginTransaction();
 		try {
 			$saved = $this->boards->update($board);
+
+			// Die Geschwister-Boards des Projekts ziehen nach: Ohne das zeigte
+			// der Überblick seit #246 zwei verschiedene Firmen für ein Projekt,
+			// je nachdem, von welchem Board aus gespeichert wurde.
+			foreach ($syncCopies as $column => $value) {
+				$this->boards->syncProjectDisplayCopy($viewer, $column, $value);
+			}
 
 			if ($projectChanged) {
 				$project->setUpdatedAt(new \DateTime());

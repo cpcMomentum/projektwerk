@@ -118,4 +118,41 @@ class BoardMapper extends QBMapper {
 			));
 		$qb->executeStatement();
 	}
+
+	/**
+	 * Eine projektweite Anzeige-Kopie auf **allen** Boards des Projekts
+	 * gleichziehen (#309 Phase 5).
+	 *
+	 * `org_internal` und `customer` gehören dem Projekt; am Board stehen sie
+	 * nur, damit {@see \OCA\Projektwerk\Controller\OverviewController} und
+	 * der Aufgaben-Controller die Herkunftszeile ohne Join bilden können. Würde
+	 * nur das gerade bearbeitete Board mitgeschrieben, zeigte der Überblick
+	 * seit #246 zwei verschiedene Firmen für **ein** Projekt — je nachdem, von
+	 * welchem Board aus jemand gespeichert hat.
+	 *
+	 * Kein Lesepfad: Das `WHERE` hängt an der `project_id` aus dem bereits
+	 * geprüften {@see ViewerContext}, und der Aufrufer hat Verwaltungsrecht
+	 * sichergestellt. Gehört in die Transaktion des Aufrufers.
+	 *
+	 * @param ViewerContext $viewer Der geprüfte Betrachter (liefert die project_id).
+	 * @param string $column Die Spalte — nur `org_internal` oder `customer`.
+	 * @param ?string $value Der neue Wert.
+	 * @throws \InvalidArgumentException wenn $column nicht auf der Weißliste steht
+	 */
+	public function syncProjectDisplayCopy(ViewerContext $viewer, string $column, ?string $value): void {
+		// Weißliste statt Durchreichen: Der Spaltenname landet unquotiert im
+		// SQL, ein freier Parameter wäre eine Injektionsstelle.
+		if (!in_array($column, ['org_internal', 'customer'], true)) {
+			throw new \InvalidArgumentException('Keine projektweite Anzeige-Kopie: ' . $column);
+		}
+
+		$qb = $this->db->getQueryBuilder();
+		$qb->update($this->tableName)
+			->set($column, $qb->createNamedParameter($value))
+			->where($qb->expr()->eq(
+				'project_id',
+				$qb->createNamedParameter($viewer->projectId, IQueryBuilder::PARAM_INT),
+			));
+		$qb->executeStatement();
+	}
 }

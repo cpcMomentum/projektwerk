@@ -58,7 +58,7 @@ const boardStore = {
 	loading: false,
 	loadBoards: vi.fn(),
 	togglePin: vi.fn(),
-	orgLine: (b: { orgInternal?: string | null, orgExternal?: string | null }) => [b.orgInternal, b.orgExternal].filter(Boolean).join(' · '),
+	orgLine: (b: { orgInternal?: string | null, customer?: string | null }) => [b.orgInternal, b.customer].filter(Boolean).join(' · '),
 	customerSuggestions: [] as string[],
 }
 const overviewStore = {
@@ -70,7 +70,7 @@ vi.mock('@/stores/boardStore', () => ({ useBoardStore: () => boardStore }))
 vi.mock('@/stores/overviewStore', () => ({ useOverviewStore: () => overviewStore }))
 
 function board(id: number, title: string, extra: Record<string, unknown> = {}) {
-	return { id, title, pinned: false, orgInternal: null, orgExternal: null, ...extra }
+	return { id, title, pinned: false, orgInternal: null, customer: null, ...extra }
 }
 
 function statusRow(boardId: number, extra: Record<string, unknown> = {}) {
@@ -120,7 +120,7 @@ describe('BoardsView', () => {
 	})
 
 	it('joint die Statuszahlen per boardId an die Board-Liste', () => {
-		boardStore.boards = [board(3, 'Alpha', { orgInternal: 'cpc', orgExternal: 'Kunde' })]
+		boardStore.boards = [board(3, 'Alpha', { orgInternal: 'cpc', customer: 'Kunde' })]
 		overviewStore.projectStatusRows = [statusRow(3, { neu: 2, offen: 5, wartet: 1, erledigt: 8, zustand: 'rot' })]
 
 		const w = mountView()
@@ -129,7 +129,9 @@ describe('BoardsView', () => {
 		expect(tile.props()).toMatchObject({
 			boardId: 3,
 			title: 'Alpha',
-			org: 'cpc · Kunde',
+			// Ist ein Kunde gepflegt, trägt die Kachel ihn allein — die
+			// Firmenzeile ist nur der Rückfall (eigener Test unten).
+			org: 'Kunde',
 			neu: 2,
 			offen: 5,
 			wartet: 1,
@@ -177,15 +179,15 @@ describe('BoardsView', () => {
 
 	it('zeigt den Kunden als Kachel-Zeile, mit Rückfall auf die Firmenzeile (#309)', () => {
 		boardStore.boards = [
-			board(1, 'MitKunde', { customer: 'MI', orgInternal: 'cpc', orgExternal: 'Kunde' }),
-			board(2, 'OhneKunde', { orgInternal: 'cpc', orgExternal: 'Kunde' }),
+			board(1, 'MitKunde', { customer: 'MI', orgInternal: 'cpc' }),
+			board(2, 'OhneKunde', { orgInternal: 'cpc' }),
 		]
 
 		const w = mountView()
 		const orgs = w.findAllComponents(tileStub).map((t) => t.props('org'))
 
 		expect(orgs).toContain('MI')
-		expect(orgs).toContain('cpc · Kunde')
+		expect(orgs).toContain('cpc')
 	})
 
 	it('filtert die Kacheln nach ausgewähltem Kunden (#309)', async () => {
