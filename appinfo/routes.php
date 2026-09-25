@@ -171,6 +171,10 @@ return [
 		// traegt das grosse N (`whatsNew`), damit Nextcloud auf die Klasse
 		// `WhatsNewController` abbildet (ucfirst des Routennamens).
 		['name' => 'whatsNew#index', 'url' => '/api/v1/whatsnew', 'verb' => 'GET'],
+		// Archiv aller bisherigen Neuerungen fuer den Menue-Eintrag (#329) —
+		// liest denselben Katalog + Gast-Riegel, keine Board-Daten, darum
+		// ebenfalls in ROUTES_WITHOUT_DATA.
+		['name' => 'whatsNew#all', 'url' => '/api/v1/whatsnew/all', 'verb' => 'GET'],
 		['name' => 'whatsNew#seen', 'url' => '/api/v1/whatsnew/seen', 'verb' => 'POST'],
 	],
 ];
