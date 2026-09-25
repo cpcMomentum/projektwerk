@@ -406,6 +406,47 @@ class WhatsNewServiceTest extends TestCase {
 		self::assertSame('0.4.16', $written['alice/' . WhatsNewService::KEY_LAST_SEEN] ?? null);
 	}
 
+	public function testArchivLiefertAlleVersionenNeuesteZuerst(): void {
+		$this->writeCatalogue($this->catalogueFixture());
+		$written = [];
+		$service = $this->buildService('0.4.16', [], $written);
+
+		$result = $service->getAll('alice');
+
+		self::assertSame(
+			['0.4.16', '0.4.14'],
+			array_map(static fn (array $g): string => $g['version'], $result['versions']),
+			'Alle Versionen, neueste zuerst',
+		);
+		self::assertCount(2, $result['versions'][0]['entries']);
+		self::assertCount(1, $result['versions'][1]['entries']);
+		self::assertSame('Firma an der Person', $result['versions'][0]['entries'][0]['title']);
+		// Nachlesen ist kein Quittieren: der Archiv-Aufruf berührt keine Marke.
+		self::assertSame([], $written, 'getAll darf keine Marke schreiben');
+	}
+
+	public function testArchivLaesstZukuenftigeVersionenAus(): void {
+		$this->writeCatalogue($this->catalogueFixture());
+		$written = [];
+		// Installiert ist erst 0.4.15 — die 0.4.16-Einträge dürfen nicht vorab erscheinen.
+		$service = $this->buildService('0.4.15', [], $written);
+
+		$result = $service->getAll('alice');
+
+		self::assertSame(
+			['0.4.14'],
+			array_map(static fn (array $g): string => $g['version'], $result['versions']),
+		);
+	}
+
+	public function testArchivBleibtFuerGaesteLeer(): void {
+		$this->writeCatalogue($this->catalogueFixture());
+		$written = [];
+		$service = $this->buildService('0.4.16', [], $written, 'de', '', true);
+
+		self::assertSame(['versions' => []], $service->getAll('gast'));
+	}
+
 	/**
 	 * Nur noch das App-Spezifische. Das Schema (de/en-Pflicht, `where`
 	 * zweisprachig, Versionsschluessel `x.y.z`, `plus` boolean) prueft seit

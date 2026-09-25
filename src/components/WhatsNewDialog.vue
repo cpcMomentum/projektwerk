@@ -13,40 +13,47 @@
 				<h2 :id="TITLE_ID">
 					{{ title }}
 				</h2>
-				<p class="whatsnew__version">
-					{{ t('projektwerk', 'Version {version}', { version }) }}
+
+				<p v-if="archive && groups.length === 0" class="whatsnew__empty">
+					{{ t('projektwerk', 'Noch keine Neuerungen.') }}
 				</p>
 
-				<div v-for="(entry, index) in entries" :key="index" class="whatsnew__entry">
-					<div class="whatsnew__icon">
-						<component :is="iconFor(entry.icon)" :size="22" />
-					</div>
-					<div class="whatsnew__body">
-						<h3 class="whatsnew__entry-title">
-							{{ entry.title }}
-							<span v-if="entry.plus" class="whatsnew__badge">WerkPlus</span>
-						</h3>
-						<p class="whatsnew__entry-text">
-							{{ entry.text }}
-						</p>
-						<p v-if="entry.where" class="whatsnew__where">
-							{{ t('projektwerk', 'Zu finden unter') }}
-							<b>{{ entry.where }}</b><span v-if="entry.adminOnly">{{ ' ' + t('projektwerk', '(nur für Administratoren)') }}</span>
-						</p>
-						<a
-							v-if="entry.plus"
-							class="whatsnew__link"
-							:href="WERKPLUS_URL"
-							target="_blank"
-							rel="noreferrer noopener">
-							{{ t('projektwerk', 'Mehr zu WerkPlus') }}
-						</a>
+				<div v-for="group in groups" :key="group.version" class="whatsnew__group">
+					<p class="whatsnew__version">
+						{{ t('projektwerk', 'Version {version}', { version: group.version }) }}
+					</p>
+
+					<div v-for="(entry, index) in group.entries" :key="group.version + '-' + index" class="whatsnew__entry">
+						<div class="whatsnew__icon">
+							<component :is="iconFor(entry.icon)" :size="22" />
+						</div>
+						<div class="whatsnew__body">
+							<h3 class="whatsnew__entry-title">
+								{{ entry.title }}
+								<span v-if="entry.plus" class="whatsnew__badge">WerkPlus</span>
+							</h3>
+							<p class="whatsnew__entry-text">
+								{{ entry.text }}
+							</p>
+							<p v-if="entry.where" class="whatsnew__where">
+								{{ t('projektwerk', 'Zu finden unter') }}
+								<b>{{ entry.where }}</b><span v-if="entry.adminOnly">{{ ' ' + t('projektwerk', '(nur für Administratoren)') }}</span>
+							</p>
+							<a
+								v-if="entry.plus"
+								class="whatsnew__link"
+								:href="WERKPLUS_URL"
+								target="_blank"
+								rel="noreferrer noopener">
+								{{ t('projektwerk', 'Mehr zu WerkPlus') }}
+							</a>
+						</div>
 					</div>
 				</div>
 
 				<div class="actions">
 					<NcButton variant="primary" @click="dismiss">
-						{{ t('projektwerk', 'Alles klar') }}
+						{{ archive ? t('projektwerk', 'Schließen') : t('projektwerk', 'Alles klar') }}
 					</NcButton>
 				</div>
 			</div>
@@ -65,7 +72,7 @@
  * TicketDetail.vue).
  */
 import type { Component } from 'vue'
-import type { WhatsNewEntry } from '@/types/whatsnew'
+import type { WhatsNewGroup } from '@/types/whatsnew'
 
 import { t } from '@nextcloud/l10n'
 import { onMounted, ref } from 'vue'
@@ -81,7 +88,7 @@ import FolderIcon from 'vue-material-design-icons/Folder.vue'
 import MagnifyIcon from 'vue-material-design-icons/Magnify.vue'
 import StarIcon from 'vue-material-design-icons/Star.vue'
 import TranslateIcon from 'vue-material-design-icons/Translate.vue'
-import { getWhatsNew, markWhatsNewSeen } from '@/services/whatsnew'
+import { getWhatsNew, getWhatsNewArchive, markWhatsNewSeen } from '@/services/whatsnew'
 
 /** Zielseite der WerkPlus-Eintraege (Konzept v1.1, Abschnitt 2). */
 const WERKPLUS_URL = 'https://werkwolke.de'
@@ -115,8 +122,14 @@ const ICONS: Record<string, Component> = {
 }
 
 const open = ref(false)
-const version = ref('')
-const entries = ref<WhatsNewEntry[]>([])
+/**
+ * Die anzuzeigenden Versionsgruppen. Im Popup genau eine (die neueste
+ * ungesehene), im Archiv alle. Ein gemeinsames Format hält Vorlage und
+ * Anzeige einfach.
+ */
+const groups = ref<WhatsNewGroup[]>([])
+/** Archiv-Modus (#329): über das Menü aufgerufen, nicht das Auto-Popup. */
+const archive = ref(false)
 const title = t('projektwerk', 'Was ist neu in ProjektWerk')
 
 /**
@@ -128,12 +141,13 @@ function iconFor(name: string): Component {
 	return ICONS[name] ?? StarIcon
 }
 
+// Auto-Popup: einmal je Nutzer und Version die neueste ungesehene Version.
 onMounted(async () => {
 	try {
 		const payload = await getWhatsNew()
 		if (payload.entries.length > 0) {
-			version.value = payload.version
-			entries.value = payload.entries
+			groups.value = [{ version: payload.version, entries: payload.entries }]
+			archive.value = false
 			open.value = true
 		}
 	} catch {
@@ -141,9 +155,30 @@ onMounted(async () => {
 	}
 })
 
-/** Fenster schliessen und beim Server quittieren. */
+/**
+ * Das Archiv öffnen (#329) — alle bisherigen Neuerungen, über den Menüeintrag.
+ * Berührt keine Marke; Nachlesen ist kein Quittieren.
+ */
+async function openArchive(): Promise<void> {
+	try {
+		const payload = await getWhatsNewArchive()
+		groups.value = payload.versions
+		archive.value = true
+		open.value = true
+	} catch {
+		// Kein Fenster ist besser als eine Fehlermeldung ueber Neuerungen.
+	}
+}
+
+/**
+ * Fenster schließen. Im Popup-Modus wird die laufende Version quittiert; im
+ * Archiv-Modus nicht — es war nur Nachlesen, keine Version „gesehen".
+ */
 async function dismiss(): Promise<void> {
 	open.value = false
+	if (archive.value) {
+		return
+	}
 	try {
 		await markWhatsNewSeen()
 	} catch {
@@ -151,6 +186,9 @@ async function dismiss(): Promise<void> {
 		// Das ist die harmlosere Seite des Fehlers.
 	}
 }
+
+// Der Menüeintrag „Neuerungen" in App.vue ruft dies über eine Template-Referenz.
+defineExpose({ openArchive })
 </script>
 
 <style scoped>
@@ -167,6 +205,16 @@ async function dismiss(): Promise<void> {
 	margin: 2px 0 4px;
 	color: var(--color-text-maxcontrast);
 	font-size: 0.9em;
+}
+.whatsnew__empty {
+	margin: 8px 0;
+	color: var(--color-text-maxcontrast);
+}
+/* Im Archiv trennt eine Linie die Versionsblöcke; im Popup gibt es nur einen. */
+.whatsnew__group + .whatsnew__group {
+	margin-top: 16px;
+	padding-top: 10px;
+	border-top: 1px solid var(--color-border);
 }
 .whatsnew__entry {
 	display: flex;

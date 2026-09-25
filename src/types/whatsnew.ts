@@ -24,3 +24,14 @@ export interface WhatsNewPayload {
 	version: string
 	entries: WhatsNewEntry[]
 }
+
+/** Eine Version mit ihren Einträgen im Archiv (#329). */
+export interface WhatsNewGroup {
+	version: string
+	entries: WhatsNewEntry[]
+}
+
+/** Antwort von `GET /whatsnew/all` — alle Versionen, neueste zuerst. Für Gäste leer. */
+export interface WhatsNewArchive {
+	versions: WhatsNewGroup[]
+}

@@ -105,6 +105,20 @@
 						<CogIcon :size="20" />
 					</template>
 				</NcAppNavigationItem>
+				<!--
+					Dauerhafter Zugang zu den Neuerungen (#329): öffnet das
+					„Was ist neu?"-Fenster im Archiv-Modus (alle bisherigen Punkte).
+					Kein Router-Ziel, nur ein Knopf. Gäste sehen ihn nicht —
+					sie bekommen keine Produktmeldungen.
+				-->
+				<NcAppNavigationItem
+					v-if="!isGuest"
+					:name="t('projektwerk', 'Neuerungen')"
+					@click="openWhatsNew">
+					<template #icon>
+						<BullhornOutlineIcon :size="20" />
+					</template>
+				</NcAppNavigationItem>
 			</template>
 		</NcAppNavigation>
 		<NcAppContent>
@@ -117,7 +131,7 @@
 			blockiert nie. NcModal teleportiert ohnehin an den `body`, die
 			Platzierung hier ist darum nur die logische Heimat.
 		-->
-		<WhatsNewDialog />
+		<WhatsNewDialog ref="whatsNew" />
 	</NcContent>
 </template>
 
@@ -125,6 +139,7 @@
 // Bewusst `t` statt `translate as t`: die l10n-Extraktionsskripte erkennen nur
 // den Alias-freien Import, ein umbenannter Import bleibt fuer sie unsichtbar.
 import { emit } from '@nextcloud/event-bus'
+import { loadState } from '@nextcloud/initial-state'
 import { t } from '@nextcloud/l10n'
 import { useIsMobile } from '@nextcloud/vue/composables/useIsMobile'
 import NcAppContent from '@nextcloud/vue/components/NcAppContent'
@@ -132,6 +147,7 @@ import NcAppNavigation from '@nextcloud/vue/components/NcAppNavigation'
 import NcAppNavigationCaption from '@nextcloud/vue/components/NcAppNavigationCaption'
 import NcAppNavigationItem from '@nextcloud/vue/components/NcAppNavigationItem'
 import NcContent from '@nextcloud/vue/components/NcContent'
+import BullhornOutlineIcon from 'vue-material-design-icons/BullhornOutline.vue'
 import CogIcon from 'vue-material-design-icons/Cog.vue'
 import EmailIcon from 'vue-material-design-icons/EmailOutline.vue'
 import FolderMultipleIcon from 'vue-material-design-icons/FolderMultiple.vue'
@@ -143,10 +159,13 @@ import { useBoardStore } from '@/stores/boardStore'
 
 export default {
 	name: 'App',
-	components: { NcContent, NcAppNavigation, NcAppNavigationCaption, NcAppNavigationItem, NcAppContent, FolderMultipleIcon, FormatListChecksIcon, StarIcon, ViewDashboardIcon, CogIcon, EmailIcon, WhatsNewDialog },
+	components: { NcContent, NcAppNavigation, NcAppNavigationCaption, NcAppNavigationItem, NcAppContent, BullhornOutlineIcon, FolderMultipleIcon, FormatListChecksIcon, StarIcon, ViewDashboardIcon, CogIcon, EmailIcon, WhatsNewDialog },
 
 	setup() {
-		return { isMobile: useIsMobile(), store: useBoardStore() }
+		// Gäste bekommen keine Produktmeldungen (#329): blendet den
+		// „Neuerungen"-Eintrag aus. Fehlt der Zustand (alter Cache), zeigen wir
+		// ihn — der `all`-Endpunkt liefert Gästen ohnehin nichts.
+		return { isMobile: useIsMobile(), store: useBoardStore(), isGuest: loadState('projektwerk', 'isGuest', false) }
 	},
 
 	computed: {
@@ -194,6 +213,16 @@ export default {
 			if (this.isMobile) {
 				emit('toggle-navigation', { open: false })
 			}
+		},
+
+		/**
+		 * Das „Was ist neu?"-Fenster im Archiv-Modus öffnen (#329) — alle
+		 * bisherigen Neuerungen. Über die Template-Referenz auf den Dialog, der
+		 * `openArchive` per `defineExpose` bereitstellt.
+		 */
+		openWhatsNew() {
+			this.closeNavigationOnMobile()
+			this.$refs.whatsNew?.openArchive()
 		},
 	},
 }

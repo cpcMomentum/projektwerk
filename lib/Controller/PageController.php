@@ -38,6 +38,11 @@ class PageController extends Controller {
 		// der Knopf ohne zweite Runde entscheidet.
 		$this->initialState->provideInitialState('canCreateProject', !$this->accountType->isGuest($this->userId));
 
+		// Gäste/Kunden bekommen keine Produktmeldungen (#329): blendet den
+		// „Neuerungen"-Menüeintrag aus. Der Riegel selbst sitzt im WhatsNewService
+		// (der `all`-Endpunkt liefert Gästen ohnehin nichts).
+		$this->initialState->provideInitialState('isGuest', $this->accountType->isGuest($this->userId));
+
 		return new TemplateResponse(Application::APP_ID, 'index');
 	}
 }
