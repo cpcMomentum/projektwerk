@@ -66,7 +66,7 @@
 
 						<!--
 							Im Kopf bleibt nur noch der GitHub-Bezug (#331): die
-							Lebenszyklus-Aktionen (Erledigt/Verwerfen/Löschen) sind in
+							Lebenszyklus-Aktionen (Erledigt/Verworfen/Löschen) sind in
 							die feststehende Fußzeile gewandert und dort beschriftet,
 							weil sie als icon-only oben rechts nicht selbsterklärend
 							waren. Die GitHub-Überführung ist Kontext, keine
@@ -508,7 +508,7 @@
 								<template #icon>
 									<CancelIcon :size="20" />
 								</template>
-								{{ t('projektwerk', 'Verwerfen') }}
+								{{ t('projektwerk', 'Verworfen') }}
 							</NcButton>
 						</template>
 						<NcButton
