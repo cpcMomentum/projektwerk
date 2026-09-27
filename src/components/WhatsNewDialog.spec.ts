@@ -6,16 +6,18 @@
  * wirklich etwas zu berichten gibt, und es darf die App nie blockieren.
  */
 
-import type { WhatsNewEntry, WhatsNewPayload } from '@/types/whatsnew'
+import type { WhatsNewArchive, WhatsNewEntry, WhatsNewPayload } from '@/types/whatsnew'
 
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const getWhatsNew = vi.fn<() => Promise<WhatsNewPayload>>()
+const getWhatsNewArchive = vi.fn<() => Promise<WhatsNewArchive>>()
 const markWhatsNewSeen = vi.fn<() => Promise<void>>()
 
 vi.mock('@/services/whatsnew', () => ({
 	getWhatsNew: () => getWhatsNew(),
+	getWhatsNewArchive: () => getWhatsNewArchive(),
 	markWhatsNewSeen: () => markWhatsNewSeen(),
 }))
 
@@ -68,6 +70,7 @@ function payload(entries: WhatsNewPayload['entries']): WhatsNewPayload {
 describe('WhatsNewDialog', () => {
 	beforeEach(() => {
 		getWhatsNew.mockReset()
+		getWhatsNewArchive.mockReset()
 		markWhatsNewSeen.mockReset()
 		markWhatsNewSeen.mockResolvedValue(undefined)
 	})
@@ -220,5 +223,67 @@ describe('WhatsNewDialog', () => {
 		await flushPromises()
 
 		expect(wrapper.find('.stub-modal').exists()).toBe(false)
+	})
+
+	/**
+	 * Archiv-Modus (#329): über `openArchive` geöffnet, zeigt ALLE Versionen,
+	 * nach Version gruppiert. Das Auto-Popup bleibt davon unberührt.
+	 */
+	it('öffnet im Archiv-Modus alle Versionen, ohne das Auto-Popup', async () => {
+		getWhatsNew.mockResolvedValue(payload([])) // Popup zeigt nichts
+		getWhatsNewArchive.mockResolvedValue({
+			versions: [
+				{ version: '0.4.18', entries: [eintrag({ title: 'Neuer Punkt' })] },
+				{ version: '0.4.16', entries: [eintrag({ title: 'Alter Punkt' }), eintrag({ title: 'Noch älter' })] },
+			],
+		})
+
+		const wrapper = mount(WhatsNewDialog)
+		await flushPromises()
+		// Ohne Aufruf bleibt es zu (Popup hatte nichts).
+		expect(wrapper.find('.stub-modal').exists()).toBe(false)
+
+		await (wrapper.vm as unknown as { openArchive: () => Promise<void> }).openArchive()
+		await flushPromises()
+
+		expect(wrapper.find('.stub-modal').exists()).toBe(true)
+		expect(wrapper.findAll('.whatsnew__group')).toHaveLength(2)
+		expect(wrapper.findAll('.whatsnew__entry')).toHaveLength(3)
+	})
+
+	/**
+	 * Nachlesen ist kein Quittieren: Der Archiv-Modus darf die Marke NICHT
+	 * setzen, sonst verschluckte das Menü ein noch offenes Popup.
+	 */
+	it('quittiert im Archiv-Modus nicht beim Schließen', async () => {
+		getWhatsNew.mockResolvedValue(payload([]))
+		getWhatsNewArchive.mockResolvedValue({
+			versions: [{ version: '0.4.16', entries: [eintrag({})] }],
+		})
+
+		const wrapper = mount(WhatsNewDialog)
+		await flushPromises()
+		await (wrapper.vm as unknown as { openArchive: () => Promise<void> }).openArchive()
+		await flushPromises()
+
+		await wrapper.find('.stub-button').trigger('click')
+		await flushPromises()
+
+		expect(markWhatsNewSeen).not.toHaveBeenCalled()
+		expect(wrapper.find('.stub-modal').exists()).toBe(false)
+	})
+
+	it('zeigt einen Leer-Hinweis, wenn das Archiv nichts enthält (z. B. Gast)', async () => {
+		getWhatsNew.mockResolvedValue(payload([]))
+		getWhatsNewArchive.mockResolvedValue({ versions: [] })
+
+		const wrapper = mount(WhatsNewDialog)
+		await flushPromises()
+		await (wrapper.vm as unknown as { openArchive: () => Promise<void> }).openArchive()
+		await flushPromises()
+
+		expect(wrapper.find('.stub-modal').exists()).toBe(true)
+		expect(wrapper.find('.whatsnew__empty').exists()).toBe(true)
+		expect(wrapper.findAll('.whatsnew__entry')).toHaveLength(0)
 	})
 })

@@ -283,6 +283,10 @@ final class ReadPathRegistry {
 		// existiert nicht. Der Gast-Riegel sitzt im WhatsNewService.
 		'whatsNew#index' => 'Liest nur die ausgelieferte whatsnew.json und die Nutzer-Marke, '
 			. 'keine Board-/Vorgangsdaten.',
+		// Das Archiv (#329) liest denselben Katalog wie #index, nur ungefiltert
+		// und ohne die Marke zu beruehren — derselbe Leak-freie Pfad.
+		'whatsNew#all' => 'Liest nur die ausgelieferte whatsnew.json (alle Versionen), '
+			. 'keine Board-/Vorgangsdaten.',
 	];
 
 	/**

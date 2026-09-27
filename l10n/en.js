@@ -453,6 +453,9 @@ OC.L10N.register(
     "Kunde (optional)" : "Customer (optional)",
     "Firma" : "Company",
     "Firma konnte nicht geändert werden" : "Company could not be changed",
-    "Der Server hat kein JSON geliefert. Bitte das Server-Protokoll prüfen." : "The server did not return JSON. Please check the server log."
+    "Der Server hat kein JSON geliefert. Bitte das Server-Protokoll prüfen." : "The server did not return JSON. Please check the server log.",
+    "Neuerungen" : "What's new",
+    "Noch keine Neuerungen." : "No news yet.",
+    "Schließen" : "Close"
 },
 "nplurals=2; plural=(n != 1);");
