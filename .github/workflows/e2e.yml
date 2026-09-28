@@ -144,9 +144,15 @@ jobs:
         # js/ und css/ — das ist es, was ausgeliefert wird. Wuerden wir hier neu
         # bauen, bliebe ein vergessener Build unentdeckt, und die App auf dem
         # Server verhielte sich anders als der gruene Lauf behauptet.
-        run: |
-          rm -f package-lock.json
-          npm install --no-audit --no-fund
+        #
+        # `npm ci` statt `rm -f package-lock.json && npm install`: Der alte Weg
+        # loeste die Deps bei JEDEM Lauf live gegen die Registry auf und flakte
+        # bei Registry-Churn — am 28.09.2026 an `@typescript-eslint/eslint-plugin@8.71.0`,
+        # das gerade frisch veroeffentlicht, aber noch nicht propagiert war
+        # (drei rote Post-Merge-Laeufe nach dem v0.4.17-Release). `npm ci`
+        # installiert die gepinnte Version aus dem Lockfile — reproduzierbar,
+        # dasselbe wie in node.yml seit 15.08. (nc-app-tooling#34).
+        run: npm ci
 
       - name: Browser installieren
         working-directory: server/apps/projektwerk
