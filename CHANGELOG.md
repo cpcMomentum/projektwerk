@@ -4,6 +4,37 @@ Alle nennenswerten Änderungen an ProjektWerk werden hier dokumentiert.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.4.17] - 2026-09-28
+
+### Added
+
+- **„Neuerungen"-Menü mit Archiv** (#329): Ein dauerhafter Eintrag „Neuerungen" links unten öffnet
+  das „Was ist neu?"-Fenster jederzeit — mit allen bisherigen Punkten, nach Version gruppiert, nicht
+  nur den neuesten. So lässt sich Verpasstes jederzeit nachlesen; Gäste sehen den Eintrag nicht.
+- **Arbeitsschritt-Titel änderbar** (#308): Ein Tippfehler im Titel eines Arbeitsschritts lässt sich
+  jetzt über den Stift korrigieren, ohne den Schritt löschen und neu anlegen zu müssen. Die
+  Anlege-Zeile wurde zugleich auf ein einzelnes Feld verschlankt; Zuständigkeit und Frist werden
+  danach über den Stift nachgetragen.
+
+### Changed
+
+- **Aktionen im Vorgang beschriftet in fester Fußzeile** (#331): Erledigt, Verworfen und Löschen
+  stehen jetzt als beschriftete Knöpfe in einer feststehenden Leiste am unteren Rand des Vorgangs —
+  immer sichtbar und leichter zu treffen als die früheren Symbole; Löschen ist rot und abgesetzt.
+  Der Sichtbarkeitsschalter rückt im Kopf nach rechts.
+- **Firmenmodell auf alle Projekt-Boards** (#309, Phase 5): Firma und Kunde eines Projekts gelten
+  jetzt einheitlich für alle Boards des Projekts.
+
+### Fixed
+
+- **Serverfehler nicht mehr als Gast-Problem gemeldet** (#307): Ein echter HTTP-500-Serverfehler
+  wird nicht länger als „nicht für Gäste freigeschaltet" ausgegeben, was die Fehlersuche in die
+  Irre schickte; die Meldung unterscheidet jetzt am Inhalt.
+
+### Internal
+
+- Schema-Prüfung des „Was ist neu?"-Fensters auf das zentrale `nc-whatsnew-check` umgestellt (#322).
+
 ## [0.4.16] - 2026-09-22
 
 ### Added

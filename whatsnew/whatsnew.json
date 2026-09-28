@@ -1,4 +1,57 @@
 {
+	"0.4.17": [
+		{
+			"title": {
+				"de": "Neuerungen jederzeit nachlesen",
+				"en": "Read what's new any time"
+			},
+			"text": {
+				"de": "Über den neuen Eintrag „Neuerungen\" links unten lässt sich dieses Fenster jederzeit öffnen, mit allen bisherigen Punkten, nicht nur den neuesten.",
+				"en": "The new \"What's new\" entry at the bottom left opens this window any time, with all previous items, not just the latest ones."
+			},
+			"icon": "star",
+			"where": {
+				"de": "Neuerungen",
+				"en": "What's new"
+			},
+			"adminOnly": false,
+			"plus": false
+		},
+		{
+			"title": {
+				"de": "Aktionen im Vorgang sind jetzt beschriftet",
+				"en": "Ticket actions are now labelled"
+			},
+			"text": {
+				"de": "Erledigt, Verworfen und Löschen stehen jetzt als beschriftete Knöpfe in einer festen Leiste am unteren Rand des Vorgangs. Sie sind immer sichtbar und leichter zu treffen als die früheren Symbole.",
+				"en": "Done, Discarded and Delete now appear as labelled buttons in a fixed bar at the bottom of the ticket. They are always visible and easier to hit than the previous icons."
+			},
+			"icon": "file-document",
+			"where": {
+				"de": "In jedem Vorgang",
+				"en": "In every ticket"
+			},
+			"adminOnly": false,
+			"plus": false
+		},
+		{
+			"title": {
+				"de": "Arbeitsschritte lassen sich umbenennen",
+				"en": "Steps can be renamed"
+			},
+			"text": {
+				"de": "Ein Tippfehler im Titel eines Arbeitsschritts lässt sich jetzt über den Stift korrigieren, ohne den Schritt löschen und neu anlegen zu müssen.",
+				"en": "A typo in a step's title can now be fixed with the pencil, without having to delete and recreate the step."
+			},
+			"icon": "counter",
+			"where": {
+				"de": "Arbeitsschritte im Vorgang",
+				"en": "Steps in a ticket"
+			},
+			"adminOnly": false,
+			"plus": false
+		}
+	],
 	"0.4.16": [
 		{
 			"title": {
