@@ -115,11 +115,14 @@ export class Api {
 		return this.rufen('get', pfad)
 	}
 
-	boardAnlegen(titel: string, orgIntern: string, orgExtern: string): Promise<any> {
+	boardAnlegen(titel: string, orgIntern: string, kunde: string): Promise<any> {
 		return this.schreiben('post', '/api/v1/boards', {
 			title: titel,
 			orgInternal: orgIntern,
-			orgExternal: orgExtern,
+			// Die Gegenseite ist seit #309 der Kunde am Projekt; `orgExternal`
+			// nahm der Endpunkt schon seit Phase 1 nicht mehr an und lief hier
+			// ins Leere.
+			customer: kunde,
 		})
 	}
 

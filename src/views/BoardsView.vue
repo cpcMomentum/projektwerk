@@ -194,7 +194,7 @@ export default defineComponent({
 						boardId: board.id,
 						title: board.title,
 						// Der Kunde des Projekts (#309); solange keiner gepflegt ist,
-						// die alte Firmenzeile als Rückfall.
+						// bleibt die eigene Firma als Rückfall stehen.
 						org: board.customer ?? this.store.orgLine(board),
 						neu: s?.neu ?? 0,
 						offen: s?.offen ?? 0,

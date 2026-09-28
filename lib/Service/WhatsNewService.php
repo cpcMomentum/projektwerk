@@ -112,6 +112,44 @@ class WhatsNewService {
 		];
 	}
 
+	/**
+	 * Alle bisherigen Neuerungen, nach Version gruppiert, neueste zuerst (#329).
+	 *
+	 * Für den dauerhaften Menü-Eintrag „Neuerungen": Anders als {@see getPending}
+	 * filtert dies nicht auf die eine neueste ungesehene Version, sondern liefert
+	 * das ganze Archiv — jeder kann jederzeit nachlesen, auch was er im Popup
+	 * verpasst hat. Kein Merkzettel wird berührt; Nachlesen ist kein Quittieren.
+	 *
+	 * Derselbe obere Deckel wie im Popup: Versionen neuer als die installierte
+	 * App bleiben aus (ein zu früh gepflegter Eintrag erscheint nicht vorab).
+	 * Der Gast-Riegel gilt auch hier.
+	 *
+	 * @return array{versions: list<array{version: string, entries: list<array{title: string, text: string, icon: string, where: string, adminOnly: bool, plus: bool}>}>}
+	 */
+	public function getAll(string $userId): array {
+		// Gast-/Kundennutzer bekommen keine Produktmeldungen (Konzept Abschnitt 3).
+		if ($this->accountType->isGuest($userId)) {
+			return ['versions' => []];
+		}
+
+		$current = $this->currentVersion();
+		$versions = [];
+		foreach ($this->catalogue() as $version => $entries) {
+			if (version_compare($version, $current, '>')) {
+				continue;
+			}
+			$localised = $this->localise($entries);
+			if ($localised === []) {
+				continue;
+			}
+			$versions[] = ['version' => $version, 'entries' => $localised];
+		}
+
+		usort($versions, static fn (array $a, array $b): int => version_compare($b['version'], $a['version']));
+
+		return ['versions' => $versions];
+	}
+
 	/** Quittiert das Fenster: die laufende Version gilt als gesehen. */
 	public function markSeen(string $userId): void {
 		$this->config->setUserValue(

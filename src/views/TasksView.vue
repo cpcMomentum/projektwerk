@@ -255,7 +255,7 @@ export default defineComponent({
 				return ''
 			}
 
-			return [board.orgInternal, board.orgExternal].filter(Boolean).join(' · ')
+			return [board.orgInternal, board.customer].filter(Boolean).join(' · ')
 		},
 
 		/**

@@ -397,7 +397,6 @@ OC.L10N.register(
     "{done} von {total} erledigt · {pct} %" : "{done} von {total} erledigt · {pct} %",
     "_%n überfällig_::_%n überfällig_" : ["%n überfällig","%n überfällig"],
     "Ergebnis" : "Ergebnis",
-    "Beschreibung (optional)" : "Beschreibung (optional)",
     "%1$s hat Ihnen den Vorgang #%2$s „%3$s“ zugewiesen." : "%1$s hat Ihnen den Vorgang #%2$s „%3$s“ zugewiesen.",
     "%1$s hat Ihnen den Arbeitsschritt „%2$s“ im Vorgang #%3$s „%4$s“ zugewiesen." : "%1$s hat Ihnen den Arbeitsschritt „%2$s“ im Vorgang #%3$s „%4$s“ zugewiesen.",
     "%1$s hat Ihnen einen Arbeitsschritt im Vorgang #%2$s „%3$s“ zugewiesen." : "%1$s hat Ihnen einen Arbeitsschritt im Vorgang #%2$s „%3$s“ zugewiesen.",
@@ -453,6 +452,11 @@ OC.L10N.register(
     "Eigene Firma" : "Eigene Firma",
     "Kunde (optional)" : "Kunde (optional)",
     "Firma" : "Firma",
-    "Firma konnte nicht geändert werden" : "Firma konnte nicht geändert werden"
+    "Firma konnte nicht geändert werden" : "Firma konnte nicht geändert werden",
+    "Der Server hat kein JSON geliefert. Bitte das Server-Protokoll prüfen." : "Der Server hat kein JSON geliefert. Bitte das Server-Protokoll prüfen.",
+    "Neuerungen" : "Neuerungen",
+    "Noch keine Neuerungen." : "Noch keine Neuerungen.",
+    "Schließen" : "Schließen",
+    "Endgültig löschen" : "Endgültig löschen"
 },
 "nplurals=2; plural=(n != 1);");

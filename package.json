@@ -23,7 +23,8 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "whatsnew:check": "nc-whatsnew-check"
   },
   "dependencies": {
     "@nextcloud/axios": "^2.5.2",
@@ -48,7 +49,7 @@
     "@vue/tsconfig": "^0.7.0",
     "eslint": "^10.8.0",
     "happy-dom": "^20.9.0",
-    "nc-app-tooling": "github:cpcMomentum/nc-app-tooling#v1.15.0",
+    "nc-app-tooling": "github:cpcMomentum/nc-app-tooling#v1.17.0",
     "sass": "^1.70.0",
     "typescript": "^5.7.2",
     "vite": "^8.2.0",

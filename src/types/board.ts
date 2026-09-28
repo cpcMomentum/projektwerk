@@ -25,16 +25,18 @@ export interface Board {
 	description: string | null
 	ownerUserId: string
 	/**
-	 * Die Namen der beiden Seiten — am Board, nicht an der Person.
+	 * Der Name der eigenen Seite — am Board, nicht an der Person.
 	 *
-	 * Ein Board kennt genau zwei Parteien, deshalb genügen zwei Felder. Sie
-	 * stehen unter *jedem* Namen, auch unter den internen: In der
-	 * Personenauswahl eines öffentlichen Tickets erscheinen beide Seiten
-	 * gemeinsam und ohne Trennung. Trüge nur die Kundenseite eine Firma, wäre
-	 * die interne stumm „der Normalfall".
+	 * Steht unter *jedem* internen Namen: In der Personenauswahl eines
+	 * öffentlichen Tickets erscheinen beide Seiten gemeinsam und ohne
+	 * Trennung. Trüge nur die Kundenseite eine Firma, wäre die interne stumm
+	 * „der Normalfall".
+	 *
+	 * Das Gegenstück `orgExternal` liefert der Server seit #309 Phase 5 nicht
+	 * mehr — die Gegenseite ist `customer`, die Firma einer einzelnen Person
+	 * `member.company`.
 	 */
 	orgInternal: string | null
-	orgExternal: string | null
 	/** Kunde des Projekts (#309). Anzeige/Filter; `null` = keiner hinterlegt. */
 	customer: string | null
 	folderPublicId: number | null

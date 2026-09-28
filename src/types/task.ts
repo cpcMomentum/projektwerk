@@ -13,11 +13,16 @@
 
 import type { Step, Ticket } from '@/types/ticket'
 
-/** Die Herkunftszeile eines Vorgangs — beide Firmennamen, nicht nur einer. */
+/**
+ * Die Herkunftszeile eines Vorgangs — beide Firmennamen, nicht nur einer.
+ *
+ * Die Gegenseite ist seit #309 Phase 5 der Kunde des Projekts; `orgExternal`
+ * liefert der Server nicht mehr.
+ */
 export interface TaskBoard {
 	title: string
 	orgInternal: string | null
-	orgExternal: string | null
+	customer: string | null
 }
 
 export interface TaskList {

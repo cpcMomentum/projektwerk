@@ -130,8 +130,13 @@ export const useBoardStore = defineStore('board', {
 		 * Nimmt ein beliebiges Board entgegen statt nur das geöffnete: Die
 		 * Boardliste braucht die Zeile für jede Karte, das geöffnete Board für
 		 * genau eine.
+		 *
+		 * Die Gegenseite kommt seit #309 Phase 5 aus `customer` statt aus dem
+		 * eingefrorenen `orgExternal`: Der Kunde ist das gepflegte Feld, das
+		 * alte wurde seit Phase 1 nicht mehr geschrieben und wäre mit jeder
+		 * Änderung weiter auseinandergelaufen.
 		 */
-		orgLine: () => (board: Pick<Board, 'orgInternal' | 'orgExternal'>): string => [board.orgInternal, board.orgExternal].filter(Boolean).join(' · '),
+		orgLine: () => (board: Pick<Board, 'orgInternal' | 'customer'>): string => [board.orgInternal, board.customer].filter(Boolean).join(' · '),
 
 		/**
 		 * Firmen-Vorschläge (#309): die schon vergebenen Firmen der geladenen

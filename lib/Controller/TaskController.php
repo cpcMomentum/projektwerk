@@ -126,7 +126,7 @@ class TaskController extends Controller {
 	 * beantworten hieße, die Ticketabfragen einzuschränken, und das ist eine
 	 * andere Änderung als diese.
 	 *
-	 * @return array<int, array{title: string, orgInternal: ?string, orgExternal: ?string, customer: ?string}>
+	 * @return array<int, array{title: string, orgInternal: ?string, customer: ?string}>
 	 */
 	private function boardLine(): array {
 		$line = [];
@@ -135,8 +135,9 @@ class TaskController extends Controller {
 			$line[(int)$board->getId()] = [
 				'title' => (string)$board->getTitle(),
 				'orgInternal' => $board->getOrgInternal(),
-				'orgExternal' => $board->getOrgExternal(),
-				// Kunde des Projekts (#309) — Anzeige/Filter, org bleibt bis Phase 5.
+				// Kunde des Projekts (#309) — die Firmenzeile der Gegenseite kommt
+				// seit Phase 5 von hier, nicht mehr aus dem eingefrorenen
+				// `org_external`.
 				'customer' => $board->getCustomer(),
 			];
 		}

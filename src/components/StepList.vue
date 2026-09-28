@@ -130,6 +130,20 @@
 			</div>
 
 			<div v-if="editing === step.id" class="pw-step__felder-text">
+				<!--
+					Titel im Bearbeiten-Modus (#308). Vorher liess sich ein
+					Tippfehler nur durch Loeschen und Neuanlegen beheben — den
+					Titel gab es allein als Anzeige. Speichert gepuffert ueber
+					„Fertig", wie Beschreibung und Ergebnis.
+				-->
+				<NcTextField
+					class="pw-step__feld"
+					:modelValue="editTitle"
+					:label="t('projektwerk', 'Titel')"
+					:disabled="busy"
+					@update:modelValue="editTitle = $event"
+					@keydown.enter="saveDetails(step)" />
+
 				<NcTextField
 					class="pw-step__feld"
 					:modelValue="editDescription"
@@ -159,12 +173,13 @@
 			Eingabezeile am Listenende: tippen, Enter, fertig. Ein Dialog fuer
 			einen einzeiligen Schritt waere drei Klicks fuer eine Zeile Text.
 
-			**Zustaendig und Faelligkeit stehen mit in der Zeile** (#86). Vorher
-			legte man an und wies danach zu — zwei Schritte fuer eine
-			Entscheidung, die beim Tippen schon feststand. Der schnelle Weg
-			bleibt trotzdem: Beide Felder sind leer vorbelegt, und Enter sendet
-			ab. Wer niemanden zuweisen und keine Frist setzen will, merkt von der
-			Erweiterung nichts.
+			**Nur ein Feld „Neuer Arbeitsschritt" + „+"** (#308). Zuvor standen
+			hier vier Felder — Titel, Beschreibung (#247), Zuständig und Frist
+			(#86); die Anlege-Form wurde als zu wuchtig empfunden. #308 nimmt das
+			bewusst zurück: Zuweisung, Frist, Beschreibung und Ergebnis werden
+			**nach** dem Anlegen über den Stift des Schritts nachgetragen. Das
+			Zuweisen wird damit wieder ein zweiter Schritt — gewollt, nicht
+			übersehen.
 		-->
 		<div class="pw-step pw-step--new">
 			<NcTextField
@@ -175,44 +190,7 @@
 				@keydown.enter="add" />
 
 			<!--
-				Beschreibung optional in einer eigenen Zeile (#247). Enter sendet
-				weiterhin ab, der schnelle Weg (nur Titel, Enter) bleibt also
-				unbelastet.
-			-->
-			<NcTextField
-				v-model="newDescription"
-				class="pw-step__neu-beschreibung"
-				:label="t('projektwerk', 'Beschreibung (optional)')"
-				:disabled="busy"
-				@keydown.enter="add" />
-
-			<label class="hidden-visually" for="pw-step-new-user">
-				{{ t('projektwerk', 'Zuständig') }}
-			</label>
-			<NcSelectUsers
-				id="pw-step-new-user-wrap"
-				class="pw-step__neu-person"
-				:options="options"
-				:modelValue="newAssignee"
-				inputId="pw-step-new-user"
-				:labelOutside="true"
-				:disabled="busy"
-				:placeholder="t('projektwerk', 'Niemand')"
-				@update:modelValue="newAssignee = single($event)" />
-
-			<NcDateTimePicker
-				v-model="newDueDate"
-				type="date"
-				class="pw-step__neu-datum"
-				:clearable="true"
-				:appendToBody="true"
-				:ariaLabel="t('projektwerk', 'Fälligkeit')"
-				:placeholder="t('projektwerk', 'Fälligkeit')"
-				:disabled="busy" />
-
-			<!--
-				**Ein Plus statt eines breiten Knopfes** (#99) — damit passt die
-				Neuanlage in eine Zeile statt in drei.
+				**Ein Plus statt eines breiten Knopfes** (#99).
 
 				Ausdruecklich **ohne** `size="small"`: Das waere
 				`--clickable-area-small` (24 px) und damit unter der
@@ -321,11 +299,6 @@ export default defineComponent({
 		return {
 			busy: false,
 			newTitle: '',
-			/** Eine Zeile Beschreibung für den neuen Schritt (#247), leer = keine. */
-			newDescription: '',
-			/** `null` heißt „Niemand" — der schnelle Weg bleibt unbelastet. */
-			newAssignee: null as PersonOption | null,
-			newDueDate: null as Date | null,
 			assignable: [] as string[],
 			/**
 			 * Der Schritt, dessen Zuweisung und Frist gerade offenstehen.
@@ -341,6 +314,7 @@ export default defineComponent({
 			 * Muster wie bei der Ticket-Beschreibung: lokal tippen, mit „Fertig"
 			 * (oder Strg/Cmd+Enter) speichern.
 			 */
+			editTitle: '',
 			editDescription: '',
 			editResult: '',
 			/** Der Schritt, dessen Löschen gerade zur Rückfrage offensteht (#203). */
@@ -398,11 +372,8 @@ export default defineComponent({
 			handler() {
 				this.loadAssignable()
 				// Angefangenes gehört zum vorigen Vorgang und darf nicht stehen
-				// bleiben — sonst trüge der nächste Schritt dessen Zuweisung.
+				// bleiben.
 				this.newTitle = ''
-				this.newDescription = ''
-				this.newAssignee = null
-				this.newDueDate = null
 				this.editing = null
 				this.removing = null
 			},
@@ -577,26 +548,12 @@ export default defineComponent({
 				return
 			}
 
-			const description = this.newDescription.trim()
-
 			return this.write(
 				async () => {
-					await createStep(this.boardId, this.ticketId, {
-						title,
-						// Leer heißt „keine Beschreibung": als `null`, nicht als
-						// leere Zeichenkette — so muss die Anzeige nicht zwischen
-						// beidem unterscheiden.
-						description: description === '' ? null : description,
-						// Ausdrücklich `null` statt weglassen: Der Dienst
-						// unterscheidet „nicht genannt" von „keine Zuweisung",
-						// und gemeint ist hier das Zweite.
-						assignedUserId: this.newAssignee?.id ?? null,
-						dueDate: alsIsoTag(this.newDueDate),
-					})
+					// Nur der Titel (#308): Zuweisung, Frist, Beschreibung und
+					// Ergebnis werden nach dem Anlegen über den Stift nachgetragen.
+					await createStep(this.boardId, this.ticketId, { title })
 					this.newTitle = ''
-					this.newDescription = ''
-					this.newAssignee = null
-					this.newDueDate = null
 					this.fokusZiel = '.pw-step--new input[type="text"]'
 				},
 				t('projektwerk', 'Arbeitsschritt konnte nicht angelegt werden'),
@@ -614,27 +571,36 @@ export default defineComponent({
 		 */
 		beginEdit(step: Step) {
 			this.editing = step.id
+			this.editTitle = step.title
 			this.editDescription = step.description ?? ''
 			this.editResult = step.result ?? ''
 		},
 
 		/**
-		 * Beschreibung und Ergebnis sichern und den Bearbeiten-Modus verlassen
-		 * (#247).
+		 * Titel, Beschreibung und Ergebnis sichern und den Bearbeiten-Modus
+		 * verlassen (#247, #308).
 		 *
-		 * Nur die tatsächlich geänderten Felder gehen mit; sind beide
+		 * Nur die tatsächlich geänderten Felder gehen mit; sind alle
 		 * unverändert, wird nichts geschrieben und nur geschlossen. Ein leerer
-		 * Wert reist als Leerstring — der Dienst macht daraus `null` (Feld
-		 * geleert), und weil `array_key_exists` am Endpunkt greift, kommt das
-		 * Leeren auch wirklich an.
+		 * Beschreibungs-/Ergebnis-Wert reist als Leerstring — der Dienst macht
+		 * daraus `null` (Feld geleert), und weil `array_key_exists` am Endpunkt
+		 * greift, kommt das Leeren auch wirklich an.
+		 *
+		 * **Der Titel ist Pflicht** (#308): Ein leergeräumtes Titelfeld wird
+		 * ignoriert, der bisherige Titel bleibt stehen — anders als die
+		 * optionalen Felder lässt er sich nicht entwerten.
 		 *
 		 * @param step Der Schritt.
 		 */
 		saveDetails(step: Step) {
+			const titel = this.editTitle.trim()
 			const beschreibung = this.editDescription.trim()
 			const ergebnis = this.editResult.trim()
-			const changes: { description?: string, result?: string } = {}
+			const changes: { title?: string, description?: string, result?: string } = {}
 
+			if (titel !== '' && titel !== step.title) {
+				changes.title = titel
+			}
 			if (beschreibung !== (step.description ?? '')) {
 				changes.description = beschreibung
 			}
