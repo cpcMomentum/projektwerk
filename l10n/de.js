@@ -50,7 +50,6 @@ OC.L10N.register(
     "zuständig" : "zuständig",
     "Sichtbarkeit" : "Sichtbarkeit",
     "Ändern" : "Ändern",
-    "Auf „Nur ich\" herunterstufen kann nur die anlegende Person" : "Auf „Nur ich\" herunterstufen kann nur die anlegende Person",
     "_%n Kommentar_::_%n Kommentare_" : ["%n Kommentar","%n Kommentare"],
     "Sichtbarkeit ändern" : "Sichtbarkeit ändern",
     "Sichtbarkeit konnte nicht geändert werden" : "Sichtbarkeit konnte nicht geändert werden",

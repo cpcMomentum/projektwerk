@@ -862,8 +862,10 @@
 	display: flex;
 	align-items: center;
 	gap: 8px;
-	margin-block-start: 4px;
-	padding-block: 8px;
+	/* Schlankes Band (#337): die Knoepfe tragen ihre 34-px-Klickflaeche selbst,
+	   das Polster drumherum war verschenkter Platz. */
+	margin-block-start: 2px;
+	padding-block: 4px;
 	background: var(--color-main-background);
 	box-shadow: 0 -1px 0 var(--color-border);
 }
