@@ -39,7 +39,6 @@
 			<VisibilityChoice
 				:modelValue="ticket.visibility"
 				:unavailable="unavailable"
-				:blockedHint="blockedHint"
 				:busy="busy"
 				:hideHints="true"
 				@update:modelValue="choose" />
@@ -161,22 +160,17 @@ export default defineComponent({
 			return this.viewer !== null && this.ticket.creatorRole === this.viewer.role
 		},
 
-		/** §7: Auf „Nur ich" herunterstufen kann allein die anlegende Person. */
+		/**
+		 * §7: Auf „Nur ich" herunterstufen kann allein die anlegende Person.
+		 * Der betroffene Knopf wird dadurch **ausgegraut und nicht klickbar** —
+		 * das ist die Botschaft. Einen erklärenden Hinweistext gibt es bewusst
+		 * nicht mehr (#337): der tote Knopf sagt es, ein Satz daneben war
+		 * redundant und drängte den Schalter aus der Mittellinie des Kopfes.
+		 */
 		unavailable(): Visibility[] {
 			return this.viewer !== null && this.ticket.creatorUserId === this.viewer.userId
 				? []
 				: ['private']
-		},
-
-		/**
-		 * Warum „Nur ich" hier nicht wählbar ist.
-		 *
-		 * Steht im Skript und nicht als Literal im Aufruf, weil der Text ein
-		 * Anführungszeichen trägt — im Attribut würde es die Zeichenkette der
-		 * Vorlage beenden.
-		 */
-		blockedHint(): string {
-			return t('projektwerk', 'Auf „Nur ich" herunterstufen kann nur die anlegende Person')
 		},
 	},
 

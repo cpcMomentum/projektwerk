@@ -649,11 +649,6 @@
 	gap: 0;
 }
 
-.app-projektwerk .pw-vischoice--knapp .pw-vishint--blocked {
-	margin-block-start: 4px;
-	font-size: 13px;
-}
-
 /*
  * Im Vorgang sitzt der Schalter auf **34 px**, nicht auf 48.
  *
@@ -762,18 +757,6 @@
 }
 
 /*
- * Gesperrt heisst sichtbar-aber-nicht-waehlbar, nicht unsichtbar: Wer „Nur ich"
- * sucht und es gar nicht faende, hielte es fuer einen Fehler. Der Grund steht
- * als eigene Zeile darunter — als `title` waere er auf dem Telefon unerreichbar.
- *
- * Ohne Kursive: Nextclouds Foundations fuehren sie ausdruecklich als schlechter
- * lesbar auf, und dieser Satz ist eine Erklaerung, keine Verzierung.
- */
-.app-projektwerk .pw-vishint--blocked {
-	color: var(--color-text-maxcontrast);
-}
-
-/*
  * Im Vorgang sitzt der Schalter rechts in der Kopfzeile. Sobald der Widerruf
  * oder die Anhaenge-Absage dazukommt, nimmt der Block die volle Zeilenbreite:
  * Ein ganzer Satz passt nicht neben `#0001`.
@@ -862,8 +845,10 @@
 	display: flex;
 	align-items: center;
 	gap: 8px;
-	margin-block-start: 4px;
-	padding-block: 8px;
+	/* Schlankes Band (#337): die Knoepfe tragen ihre 34-px-Klickflaeche selbst,
+	   das Polster drumherum war verschenkter Platz. */
+	margin-block-start: 2px;
+	padding-block: 4px;
 	background: var(--color-main-background);
 	box-shadow: 0 -1px 0 var(--color-border);
 }

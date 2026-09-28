@@ -158,9 +158,11 @@ describe('VisibilityControl', () => {
 	 * §7: Auf „Nur ich" herunterstufen kann allein die anlegende Person.
 	 *
 	 * Gesperrt und nicht versteckt: Wer die Stufe sucht und gar nicht fände,
-	 * hielte es für einen Fehler.
+	 * hielte es für einen Fehler. Der **ausgegraute, nicht klickbare Knopf** ist
+	 * die Botschaft — einen erklärenden Hinweistext gibt es seit #337 nicht mehr,
+	 * er war redundant und drängte den Schalter aus der Mittellinie des Kopfes.
 	 */
-	it('sperrt „Nur ich" an einem fremden Ticket der eigenen Seite', async () => {
+	it('sperrt „Nur ich" an einem fremden Ticket der eigenen Seite — ohne Hinweistext', async () => {
 		const wrapper = mountControl(
 			ticketOf({ creatorUserId: 'bert' }),
 			viewerOf({ userId: 'anna' }),
@@ -168,8 +170,9 @@ describe('VisibilityControl', () => {
 
 		expect(optionFor(wrapper, 'private')?.attributes('disabled')).toBeDefined()
 		expect(optionFor(wrapper, 'internal')?.attributes('disabled')).toBeUndefined()
-		expect(wrapper.text()).toContain('Auf „Nur ich" herunterstufen kann nur die anlegende Person')
+		// Der Knopf ist da (gesperrt), aber kein erklaerender Satz mehr (#337).
 		expect(wrapper.text()).toContain(LABELS.private)
+		expect(wrapper.text()).not.toContain('herunterstufen kann nur die anlegende Person')
 	})
 
 	/**
