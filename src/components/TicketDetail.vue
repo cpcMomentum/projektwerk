@@ -65,64 +65,14 @@
 							@changed="$emit('changed', $event)" />
 
 						<!--
-							**Kopf-Aktionen in der Steuerungs-Zeile** (#182, verfeinert):
-							Sichtbarkeit („wer sieht das") und Lebenszyklus („was
-							passiert damit") stehen zusammen auf einer Zeile, rechts
-							neben der Sichtbarkeit. Der Titel-Stift bleibt an der
-							Überschrift. Abschließen bleibt die Wahl erledigt/verworfen
-							(#171) als Icon mit Tooltip; das Ergebnis steht nach dem
-							Schließen beschriftet im Kopf und auf der Karte. Löschen
-							bekommt einen sichtbaren Hintergrund (secondary statt
-							tertiär), damit es in der dichteren Zeile nicht untergeht;
-							die GitHub-Überführung als Icon mit der Issue-Nummer im
-							Tooltip.
+							Im Kopf bleibt nur noch der GitHub-Bezug (#331): die
+							Lebenszyklus-Aktionen (Erledigt/Verworfen/Löschen) sind in
+							die feststehende Fußzeile gewandert und dort beschriftet,
+							weil sie als icon-only oben rechts nicht selbsterklärend
+							waren. Die GitHub-Überführung ist Kontext, keine
+							Lebenszyklus-Aktion — Icon mit der Issue-Nummer im Tooltip.
 						-->
 						<div class="pw-detail__kopfaktionen">
-							<template v-if="!ticket.closedAt">
-								<NcButton
-									variant="primary"
-									:disabled="busy"
-									:ariaLabel="t('projektwerk', 'Als erledigt abschließen')"
-									:title="t('projektwerk', 'Als erledigt abschließen')"
-									@click="closeWith('done')">
-									<template #icon>
-										<CheckIcon :size="20" />
-									</template>
-								</NcButton>
-								<NcButton
-									variant="secondary"
-									:disabled="busy"
-									:ariaLabel="t('projektwerk', 'Als verworfen abschließen')"
-									:title="t('projektwerk', 'Als verworfen abschließen')"
-									@click="closeWith('discarded')">
-									<template #icon>
-										<CancelIcon :size="20" />
-									</template>
-								</NcButton>
-							</template>
-							<NcButton
-								v-else
-								variant="secondary"
-								:disabled="busy"
-								:ariaLabel="t('projektwerk', 'Wieder öffnen')"
-								:title="t('projektwerk', 'Wieder öffnen')"
-								@click="reopen">
-								<template #icon>
-									<RestoreIcon :size="20" />
-								</template>
-							</NcButton>
-
-							<NcButton
-								variant="secondary"
-								:disabled="busy"
-								:ariaLabel="t('projektwerk', 'Löschen')"
-								:title="t('projektwerk', 'Löschen')"
-								@click="$emit('delete', ticket)">
-								<template #icon>
-									<DeleteOutlineIcon :size="20" />
-								</template>
-							</NcButton>
-
 							<a
 								v-if="ticket.githubIssueNumber"
 								class="pw-github-link pw-github-link--icon"
@@ -519,6 +469,73 @@
 					:orgInternal="orgInternal"
 					:customer="customer"
 					@changed="$emit('commentsChanged')" />
+
+				<!--
+					Feststehende Fußzeile (#331): die Lebenszyklus-Aktionen
+					beschriftet und immer sichtbar, statt icon-only oben rechts.
+					Klebt unten (position: sticky), spiegelbildlich zum klebenden
+					Kopf. „Zurück" links schließt nur das Modal; die Ausgänge rechts,
+					Löschen rot und abgesetzt, damit das Endgültige nicht zum
+					Fehlklick einlädt (die Rückfrage bleibt trotzdem).
+				-->
+				<footer class="pw-detail__fuss">
+					<NcButton
+						variant="tertiary"
+						:disabled="busy"
+						@click="$emit('close')">
+						{{ t('projektwerk', 'Zurück') }}
+					</NcButton>
+
+					<div class="pw-detail__fuss-aktionen">
+						<template v-if="!ticket.closedAt">
+							<NcButton
+								variant="primary"
+								:disabled="busy"
+								:title="t('projektwerk', 'Als erledigt abschließen')"
+								:ariaLabel="t('projektwerk', 'Als erledigt abschließen')"
+								@click="closeWith('done')">
+								<template #icon>
+									<CheckIcon :size="20" />
+								</template>
+								{{ t('projektwerk', 'Erledigt') }}
+							</NcButton>
+							<NcButton
+								variant="secondary"
+								:disabled="busy"
+								:title="t('projektwerk', 'Als verworfen abschließen')"
+								:ariaLabel="t('projektwerk', 'Als verworfen abschließen')"
+								@click="closeWith('discarded')">
+								<template #icon>
+									<CancelIcon :size="20" />
+								</template>
+								{{ t('projektwerk', 'Verworfen') }}
+							</NcButton>
+						</template>
+						<NcButton
+							v-else
+							variant="secondary"
+							:disabled="busy"
+							@click="reopen">
+							<template #icon>
+								<RestoreIcon :size="20" />
+							</template>
+							{{ t('projektwerk', 'Wieder öffnen') }}
+						</NcButton>
+
+						<NcButton
+							class="pw-detail__loeschen"
+							variant="tertiary"
+							:disabled="busy"
+							:title="t('projektwerk', 'Endgültig löschen')"
+							:ariaLabel="t('projektwerk', 'Endgültig löschen')"
+							@click="$emit('delete', ticket)">
+							<template #icon>
+								<DeleteOutlineIcon :size="20" />
+							</template>
+							{{ t('projektwerk', 'Löschen') }}
+						</NcButton>
+					</div>
+				</footer>
 			</div>
 		</div>
 	</NcModal>

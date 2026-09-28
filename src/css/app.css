@@ -848,6 +848,63 @@
 	box-shadow: 0 1px 0 var(--color-border);
 }
 
+/*
+ * Feststehende Fußzeile mit den Lebenszyklus-Aktionen (#331). Klebt unten,
+ * spiegelbildlich zum klebenden Kopf (`.pw-kopf`): Scroll-Container ist NcModals
+ * `.modal-container__content`, die Zeile bleibt beim Scrollen stehen. `z-index: 1`
+ * wie der Kopf — der Schließen-Knopf von NcModal sitzt oben rechts, die Fußzeile
+ * unten, sie kollidieren nicht.
+ */
+.app-projektwerk .pw-detail__fuss {
+	position: sticky;
+	bottom: 0;
+	z-index: 1;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-block-start: 4px;
+	padding-block: 8px;
+	background: var(--color-main-background);
+	box-shadow: 0 -1px 0 var(--color-border);
+}
+
+/* „Zurück" links, die Ausgänge und Löschen rechts. */
+.app-projektwerk .pw-detail__fuss-aktionen {
+	margin-inline-start: auto;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+}
+
+/*
+ * Löschen abgesetzt und rot (#331): endgültig, darum nicht als gleichwertiger
+ * Knopf. Rote Schrift statt roter Fläche — deutlich, ohne die Zeile zu
+ * dominieren; die Rückfrage bleibt der eigentliche Schutz.
+ */
+.app-projektwerk .pw-detail__loeschen {
+	margin-inline-start: 12px;
+	/*
+	 * `--color-error-text` (dunkles Rot), NICHT `--color-error`: Letzteres ist
+	 * in NCs Token-System eine helle Fehler-Fläche (#FFE7E7) und als Schriftfarbe
+	 * unlesbar.
+	 */
+	color: var(--color-error-text);
+}
+
+/*
+ * Sichtbarkeit (und der GitHub-Bezug dahinter) rückt nach rechts, seit die
+ * Lebenszyklus-Aktionen in die Fußzeile gewandert sind (#331). `margin-auto`
+ * auf dem Sichtbarkeits-Element schiebt es samt allem danach an den rechten
+ * Rand; links bleiben Nummer und Spaltenname. Beide Ausprägungen (Schalter der
+ * besitzenden Seite, Chip für die andere) tragen es.
+ */
+.app-projektwerk .pw-meta > .pw-viscontrol,
+.app-projektwerk .pw-meta > .pw-vis {
+	margin-inline-start: auto;
+}
+
 /* Der Abschließen-/Wieder-öffnen-Knopf sitzt links unter der Wartemarke (#168). */
 /* Der Link zum überführten GitHub-Issue (#12) — jetzt als Icon im
    Kopf-Aktions-Cluster (#182), Nummer im Tooltip. */
@@ -981,11 +1038,11 @@
 }
 
 /*
- * Kopf-Aktionen (#182, verfeinert): Icon-Knöpfe in der Steuerungs-Zeile, dicht
- * gesetzt, direkt rechts neben der Sichtbarkeit. **Kein eigenes
+ * Kopf-Aktionen (#182, seit #331 nur noch der GitHub-Bezug): Icon-Knopf in der
+ * Steuerungs-Zeile, direkt rechts neben der Sichtbarkeit. **Kein eigenes
  * `margin-inline-start: auto`** — das trägt bereits `.pw-viscontrol`, das die
- * Gruppe (Sichtbarkeit + Aktionen) gemeinsam an den rechten Rand schiebt. Ein
- * zweites Auto risse die beiden auseinander.
+ * Gruppe (Sichtbarkeit + GitHub-Bezug) gemeinsam an den rechten Rand schiebt.
+ * Ein zweites Auto risse die beiden auseinander.
  */
 .app-projektwerk .pw-detail__kopfaktionen {
 	display: flex;
@@ -993,8 +1050,8 @@
 	flex: 0 0 auto;
 	gap: 2px;
 	/* Deutlicher Abstand zum Sichtbarkeits-Block, damit „wer sieht das" und
-	   „was passiert damit" als zwei Gruppen lesbar bleiben (kommt zum 8-px-Gap
-	   der Meta-Zeile hinzu). */
+	   der GitHub-Bezug lesbar auseinanderstehen (kommt zum 8-px-Gap der
+	   Meta-Zeile hinzu). */
 	margin-inline-start: 16px;
 }
 

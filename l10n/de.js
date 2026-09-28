@@ -456,6 +456,7 @@ OC.L10N.register(
     "Der Server hat kein JSON geliefert. Bitte das Server-Protokoll prüfen." : "Der Server hat kein JSON geliefert. Bitte das Server-Protokoll prüfen.",
     "Neuerungen" : "Neuerungen",
     "Noch keine Neuerungen." : "Noch keine Neuerungen.",
-    "Schließen" : "Schließen"
+    "Schließen" : "Schließen",
+    "Endgültig löschen" : "Endgültig löschen"
 },
 "nplurals=2; plural=(n != 1);");

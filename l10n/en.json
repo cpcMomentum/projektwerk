@@ -497,7 +497,8 @@
 		"Der Server hat kein JSON geliefert. Bitte das Server-Protokoll prüfen.": "The server did not return JSON. Please check the server log.",
 		"Neuerungen": "What's new",
 		"Noch keine Neuerungen.": "No news yet.",
-		"Schließen": "Close"
+		"Schließen": "Close",
+		"Endgültig löschen": "Delete permanently"
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }
