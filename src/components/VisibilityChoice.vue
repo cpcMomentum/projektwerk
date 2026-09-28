@@ -46,24 +46,6 @@
 			{{ selectedHint }}
 		</p>
 
-		<!--
-			Warum eine Stufe fehlt, muss **sichtbar** dastehen. Frueher trug der
-			gesperrte Knopf den Grund im Text; als `title` allein waere er auf dem
-			Telefon unerreichbar, weil es dort kein Ueberfahren gibt.
-
-			**Und deshalb haengt er nicht mehr an `hideHints`** (#103). Bis dahin
-			lag er mit dem Erklaersatz im selben Zweig und war im Vorgang damit
-			nie zu sehen: Dort stand „Nur ich" grau da, ohne ein Wort dazu, warum.
-			Der Satz oben nahm das schon fuer sich in Anspruch — die Regel stand
-			im Kommentar und war seit #99 ausser Kraft.
-
-			Der Unterschied ist der Grund: Der Erklaersatz sagt, was eine Stufe
-			bedeutet, und das sagt die Beschriftung im Vorgang bereits. Warum eine
-			Stufe **nicht waehlbar** ist, sagt sie nicht.
-		-->
-		<p v-if="blockedReason !== ''" class="pw-vishint pw-vishint--blocked">
-			{{ blockedReason }}
-		</p>
 	</div>
 </template>
 
@@ -116,7 +98,6 @@ export default defineComponent({
 		 * ihn nicht.
 		 */
 		unavailable: { type: Array as PropType<Visibility[]>, default: () => [] },
-		blockedHint: { type: String, default: '' },
 		/**
 		 * Ein Wechsel läuft gerade.
 		 *
@@ -147,17 +128,6 @@ export default defineComponent({
 		/** Die Erklärung zu der Stufe, die gerade gilt. */
 		selectedHint(): string {
 			return this.options.find((o) => o.value === this.modelValue)?.hint ?? ''
-		},
-
-		/**
-		 * Der Grund, falls hier eine Stufe fehlt — sonst leer.
-		 *
-		 * Eine Zeile für alle gesperrten zusammen: Bisher ist immer höchstens
-		 * `private` gesperrt, und drei Gründe untereinander wären wieder die
-		 * Wand aus Text, die dieser Umbau abgeräumt hat.
-		 */
-		blockedReason(): string {
-			return this.unavailable.length > 0 ? this.blockedHint : ''
 		},
 
 		options(): { value: Visibility, name: string, hint: string }[] {
