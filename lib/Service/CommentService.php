@@ -88,9 +88,35 @@ class CommentService {
 
 		$gespeichert = $this->comments->insert($comment);
 
+		// **@-Erwähnungen zuerst bestimmen** (#202, #347): Wer im Text
+		// ausdrücklich genannt wird, wird gepingt — auch wenn er nicht beteiligt
+		// ist. Aber **nur, wer den Vorgang sehen darf:** Die genannten Kennungen
+		// werden gegen die sichtbare Menge geschnitten, bevor irgendetwas
+		// entsteht. `announce()` blockt zwar Privates und die eigene Handlung,
+		// prüft bei einem öffentlichen Vorgang aber nicht die Mitgliedschaft —
+		// ein `@fremde-kennung` erreichte einen Außenstehenden sonst und verriete
+		// ihm die Existenz des Vorgangs.
+		//
+		// `assignableFor()` laedt Mitgliederliste und Ticket erneut — das lohnt
+		// sich nur, wenn ueberhaupt eine Erwaehnung im Text steht. Der weit
+		// haeufigere Kommentar ohne `@` bekommt so keine zusaetzliche Abfrage.
+		//
+		// Die Erwähnten werden **vor** dem Rundruf ermittelt, weil sie ihn
+		// beschneiden (#347): Wer erwähnt ist, bekommt die spezifischere
+		// Erwähnungs-Nachricht und **nicht zusätzlich** die allgemeine
+		// Beteiligten-Nachricht — sonst zwei Mails und zwei Glocken für ein und
+		// dieselbe Handlung.
+		$erwaehnte = $this->mentionsAus($text);
+		$erwaehntUids = [];
+		if ($erwaehnte !== []) {
+			$sichtbar = $this->steps->assignableFor($viewer, $ticketId);
+			$erwaehntUids = array_values(array_intersect($erwaehnte, $sichtbar));
+		}
+
 		// **Ankuendigen und senden — nach dem Schreiben** (#98). Erst hier steht
 		// der Kommentar in der Datenbank; die Empfaengermenge liest ihn mit, und
-		// die auslesende Person faellt in `announce()` ohnehin heraus.
+		// die auslesende Person faellt in `announce()` ohnehin heraus. Die
+		// Erwähnten sind ausgenommen, sie werden gleich eigens bedient (#347).
 		//
 		// Der Versand haengt bewusst **hinter** dem Insert: Ein toter Mailserver
 		// darf einen geschriebenen Kommentar nicht mitreissen. Dieselbe
@@ -99,34 +125,20 @@ class CommentService {
 			$ticket,
 			$viewer->userId,
 			MailOutbox::EVENT_COMMENT_ADDED,
+			$erwaehntUids,
 		);
 		$this->notifications->deliver($vorgemerkt, $ticket);
 
-		// **@-Erwähnungen** (#202): Wer im Text ausdrücklich genannt wird, wird
-		// gepingt — auch wenn er nicht beteiligt ist. Aber **nur, wer den Vorgang
-		// sehen darf:** Die genannten Kennungen werden gegen die sichtbare Menge
-		// geschnitten, bevor irgendetwas entsteht. `announce()` blockt zwar
-		// Privates und die eigene Handlung, prüft bei einem öffentlichen Vorgang
-		// aber nicht die Mitgliedschaft — ein `@fremde-kennung` erreichte einen
-		// Außenstehenden sonst und verriete ihm die Existenz des Vorgangs. Eigener
-		// Anlass, deshalb nicht von der Kommentar-Drossel betroffen: Eine direkte
-		// Erwähnung soll ankommen.
-		//
-		// `assignableFor()` laedt Mitgliederliste und Ticket erneut — das lohnt
-		// sich nur, wenn ueberhaupt eine Erwaehnung im Text steht. Der weit
-		// haeufigere Kommentar ohne `@` bekommt so keine zusaetzliche Abfrage.
-		$erwaehnte = $this->mentionsAus($text);
+		// **Die Erwähnungen** (#202): eigener Anlass, deshalb nicht von der
+		// Kommentar-Drossel betroffen — eine direkte Erwähnung soll ankommen.
 		$erwaehnt = [];
-		if ($erwaehnte !== []) {
-			$sichtbar = $this->steps->assignableFor($viewer, $ticketId);
-			foreach (array_intersect($erwaehnte, $sichtbar) as $uid) {
-				$erwaehnt = [...$erwaehnt, ...$this->notifications->announce(
-					$ticket,
-					$uid,
-					$viewer->userId,
-					MailOutbox::EVENT_COMMENT_MENTION,
-				)];
-			}
+		foreach ($erwaehntUids as $uid) {
+			$erwaehnt = [...$erwaehnt, ...$this->notifications->announce(
+				$ticket,
+				$uid,
+				$viewer->userId,
+				MailOutbox::EVENT_COMMENT_MENTION,
+			)];
 		}
 		$this->notifications->deliver($erwaehnt, $ticket);
 

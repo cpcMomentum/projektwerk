@@ -131,12 +131,20 @@ class NotificationService {
 	 * sitzen die Sichtbarkeitsregel, der Ausschluss der auslösenden Person und
 	 * der Schalter je Projekt. Diese Methode entscheidet nichts davon neu.
 	 *
+	 * **`$exclude` verhindert die Doppelzustellung** (#347): Wer für dieselbe
+	 * Handlung schon aus einem spezifischeren Anlass benachrichtigt wird — eine
+	 * @-Erwähnung im Kommentar —, soll nicht zusätzlich die allgemeine
+	 * Beteiligten-Nachricht bekommen. Der Aufrufer, der beide Anlässe kennt,
+	 * reicht die bereits bedienten Kennungen hier herein; die Vorrang-Entscheidung
+	 * (Erwähnung schlägt Kommentar) trifft er, nicht diese Methode.
+	 *
 	 * @param Ticket $ticket Der Vorgang, um den es geht.
 	 * @param string $actorUid Wer die Handlung ausgelöst hat.
 	 * @param string $event Einer der `EVENT_*`-Werte aus {@see MailOutbox}.
+	 * @param string[] $exclude Kennungen, die bereits anderweitig bedient werden und deshalb übersprungen werden.
 	 * @return MailOutbox[] Was nach dem Commit zu senden ist.
 	 */
-	public function announceToInvolved(Ticket $ticket, string $actorUid, string $event): array {
+	public function announceToInvolved(Ticket $ticket, string $actorUid, string $event, array $exclude = []): array {
 		$ticketId = (int)$ticket->getId();
 
 		$beteiligte = [
@@ -154,6 +162,9 @@ class NotificationService {
 
 		$vorgemerkt = [];
 		foreach (array_unique(array_filter($beteiligte)) as $uid) {
+			if (in_array($uid, $exclude, true)) {
+				continue;
+			}
 			$vorgemerkt = [...$vorgemerkt, ...$this->announce($ticket, $uid, $actorUid, $event)];
 		}
 

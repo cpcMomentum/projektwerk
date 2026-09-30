@@ -72,6 +72,37 @@ class CommentWritePathTest extends IntegrationTestCase {
 	}
 
 	/**
+	 * **Erwähnung schlägt Beteiligung — keine Doppelzustellung** (#347).
+	 *
+	 * Bert kommentiert an Annas Vorgang und erwähnt Anna. Anna ist zugleich
+	 * beteiligt (Erstellerin und Verantwortliche) und erwähnt. Ohne Vorrang
+	 * bekäme sie beides: die allgemeine `comment_added`-Nachricht und die
+	 * `comment_mention`. Sie soll aber genau **eine** bekommen — die
+	 * spezifischere Erwähnung —, nicht zwei Mails und zwei Glocken für ein und
+	 * dieselbe Handlung.
+	 */
+	public function testAMentionedInvolvedPersonGetsTheMentionButNotAlsoTheCommentNotice(): void {
+		$outbox = Server::get(MailOutboxMapper::class);
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+		$vergangen = (new \DateTime())->modify('-1 hour');
+
+		$this->comments->create(
+			$this->contextFor(LeakMatrixFixture::BERT),
+			$ticketId,
+			'Danke @lm-anna, schaust du bitte drauf?',
+		);
+
+		$this->assertTrue(
+			$outbox->existsSince(LeakMatrixFixture::ANNA, $ticketId, MailOutbox::EVENT_COMMENT_MENTION, $vergangen),
+			'Die erwähnte, beteiligte Anna bekommt die Erwähnung.',
+		);
+		$this->assertFalse(
+			$outbox->existsSince(LeakMatrixFixture::ANNA, $ticketId, MailOutbox::EVENT_COMMENT_ADDED, $vergangen),
+			'Sie bekommt NICHT zusätzlich die allgemeine Kommentar-Benachrichtigung.',
+		);
+	}
+
+	/**
 	 * **Verwaltungsrecht ist kein Schreibrecht am fremden Beitrag.**
 	 *
 	 * Anna verwaltet dieses Board. Sie sieht Berts Kommentar, sie darf Spalten
