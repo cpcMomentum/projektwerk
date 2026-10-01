@@ -86,14 +86,7 @@ class NotificationService {
 	 * @return MailOutbox[] Was nach dem Commit zu senden ist.
 	 */
 	public function announce(Ticket $ticket, string $recipientUid, string $actorUid, string $event, ?string $stepTitle = null): array {
-		if (!$this->darfBenachrichtigtWerden($ticket, $recipientUid, $actorUid)) {
-			return [];
-		}
-
-		// **Wovon** — je Projekt, mit globaler Vorgabe. Der Anlass entscheidet
-		// zuerst; wer diesen Anlass in diesem Projekt nicht will, bekommt auf
-		// keinem Kanal etwas.
-		if (!$this->prefs->isEnabled($recipientUid, $event, (int)$ticket->getBoardId())) {
+		if (!$this->greift($ticket, $recipientUid, $actorUid, $event)) {
 			return [];
 		}
 
@@ -102,6 +95,73 @@ class NotificationService {
 		$zeile = $this->mail->queue($recipientUid, (int)$ticket->getId(), $event, (int)$ticket->getBoardId(), $actorUid, $stepTitle);
 
 		return $zeile === null ? [] : [$zeile];
+	}
+
+	/**
+	 * Greift dieser Anlass für diese Person überhaupt?
+	 *
+	 * Die zwei Bedingungen, die **vor** jedem Kanal stehen: die Regeln aus §5.21
+	 * (privat / eigene Handlung / gültiger Empfänger) und der Projekt-Schalter
+	 * für genau diesen Anlass. Sind beide erfüllt, entsteht mindestens auf einem
+	 * Kanal etwas — sonst gar nichts.
+	 *
+	 * **Warum das eine eigene Methode ist** (#347): Ob eine Erwähnung eine Person
+	 * erreicht, lässt sich am Rückgabewert von {@see announce()} nicht ablesen —
+	 * der führt nur die Mail-Zeile, nicht die Glocke, und ist bei abgeschaltetem
+	 * Mail-Kanal oder gedrosselter Mail leer, obwohl die Glocke lief. Wer daran
+	 * entscheidet, ob die allgemeine Kommentar-Nachricht entfällt, träfe die
+	 * „nur Glocke"-Person doppelt. Die Vorrang-Entscheidung in
+	 * {@see announceComment()} fragt deshalb diesen Anlass, nicht die Zeile.
+	 *
+	 * @param string $event Einer der `EVENT_*`-Werte aus {@see MailOutbox}.
+	 */
+	private function greift(Ticket $ticket, string $recipientUid, string $actorUid, string $event): bool {
+		if (!$this->darfBenachrichtigtWerden($ticket, $recipientUid, $actorUid)) {
+			return false;
+		}
+
+		// **Wovon** — je Projekt, mit globaler Vorgabe. Der Anlass entscheidet
+		// zuerst; wer diesen Anlass in diesem Projekt nicht will, bekommt auf
+		// keinem Kanal etwas.
+		return $this->prefs->isEnabled($recipientUid, $event, (int)$ticket->getBoardId());
+	}
+
+	/**
+	 * Ein Kommentar: der Rundruf an die Beteiligten und die @-Erwähnungen, mit
+	 * **Vorrang für die Erwähnung** (#347).
+	 *
+	 * Wer erwähnt wird **und von der Erwähnung erreicht wird**, bekommt nur diese
+	 * — nicht zusätzlich die allgemeine `comment_added`-Nachricht; sonst zwei
+	 * Mails und zwei Glocken für ein und dieselbe Handlung. Entscheidend ist
+	 * „erreicht die Erwähnung" ({@see greift()}), **nicht** „hat die Erwähnung
+	 * eine Mail-Zeile ergeben": Wer `comment_mention` abgeschaltet hat, wird von
+	 * ihr nicht erreicht und bleibt deshalb im Rundruf — seine `comment_added`
+	 * geht normal raus.
+	 *
+	 * Die sichtbar geschnittene Erwähntenliste reicht der Aufrufer herein: Welche
+	 * Kennung den Vorgang sehen darf, beantwortet dort `assignableFor()` — die
+	 * eine Stelle dafür.
+	 *
+	 * @param Ticket $ticket Der Vorgang.
+	 * @param string $actorUid Wer kommentiert hat.
+	 * @param string[] $mentionUids Die erwähnten, sichtberechtigten Kennungen.
+	 * @return MailOutbox[] Was nach dem Commit zu senden ist.
+	 */
+	public function announceComment(Ticket $ticket, string $actorUid, array $mentionUids): array {
+		// Erst die Erwähnungen — und zugleich merken, wen sie tatsächlich
+		// erreichen. Nur diese fallen aus dem Rundruf.
+		$erwaehnt = [];
+		$erreicht = [];
+		foreach (array_values(array_unique($mentionUids)) as $uid) {
+			if ($this->greift($ticket, $uid, $actorUid, MailOutbox::EVENT_COMMENT_MENTION)) {
+				$erreicht[] = $uid;
+			}
+			$erwaehnt = [...$erwaehnt, ...$this->announce($ticket, $uid, $actorUid, MailOutbox::EVENT_COMMENT_MENTION)];
+		}
+
+		$vorgemerkt = $this->announceToInvolved($ticket, $actorUid, MailOutbox::EVENT_COMMENT_ADDED, $erreicht);
+
+		return [...$vorgemerkt, ...$erwaehnt];
 	}
 
 	/**

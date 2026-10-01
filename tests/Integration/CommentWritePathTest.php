@@ -14,8 +14,11 @@ use OCA\Projektwerk\Db\Comment;
 use OCA\Projektwerk\Db\CommentMapper;
 use OCA\Projektwerk\Db\MailOutbox;
 use OCA\Projektwerk\Db\MailOutboxMapper;
+use OCA\Projektwerk\Db\NotifyPref;
+use OCA\Projektwerk\Db\NotifyPrefMapper;
 use OCA\Projektwerk\Service\CommentService;
 use OCA\Projektwerk\Service\NotAuthorException;
+use OCA\Projektwerk\Service\NotifyPrefService;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\Server;
 
@@ -99,6 +102,44 @@ class CommentWritePathTest extends IntegrationTestCase {
 		$this->assertFalse(
 			$outbox->existsSince(LeakMatrixFixture::ANNA, $ticketId, MailOutbox::EVENT_COMMENT_ADDED, $vergangen),
 			'Sie bekommt NICHT zusätzlich die allgemeine Kommentar-Benachrichtigung.',
+		);
+	}
+
+	/**
+	 * **Wer Erwähnungen abgeschaltet hat, bleibt im Kommentar-Rundruf** (#347).
+	 *
+	 * Die Gegenprobe zum Vorrang: Anna ist beteiligt und wird erwähnt, hat aber
+	 * `comment_mention` für sich abgeschaltet. Dann erreicht die Erwähnung sie
+	 * nicht — und genau deshalb darf sie nicht aus dem Rundruf fallen. Sie bekommt
+	 * die allgemeine `comment_added`-Nachricht, die ihre Einstellung weiter
+	 * zulässt. Der Vorrang greift am erreichten Anlass, nicht an der bloßen
+	 * Nennung im Text.
+	 */
+	public function testAMentionedPersonWhoMutedMentionsStillGetsTheCommentNotice(): void {
+		Server::get(NotifyPrefService::class)->set(
+			LeakMatrixFixture::ANNA,
+			NotifyPref::EVENT_COMMENT_MENTION,
+			NotifyPrefMapper::GLOBAL_SCOPE,
+			false,
+		);
+
+		$outbox = Server::get(MailOutboxMapper::class);
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+		$vergangen = (new \DateTime())->modify('-1 hour');
+
+		$this->comments->create(
+			$this->contextFor(LeakMatrixFixture::BERT),
+			$ticketId,
+			'Bitte @lm-anna draufschauen.',
+		);
+
+		$this->assertFalse(
+			$outbox->existsSince(LeakMatrixFixture::ANNA, $ticketId, MailOutbox::EVENT_COMMENT_MENTION, $vergangen),
+			'Mit abgeschalteter Erwähnung entsteht keine Mention.',
+		);
+		$this->assertTrue(
+			$outbox->existsSince(LeakMatrixFixture::ANNA, $ticketId, MailOutbox::EVENT_COMMENT_ADDED, $vergangen),
+			'Sie bleibt im Rundruf und bekommt die allgemeine Kommentar-Benachrichtigung.',
 		);
 	}
 

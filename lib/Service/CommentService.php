@@ -88,11 +88,10 @@ class CommentService {
 
 		$gespeichert = $this->comments->insert($comment);
 
-		// **@-Erwähnungen zuerst bestimmen** (#202, #347): Wer im Text
-		// ausdrücklich genannt wird, wird gepingt — auch wenn er nicht beteiligt
-		// ist. Aber **nur, wer den Vorgang sehen darf:** Die genannten Kennungen
-		// werden gegen die sichtbare Menge geschnitten, bevor irgendetwas
-		// entsteht. `announce()` blockt zwar Privates und die eigene Handlung,
+		// **@-Erwähnungen** (#202): Wer im Text ausdrücklich genannt wird, wird
+		// gepingt — auch wenn er nicht beteiligt ist. Aber **nur, wer den Vorgang
+		// sehen darf:** Die genannten Kennungen werden gegen die sichtbare Menge
+		// geschnitten. `announce()` blockt zwar Privates und die eigene Handlung,
 		// prüft bei einem öffentlichen Vorgang aber nicht die Mitgliedschaft —
 		// ein `@fremde-kennung` erreichte einen Außenstehenden sonst und verriete
 		// ihm die Existenz des Vorgangs.
@@ -100,12 +99,6 @@ class CommentService {
 		// `assignableFor()` laedt Mitgliederliste und Ticket erneut — das lohnt
 		// sich nur, wenn ueberhaupt eine Erwaehnung im Text steht. Der weit
 		// haeufigere Kommentar ohne `@` bekommt so keine zusaetzliche Abfrage.
-		//
-		// Die Erwähnten werden **vor** dem Rundruf ermittelt, weil sie ihn
-		// beschneiden (#347): Wer erwähnt ist, bekommt die spezifischere
-		// Erwähnungs-Nachricht und **nicht zusätzlich** die allgemeine
-		// Beteiligten-Nachricht — sonst zwei Mails und zwei Glocken für ein und
-		// dieselbe Handlung.
 		$erwaehnte = $this->mentionsAus($text);
 		$erwaehntUids = [];
 		if ($erwaehnte !== []) {
@@ -115,32 +108,19 @@ class CommentService {
 
 		// **Ankuendigen und senden — nach dem Schreiben** (#98). Erst hier steht
 		// der Kommentar in der Datenbank; die Empfaengermenge liest ihn mit, und
-		// die auslesende Person faellt in `announce()` ohnehin heraus. Die
-		// Erwähnten sind ausgenommen, sie werden gleich eigens bedient (#347).
+		// die auslesende Person faellt in `announce()` ohnehin heraus.
+		//
+		// Rundruf an die Beteiligten **und** die Erwähnungen, mit Vorrang für die
+		// Erwähnung — die Deduplizierung (#347) wohnt in {@see
+		// NotificationService::announceComment()}, wo auch der Projekt-Schalter
+		// und die §5.21-Regeln sitzen. Diese Stelle liefert nur die sichtbar
+		// geschnittene Erwähntenliste.
 		//
 		// Der Versand haengt bewusst **hinter** dem Insert: Ein toter Mailserver
 		// darf einen geschriebenen Kommentar nicht mitreissen. Dieselbe
 		// Reihenfolge wie bei Ticket und Arbeitsschritt.
-		$vorgemerkt = $this->notifications->announceToInvolved(
-			$ticket,
-			$viewer->userId,
-			MailOutbox::EVENT_COMMENT_ADDED,
-			$erwaehntUids,
-		);
+		$vorgemerkt = $this->notifications->announceComment($ticket, $viewer->userId, $erwaehntUids);
 		$this->notifications->deliver($vorgemerkt, $ticket);
-
-		// **Die Erwähnungen** (#202): eigener Anlass, deshalb nicht von der
-		// Kommentar-Drossel betroffen — eine direkte Erwähnung soll ankommen.
-		$erwaehnt = [];
-		foreach ($erwaehntUids as $uid) {
-			$erwaehnt = [...$erwaehnt, ...$this->notifications->announce(
-				$ticket,
-				$uid,
-				$viewer->userId,
-				MailOutbox::EVENT_COMMENT_MENTION,
-			)];
-		}
-		$this->notifications->deliver($erwaehnt, $ticket);
 
 		return $gespeichert;
 	}
