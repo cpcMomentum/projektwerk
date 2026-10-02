@@ -456,6 +456,7 @@ OC.L10N.register(
     "Neuerungen" : "What's new",
     "Noch keine Neuerungen." : "No news yet.",
     "Schließen" : "Close",
-    "Endgültig löschen" : "Delete permanently"
+    "Endgültig löschen" : "Delete permanently",
+    "Erledigt: {title}" : "Done: {title}"
 },
 "nplurals=2; plural=(n != 1);");

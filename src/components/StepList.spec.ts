@@ -69,7 +69,8 @@ vi.mock('@nextcloud/vue/components/NcDateTimePicker', () => ({
 	// wird — ein Stub, der schon einen ISO-Tag lieferte, prüfte nichts.
 	default: {
 		name: 'NcDateTimePicker',
-		props: ['modelValue'],
+		// `disabled` als Prop, nicht am input: Der echte Wähler löst trotzdem aus (gemessen, #344).
+		props: ['modelValue', 'disabled'],
 		emits: ['update:modelValue'],
 		template: '<input type="date" class="pw-test-datum" @input="$emit(\'update:modelValue\', $event.target.value === \'\' ? null : new Date($event.target.value + \'T00:00\'))">',
 	},
@@ -208,7 +209,8 @@ describe('StepList', () => {
 		const wrapper = mountList([mitFrist('2026-08-11')])
 		await oeffneZeile(wrapper)
 
-		await wrapper.find('.pw-step__felder-text textarea').setValue('Hetzner 12, IONOS 15, Empfehlung Hetzner')
+		// Zwei Textareas: Beschreibung, dann Ergebnis.
+		await wrapper.findAll('.pw-step__felder-text textarea')[1].setValue('Hetzner 12, IONOS 15, Empfehlung Hetzner')
 		// Kein Schreiben, solange nur getippt wird.
 		expect(updateStep).not.toHaveBeenCalled()
 
@@ -278,6 +280,82 @@ describe('StepList', () => {
 		await new Promise((resolve) => setTimeout(resolve, 0))
 
 		expect(updateStep).not.toHaveBeenCalled()
+	})
+
+	it('öffnet den Schritt per Klick auf den Titel, ohne abzuhaken', async () => {
+		const wrapper = mountList([mitFrist('2026-08-11')])
+		await wrapper.find('.pw-step__title').trigger('click')
+		await wrapper.vm.$nextTick()
+
+		expect(wrapper.find('.pw-step__felder-text').exists()).toBe(true)
+		expect(updateStep).not.toHaveBeenCalled()
+	})
+
+	it('setzt den Fokus beim Öffnen ins Titelfeld', async () => {
+		const wrapper = mount(StepList, {
+			props: { boardId: 7, ticketId: 42, steps: [mitFrist('2026-08-11')], members: MEMBERS },
+			attachTo: document.body,
+		})
+		await wrapper.find('.pw-step__title').trigger('click')
+		await wrapper.vm.$nextTick()
+		await wrapper.vm.$nextTick()
+
+		expect(document.activeElement).toBe(wrapper.find('.pw-step__felder-text input').element)
+		wrapper.unmount()
+	})
+
+	it('schließt die Lösch-Rückfrage, wenn der Schritt geöffnet wird', async () => {
+		const wrapper = mountList([mitFrist('2026-08-11')])
+		await wrapper.findAll('.pw-step__rechts button').at(-1)!.trigger('click')
+		expect(wrapper.find('.pw-step__confirm').exists()).toBe(true)
+
+		await wrapper.find('.pw-step__title').trigger('click')
+		await wrapper.vm.$nextTick()
+
+		expect(wrapper.find('.pw-step__confirm').exists()).toBe(false)
+	})
+
+	it('speichert eine Frist, die während des Zuweisens gewählt wird', async () => {
+		let zuweisungFertig!: () => void
+		updateStep.mockImplementationOnce(() => new Promise<void>((resolve) => {
+			zuweisungFertig = resolve
+		}))
+		const wrapper = mountList([mitFrist('2026-08-11')])
+		await oeffneZeile(wrapper)
+		await new Promise((resolve) => setTimeout(resolve, 0))
+
+		await wrapper.find('.pw-step .pw-test-person').setValue('carla')
+		await wrapper.find('.pw-step .pw-test-datum').setValue('2026-08-20')
+		zuweisungFertig()
+		await new Promise((resolve) => setTimeout(resolve, 0))
+		await new Promise((resolve) => setTimeout(resolve, 0))
+
+		expect(updateStep).toHaveBeenCalledWith(7, 5, { assignedUserId: 'carla' })
+		expect(updateStep).toHaveBeenCalledWith(7, 5, { dueDate: '2026-08-20' })
+	})
+
+	it('hakt per Kästchen ab, ohne den Schritt zu öffnen', async () => {
+		const wrapper = mountList([mitFrist('2026-08-11')])
+		await wrapper.find('.pw-step__check input[type="checkbox"]').setValue(true)
+		await new Promise((resolve) => setTimeout(resolve, 0))
+
+		expect(updateStep).toHaveBeenCalledWith(7, 5, { done: true })
+		expect(wrapper.find('.pw-step__felder-text').exists()).toBe(false)
+	})
+
+	it('zeigt im geöffneten Schritt den Titel nur im Eingabefeld', async () => {
+		const wrapper = mountList([mitFrist('2026-08-11')])
+		await oeffneZeile(wrapper)
+
+		expect(wrapper.find('.pw-step__title').exists()).toBe(false)
+		expect(wrapper.text()).not.toContain('Mit Frist')
+	})
+
+	it('baut Beschreibung und Ergebnis gleich als mehrzeilige Felder', async () => {
+		const wrapper = mountList([mitFrist('2026-08-11')])
+		await oeffneZeile(wrapper)
+
+		expect(wrapper.findAll('.pw-step__felder-text textarea')).toHaveLength(2)
 	})
 
 	/**
