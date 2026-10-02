@@ -90,6 +90,22 @@ class NotificationService {
 			return [];
 		}
 
+		return $this->zustellen($ticket, $recipientUid, $actorUid, $event, $stepTitle);
+	}
+
+	/**
+	 * Zustellen, **nachdem** {@see greift()} schon ja gesagt hat — Glocke und
+	 * vorgemerkte Mail-Zeile.
+	 *
+	 * Von {@see announce()} getrennt, damit {@see announceComment()} den Anlass
+	 * genau einmal prüfen kann: Dort wird `greift()` für die Vorrang-Entscheidung
+	 * ohnehin gebraucht, und ein zweites Mal durch `announce()` wäre eine
+	 * doppelte Auswertung derselben Frage.
+	 *
+	 * @param string $event Einer der `EVENT_*`-Werte aus {@see MailOutbox}.
+	 * @return MailOutbox[] Die Mail-Zeile, falls eine entsteht; sonst leer.
+	 */
+	private function zustellen(Ticket $ticket, string $recipientUid, string $actorUid, string $event, ?string $stepTitle = null): array {
 		$this->bell($ticket, $recipientUid, $event);
 
 		$zeile = $this->mail->queue($recipientUid, (int)$ticket->getId(), $event, (int)$ticket->getBoardId(), $actorUid, $stepTitle);
@@ -149,14 +165,17 @@ class NotificationService {
 	 */
 	public function announceComment(Ticket $ticket, string $actorUid, array $mentionUids): array {
 		// Erst die Erwähnungen — und zugleich merken, wen sie tatsächlich
-		// erreichen. Nur diese fallen aus dem Rundruf.
+		// erreichen. Nur diese fallen aus dem Rundruf. `greift()` wird je Person
+		// genau einmal ausgewertet: Es entscheidet den Ausschluss und schaltet
+		// zugleich die Zustellung frei.
 		$erwaehnt = [];
 		$erreicht = [];
 		foreach (array_values(array_unique($mentionUids)) as $uid) {
-			if ($this->greift($ticket, $uid, $actorUid, MailOutbox::EVENT_COMMENT_MENTION)) {
-				$erreicht[] = $uid;
+			if (!$this->greift($ticket, $uid, $actorUid, MailOutbox::EVENT_COMMENT_MENTION)) {
+				continue;
 			}
-			$erwaehnt = [...$erwaehnt, ...$this->announce($ticket, $uid, $actorUid, MailOutbox::EVENT_COMMENT_MENTION)];
+			$erreicht[] = $uid;
+			$erwaehnt = [...$erwaehnt, ...$this->zustellen($ticket, $uid, $actorUid, MailOutbox::EVENT_COMMENT_MENTION)];
 		}
 
 		$vorgemerkt = $this->announceToInvolved($ticket, $actorUid, MailOutbox::EVENT_COMMENT_ADDED, $erreicht);
