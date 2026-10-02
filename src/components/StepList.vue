@@ -314,6 +314,7 @@ export default defineComponent({
 	data() {
 		return {
 			busy: false,
+			schreibkette: Promise.resolve() as Promise<void>,
 			newTitle: '',
 			assignable: [] as string[],
 			/**
@@ -520,19 +521,22 @@ export default defineComponent({
 		 * @param run Der Schreibaufruf.
 		 * @param fallback Meldung, wenn der Server keine eigene mitgibt.
 		 */
-		async write(run: () => Promise<unknown>, fallback: string): Promise<void> {
-			if (this.busy) {
-				return
-			}
-			this.busy = true
-			try {
-				await run()
-				this.$emit('changed')
-			} catch (e) {
-				showError((e as { message?: string }).message ?? fallback)
-			} finally {
-				this.busy = false
-			}
+		write(run: () => Promise<unknown>, fallback: string): Promise<void> {
+			// Anstellen statt verwerfen: Frist direkt nach der Person ging sonst still verloren.
+			const lauf = this.schreibkette.then(async () => {
+				this.busy = true
+				try {
+					await run()
+					this.$emit('changed')
+				} catch (e) {
+					showError((e as { message?: string }).message ?? fallback)
+				} finally {
+					this.busy = false
+				}
+			})
+			this.schreibkette = lauf
+
+			return lauf
 		},
 
 		/**

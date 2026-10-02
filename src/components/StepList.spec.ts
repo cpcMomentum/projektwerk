@@ -69,7 +69,8 @@ vi.mock('@nextcloud/vue/components/NcDateTimePicker', () => ({
 	// wird — ein Stub, der schon einen ISO-Tag lieferte, prüfte nichts.
 	default: {
 		name: 'NcDateTimePicker',
-		props: ['modelValue'],
+		// `disabled` als Prop, nicht am input: Der echte Wähler löst trotzdem aus (gemessen, #344).
+		props: ['modelValue', 'disabled'],
 		emits: ['update:modelValue'],
 		template: '<input type="date" class="pw-test-datum" @input="$emit(\'update:modelValue\', $event.target.value === \'\' ? null : new Date($event.target.value + \'T00:00\'))">',
 	},
@@ -312,6 +313,25 @@ describe('StepList', () => {
 		await wrapper.vm.$nextTick()
 
 		expect(wrapper.find('.pw-step__confirm').exists()).toBe(false)
+	})
+
+	it('speichert eine Frist, die während des Zuweisens gewählt wird', async () => {
+		let zuweisungFertig!: () => void
+		updateStep.mockImplementationOnce(() => new Promise<void>((resolve) => {
+			zuweisungFertig = resolve
+		}))
+		const wrapper = mountList([mitFrist('2026-08-11')])
+		await oeffneZeile(wrapper)
+		await new Promise((resolve) => setTimeout(resolve, 0))
+
+		await wrapper.find('.pw-step .pw-test-person').setValue('carla')
+		await wrapper.find('.pw-step .pw-test-datum').setValue('2026-08-20')
+		zuweisungFertig()
+		await new Promise((resolve) => setTimeout(resolve, 0))
+		await new Promise((resolve) => setTimeout(resolve, 0))
+
+		expect(updateStep).toHaveBeenCalledWith(7, 5, { assignedUserId: 'carla' })
+		expect(updateStep).toHaveBeenCalledWith(7, 5, { dueDate: '2026-08-20' })
 	})
 
 	it('hakt per Kästchen ab, ohne den Schritt zu öffnen', async () => {

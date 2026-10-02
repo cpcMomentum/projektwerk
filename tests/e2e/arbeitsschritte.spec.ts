@@ -89,10 +89,14 @@ test('traegt Zustaendige und Frist ueber den Stift nach', async ({ page, request
 		.poll(async () => (await schrittAusDerDatenbank(request, 'Freigabe holen'))?.assignedUserId)
 		.toBe(KUNDE.uid)
 
-	const nachher = await schrittAusDerDatenbank(request, 'Freigabe holen')
 	// **Der Tag, der im Feld stand.** Ueber `toISOString()` waere daraus in
 	// Mitteleuropa der Vortag geworden — eine Frist einen Tag zu frueh.
-	expect(nachher.dueDate).toBe(frist)
+	// Gepollt: Die Frist wird nach der Zuweisung gespeichert, nicht gleichzeitig.
+	await expect
+		.poll(async () => (await schrittAusDerDatenbank(request, 'Freigabe holen'))?.dueDate)
+		.toBe(frist)
+
+	const nachher = await schrittAusDerDatenbank(request, 'Freigabe holen')
 	// Die Wartezeit beginnt mit dem Zuweisen; `assignedAt` ist danach gesetzt.
 	expect(nachher.assignedAt).not.toBeNull()
 })
