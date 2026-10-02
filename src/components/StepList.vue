@@ -14,14 +14,25 @@
 			untereinanderzustellen. Genau das war die Kritik am alten Stand.
 		-->
 		<div v-for="step in ordered" :key="step.id" class="pw-step">
+			<!-- Titel steht nicht im Label, sonst hakt ein Klick zum Öffnen ab. -->
 			<NcCheckboxRadioSwitch
 				type="checkbox"
 				class="pw-step__check"
 				:modelValue="step.done"
 				:disabled="busy"
 				@update:modelValue="toggle(step)">
-				<span :class="{ 'pw-step__title--done': step.done }">{{ step.title }}</span>
+				<span class="hidden-visually">{{ t('projektwerk', 'Erledigt: {title}', { title: step.title }) }}</span>
 			</NcCheckboxRadioSwitch>
+
+			<!-- Beim Bearbeiten nur im Feld, sonst stünde der alte Titel darüber. -->
+			<button
+				v-if="editing !== step.id"
+				type="button"
+				class="pw-step__title"
+				:class="{ 'pw-step__title--done': step.done }"
+				@click="beginEdit(step)">
+				{{ step.title }}
+			</button>
 
 			<div class="pw-step__rechts">
 				<!--
@@ -120,8 +131,9 @@
 				Bearbeitens; beim Bearbeiten treten die Felder an ihre Stelle.
 				Das Ergebnis wird mehrzeilig gezeigt (CSS `pre-wrap`).
 			-->
+			<!-- Text im `span`: Leerraum direkt im `p` zeigte `pre-wrap` als Leerzeile an. -->
 			<p v-if="editing !== step.id && step.description" class="pw-step__beschreibung">
-				{{ step.description }}
+				<span>{{ step.description }}</span>
 			</p>
 
 			<div v-if="editing !== step.id && step.result" class="pw-step__ergebnis">
@@ -144,20 +156,24 @@
 					@update:modelValue="editTitle = $event"
 					@keydown.enter="saveDetails(step)" />
 
-				<NcTextField
+				<!-- Mehrzeilig: Enter bricht um, Speichern über „Fertig“ oder Strg/Cmd+Enter. -->
+				<NcTextArea
 					class="pw-step__feld"
 					:modelValue="editDescription"
 					:label="t('projektwerk', 'Beschreibung')"
+					:rows="1"
+					resize="none"
 					:disabled="busy"
 					@update:modelValue="editDescription = $event"
-					@keydown.enter="saveDetails(step)" />
+					@keydown.enter.ctrl.exact="saveDetails(step)"
+					@keydown.enter.meta.exact="saveDetails(step)" />
 
 				<NcTextArea
 					class="pw-step__feld"
 					:modelValue="editResult"
 					:label="t('projektwerk', 'Ergebnis')"
-					:rows="3"
-					resize="vertical"
+					:rows="1"
+					resize="none"
 					:disabled="busy"
 					@update:modelValue="editResult = $event"
 					@keydown.enter.ctrl.exact="saveDetails(step)"
@@ -379,6 +395,15 @@ export default defineComponent({
 			},
 		},
 
+		/** Erst nach dem Rendern messen, sonst gilt noch die alte Höhe. */
+		editDescription() {
+			this.$nextTick(() => this.autoGrowFelder())
+		},
+
+		editResult() {
+			this.$nextTick(() => this.autoGrowFelder())
+		},
+
 		/**
 		 * Den Fokus nach dem Neuaufbau der Liste wieder setzen.
 		 *
@@ -574,6 +599,27 @@ export default defineComponent({
 			this.editTitle = step.title
 			this.editDescription = step.description ?? ''
 			this.editResult = step.result ?? ''
+			this.removing = null
+			this.$nextTick(() => {
+				// Die Watcher feuern nicht, wenn der Puffer schon denselben Wert hatte.
+				this.autoGrowFelder()
+				// Der geklickte Titel ist jetzt weg; ohne Ziel fiele der Fokus auf den `body`.
+				const titelFeld = (this.$el as HTMLElement | undefined)?.querySelector?.('.pw-step__felder-text input')
+				if (titelFeld instanceof HTMLElement) {
+					titelFeld.focus()
+				}
+			})
+		},
+
+		/** Erst `auto`, damit `scrollHeight` den Inhalt misst statt der zuletzt gesetzten Höhe. */
+		autoGrowFelder(): void {
+			const felder = (this.$el as HTMLElement | undefined)?.querySelectorAll?.('.pw-step__felder-text textarea') ?? []
+			for (const feld of felder) {
+				if (feld instanceof HTMLTextAreaElement) {
+					feld.style.height = 'auto'
+					feld.style.height = feld.scrollHeight + 'px'
+				}
+			}
 		},
 
 		/**

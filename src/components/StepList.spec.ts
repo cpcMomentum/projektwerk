@@ -208,7 +208,8 @@ describe('StepList', () => {
 		const wrapper = mountList([mitFrist('2026-08-11')])
 		await oeffneZeile(wrapper)
 
-		await wrapper.find('.pw-step__felder-text textarea').setValue('Hetzner 12, IONOS 15, Empfehlung Hetzner')
+		// Zwei Textareas: Beschreibung, dann Ergebnis.
+		await wrapper.findAll('.pw-step__felder-text textarea')[1].setValue('Hetzner 12, IONOS 15, Empfehlung Hetzner')
 		// Kein Schreiben, solange nur getippt wird.
 		expect(updateStep).not.toHaveBeenCalled()
 
@@ -278,6 +279,63 @@ describe('StepList', () => {
 		await new Promise((resolve) => setTimeout(resolve, 0))
 
 		expect(updateStep).not.toHaveBeenCalled()
+	})
+
+	it('öffnet den Schritt per Klick auf den Titel, ohne abzuhaken', async () => {
+		const wrapper = mountList([mitFrist('2026-08-11')])
+		await wrapper.find('.pw-step__title').trigger('click')
+		await wrapper.vm.$nextTick()
+
+		expect(wrapper.find('.pw-step__felder-text').exists()).toBe(true)
+		expect(updateStep).not.toHaveBeenCalled()
+	})
+
+	it('setzt den Fokus beim Öffnen ins Titelfeld', async () => {
+		const wrapper = mount(StepList, {
+			props: { boardId: 7, ticketId: 42, steps: [mitFrist('2026-08-11')], members: MEMBERS },
+			attachTo: document.body,
+		})
+		await wrapper.find('.pw-step__title').trigger('click')
+		await wrapper.vm.$nextTick()
+		await wrapper.vm.$nextTick()
+
+		expect(document.activeElement).toBe(wrapper.find('.pw-step__felder-text input').element)
+		wrapper.unmount()
+	})
+
+	it('schließt die Lösch-Rückfrage, wenn der Schritt geöffnet wird', async () => {
+		const wrapper = mountList([mitFrist('2026-08-11')])
+		await wrapper.findAll('.pw-step__rechts button').at(-1)!.trigger('click')
+		expect(wrapper.find('.pw-step__confirm').exists()).toBe(true)
+
+		await wrapper.find('.pw-step__title').trigger('click')
+		await wrapper.vm.$nextTick()
+
+		expect(wrapper.find('.pw-step__confirm').exists()).toBe(false)
+	})
+
+	it('hakt per Kästchen ab, ohne den Schritt zu öffnen', async () => {
+		const wrapper = mountList([mitFrist('2026-08-11')])
+		await wrapper.find('.pw-step__check input[type="checkbox"]').setValue(true)
+		await new Promise((resolve) => setTimeout(resolve, 0))
+
+		expect(updateStep).toHaveBeenCalledWith(7, 5, { done: true })
+		expect(wrapper.find('.pw-step__felder-text').exists()).toBe(false)
+	})
+
+	it('zeigt im geöffneten Schritt den Titel nur im Eingabefeld', async () => {
+		const wrapper = mountList([mitFrist('2026-08-11')])
+		await oeffneZeile(wrapper)
+
+		expect(wrapper.find('.pw-step__title').exists()).toBe(false)
+		expect(wrapper.text()).not.toContain('Mit Frist')
+	})
+
+	it('baut Beschreibung und Ergebnis gleich als mehrzeilige Felder', async () => {
+		const wrapper = mountList([mitFrist('2026-08-11')])
+		await oeffneZeile(wrapper)
+
+		expect(wrapper.findAll('.pw-step__felder-text textarea')).toHaveLength(2)
 	})
 
 	/**
