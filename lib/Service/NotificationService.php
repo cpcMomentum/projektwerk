@@ -86,22 +86,101 @@ class NotificationService {
 	 * @return MailOutbox[] Was nach dem Commit zu senden ist.
 	 */
 	public function announce(Ticket $ticket, string $recipientUid, string $actorUid, string $event, ?string $stepTitle = null): array {
-		if (!$this->darfBenachrichtigtWerden($ticket, $recipientUid, $actorUid)) {
+		if (!$this->greift($ticket, $recipientUid, $actorUid, $event)) {
 			return [];
 		}
 
-		// **Wovon** — je Projekt, mit globaler Vorgabe. Der Anlass entscheidet
-		// zuerst; wer diesen Anlass in diesem Projekt nicht will, bekommt auf
-		// keinem Kanal etwas.
-		if (!$this->prefs->isEnabled($recipientUid, $event, (int)$ticket->getBoardId())) {
-			return [];
-		}
+		return $this->zustellen($ticket, $recipientUid, $actorUid, $event, $stepTitle);
+	}
 
+	/**
+	 * Zustellen, **nachdem** {@see greift()} schon ja gesagt hat — Glocke und
+	 * vorgemerkte Mail-Zeile.
+	 *
+	 * Von {@see announce()} getrennt, damit {@see announceComment()} den Anlass
+	 * genau einmal prüfen kann: Dort wird `greift()` für die Vorrang-Entscheidung
+	 * ohnehin gebraucht, und ein zweites Mal durch `announce()` wäre eine
+	 * doppelte Auswertung derselben Frage.
+	 *
+	 * @param string $event Einer der `EVENT_*`-Werte aus {@see MailOutbox}.
+	 * @return MailOutbox[] Die Mail-Zeile, falls eine entsteht; sonst leer.
+	 */
+	private function zustellen(Ticket $ticket, string $recipientUid, string $actorUid, string $event, ?string $stepTitle = null): array {
 		$this->bell($ticket, $recipientUid, $event);
 
 		$zeile = $this->mail->queue($recipientUid, (int)$ticket->getId(), $event, (int)$ticket->getBoardId(), $actorUid, $stepTitle);
 
 		return $zeile === null ? [] : [$zeile];
+	}
+
+	/**
+	 * Greift dieser Anlass für diese Person überhaupt?
+	 *
+	 * Die zwei Bedingungen, die **vor** jedem Kanal stehen: die Regeln aus §5.21
+	 * (privat / eigene Handlung / gültiger Empfänger) und der Projekt-Schalter
+	 * für genau diesen Anlass. Sind beide erfüllt, entsteht mindestens auf einem
+	 * Kanal etwas — sonst gar nichts.
+	 *
+	 * **Warum das eine eigene Methode ist** (#347): Ob eine Erwähnung eine Person
+	 * erreicht, lässt sich am Rückgabewert von {@see announce()} nicht ablesen —
+	 * der führt nur die Mail-Zeile, nicht die Glocke, und ist bei abgeschaltetem
+	 * Mail-Kanal oder gedrosselter Mail leer, obwohl die Glocke lief. Wer daran
+	 * entscheidet, ob die allgemeine Kommentar-Nachricht entfällt, träfe die
+	 * „nur Glocke"-Person doppelt. Die Vorrang-Entscheidung in
+	 * {@see announceComment()} fragt deshalb diesen Anlass, nicht die Zeile.
+	 *
+	 * @param string $event Einer der `EVENT_*`-Werte aus {@see MailOutbox}.
+	 */
+	private function greift(Ticket $ticket, string $recipientUid, string $actorUid, string $event): bool {
+		if (!$this->darfBenachrichtigtWerden($ticket, $recipientUid, $actorUid)) {
+			return false;
+		}
+
+		// **Wovon** — je Projekt, mit globaler Vorgabe. Der Anlass entscheidet
+		// zuerst; wer diesen Anlass in diesem Projekt nicht will, bekommt auf
+		// keinem Kanal etwas.
+		return $this->prefs->isEnabled($recipientUid, $event, (int)$ticket->getBoardId());
+	}
+
+	/**
+	 * Ein Kommentar: der Rundruf an die Beteiligten und die @-Erwähnungen, mit
+	 * **Vorrang für die Erwähnung** (#347).
+	 *
+	 * Wer erwähnt wird **und von der Erwähnung erreicht wird**, bekommt nur diese
+	 * — nicht zusätzlich die allgemeine `comment_added`-Nachricht; sonst zwei
+	 * Mails und zwei Glocken für ein und dieselbe Handlung. Entscheidend ist
+	 * „erreicht die Erwähnung" ({@see greift()}), **nicht** „hat die Erwähnung
+	 * eine Mail-Zeile ergeben": Wer `comment_mention` abgeschaltet hat, wird von
+	 * ihr nicht erreicht und bleibt deshalb im Rundruf — seine `comment_added`
+	 * geht normal raus.
+	 *
+	 * Die sichtbar geschnittene Erwähntenliste reicht der Aufrufer herein: Welche
+	 * Kennung den Vorgang sehen darf, beantwortet dort `assignableFor()` — die
+	 * eine Stelle dafür.
+	 *
+	 * @param Ticket $ticket Der Vorgang.
+	 * @param string $actorUid Wer kommentiert hat.
+	 * @param string[] $mentionUids Die erwähnten, sichtberechtigten Kennungen.
+	 * @return MailOutbox[] Was nach dem Commit zu senden ist.
+	 */
+	public function announceComment(Ticket $ticket, string $actorUid, array $mentionUids): array {
+		// Erst die Erwähnungen — und zugleich merken, wen sie tatsächlich
+		// erreichen. Nur diese fallen aus dem Rundruf. `greift()` wird je Person
+		// genau einmal ausgewertet: Es entscheidet den Ausschluss und schaltet
+		// zugleich die Zustellung frei.
+		$erwaehnt = [];
+		$erreicht = [];
+		foreach (array_values(array_unique($mentionUids)) as $uid) {
+			if (!$this->greift($ticket, $uid, $actorUid, MailOutbox::EVENT_COMMENT_MENTION)) {
+				continue;
+			}
+			$erreicht[] = $uid;
+			$erwaehnt = [...$erwaehnt, ...$this->zustellen($ticket, $uid, $actorUid, MailOutbox::EVENT_COMMENT_MENTION)];
+		}
+
+		$vorgemerkt = $this->announceToInvolved($ticket, $actorUid, MailOutbox::EVENT_COMMENT_ADDED, $erreicht);
+
+		return [...$vorgemerkt, ...$erwaehnt];
 	}
 
 	/**
@@ -131,12 +210,20 @@ class NotificationService {
 	 * sitzen die Sichtbarkeitsregel, der Ausschluss der auslösenden Person und
 	 * der Schalter je Projekt. Diese Methode entscheidet nichts davon neu.
 	 *
+	 * **`$exclude` verhindert die Doppelzustellung** (#347): Wer für dieselbe
+	 * Handlung schon aus einem spezifischeren Anlass benachrichtigt wird — eine
+	 * @-Erwähnung im Kommentar —, soll nicht zusätzlich die allgemeine
+	 * Beteiligten-Nachricht bekommen. Der Aufrufer, der beide Anlässe kennt,
+	 * reicht die bereits bedienten Kennungen hier herein; die Vorrang-Entscheidung
+	 * (Erwähnung schlägt Kommentar) trifft er, nicht diese Methode.
+	 *
 	 * @param Ticket $ticket Der Vorgang, um den es geht.
 	 * @param string $actorUid Wer die Handlung ausgelöst hat.
 	 * @param string $event Einer der `EVENT_*`-Werte aus {@see MailOutbox}.
+	 * @param string[] $exclude Kennungen, die bereits anderweitig bedient werden und deshalb übersprungen werden.
 	 * @return MailOutbox[] Was nach dem Commit zu senden ist.
 	 */
-	public function announceToInvolved(Ticket $ticket, string $actorUid, string $event): array {
+	public function announceToInvolved(Ticket $ticket, string $actorUid, string $event, array $exclude = []): array {
 		$ticketId = (int)$ticket->getId();
 
 		$beteiligte = [
@@ -154,6 +241,9 @@ class NotificationService {
 
 		$vorgemerkt = [];
 		foreach (array_unique(array_filter($beteiligte)) as $uid) {
+			if (in_array($uid, $exclude, true)) {
+				continue;
+			}
 			$vorgemerkt = [...$vorgemerkt, ...$this->announce($ticket, $uid, $actorUid, $event)];
 		}
 
