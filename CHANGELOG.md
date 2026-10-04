@@ -4,6 +4,31 @@ Alle nennenswerten Änderungen an ProjektWerk werden hier dokumentiert.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.4.18] - 2026-10-04
+
+### Changed
+
+- **Arbeitsschritte: Titel öffnet, Kästchen hakt ab** (#344, #327): Ein Klick auf den Titel öffnet
+  den Arbeitsschritt zum Bearbeiten, das Kästchen davor hakt ihn ab. Bisher hakte jeder Klick auf
+  den Titel den Schritt ab. Im geöffneten Schritt steht der Titel nur noch im Eingabefeld.
+  Beschreibung und Ergebnis starten einzeilig und wachsen mit dem Text, das Kommentarfeld ruht
+  einzeilig, und das Vorgangsfenster springt beim Aufklappen nicht mehr.
+- **Schlankerer Vorgangskopf** (#341): Der Sichtbarkeitsschalter kommt ohne Hinweistext aus,
+  die Aktions-Fußzeile ist kompakter.
+
+### Fixed
+
+- **Frist nach Zuweisung ging verloren**: Wer einem Arbeitsschritt eine Person zuwies und direkt
+  danach eine Frist setzte, verlor die Frist ohne Meldung. Änderungen werden jetzt nacheinander
+  gespeichert.
+- **Keine doppelte Benachrichtigung bei Erwähnung** (#347): Wer an einem Vorgang beteiligt ist und
+  in einem Kommentar erwähnt wird, bekommt jetzt genau eine Mail und eine Glocke statt zwei.
+
+### Internal
+
+- AGPLv3-Lizenztext als `LICENSE` beigelegt.
+- E2E-CI installiert mit `npm ci` (nc-app-tooling#34).
+
 ## [0.4.17] - 2026-09-28
 
 ### Added

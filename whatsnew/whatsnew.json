@@ -1,4 +1,40 @@
 {
+	"0.4.18": [
+		{
+			"title": {
+				"de": "Arbeitsschritte öffnen sich über den Titel",
+				"en": "Steps open via their title"
+			},
+			"text": {
+				"de": "Ein Klick auf den Titel öffnet den Arbeitsschritt zum Bearbeiten, das Kästchen davor hakt ihn ab. Beschreibung und Ergebnis wachsen mit dem Text.",
+				"en": "Clicking the title opens the step for editing, the checkbox in front of it marks it as done. Description and result grow with the text."
+			},
+			"icon": "counter",
+			"where": {
+				"de": "Arbeitsschritte im Vorgang",
+				"en": "Steps in a ticket"
+			},
+			"adminOnly": false,
+			"plus": false
+		},
+		{
+			"title": {
+				"de": "Nur noch eine Benachrichtigung bei Erwähnung",
+				"en": "Only one notification when mentioned"
+			},
+			"text": {
+				"de": "Wer an einem Vorgang beteiligt ist und in einem Kommentar erwähnt wird, bekommt jetzt eine Mail und eine Glocke statt zwei.",
+				"en": "If you are involved in a ticket and mentioned in a comment, you now get one email and one notification instead of two."
+			},
+			"icon": "email",
+			"where": {
+				"de": "Benachrichtigungen",
+				"en": "Notifications"
+			},
+			"adminOnly": false,
+			"plus": false
+		}
+	],
 	"0.4.17": [
 		{
 			"title": {
