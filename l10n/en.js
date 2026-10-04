@@ -50,7 +50,6 @@ OC.L10N.register(
     "zuständig" : "responsible",
     "Sichtbarkeit" : "Visibility",
     "Ändern" : "Change",
-    "Auf „Nur ich\" herunterstufen kann nur die anlegende Person" : "Only the person who created it can restrict it to “Only me”",
     "_%n Kommentar_::_%n Kommentare_" : ["%n comment","%n comments"],
     "Sichtbarkeit ändern" : "Change visibility",
     "Sichtbarkeit konnte nicht geändert werden" : "Could not change visibility",
@@ -457,6 +456,7 @@ OC.L10N.register(
     "Neuerungen" : "What's new",
     "Noch keine Neuerungen." : "No news yet.",
     "Schließen" : "Close",
-    "Endgültig löschen" : "Delete permanently"
+    "Endgültig löschen" : "Delete permanently",
+    "Erledigt: {title}" : "Done: {title}"
 },
 "nplurals=2; plural=(n != 1);");

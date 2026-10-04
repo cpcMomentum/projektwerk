@@ -649,11 +649,6 @@
 	gap: 0;
 }
 
-.app-projektwerk .pw-vischoice--knapp .pw-vishint--blocked {
-	margin-block-start: 4px;
-	font-size: 13px;
-}
-
 /*
  * Im Vorgang sitzt der Schalter auf **34 px**, nicht auf 48.
  *
@@ -762,18 +757,6 @@
 }
 
 /*
- * Gesperrt heisst sichtbar-aber-nicht-waehlbar, nicht unsichtbar: Wer „Nur ich"
- * sucht und es gar nicht faende, hielte es fuer einen Fehler. Der Grund steht
- * als eigene Zeile darunter — als `title` waere er auf dem Telefon unerreichbar.
- *
- * Ohne Kursive: Nextclouds Foundations fuehren sie ausdruecklich als schlechter
- * lesbar auf, und dieser Satz ist eine Erklaerung, keine Verzierung.
- */
-.app-projektwerk .pw-vishint--blocked {
-	color: var(--color-text-maxcontrast);
-}
-
-/*
  * Im Vorgang sitzt der Schalter rechts in der Kopfzeile. Sobald der Widerruf
  * oder die Anhaenge-Absage dazukommt, nimmt der Block die volle Zeilenbreite:
  * Ein ganzer Satz passt nicht neben `#0001`.
@@ -807,6 +790,15 @@
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
+}
+
+/* Oben verankert: zentriert verschöbe jede Höhenänderung den Inhalt unter dem Klick. */
+body .modal-wrapper:has(.pw-detail) {
+	align-items: flex-start;
+}
+
+body .modal-wrapper:has(.pw-detail) > .modal-container {
+	margin-block-start: calc(var(--header-height, 50px) + var(--body-container-margin, 8px));
 }
 
 /*
@@ -862,8 +854,10 @@
 	display: flex;
 	align-items: center;
 	gap: 8px;
-	margin-block-start: 4px;
-	padding-block: 8px;
+	/* Schlankes Band (#337): die Knoepfe tragen ihre 34-px-Klickflaeche selbst,
+	   das Polster drumherum war verschenkter Platz. */
+	margin-block-start: 2px;
+	padding-block: 4px;
 	background: var(--color-main-background);
 	box-shadow: 0 -1px 0 var(--color-border);
 }
@@ -1559,7 +1553,9 @@
 
 /* ---- Arbeitsschritte ----------------------------------------------------- */
 
+/* Titelanfang: Kästchen (40 px gemessen) plus Lücke (8 px). */
 .app-projektwerk .pw-step {
+	--pw-step-einzug: 48px;
 	display: flex;
 	align-items: center;
 	flex-wrap: wrap;
@@ -1567,18 +1563,9 @@
 	min-height: var(--default-clickable-area, 34px);
 }
 
-/*
- * `NcCheckboxRadioSwitch` statt einer nackten Checkbox (#99): Damit wird der
- * **ganze Titel** zur Klickflaeche. Vorher war nur die 13-px-Box anklickbar und
- * der Text daneben tot — ausgerechnet beim haeufigsten Handgriff des Kunden.
- */
+/* Nur das Kästchen; der Titel daneben ist ein eigener Knopf zum Öffnen. */
 .app-projektwerk .pw-step__check {
-	flex: 1 1 200px;
-	min-width: 0;
-}
-
-.app-projektwerk .pw-step__check .checkbox-radio-switch__label {
-	overflow-wrap: anywhere;
+	flex: 0 0 auto;
 }
 
 .app-projektwerk .pw-step__rechts {
@@ -1587,6 +1574,11 @@
 	gap: 8px;
 	margin-inline-start: auto;
 	min-width: 0;
+}
+
+/* Ohne Titel daneben bekäme die Personenauswahl sonst nur ihre Mindestbreite. */
+.app-projektwerk .pw-step__rechts:has(.pw-step__picker) {
+	flex: 1 1 auto;
 }
 
 /*
@@ -1632,7 +1624,19 @@
 .app-projektwerk .pw-step__title {
 	flex: 1 1 160px;
 	min-width: 0;
+	padding: 2px 0;
+	border: none;
+	background: none;
+	text-align: start;
+	font: inherit;
+	color: inherit;
 	overflow-wrap: anywhere;
+	cursor: pointer;
+}
+
+.app-projektwerk .pw-step__title:hover,
+.app-projektwerk .pw-step__title:focus-visible {
+	text-decoration: underline;
 }
 
 /* Erledigt wird durchgestrichen UND ausgegraut — nie nur ueber die Farbe. */
@@ -1674,7 +1678,8 @@
 .app-projektwerk .pw-step__beschreibung {
 	flex-basis: 100%;
 	margin: 0;
-	padding-inline-start: 28px;
+	white-space: pre-wrap;
+	padding-inline-start: var(--pw-step-einzug);
 	font-size: 13px;
 	color: var(--color-text-maxcontrast);
 	overflow-wrap: anywhere;
@@ -1685,7 +1690,7 @@
 	display: flex;
 	flex-direction: column;
 	gap: 2px;
-	margin-inline-start: 28px;
+	margin-inline-start: var(--pw-step-einzug);
 	padding: 6px 10px;
 	border-inline-start: 3px solid var(--color-border);
 	border-radius: var(--border-radius);
@@ -1712,11 +1717,18 @@
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
-	padding-inline-start: 28px;
+	padding-inline-start: var(--pw-step-einzug);
 }
 
 .app-projektwerk .pw-step__feld {
 	width: 100%;
+}
+
+/* `NcTextArea` bringt zwei Zeilen Mindesthöhe mit; die Höhe setzt `autoGrowFelder()`. */
+.app-projektwerk .pw-step__felder-text textarea {
+	min-height: var(--default-clickable-area, 34px);
+	max-height: 40vh;
+	overflow-y: auto;
 }
 
 /*
@@ -1726,6 +1738,8 @@
  * Schritts verlegt. Das Titelfeld nimmt den Platz, das Plus steht daneben.
  */
 .app-projektwerk .pw-step--new {
+	/* `NcTextField` hat oben 6 px Rand für das Label; mittig säße das Plus zu hoch. */
+	align-items: flex-end;
 	padding-block-start: 12px;
 	margin-block-start: 8px;
 	border-top: 1px solid var(--color-border);
@@ -1908,7 +1922,7 @@
 }
 
 /*
- * Das Feld ruht zweizeilig und waechst beim Hineinklicken (#99). Vorher standen
+ * Das Feld ruht einzeilig und waechst beim Hineinklicken (#99). Vorher standen
  * 86 px Eingabeflaeche plus Knopf dauerhaft unter jedem Vorgang, auch unter
  * denen, in die nie jemand schreibt.
  *
@@ -1925,18 +1939,19 @@
 	border-top: 1px solid var(--color-border);
 }
 
-.app-projektwerk .pw-comment-new textarea {
-	min-height: 68px;
+/* Ein `div[contenteditable]`, keine textarea; mehrzeilig erzwingt es sonst 3 × 34 px. */
+.app-projektwerk .pw-comment-new .rich-contenteditable__input {
+	min-height: var(--default-clickable-area, 34px);
 	transition: min-height .12s ease;
 }
 
-.app-projektwerk .pw-comment-new--aktiv textarea,
-.app-projektwerk .pw-comment-new:focus-within textarea {
-	min-height: 120px;
+.app-projektwerk .pw-comment-new--aktiv .rich-contenteditable__input,
+.app-projektwerk .pw-comment-new:focus-within .rich-contenteditable__input {
+	min-height: calc(var(--default-clickable-area, 34px) * 3);
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.app-projektwerk .pw-comment-new textarea {
+	.app-projektwerk .pw-comment-new .rich-contenteditable__input {
 		transition: none;
 	}
 }

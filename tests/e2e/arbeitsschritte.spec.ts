@@ -47,11 +47,11 @@ async function schrittAusDerDatenbank(request: Parameters<typeof Api.fuer>[0], t
 }
 
 /**
- * Einen Schritt anlegen (nur Titel) und den Stift oeffnen.
+ * Einen Schritt anlegen (nur Titel) und per Klick auf den Titel oeffnen.
  *
- * Ein frisch angelegter Schritt hat weder Zuweisung noch Frist, dort steht also
- * der flache „Zuweisen oder Frist setzen"-Knopf (Variante C, #99); er oeffnet
- * denselben Bearbeiten-Modus wie der Stift.
+ * Der Titel-Knopf ist seit #344 der Einstieg; die Checkbox traegt den Titel nur
+ * noch im unsichtbaren Label („Erledigt: …"), deshalb wird gezielt der Knopf
+ * gesucht und nicht `getByText`.
  *
  * @param page Die Playwright-Seite.
  * @param titel Der Titel des neuen Schritts.
@@ -60,10 +60,12 @@ async function schrittAnlegenUndOeffnen(page: Parameters<typeof personWaehlen>[0
 	const zeile = page.locator('.pw-step--new')
 	await zeile.locator('.pw-step__neu-titel input').fill(titel)
 	await page.locator('.pw-step__neu-plus').click()
-	await expect(page.getByText(titel)).toBeVisible()
+	const titelKnopf = page.locator('.pw-step__title', { hasText: titel })
+	await expect(titelKnopf).toBeVisible()
 
 	const schritt = page.locator('.pw-step', { hasText: titel })
-	await schritt.locator('.pw-step__flach').click()
+	await titelKnopf.click()
+	await expect(schritt.locator('.pw-step__felder-text')).toBeVisible()
 
 	return schritt
 }
@@ -87,10 +89,14 @@ test('traegt Zustaendige und Frist ueber den Stift nach', async ({ page, request
 		.poll(async () => (await schrittAusDerDatenbank(request, 'Freigabe holen'))?.assignedUserId)
 		.toBe(KUNDE.uid)
 
-	const nachher = await schrittAusDerDatenbank(request, 'Freigabe holen')
 	// **Der Tag, der im Feld stand.** Ueber `toISOString()` waere daraus in
 	// Mitteleuropa der Vortag geworden — eine Frist einen Tag zu frueh.
-	expect(nachher.dueDate).toBe(frist)
+	// Gepollt: Die Frist wird nach der Zuweisung gespeichert, nicht gleichzeitig.
+	await expect
+		.poll(async () => (await schrittAusDerDatenbank(request, 'Freigabe holen'))?.dueDate)
+		.toBe(frist)
+
+	const nachher = await schrittAusDerDatenbank(request, 'Freigabe holen')
 	// Die Wartezeit beginnt mit dem Zuweisen; `assignedAt` ist danach gesetzt.
 	expect(nachher.assignedAt).not.toBeNull()
 })
@@ -102,8 +108,8 @@ test('traegt Zustaendige und Frist ueber den Stift nach', async ({ page, request
  * Ergebnis — gepuffert getippt und mit „Fertig" gespeichert. Die Gegenprobe am
  * Server, damit ein grüner Durchlauf nicht bloß heißt „irgendein Feld stand da".
  *
- * Im `.pw-step__felder-text` steht der Titel als erstes Textfeld, die
- * Beschreibung als zweites; das Ergebnis ist das Textarea. „Fertig" über das
+ * Im `.pw-step__felder-text` steht der Titel als Textfeld; Beschreibung und
+ * Ergebnis sind seit #344 beide Textareas (in dieser Reihenfolge). „Fertig" über das
  * aria-label, nicht über die Knopf-Reihenfolge: `NcSelectUsers` bringt im
  * Bearbeiten-Modus einen eigenen „Auswahl leeren"-Knopf mit.
  */
@@ -114,8 +120,8 @@ test('traegt Beschreibung und Ergebnis ueber den Stift nach', async ({ page, req
 
 	const schritt = await schrittAnlegenUndOeffnen(page, 'Angebot einholen')
 
-	await schritt.locator('.pw-step__felder-text input[type="text"]').nth(1).fill('Bei drei Anbietern anfragen')
-	await schritt.locator('.pw-step__felder-text textarea').fill('Empfehlung: Hetzner')
+	await schritt.locator('.pw-step__felder-text textarea').nth(0).fill('Bei drei Anbietern anfragen')
+	await schritt.locator('.pw-step__felder-text textarea').nth(1).fill('Empfehlung: Hetzner')
 	await schritt.locator('[aria-label="Fertig"]').click()
 
 	await expect

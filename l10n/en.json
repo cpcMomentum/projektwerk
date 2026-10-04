@@ -49,7 +49,6 @@
 		"zuständig": "responsible",
 		"Sichtbarkeit": "Visibility",
 		"Ändern": "Change",
-		"Auf „Nur ich\" herunterstufen kann nur die anlegende Person": "Only the person who created it can restrict it to “Only me”",
 		"_%n Kommentar_::_%n Kommentare_": [
 			"%n comment",
 			"%n comments"
@@ -498,7 +497,8 @@
 		"Neuerungen": "What's new",
 		"Noch keine Neuerungen.": "No news yet.",
 		"Schließen": "Close",
-		"Endgültig löschen": "Delete permanently"
+		"Endgültig löschen": "Delete permanently",
+		"Erledigt: {title}": "Done: {title}"
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }
