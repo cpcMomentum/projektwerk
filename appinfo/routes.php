@@ -176,5 +176,12 @@ return [
 		// ebenfalls in ROUTES_WITHOUT_DATA.
 		['name' => 'whatsNew#all', 'url' => '/api/v1/whatsnew/all', 'verb' => 'GET'],
 		['name' => 'whatsNew#seen', 'url' => '/api/v1/whatsnew/seen', 'verb' => 'POST'],
+
+		// MCP-Endpunkt fuer Claude (#343), Bearer-Token statt Sitzung. Keine OCS-Route:
+		// Claude sendet kein `OCS-APIRequest` und bekaeme 412.
+		['name' => 'mcp#handle', 'url' => '/mcp', 'verb' => 'POST'],
+		['name' => 'mcp#methodNotAllowed', 'url' => '/mcp', 'verb' => 'GET'],
+		['name' => 'mcp#methodNotAllowed', 'url' => '/mcp', 'verb' => 'DELETE', 'postfix' => 'delete'],
+		['name' => 'mcpMetadata#protectedResource', 'url' => '/mcp/oauth-protected-resource', 'verb' => 'GET'],
 	],
 ];

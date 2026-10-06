@@ -10,7 +10,6 @@ declare(strict_types=1);
 namespace OCA\Projektwerk\Tests\Integration;
 
 use OCA\Projektwerk\Access\BoardAccess;
-use OCA\Projektwerk\Access\ChangeHighlighter;
 use OCA\Projektwerk\Access\TicketScope;
 use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Access\WaitStateCalculator;
@@ -36,7 +35,6 @@ use OCA\Projektwerk\Db\TaskFilter;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Db\TicketReadMapper;
 use OCA\Projektwerk\Db\TicketUserMapper;
-use OCA\Projektwerk\Service\AttachmentService;
 use OCA\Projektwerk\Service\BoardPinService;
 use OCA\Projektwerk\Service\BoardService;
 use OCA\Projektwerk\Service\ColumnService;
@@ -46,6 +44,14 @@ use OCA\Projektwerk\Service\NotifyPrefService;
 use OCA\Projektwerk\Service\ProjectFolderService;
 use OCA\Projektwerk\Service\StepService;
 use OCA\Projektwerk\Service\TicketService;
+use OCA\Projektwerk\Mcp\AuthenticatedCaller;
+use OCA\Projektwerk\Mcp\ToolResult;
+use OCA\Projektwerk\Mcp\Tools\GetTicket;
+use OCA\Projektwerk\Mcp\Tools\ListBoards;
+use OCA\Projektwerk\Mcp\Tools\ListColumns;
+use OCA\Projektwerk\Mcp\Tools\ListTickets;
+use OCA\Projektwerk\Service\BoardReadModel;
+use OCA\Projektwerk\Service\TicketReadModel;
 use OCA\Projektwerk\Tests\ReadPathRegistry;
 use OCA\Projektwerk\AppInfo\Application;
 use OCP\AppFramework\Db\DoesNotExistException;
@@ -243,6 +249,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 	private const COVERAGE = [
 		'TicketMapper::findVisibleInBoard' => 'testEveryViewerSeesExactlyTheirTickets',
 		'TicketMapper::findVisible' => 'testSingleTicketAccessMatchesTheSameSet',
+		'TicketMapper::findVisibleByNumber' => 'testSingleTicketAccessMatchesTheSameSet',
 		'TicketMapper::findVisibleAcrossBoards' => 'testMyTasksNeverWidensBeyondTheVisibleSet',
 		'TicketMapper::findVisibleAcrossBoardsAll' => 'testTheOverviewMapperNeverWidensBeyondTheVisibleSet',
 		'MemberMapper::findForUserBoards' => 'testMemberNamesCoverOnlyMyOwnBoards',
@@ -302,6 +309,18 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'githubToken#index' => 'testTheGithubTokenPresenceIsScopedToItsOwner',
 		'task#index' => 'testTaskEndpointMatchesTheVisibleSetAcrossBoards',
 		'overview#index' => 'testOverviewEndpointMatchesTheVisibleSetAcrossBoards',
+	];
+
+	/**
+	 * Welcher Test deckt welches lesende MCP-Werkzeug.
+	 *
+	 * @var array<string, string>
+	 */
+	private const MCP_COVERAGE = [
+		'list_boards' => 'testMcpToolsMatchTheirRestTwins',
+		'list_columns' => 'testMcpToolsMatchTheirRestTwins',
+		'list_tickets' => 'testMcpToolsMatchTheirRestTwins',
+		'get_ticket' => 'testMcpToolsMatchTheirRestTwins',
 	];
 
 	/**
@@ -690,6 +709,16 @@ class LeakMatrixTest extends IntegrationTestCase {
 						$maySee,
 						$userId . ' bekam DoesNotExistException auf ' . $label . ', darf es aber sehen.',
 					);
+				}
+
+				// Dieselbe Frage über die Nummer. Die Nummern des Zweitboards überlappen;
+				// eine Nummer darf nie den gleichnamigen Vorgang des anderen Boards liefern.
+				try {
+					$ticket = $tickets->findVisibleByNumber($context, $this->fixture->ticketNumbers[$label]);
+					$this->assertTrue($maySee, $userId . ' hat ' . $label . ' über die Nummer geladen, darf es aber nicht sehen.');
+					$this->assertSame($label, $ticket->getTitle());
+				} catch (DoesNotExistException) {
+					$this->assertFalse($maySee, $userId . ': ' . $label . ' über die Nummer nicht gefunden, darf es aber sehen.');
 				}
 			}
 		}
@@ -1993,6 +2022,70 @@ class LeakMatrixTest extends IntegrationTestCase {
 	}
 
 	/**
+	 * **REST-ID-Menge = MCP-ID-Menge**, je Betrachter und je lesendem Werkzeug.
+	 *
+	 * Das Nichtmitglied und jeder verborgene Vorgang bekommen dieselbe Antwort, Byte für Byte,
+	 * wie ein Vorgang, den es nie gab.
+	 */
+	public function testMcpToolsMatchTheirRestTwins(): void {
+		$notFound = ToolResult::encode(ToolResult::notFound()->toArray());
+		$boardId = $this->fixture->boardId;
+
+		foreach (self::VISIBLE as $userId => $expected) {
+			$caller = new AuthenticatedCaller($userId, 'leak-matrix');
+
+			$restBoards = array_column($this->boardController($userId)->index()->getData(), 'id');
+			$mcpBoards = array_column(Server::get(ListBoards::class)->call($caller, [])->structured()['boards'], 'id');
+			$this->assertSame($restBoards, $mcpBoards, $userId . ': list_boards');
+
+			$columns = Server::get(ListColumns::class)->call($caller, ['board_id' => $boardId]);
+			$tickets = Server::get(ListTickets::class)->call($caller, ['board_id' => $boardId]);
+			if ($userId === self::FREMD) {
+				$this->assertSame($notFound, ToolResult::encode($columns->toArray()), 'list_columns für das Nichtmitglied');
+				$this->assertSame($notFound, ToolResult::encode($tickets->toArray()), 'list_tickets für das Nichtmitglied');
+			} else {
+				$restColumns = array_map(static fn ($c): int => (int)$c->getId(), $this->boardController($userId)->show($boardId)->getData()['columns']);
+				$this->assertSame($restColumns, array_column($columns->structured()['columns'], 'id'), $userId . ': list_columns');
+
+				$restTickets = array_map(static fn ($t): int => (int)$t->getId(), $this->ticketController($userId)->index($boardId)->getData()['tickets']);
+				$mcpTickets = array_column($tickets->structured()['tickets'], 'id');
+				$this->assertSame($restTickets, $mcpTickets, $userId . ': list_tickets');
+				$this->assertSame($this->fixture->idsFor($expected), $this->sorted($mcpTickets), $userId . ': list_tickets gegen die Erwartung');
+				foreach ($tickets->structured()['tickets'] as $row) {
+					$this->assertContains($row['visibility'], ['public', 'internal', 'private'], 'Jede Zeile trägt ihre Sichtbarkeit.');
+				}
+			}
+
+			$getTicket = Server::get(GetTicket::class);
+			foreach (LeakMatrixFixture::TICKETS as $label => $_) {
+				$byId = $getTicket->call($caller, ['board_id' => $boardId, 'ticket_id' => $this->fixture->ticketIds[$label]]);
+				$byNumber = $getTicket->call($caller, ['board_id' => $boardId, 'ticket_number' => $this->fixture->ticketNumbers[$label]]);
+
+				if (in_array($label, $expected, true)) {
+					$this->assertSame($label, $byId->structured()['ticket']['title'], $userId . ' / ' . $label);
+					$this->assertSame($label, $byNumber->structured()['ticket']['title'], $userId . ' / ' . $label . ' (Nummer)');
+				} else {
+					$this->assertSame($notFound, ToolResult::encode($byId->toArray()), $userId . ' / ' . $label);
+					$this->assertSame($notFound, ToolResult::encode($byNumber->toArray()), $userId . ' / ' . $label . ' (Nummer)');
+				}
+			}
+
+			$neverExisted = $getTicket->call($caller, ['board_id' => $boardId, 'ticket_id' => PHP_INT_MAX]);
+			$this->assertSame($notFound, ToolResult::encode($neverExisted->toArray()), $userId . ': nie angelegter Vorgang');
+		}
+	}
+
+	/**
+	 * @param int[] $ids
+	 * @return int[]
+	 */
+	private function sorted(array $ids): array {
+		sort($ids);
+
+		return $ids;
+	}
+
+	/**
 	 * Jeder registrierte Lesepfad und jede registrierte Route werden von dieser
 	 * Matrix auch wirklich gefahren.
 	 *
@@ -2012,8 +2105,14 @@ class LeakMatrixTest extends IntegrationTestCase {
 			'Lese-Routen',
 		);
 
+		$this->assertCoverage(
+			ReadPathRegistry::MCP_TOOLS,
+			array_keys(self::MCP_COVERAGE),
+			'MCP-Werkzeuge',
+		);
+
 		$reflection = new ReflectionClass($this);
-		foreach (self::COVERAGE + self::ROUTE_COVERAGE as $path => $method) {
+		foreach (self::COVERAGE + self::ROUTE_COVERAGE + self::MCP_COVERAGE as $path => $method) {
 			$this->assertTrue(
 				$reflection->hasMethod($method),
 				'Die Abdeckung nennt fuer ' . $path . ' die Methode ' . $method . ', die es nicht gibt.',
@@ -2088,10 +2187,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 	private function boardController(string $userId): BoardController {
 		return new BoardController(
 			$this->createStub(IRequest::class),
-			Server::get(BoardMapper::class),
-			Server::get(BoardService::class),
-			Server::get(MemberService::class),
-			Server::get(ColumnMapper::class),
+			Server::get(BoardReadModel::class),
 			Server::get(BoardAccess::class),
 			Server::get(BoardPinService::class),
 			$userId,
@@ -2123,15 +2219,9 @@ class LeakMatrixTest extends IntegrationTestCase {
 		return new TicketController(
 			$this->createStub(IRequest::class),
 			Server::get(TicketMapper::class),
-			Server::get(CommentMapper::class),
-			Server::get(StepMapper::class),
-			Server::get(AttachmentMapper::class),
-			Server::get(TicketUserMapper::class),
 			Server::get(TicketReadMapper::class),
 			Server::get(TicketService::class),
-			Server::get(AttachmentService::class),
-			Server::get(WaitStateCalculator::class),
-			Server::get(ChangeHighlighter::class),
+			Server::get(TicketReadModel::class),
 			Server::get(BoardAccess::class),
 			$userId,
 		);

@@ -12,11 +12,8 @@ namespace OCA\Projektwerk\Controller;
 use OCA\Projektwerk\Access\BoardAccess;
 use OCA\Projektwerk\Access\NotAMemberException;
 use OCA\Projektwerk\AppInfo\Application;
-use OCA\Projektwerk\Db\BoardMapper;
-use OCA\Projektwerk\Db\ColumnMapper;
 use OCA\Projektwerk\Service\BoardPinService;
-use OCA\Projektwerk\Service\BoardService;
-use OCA\Projektwerk\Service\MemberService;
+use OCA\Projektwerk\Service\BoardReadModel;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
@@ -45,16 +42,7 @@ class BoardController extends Controller {
 
 	public function __construct(
 		IRequest $request,
-		private BoardMapper $boards,
-		// Für die Anzeige eines einzelnen Boards: Er spiegelt Ordner und Chat
-		// aus dem Projekt hinein (#246), damit die Autorität dafür an einer
-		// Stelle bleibt.
-		private BoardService $boardService,
-		// Der Dienst statt des Mappers, weil die Mitgliederliste den
-		// anzuzeigenden Namen braucht und der aus Nextcloud kommt, wenn die
-		// Mitgliedschaft keinen eigenen fuehrt.
-		private MemberService $members,
-		private ColumnMapper $columns,
+		private BoardReadModel $readModel,
 		private BoardAccess $access,
 		private BoardPinService $pins,
 		// Nextcloud reicht die Benutzerkennung der Sitzung unter genau diesem
@@ -80,29 +68,7 @@ class BoardController extends Controller {
 			return new JSONResponse([], Http::STATUS_UNAUTHORIZED);
 		}
 
-		$boards = $this->boards->findAllForUser($this->userId, $includeArchived);
-
-		// Die Pin-Markierung reitet auf **dieser** Liste mit, nicht als eigener
-		// Abruf: Die Seitenleiste zeigt nur die Schnittmenge aus „gepinnt" und
-		// „sichtbar", und sichtbar ist genau, was hier drinsteht. Ein gepinntes
-		// Board, das der Filter nicht hergibt, kommt gar nicht erst vor.
-		$pinned = $this->pins->pinnedIds($this->userId);
-		// Die eigene Rolle je Board reitet — wie die Pin-Markierung — auf dieser
-		// Liste mit (#234). Das Gäste-Gate im Browser leitet einen Betrachter,
-		// der in **allen** seinen Boards extern ist, vom Überblick auf sein
-		// Board um; dafür braucht es genau dieses Signal, und aus derselben
-		// Liste stammt auch das Umleitungsziel. Es ist die Rolle der
-		// abfragenden Person selbst — eigene Daten, kein zweiter Ort, an dem die
-		// Sichtbarkeitsregel stimmen müsste.
-		$roles = $this->members->rolesForUserBoards($this->userId);
-		$data = array_map(
-			static fn ($board): array => $board->jsonSerialize()
-				+ ['pinned' => in_array((int)$board->getId(), $pinned, true)]
-				+ ['viewerRole' => $roles[(int)$board->getId()] ?? null],
-			$boards,
-		);
-
-		return new JSONResponse($data);
+		return new JSONResponse($this->readModel->listFor($this->userId, $includeArchived));
 	}
 
 	/**
@@ -142,28 +108,7 @@ class BoardController extends Controller {
 		try {
 			$viewer = $this->access->contextFor($this->userId, $boardId);
 
-			return new JSONResponse([
-				// Ordner und Chat kommen aus dem Projekt (#246); der Dienst
-				// spiegelt sie ins Board, damit die Einstellungen sie sehen.
-				'board' => $this->boardService->forViewerWithProjectFields($viewer),
-				'members' => $this->members->listForBoard($viewer),
-				'columns' => $this->columns->findForBoard($viewer),
-				// Die eigene Rolle, damit das Frontend nicht aus der
-				// Mitgliederliste zurueckrechnen muss — und damit die
-				// Kennzeichnung oeffentlicher Tickets (nur fuer interne
-				// Betrachter) eine Quelle hat.
-				'viewer' => [
-					'userId' => $viewer->userId,
-					'role' => $viewer->role,
-					'isManager' => $viewer->isManager,
-					// #281: Ob dieser Betrachter dieses Board angelegt hat — trägt
-					// im Frontend die Einricht-Aktionen (Spalten/Umbenennen/Archiv).
-					'isBoardCreator' => $viewer->isBoardCreator,
-				],
-				// #281: Ob das Projekt „Mitglieder dürfen Boards anlegen" gesetzt
-				// hat — blendet „Board hinzufügen" für Nicht-Manager ein.
-				'memberBoardsAllowed' => $this->boardService->projectAllowsMemberBoards($viewer),
-			]);
+			return new JSONResponse($this->readModel->show($viewer));
 		} catch (NotAMemberException|DoesNotExistException) {
 			return new JSONResponse([], Http::STATUS_NOT_FOUND);
 		}
