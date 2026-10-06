@@ -498,7 +498,15 @@
 		"Noch keine Neuerungen.": "Noch keine Neuerungen.",
 		"Schließen": "Schließen",
 		"Endgültig löschen": "Endgültig löschen",
-		"Erledigt: {title}": "Erledigt: {title}"
+		"Erledigt: {title}": "Erledigt: {title}",
+		"ProjektWerk: MCP-Endpunkt für Claude": "ProjektWerk: MCP-Endpunkt für Claude",
+		"Der MCP-Endpunkt ist ausgeschaltet.": "Der MCP-Endpunkt ist ausgeschaltet.",
+		"Die App „OpenID Connect Provider“ (oidc) ist nicht aktiv. Ohne sie kann sich niemand am MCP-Endpunkt anmelden.": "Die App „OpenID Connect Provider“ (oidc) ist nicht aktiv. Ohne sie kann sich niemand am MCP-Endpunkt anmelden.",
+		"Es ist kein zugelassener oidc-Client eingetragen (mcp_allowed_clients). Der Endpunkt bleibt geschlossen.": "Es ist kein zugelassener oidc-Client eingetragen (mcp_allowed_clients). Der Endpunkt bleibt geschlossen.",
+		"Die kanonische Endpunkt-URL fehlt (mcp_resource_url). Der Endpunkt bleibt geschlossen.": "Die kanonische Endpunkt-URL fehlt (mcp_resource_url). Der Endpunkt bleibt geschlossen.",
+		"Es ist kein verteilter Cache eingerichtet (memcache.distributed). Die Begrenzung fehlgeschlagener Anmeldungen am MCP-Endpunkt wirkt dann nicht.": "Es ist kein verteilter Cache eingerichtet (memcache.distributed). Die Begrenzung fehlgeschlagener Anmeldungen am MCP-Endpunkt wirkt dann nicht.",
+		"Die Verlängerung von oidc-Tokens läuft nach %s Sekunden ab (refresh_expire_time). Wer Claude länger nicht nutzt, muss sich danach neu anmelden. Empfohlen sind mindestens 30 Tage.": "Die Verlängerung von oidc-Tokens läuft nach %s Sekunden ab (refresh_expire_time). Wer Claude länger nicht nutzt, muss sich danach neu anmelden. Empfohlen sind mindestens 30 Tage.",
+		"Der MCP-Endpunkt ist eingeschaltet und vollständig eingerichtet.": "Der MCP-Endpunkt ist eingeschaltet und vollständig eingerichtet."
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }
