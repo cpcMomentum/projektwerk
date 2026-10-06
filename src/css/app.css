@@ -606,7 +606,8 @@
  * (§9). Sie steht neben Titel und Beschreibung, für alle Rollen gleich
  * voreingestellt.
  */
-.app-projektwerk .pw-vischoice {
+.app-projektwerk .pw-vischoice,
+.app-projektwerk .pw-boardtabs__group {
 	display: flex;
 	flex-direction: column;
 	gap: 6px;
@@ -629,7 +630,8 @@
  * Behaelter innerhalb der Gruppe — setzt `flex: 1 1` auf seine Kinder; ohne
  * `fit-content` waeren die drei Segmente so breit wie die Kopfzeile.
  */
-.app-projektwerk .pw-vischoice {
+.app-projektwerk .pw-vischoice,
+.app-projektwerk .pw-boardtabs__group {
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
@@ -645,8 +647,23 @@
  * und braucht seinen Abstand. `gap: 0` galt vorher fuer alles, weil ausser den
  * Segmenten ohnehin nichts da war.
  */
-.app-projektwerk .pw-vischoice--knapp {
+.app-projektwerk .pw-vischoice--knapp,
+.app-projektwerk .pw-boardtabs__group {
 	gap: 0;
+}
+
+/*
+ * Die Boards eines Projekts als Reiter (#350): derselbe Umschalter wie die
+ * Sichtbarkeit, links unter dem Projektkopf, „+" daneben. Viele Boards rollen
+ * waagerecht statt umzubrechen.
+ */
+.app-projektwerk .pw-boardtabs {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	max-width: 100%;
+	overflow-x: auto;
+	margin-bottom: 12px;
 }
 
 /*
@@ -667,7 +684,8 @@
  * Gilt nur fuer `--knapp`, also nur im Vorgang. Im Anlege-Formular bleibt es
  * bei der Plattformgroesse.
  */
-.app-projektwerk .pw-vischoice--knapp [class*='_radioGroupButton_'] {
+.app-projektwerk .pw-vischoice--knapp [class*='_radioGroupButton_'],
+.app-projektwerk .pw-boardtabs__group [class*='_radioGroupButton_'] {
 	min-height: var(--default-clickable-area, 34px);
 }
 
@@ -679,7 +697,8 @@
  * nichts umzubrechen; wird der Platz zu knapp, schiebt sich die Gruppe lieber
  * als Ganzes.
  */
-.app-projektwerk .pw-vischoice--knapp [class*='_radioGroupButton__label'] {
+.app-projektwerk .pw-vischoice--knapp [class*='_radioGroupButton__label'],
+.app-projektwerk .pw-boardtabs__group [class*='_radioGroupButton__label'] {
 	font-size: 13px;
 	min-height: 0;
 	white-space: nowrap;
@@ -691,7 +710,8 @@
  * die Beschriftung. Auf die Groesse des Sinnbilds festgelegt; die Klickflaeche
  * bleibt am Knopf und damit bei 34 px.
  */
-.app-projektwerk .pw-vischoice--knapp [class*='_radioGroupButton__icon'] {
+.app-projektwerk .pw-vischoice--knapp [class*='_radioGroupButton__icon'],
+.app-projektwerk .pw-boardtabs__group [class*='_radioGroupButton__icon'] {
 	height: 20px;
 	min-height: 0;
 }
@@ -708,7 +728,8 @@
  * Gilt für alle drei Einsatzorte (Detail, Anlege-Dialog, Wizard); die
  * Größen-Feinheiten oben bleiben auf `--knapp` beschränkt.
  */
-.app-projektwerk .pw-vischoice [class*='_ncFormBox_row'] {
+.app-projektwerk .pw-vischoice [class*='_ncFormBox_row'],
+.app-projektwerk .pw-boardtabs__group [class*='_ncFormBox_row'] {
 	background: var(--color-background-dark);
 	border-radius: var(--border-radius-element, 8px);
 	padding: 3px;
@@ -722,11 +743,13 @@
  * trotzdem sichtbar — hinter den transparenten inaktiven Segmenten und in den
  * Lücken. Das großzügigere Polster gilt nur im Anlege-Dialog/Wizard.
  */
-.app-projektwerk .pw-vischoice--knapp [class*='_ncFormBox_row'] {
+.app-projektwerk .pw-vischoice--knapp [class*='_ncFormBox_row'],
+.app-projektwerk .pw-boardtabs__group [class*='_ncFormBox_row'] {
 	padding: 0;
 }
 
-.app-projektwerk .pw-vischoice [class*='_radioGroupButton_'] {
+.app-projektwerk .pw-vischoice [class*='_radioGroupButton_'],
+.app-projektwerk .pw-boardtabs__group [class*='_radioGroupButton_'] {
 	background: none;
 	border: none;
 	border-radius: var(--border-radius-element, 8px);
@@ -734,7 +757,8 @@
 	box-shadow: none;
 }
 
-.app-projektwerk .pw-vischoice [class*='_radioGroupButton_']:hover {
+.app-projektwerk .pw-vischoice [class*='_radioGroupButton_']:hover,
+.app-projektwerk .pw-boardtabs__group [class*='_radioGroupButton_']:hover {
 	background: var(--color-background-hover);
 }
 
@@ -743,7 +767,9 @@
  * gewinnt die Reihenfolge: weiße Kachel, blaue Schrift, zarter Schatten.
  */
 .app-projektwerk .pw-vischoice [class*='_radioGroupButton_active'],
-.app-projektwerk .pw-vischoice [class*='_radioGroupButton_active']:hover {
+.app-projektwerk .pw-boardtabs__group [class*='_radioGroupButton_active'],
+.app-projektwerk .pw-vischoice [class*='_radioGroupButton_active']:hover,
+.app-projektwerk .pw-boardtabs__group [class*='_radioGroupButton_active']:hover {
 	background: var(--color-main-background);
 	color: var(--color-primary-element);
 	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);

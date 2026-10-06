@@ -43,6 +43,8 @@ interface State {
 	viewer: ViewerInfo | null
 	/** Ob das Projekt „Mitglieder dürfen Boards anlegen" gesetzt hat (#281). */
 	memberBoardsAllowed: boolean
+	/** Der Name des Projekts des geöffneten Boards (#350). */
+	projectTitle: string
 	tickets: Map<number, Ticket>
 	/** Ticket-IDs je Spalte, in Serverreihenfolge. */
 	columnOrder: Map<number, number[]>
@@ -76,6 +78,7 @@ export const useBoardStore = defineStore('board', {
 		columns: [],
 		viewer: null,
 		memberBoardsAllowed: false,
+		projectTitle: '',
 		tickets: new Map(),
 		columnOrder: new Map(),
 		counts: null,
@@ -377,6 +380,7 @@ export const useBoardStore = defineStore('board', {
 				this.columns = detail.columns
 				this.viewer = detail.viewer
 				this.memberBoardsAllowed = detail.memberBoardsAllowed ?? false
+				this.projectTitle = detail.projectTitle ?? ''
 
 				this.applyTickets(await fetchTickets(boardId))
 			} catch (e) {

@@ -163,6 +163,8 @@ class BoardController extends Controller {
 				// #281: Ob das Projekt „Mitglieder dürfen Boards anlegen" gesetzt
 				// hat — blendet „Board hinzufügen" für Nicht-Manager ein.
 				'memberBoardsAllowed' => $this->boardService->projectAllowsMemberBoards($viewer),
+				// #350: Der Kopf zeigt das Projekt, die Boards stehen als Reiter darunter.
+				'projectTitle' => $this->boardService->projectTitle($viewer),
 			]);
 		} catch (NotAMemberException|DoesNotExistException) {
 			return new JSONResponse([], Http::STATUS_NOT_FOUND);
