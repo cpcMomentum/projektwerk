@@ -9,8 +9,12 @@ declare(strict_types=1);
 
 namespace OCA\Projektwerk\Tests\Integration;
 
+use OCA\Projektwerk\Db\Board;
+use OCA\Projektwerk\Db\BoardMapper;
 use OCA\Projektwerk\Db\Member;
 use OCA\Projektwerk\Db\MemberMapper;
+use OCA\Projektwerk\Db\Project;
+use OCA\Projektwerk\Db\ProjectMapper;
 use OCA\Projektwerk\Service\MemberService;
 use OCP\Server;
 
@@ -41,15 +45,46 @@ class MemberRolesTest extends IntegrationTestCase {
 	}
 
 	/**
-	 * Eine Mitgliedschaft roh in die Tabelle setzen.
+	 * Ein Projekt mit so vielen Boards wie angegeben; liefert [Projekt-ID, Board-IDs].
 	 *
-	 * @param int $boardId Board-Kennung.
-	 * @param string $userId Konto.
-	 * @param string $role `internal`/`external`.
+	 * @return array{0: int, 1: list<int>}
 	 */
-	private function seed(int $boardId, string $userId, string $role): void {
+	private function project(int $boardCount = 1): array {
+		$now = new \DateTime();
+		$project = new Project();
+		$project->setTitle('Rollen');
+		$project->setOwnerUserId('seed');
+		$project->setArchived(0);
+		$project->setTicketCounter(0);
+		$project->setCreatedAt($now);
+		$project->setUpdatedAt($now);
+		$projectId = (int)Server::get(ProjectMapper::class)->insert($project)->getId();
+
+		$boardIds = [];
+		for ($i = 0; $i < $boardCount; $i++) {
+			$board = new Board();
+			$board->setTitle('Rollen ' . $i);
+			$board->setProjectId($projectId);
+			$board->setOwnerUserId('seed');
+			$board->setArchived(0);
+			$board->setCreatedAt($now);
+			$board->setUpdatedAt($now);
+			$boardIds[] = (int)Server::get(BoardMapper::class)->insert($board)->getId();
+		}
+
+		return [$projectId, $boardIds];
+	}
+
+	/**
+	 * Eine Mitgliedschaft roh in die Tabelle setzen — wie im Betrieb an das erste
+	 * Board gebunden, gültig für das ganze Projekt.
+	 *
+	 * @param array{0: int, 1: list<int>} $project
+	 */
+	private function seed(array $project, string $userId, string $role): void {
 		$member = new Member();
-		$member->setBoardId($boardId);
+		$member->setBoardId($project[1][0]);
+		$member->setProjectId($project[0]);
 		$member->setUserId($userId);
 		$member->setRole($role);
 		$member->setIsManager(0);
@@ -60,28 +95,42 @@ class MemberRolesTest extends IntegrationTestCase {
 	}
 
 	public function testRoleIsReportedPerBoard(): void {
-		$this->seed(90001, 'roles-mixed', 'external');
-		$this->seed(90002, 'roles-mixed', 'internal');
-		// Fremde Mitgliedschaft am selben Board — darf nicht in der Antwort
+		$first = $this->project();
+		$second = $this->project();
+		$this->seed($first, 'roles-mixed', 'external');
+		$this->seed($second, 'roles-mixed', 'internal');
+		// Fremde Mitgliedschaft im selben Projekt — darf nicht in der Antwort
 		// dieser Person auftauchen.
-		$this->seed(90001, 'roles-other', 'internal');
-
-		$roles = $this->service->rolesForUserBoards('roles-mixed');
+		$this->seed($first, 'roles-other', 'internal');
 
 		$this->assertSame(
-			[90001 => 'external', 90002 => 'internal'],
-			$roles,
+			[$first[1][0] => 'external', $second[1][0] => 'internal'],
+			$this->service->rolesForUserBoards('roles-mixed'),
+		);
+	}
+
+	/**
+	 * Die Mitgliedschaft hängt an einem Board, gilt aber für jedes Board des Projekts (#357).
+	 */
+	public function testEveryBoardOfTheProjectCarriesTheRole(): void {
+		$project = $this->project(3);
+		$this->seed($project, 'roles-siblings', 'external');
+
+		$this->assertSame(
+			array_fill_keys($project[1], 'external'),
+			$this->service->rolesForUserBoards('roles-siblings'),
 		);
 	}
 
 	public function testInternalOnlyMemberSeesInternalEverywhere(): void {
-		$this->seed(90003, 'roles-int', 'internal');
+		$project = $this->project();
+		$this->seed($project, 'roles-int', 'internal');
 
-		$this->assertSame([90003 => 'internal'], $this->service->rolesForUserBoards('roles-int'));
+		$this->assertSame([$project[1][0] => 'internal'], $this->service->rolesForUserBoards('roles-int'));
 	}
 
 	public function testAStrangerToEveryBoardGetsAnEmptyList(): void {
-		$this->seed(90004, 'roles-someone', 'internal');
+		$this->seed($this->project(), 'roles-someone', 'internal');
 
 		$this->assertSame([], $this->service->rolesForUserBoards('roles-nobody'));
 	}
