@@ -146,9 +146,9 @@ export const useBoardStore = defineStore('board', {
 		 *
 		 * @param state Der Speicher.
 		 */
-		companySuggestions: (state): string[] => [...new Set(
-			state.members.map((m) => m.company?.trim()).filter((c): c is string => !!c),
-		)].sort((a, b) => a.localeCompare(b)),
+		companySuggestions: (state): string[] => [...new Set(state.members
+			.map((m) => m.company?.trim())
+			.filter((c): c is string => !!c))].sort((a, b) => a.localeCompare(b)),
 
 		/**
 		 * Kunden-Vorschläge (#309): die schon vergebenen Kunden der geladenen
@@ -157,9 +157,9 @@ export const useBoardStore = defineStore('board', {
 		 *
 		 * @param state Der Speicher.
 		 */
-		customerSuggestions: (state): string[] => [...new Set(
-			state.boards.map((b) => b.customer?.trim()).filter((c): c is string => !!c),
-		)].sort((a, b) => a.localeCompare(b)),
+		customerSuggestions: (state): string[] => [...new Set(state.boards
+			.map((b) => b.customer?.trim())
+			.filter((c): c is string => !!c))].sort((a, b) => a.localeCompare(b)),
 
 		/**
 		 * Die Boards des geöffneten Projekts (#246) — für den Board-Wechsler.
