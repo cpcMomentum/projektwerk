@@ -205,6 +205,8 @@ class SettingsWritePathTest extends IntegrationTestCase {
 			// die Behauptung.
 			fn () => $this->boardService->update($bert, ['folderPublicPath' => '']),
 			fn () => $this->boardService->update($bert, ['folderInternalPath' => '']),
+			// Der Projektordner (#351) ist projektweit wie die beiden anderen.
+			fn () => $this->boardService->update($bert, ['folderRootPath' => '']),
 		] as $attempt) {
 			try {
 				$attempt();
@@ -214,7 +216,7 @@ class SettingsWritePathTest extends IntegrationTestCase {
 			}
 		}
 
-		$this->assertSame(11, $refused);
+		$this->assertSame(12, $refused);
 	}
 
 	/**

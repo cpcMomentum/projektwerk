@@ -38,8 +38,10 @@ test('legt über den Wähler einen Ordner an und übernimmt ihn in die Dateiabla
 	// Die Dateiablage liegt seit #196 Teil 2 hinter ihrem eigenen Nav-Punkt.
 	await page.getByRole('button', { name: 'Dateiablage' }).click()
 
-	// Der erste „Ordner wählen"-Knopf gehört zum Austausch-Ordner.
-	await page.getByRole('button', { name: 'Ordner wählen' }).first().click()
+	// Der „Ordner wählen"-Knopf in der Zeile des Austausch-Ordners — nicht der erste:
+	// Darüber steht seit #351 der Projektordner.
+	await page.locator('.pw-settings__row', { has: page.locator('#pw-set-public') })
+		.getByRole('button', { name: 'Ordner wählen' }).click()
 
 	const dialog = page.getByRole('dialog')
 	await expect(dialog).toBeVisible()

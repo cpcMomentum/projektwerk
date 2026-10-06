@@ -661,6 +661,21 @@ import {
 import { showError } from '@/services/toast'
 import { useBoardStore } from '@/stores/boardStore'
 
+/** Die Ordner der Dateiablage: Projektordner (#351) und die beiden Vorgangs-Ordner. */
+type FolderSlot = 'root' | 'public' | 'internal'
+
+/**
+ * Der übergeordnete Ordner eines Pfades, oder leer.
+ *
+ * @param path Ein Pfad relativ zur Files-Wurzel.
+ */
+function parentPath(path: string): string {
+	const parts = path.replace(/\/+$/, '').split('/')
+	parts.pop()
+
+	return parts.join('/')
+}
+
 /**
  * Projekt, Spalten, Mitglieder und Archiv pflegen.
  *
@@ -714,9 +729,9 @@ export default defineComponent({
 			// Eigene Entwuerfe wie beim Board oben, aus demselben Grund: Der
 			// Pfad muss erst geprueft werden, und bis dahin darf er nirgends
 			// als der gespeicherte gelten.
-			folderDrafts: { public: '', internal: '' } as Record<'public' | 'internal', string>,
+			folderDrafts: { root: '', public: '', internal: '' } as Record<FolderSlot, string>,
 			// Der Ordner-Wähler (#139) und für welchen der beiden Slots er offen ist.
-			picker: { open: false, slot: 'public' as 'public' | 'internal', start: '' },
+			picker: { open: false, slot: 'public' as FolderSlot, start: '' },
 			// Der aktive Bereich der linken Navigation (#196 Teil 2).
 			activeSection: 'projekt',
 		}
@@ -775,10 +790,17 @@ export default defineComponent({
 		 * internen Ordner arbeitsfähig ist, eines ohne Austauschordner aber
 		 * seinen Zweck verfehlt.
 		 */
-		folderSlots(): { key: 'public' | 'internal', label: string, hint: string, placeholder: string, path: string }[] {
+		folderSlots(): { key: FolderSlot, label: string, hint: string, placeholder: string, path: string }[] {
 			const board = this.store.board
 
 			return [
+				{
+					key: 'root',
+					label: t('projektwerk', 'Projektordner'),
+					hint: t('projektwerk', 'Der Oberordner des Projekts. Der Knopf „Projektordner" im Projektkopf öffnet ihn, und die Ordnerauswahl für die beiden Ordner darunter beginnt hier.'),
+					placeholder: 'Projekte/Kunde A',
+					path: this.store.projectFolder?.path ?? '',
+				},
 				{
 					key: 'public',
 					label: t('projektwerk', 'Ordner für Vorgänge, die alle Beteiligten sehen'),
@@ -907,6 +929,7 @@ export default defineComponent({
 				memberBoardsAllowed: this.store.memberBoardsAllowed,
 			}
 			this.folderDrafts = {
+				root: this.store.projectFolder?.path ?? '',
 				public: board.folderPublicPath ?? '',
 				internal: board.folderInternalPath ?? '',
 			}
@@ -1011,13 +1034,12 @@ export default defineComponent({
 		 *
 		 * @param slot Welcher der beiden Ordner.
 		 */
-		saveFolder(slot: 'public' | 'internal'): Promise<void> {
+		saveFolder(slot: FolderSlot): Promise<void> {
 			const path = this.folderDrafts[slot].trim()
+			const field = { root: 'folderRootPath', public: 'folderPublicPath', internal: 'folderInternalPath' }[slot]
 
 			return this.write(
-				() => updateBoard(this.boardId, slot === 'internal'
-					? { folderInternalPath: path }
-					: { folderPublicPath: path }),
+				() => updateBoard(this.boardId, { [field]: path }),
 				t('projektwerk', 'Ordner konnte nicht gespeichert werden'),
 			)
 		},
@@ -1025,11 +1047,17 @@ export default defineComponent({
 		/**
 		 * Den Ordner-Wähler für einen Slot öffnen — beim bereits gesetzten
 		 * Ordner beginnend, damit man nicht jedes Mal von der Wurzel klickt.
+		 * Ist er leer, beginnt ein Vorgangs-Ordner im Projektordner (#351), und
+		 * der Projektordner eine Ebene über einem schon gesetzten Vorgangs-Ordner.
 		 *
-		 * @param slot Welcher der beiden Ordner.
+		 * @param slot Welcher Ordner.
 		 */
-		openPicker(slot: 'public' | 'internal'): void {
-			this.picker = { open: true, slot, start: this.folderDrafts[slot].trim() }
+		openPicker(slot: FolderSlot): void {
+			const own = this.folderDrafts[slot].trim()
+			const fallback = slot === 'root'
+				? parentPath(this.folderDrafts.public.trim() || this.folderDrafts.internal.trim())
+				: this.folderDrafts.root.trim()
+			this.picker = { open: true, slot, start: own || fallback }
 		},
 
 		/**

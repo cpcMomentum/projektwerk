@@ -109,6 +109,7 @@ class SettingsController extends Controller {
 		?string $chatUrl = null,
 		?string $folderPublicPath = null,
 		?string $folderInternalPath = null,
+		?string $folderRootPath = null,
 		?bool $githubEnabled = null,
 		?string $githubRepo = null,
 		?bool $memberBoardsAllowed = null,
@@ -127,6 +128,8 @@ class SettingsController extends Controller {
 			'chatUrl' => $chatUrl,
 			'folderPublicPath' => $folderPublicPath,
 			'folderInternalPath' => $folderInternalPath,
+			// #351: der Projektordner, Oberordner der beiden oben.
+			'folderRootPath' => $folderRootPath,
 			// Der Schalter „ist dieses Projekt ein Softwareprojekt" und das
 			// Ziel-Repo (#12). `onlyGiven` wirft `null` heraus — ein leeres Repo
 			// kommt als leerer String und wird zu „kein Ziel".

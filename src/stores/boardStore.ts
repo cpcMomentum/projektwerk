@@ -45,6 +45,8 @@ interface State {
 	memberBoardsAllowed: boolean
 	/** Der Name des Projekts des geöffneten Boards (#350). */
 	projectTitle: string
+	/** Der Projektordner des geöffneten Boards (#351), oder null. */
+	projectFolder: { id: number, path: string } | null
 	tickets: Map<number, Ticket>
 	/** Ticket-IDs je Spalte, in Serverreihenfolge. */
 	columnOrder: Map<number, number[]>
@@ -79,6 +81,7 @@ export const useBoardStore = defineStore('board', {
 		viewer: null,
 		memberBoardsAllowed: false,
 		projectTitle: '',
+		projectFolder: null,
 		tickets: new Map(),
 		columnOrder: new Map(),
 		counts: null,
@@ -381,6 +384,7 @@ export const useBoardStore = defineStore('board', {
 				this.viewer = detail.viewer
 				this.memberBoardsAllowed = detail.memberBoardsAllowed ?? false
 				this.projectTitle = detail.projectTitle ?? ''
+				this.projectFolder = detail.projectFolder ?? null
 
 				this.applyTickets(await fetchTickets(boardId))
 			} catch (e) {
