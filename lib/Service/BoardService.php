@@ -471,10 +471,6 @@ class BoardService {
 	}
 
 	/**
-	 * Ob das Projekt des Boards „Mitglieder dürfen Boards anlegen" gesetzt hat
-	 * (#281) — für die Anzeige des „Board hinzufügen" im Frontend.
-	 */
-	/**
 	 * Der Projektordner (#351): Datei-ID zum Öffnen, Pfad zur Anzeige; null ohne Ordner.
 	 *
 	 * @return array{id: int, path: string}|null
@@ -486,6 +482,10 @@ class BoardService {
 		return $id === null ? null : ['id' => (int)$id, 'path' => (string)$project->getFolderRootPath()];
 	}
 
+	/**
+	 * Ob das Projekt des Boards „Mitglieder dürfen Boards anlegen" gesetzt hat
+	 * (#281) — für die Anzeige des „Board hinzufügen" im Frontend.
+	 */
 	public function projectAllowsMemberBoards(ViewerContext $viewer): bool {
 		return (int)$this->projects->findForViewer($viewer)->getMemberBoardsAllowed() === 1;
 	}
@@ -494,6 +494,22 @@ class BoardService {
 		if (trim($title) === '') {
 			throw new \InvalidArgumentException('Ein Projekt braucht einen Titel.');
 		}
+	}
+
+	/**
+	 * Den Projektordner setzen oder leeren (#351) — aufgelöst wie die Vorgangs-Ordner.
+	 */
+	private function setRootFolder(ViewerContext $viewer, Project $project, ?string $path): void {
+		if ($path === null || trim($path) === '') {
+			$project->setFolderRootId(null);
+			$project->setFolderRootPath(null);
+
+			return;
+		}
+
+		$folder = $this->folders->resolvePath($viewer->userId, $path);
+		$project->setFolderRootId($folder->getId());
+		$project->setFolderRootPath($this->folders->displayPath($viewer->userId, $folder));
 	}
 
 	/**
@@ -511,22 +527,6 @@ class BoardService {
 	 *
 	 * @throws \OCP\Files\NotPermittedException Ordner nicht erreichbar oder nicht beschreibbar
 	 */
-	/**
-	 * Den Projektordner setzen oder leeren (#351) — aufgelöst wie die Vorgangs-Ordner.
-	 */
-	private function setRootFolder(ViewerContext $viewer, Project $project, ?string $path): void {
-		if ($path === null || trim($path) === '') {
-			$project->setFolderRootId(null);
-			$project->setFolderRootPath(null);
-
-			return;
-		}
-
-		$folder = $this->folders->resolvePath($viewer->userId, $path);
-		$project->setFolderRootId($folder->getId());
-		$project->setFolderRootPath($this->folders->displayPath($viewer->userId, $folder));
-	}
-
 	private function setFolder(ViewerContext $viewer, Project $project, string $location, ?string $path): void {
 		$intern = $location === Attachment::LOCATION_INTERNAL;
 
