@@ -164,6 +164,20 @@ async function fuelleZeile(
  *
  * @param wrapper Die montierte Komponente.
  */
+/**
+ * Der „Fertig"-Knopf unter den Feldern des geöffneten Schritts (#345).
+ *
+ * @param wrapper Die gemountete Liste.
+ */
+function fertig(wrapper: ReturnType<typeof mountList>) {
+	const knopf = wrapper.findAll('.pw-step__felder-aktionen button').find((b) => b.text().includes('Fertig'))
+	if (knopf === undefined) {
+		throw new Error('Kein „Fertig"-Knopf im geöffneten Schritt')
+	}
+
+	return knopf
+}
+
 async function oeffneZeile(wrapper: ReturnType<typeof mountList>) {
 	const zeile = wrapper.find('.pw-step:not(.pw-step--new)')
 	await zeile.find('.pw-step__rechts button').trigger('click')
@@ -214,9 +228,8 @@ describe('StepList', () => {
 		// Kein Schreiben, solange nur getippt wird.
 		expect(updateStep).not.toHaveBeenCalled()
 
-		// Während des Bearbeitens ist „Fertig" der einzige Knopf in der Zeile
-		// (der Papierkorb ist ausgeblendet).
-		await wrapper.find('.pw-step__rechts button').trigger('click')
+		// „Fertig" steht unter den Feldern (#345).
+		await fertig(wrapper).trigger('click')
 		await new Promise((resolve) => setTimeout(resolve, 0))
 
 		expect(updateStep).toHaveBeenCalledWith(7, 5, { result: 'Hetzner 12, IONOS 15, Empfehlung Hetzner' })
@@ -260,7 +273,7 @@ describe('StepList', () => {
 
 		const titel = wrapper.findAll('.pw-step__felder-text input[type="text"]')[0]
 		await titel.setValue('Mit Frist korrigiert')
-		await wrapper.find('.pw-step__rechts button').trigger('click')
+		await fertig(wrapper).trigger('click')
 		await new Promise((resolve) => setTimeout(resolve, 0))
 
 		expect(updateStep).toHaveBeenCalledWith(7, 5, { title: 'Mit Frist korrigiert' })
@@ -276,7 +289,7 @@ describe('StepList', () => {
 
 		const titel = wrapper.findAll('.pw-step__felder-text input[type="text"]')[0]
 		await titel.setValue('   ')
-		await wrapper.find('.pw-step__rechts button').trigger('click')
+		await fertig(wrapper).trigger('click')
 		await new Promise((resolve) => setTimeout(resolve, 0))
 
 		expect(updateStep).not.toHaveBeenCalled()

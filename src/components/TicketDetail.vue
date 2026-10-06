@@ -320,6 +320,13 @@
 					Die sichtbare Ueberschrift entfaellt (#99); zwei Namen mit
 					Avatar erklaeren sich. Fuer Screenreader bleibt sie stehen.
 				-->
+				<!--
+					**Eckdaten, Variante B** (#345): Ersteller, Zuständigkeit und
+					Fälligkeit werden gelesen; **ein** Stift öffnet Zuständig und Frist
+					gemeinsam, mit Beschriftung über dem Feld und „Fertig" darunter —
+					dasselbe Muster wie am Arbeitsschritt. Beide Felder speichern
+					sofort; „Fertig" schließt nur.
+				-->
 				<div class="pw-personen">
 					<h3 class="hidden-visually">
 						{{ t('projektwerk', 'Personen') }}
@@ -334,49 +341,12 @@
 							:hideStatus="true" />
 						<span class="pw-person__body">
 							<span class="pw-person__name">{{ nameOf(ticket.creatorUserId) }}</span>
-							<!--
-								Die Firma steht unter JEDEM Namen, auch unter den
-								internen — sonst waere die eine Seite stumm „der
-								Normalfall".
-							-->
 							<span class="pw-person__org">{{ orgLine(ticket.creatorUserId, ticket.creatorRole, t('projektwerk', 'angelegt')) }}</span>
 						</span>
 					</div>
 
-					<!--
-						**Die Zustaendigkeit war bis #97 nirgends setzbar.** Server
-						und Dienst konnten sie von Anfang an, nur fuehrte kein Weg
-						der Oberflaeche dorthin — und der bereits gebaute Ausloeser
-						`EVENT_TICKET_ASSIGNED` blieb damit unerreichbar.
-
-						Dasselbe Muster wie bei den Arbeitsschritten: Wo etwas
-						steht, steht Text; wo nichts steht, steht ein flacher Knopf.
-					-->
-					<div class="pw-person">
-						<template v-if="editingResponsible">
-							<label class="hidden-visually" :for="responsibleInputId">
-								{{ t('projektwerk', 'Zuständig') }}
-							</label>
-							<NcSelectUsers
-								class="pw-person__picker"
-								:options="assignableOptions"
-								:modelValue="responsibleOption"
-								:inputId="responsibleInputId"
-								:labelOutside="true"
-								:disabled="busy"
-								:placeholder="t('projektwerk', 'Niemand')"
-								@update:modelValue="setResponsible" />
-							<NcButton
-								variant="tertiary"
-								:ariaLabel="t('projektwerk', 'Abbrechen')"
-								@click="editingResponsible = false">
-								<template #icon>
-									<CloseIcon :size="20" />
-								</template>
-							</NcButton>
-						</template>
-
-						<template v-else-if="ticket.responsibleUserId">
+					<div v-if="!editingResponsible" class="pw-person">
+						<template v-if="ticket.responsibleUserId">
 							<NcAvatar
 								:user="ticket.responsibleUserId"
 								:displayName="nameOf(ticket.responsibleUserId)"
@@ -387,55 +357,75 @@
 								<span class="pw-person__name">{{ nameOf(ticket.responsibleUserId) }}</span>
 								<span class="pw-person__org">{{ orgLine(ticket.responsibleUserId, roleOf(ticket.responsibleUserId), t('projektwerk', 'zuständig')) }}</span>
 							</span>
-							<NcButton
-								variant="tertiary"
-								:ariaLabel="t('projektwerk', 'Zuständigkeit ändern')"
-								@click="startEditResponsible">
-								<template #icon>
-									<PencilOutlineIcon :size="20" />
-								</template>
-							</NcButton>
 						</template>
-
-						<NcButton
-							v-else
-							variant="tertiary"
-							class="pw-person__flach"
-							@click="startEditResponsible">
-							<template #icon>
-								<AccountPlusIcon :size="20" />
-							</template>
-							{{ t('projektwerk', 'Zuständige Person festlegen') }}
-						</NcButton>
+						<span v-else class="pw-person__body">
+							<span class="pw-person__name pw-person__name--leer">{{ t('projektwerk', 'Niemand zuständig') }}</span>
+						</span>
 					</div>
 				</div>
 
-				<!--
-					Die Fälligkeit des Vorgangs (#72) — „bis wann ist die Sache
-					fertig", verschieden von der Frist eines einzelnen Schritts.
-					Immer sichtbar und leer löschbar, wie der Datumswähler am
-					Schritt; überfällig wird kräftig markiert, aber nur wenn das
-					Datum wirklich gerissen ist.
-				-->
-				<div class="pw-frist" :class="{ 'pw-frist--overdue': dueOverdue }">
+				<div v-if="!editingResponsible" class="pw-frist" :class="{ 'pw-frist--overdue': dueOverdue }">
 					<span class="pw-frist__label">
 						<CalendarAlertIcon v-if="dueOverdue" :size="18" />
 						<CalendarIcon v-else :size="18" />
 						{{ t('projektwerk', 'Fällig bis') }}
 					</span>
-					<NcDateTimePicker
-						:modelValue="dueValue"
-						type="date"
-						class="pw-frist__picker"
-						:clearable="true"
-						:appendToBody="true"
-						:disabled="busy"
-						:ariaLabel="t('projektwerk', 'Fällig bis')"
-						:placeholder="t('projektwerk', 'Keine Frist')"
-						@update:modelValue="setDue" />
+					<span class="pw-frist__wert">{{ dueText }}</span>
 					<span v-if="dueOverdue" class="pw-frist__marke">
 						{{ t('projektwerk', 'überfällig') }}
 					</span>
+					<NcButton
+						class="pw-eckdaten__stift"
+						variant="tertiary"
+						:ariaLabel="t('projektwerk', 'Zuständigkeit und Fälligkeit ändern')"
+						:title="t('projektwerk', 'Bearbeiten')"
+						@click="startEditResponsible">
+						<template #icon>
+							<PencilOutlineIcon :size="20" />
+						</template>
+					</NcButton>
+				</div>
+
+				<div v-else class="pw-eckdaten__edit">
+					<div class="pw-eckdaten__felder">
+						<div class="pw-field pw-eckdaten__person">
+							<label :for="responsibleInputId">{{ t('projektwerk', 'Zuständig') }}</label>
+							<NcSelectUsers
+								class="pw-person__picker"
+								:options="assignableOptions"
+								:modelValue="responsibleOption"
+								:inputId="responsibleInputId"
+								:labelOutside="true"
+								:disabled="busy"
+								:placeholder="t('projektwerk', 'Niemand')"
+								@update:modelValue="setResponsible" />
+						</div>
+						<div class="pw-field pw-eckdaten__frist">
+							<label>{{ t('projektwerk', 'Fällig bis') }}</label>
+							<NcDateTimePicker
+								:modelValue="dueValue"
+								type="date"
+								class="pw-frist__picker"
+								:clearable="true"
+								:appendToBody="true"
+								:disabled="busy"
+								:ariaLabel="t('projektwerk', 'Fällig bis')"
+								:placeholder="t('projektwerk', 'Keine Frist')"
+								@update:modelValue="setDue" />
+						</div>
+					</div>
+					<div class="pw-step__felder-aktionen">
+						<NcButton
+							variant="primary"
+							:ariaLabel="t('projektwerk', 'Fertig')"
+							:disabled="busy"
+							@click="editingResponsible = false">
+							<template #icon>
+								<CheckIcon :size="20" />
+							</template>
+							{{ t('projektwerk', 'Fertig') }}
+						</NcButton>
+					</div>
 				</div>
 
 				<StepList
@@ -556,14 +546,12 @@ import NcRichText from '@nextcloud/vue/components/NcRichText'
 import NcSelectUsers from '@nextcloud/vue/components/NcSelectUsers'
 import NcTextArea from '@nextcloud/vue/components/NcTextArea'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
-import AccountPlusIcon from 'vue-material-design-icons/AccountPlusOutline.vue'
 import CalendarAlertIcon from 'vue-material-design-icons/CalendarAlert.vue'
 import CalendarIcon from 'vue-material-design-icons/CalendarOutline.vue'
 import CancelIcon from 'vue-material-design-icons/Cancel.vue'
 import CheckIcon from 'vue-material-design-icons/Check.vue'
 import ChevronDownIcon from 'vue-material-design-icons/ChevronDown.vue'
 import ChevronUpIcon from 'vue-material-design-icons/ChevronUp.vue'
-import CloseIcon from 'vue-material-design-icons/Close.vue'
 import DeleteOutlineIcon from 'vue-material-design-icons/DeleteOutline.vue'
 import FormatBoldIcon from 'vue-material-design-icons/FormatBold.vue'
 import FormatListBulletedIcon from 'vue-material-design-icons/FormatListBulleted.vue'
@@ -596,7 +584,7 @@ interface PersonOption {
 export default defineComponent({
 	name: 'TicketDetail',
 
-	components: { AccountPlusIcon, AttachmentList, CalendarIcon, CalendarAlertIcon, CancelIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, CloseIcon, CommentList, DeleteOutlineIcon, FormatBoldIcon, FormatListBulletedIcon, FormatListNumberedIcon, GithubIcon, NcAvatar, NcButton, NcDateTimePicker, NcModal, NcRichText, NcSelectUsers, NcTextArea, NcTextField, PencilOutlineIcon, PlusIcon, RestoreIcon, StepList, VisibilityControl, WaitBadge },
+	components: { AttachmentList, CalendarIcon, CalendarAlertIcon, CancelIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, CommentList, DeleteOutlineIcon, FormatBoldIcon, FormatListBulletedIcon, FormatListNumberedIcon, GithubIcon, NcAvatar, NcButton, NcDateTimePicker, NcModal, NcRichText, NcSelectUsers, NcTextArea, NcTextField, PencilOutlineIcon, PlusIcon, RestoreIcon, StepList, VisibilityControl, WaitBadge },
 
 	props: {
 		ticket: { type: Object as PropType<Ticket | null>, default: null },
@@ -676,6 +664,14 @@ export default defineComponent({
 		/** Die Fälligkeit als `Date` für den Datumswähler, oder null. */
 		dueValue(): Date | null {
 			return asDate(this.ticket?.dueDate ?? null)
+		},
+
+		/** Die Fälligkeit als Text für den Lesemodus (#345). */
+		dueText(): string {
+			const datum = this.dueValue
+			return datum === null
+				? t('projektwerk', 'Keine Frist')
+				: datum.toLocaleDateString(undefined, { day: '2-digit', month: '2-digit', year: 'numeric' })
 		},
 
 		/** Ist die Fälligkeit gerissen? Ein fehlendes Datum nie (#72). */
@@ -1126,8 +1122,6 @@ export default defineComponent({
 			const gewaehlt = Array.isArray(option) ? (option[0] ?? null) : option
 			const userId = gewaehlt?.id ?? null
 			if (userId === (this.ticket.responsibleUserId ?? null)) {
-				this.editingResponsible = false
-
 				return
 			}
 
@@ -1140,7 +1134,6 @@ export default defineComponent({
 					{ responsibleUserId: userId },
 				)
 				this.$emit('changed', updated)
-				this.editingResponsible = false
 			} catch (e) {
 				reportWriteError(e, t('projektwerk', 'Zuständigkeit konnte nicht gesetzt werden'))
 			} finally {

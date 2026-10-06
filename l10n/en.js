@@ -461,6 +461,10 @@ OC.L10N.register(
     "Der Name Ihrer Firma. Neue Projekte übernehmen ihn als „Eigene Firma\"; im einzelnen Projekt lässt er sich ändern. Bestehende Projekte bleiben unverändert." : "Your company name. New projects take it as “Own company”; it can be changed in each project. Existing projects stay unchanged.",
     "Der Firmenname darf höchstens %s Zeichen lang sein." : "The company name may be at most %s characters long.",
     "Projektordner" : "Project folder",
-    "Der Oberordner des Projekts. Der Knopf „Projektordner\" im Projektkopf öffnet ihn, und die Ordnerauswahl für die beiden Ordner darunter beginnt hier." : "The top folder of the project. The “Project folder” button in the project header opens it, and choosing the two folders below starts here."
+    "Der Oberordner des Projekts. Der Knopf „Projektordner\" im Projektkopf öffnet ihn, und die Ordnerauswahl für die beiden Ordner darunter beginnt hier." : "The top folder of the project. The “Project folder” button in the project header opens it, and choosing the two folders below starts here.",
+    "Arbeitsschritt bearbeiten: {title}" : "Edit step: {title}",
+    "Bearbeiten" : "Edit",
+    "Niemand zuständig" : "Nobody responsible",
+    "Zuständigkeit und Fälligkeit ändern" : "Change responsibility and due date"
 },
 "nplurals=2; plural=(n != 1);");
