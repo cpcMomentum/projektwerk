@@ -155,16 +155,6 @@ async function fuelleZeile(
 }
 
 /**
- * Die Bearbeitung einer bestehenden Schrittzeile oeffnen.
- *
- * Seit Variante C (#99) stehen Zuweisung und Frist dort als **Text**; die
- * Felder erscheinen erst auf Klick. Der Weg dorthin ist Teil dessen, was hier
- * geprueft wird — ein Test, der die Felder direkt anspraeche, liefe an der
- * Bedienung vorbei.
- *
- * @param wrapper Die montierte Komponente.
- */
-/**
  * Der „Fertig"-Knopf unter den Feldern des geöffneten Schritts (#345).
  *
  * @param wrapper Die gemountete Liste.
@@ -178,6 +168,16 @@ function fertig(wrapper: ReturnType<typeof mountList>) {
 	return knopf
 }
 
+/**
+ * Die Bearbeitung einer bestehenden Schrittzeile oeffnen.
+ *
+ * Seit Variante C (#99) stehen Zuweisung und Frist dort als **Text**; die
+ * Felder erscheinen erst auf Klick. Der Weg dorthin ist Teil dessen, was hier
+ * geprueft wird — ein Test, der die Felder direkt anspraeche, liefe an der
+ * Bedienung vorbei.
+ *
+ * @param wrapper Die montierte Komponente.
+ */
 async function oeffneZeile(wrapper: ReturnType<typeof mountList>) {
 	const zeile = wrapper.find('.pw-step:not(.pw-step--new)')
 	await zeile.find('.pw-step__rechts button').trigger('click')
