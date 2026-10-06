@@ -11,6 +11,7 @@ namespace OCA\Projektwerk\Controller;
 
 use OCA\Projektwerk\AppInfo\Application;
 use OCA\Projektwerk\Service\AccountType;
+use OCA\Projektwerk\Service\OwnCompanySettings;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
@@ -24,6 +25,7 @@ class PageController extends Controller {
 		IRequest $request,
 		private IInitialState $initialState,
 		private AccountType $accountType,
+		private OwnCompanySettings $ownCompany,
 		private ?string $userId,
 	) {
 		parent::__construct(Application::APP_ID, $request);
@@ -42,6 +44,10 @@ class PageController extends Controller {
 		// „Neuerungen"-Menüeintrag aus. Der Riegel selbst sitzt im WhatsNewService
 		// (der `all`-Endpunkt liefert Gästen ohnehin nichts).
 		$this->initialState->provideInitialState('isGuest', $this->accountType->isGuest($this->userId));
+
+		// Die eigene Firma der Instanz (#352): belegt im Projekt-Assistenten das Feld
+		// „Eigene Firma" vor. Kein Geheimnis, nur ein Name.
+		$this->initialState->provideInitialState('ownCompany', $this->ownCompany->get() ?? '');
 
 		return new TemplateResponse(Application::APP_ID, 'index');
 	}

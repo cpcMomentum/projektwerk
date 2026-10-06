@@ -1,121 +1,159 @@
 <template>
 	<div class="pw-view pw-settingspage">
 		<h2 class="pw-settingspage__title">
-			{{ t('projektwerk', 'Antworten per E-Mail') }}
+			{{ t('projektwerk', 'Verwaltung') }}
 		</h2>
 
-		<div class="pw-settingspage__content">
-			<section class="pw-settingspage__block">
-				<p class="pw-settings__hint">
-					{{ t('projektwerk', 'Antworten auf Benachrichtigungs-E-Mails werden als Kommentar am Vorgang eingetragen. Dazu liest ProjektWerk ein IMAP-Postfach, das Sie hier hinterlegen. Es verlässt nichts die Instanz — das Postfach gehört Ihnen.') }}
-				</p>
+		<div class="pw-settingspage__body">
+			<PwSettingsNav
+				:sections="sections"
+				:modelValue="activeSection"
+				@update:modelValue="activeSection = $event" />
 
-				<label class="pw-settings__check pw-replymail__switch">
-					<NcCheckboxRadioSwitch
-						v-model="form.replyEnabled"
-						type="switch"
-						:disabled="busy">
-						{{ t('projektwerk', 'Antworten per E-Mail aktivieren') }}
-					</NcCheckboxRadioSwitch>
-				</label>
-				<p class="pw-settings__hint">
-					{{ t('projektwerk', 'Ist der Schalter aus, ändert sich am Versand nichts — nur die Antwortadresse (Reply-To) wird dann nicht gesetzt.') }}
-				</p>
-			</section>
-
-			<section class="pw-settingspage__block">
-				<h3 class="pw-settingspage__head">
-					{{ t('projektwerk', 'Antwortadresse') }}
-				</h3>
-				<p class="pw-settings__hint">
-					{{ t('projektwerk', 'Die Adresse, an die Kunden antworten (z. B. projekte@ihre-firma.de). Sie wird als Reply-To gesetzt und gehört zu dem Postfach unten.') }}
-				</p>
-				<div class="pw-settings__row">
-					<NcTextField
-						v-model="form.replyAddress"
-						:label="t('projektwerk', 'Antwortadresse (Reply-To)')"
-						:disabled="busy"
-						type="email"
-						autocomplete="off" />
-				</div>
-			</section>
-
-			<section class="pw-settingspage__block">
-				<h3 class="pw-settingspage__head">
-					{{ t('projektwerk', 'Posteingang (IMAP)') }}
-				</h3>
-
-				<div class="pw-settings__row">
-					<NcTextField
-						v-model="form.imapHost"
-						:label="t('projektwerk', 'Server')"
-						placeholder="imap.ihre-firma.de"
-						:disabled="busy"
-						autocomplete="off" />
-					<NcTextField
-						v-model.number="form.imapPort"
-						:label="t('projektwerk', 'Port')"
-						type="number"
-						:disabled="busy"
-						class="pw-replymail__port" />
+			<div class="pw-settingspage__content">
+				<!--
+					**Eigene Firma** (#352): einmal je Instanz. Neue Projekte
+					übernehmen sie als „eigene Firma"; im Projekt bleibt sie änderbar.
+				-->
+				<div v-show="activeSection === 'firma'">
+					<h3 class="pw-settingspage__head">
+						{{ t('projektwerk', 'Eigene Firma') }}
+					</h3>
+					<section class="pw-settingspage__block">
+						<p class="pw-settings__hint">
+							{{ t('projektwerk', 'Der Name Ihrer Firma. Neue Projekte übernehmen ihn als „Eigene Firma"; im einzelnen Projekt lässt er sich ändern. Bestehende Projekte bleiben unverändert.') }}
+						</p>
+						<div class="pw-settings__row">
+							<NcTextField
+								v-model="firmaEntwurf"
+								:label="t('projektwerk', 'Eigene Firma')"
+								:disabled="busy"
+								:maxlength="255"
+								@keydown.enter="firmaSpeichern" />
+							<NcButton variant="primary" :disabled="busy || firmaEntwurf.trim() === ownCompany" @click="firmaSpeichern">
+								{{ t('projektwerk', 'Speichern') }}
+							</NcButton>
+						</div>
+					</section>
 				</div>
 
-				<div class="pw-settings__row">
-					<label class="pw-replymail__field">
-						<span class="pw-replymail__label">{{ t('projektwerk', 'Verschlüsselung') }}</span>
-						<select v-model="form.imapSecurity" :disabled="busy" class="pw-replymail__select">
-							<option value="ssl">SSL/TLS</option>
-							<option value="starttls">STARTTLS</option>
-							<option value="tls">TLS</option>
-						</select>
-					</label>
-					<NcTextField
-						v-model="form.imapFolder"
-						:label="t('projektwerk', 'Ordner')"
-						placeholder="INBOX"
-						:disabled="busy"
-						autocomplete="off" />
+				<div v-show="activeSection === 'antworten'">
+					<h3 class="pw-settingspage__head">
+						{{ t('projektwerk', 'Antworten per E-Mail') }}
+					</h3>
+					<section class="pw-settingspage__block">
+						<p class="pw-settings__hint">
+							{{ t('projektwerk', 'Antworten auf Benachrichtigungs-E-Mails werden als Kommentar am Vorgang eingetragen. Dazu liest ProjektWerk ein IMAP-Postfach, das Sie hier hinterlegen. Es verlässt nichts die Instanz — das Postfach gehört Ihnen.') }}
+						</p>
+
+						<label class="pw-settings__check pw-replymail__switch">
+							<NcCheckboxRadioSwitch
+								v-model="form.replyEnabled"
+								type="switch"
+								:disabled="busy">
+								{{ t('projektwerk', 'Antworten per E-Mail aktivieren') }}
+							</NcCheckboxRadioSwitch>
+						</label>
+						<p class="pw-settings__hint">
+							{{ t('projektwerk', 'Ist der Schalter aus, ändert sich am Versand nichts — nur die Antwortadresse (Reply-To) wird dann nicht gesetzt.') }}
+						</p>
+					</section>
+
+					<section class="pw-settingspage__block">
+						<h3 class="pw-settingspage__head">
+							{{ t('projektwerk', 'Antwortadresse') }}
+						</h3>
+						<p class="pw-settings__hint">
+							{{ t('projektwerk', 'Die Adresse, an die Kunden antworten (z. B. projekte@ihre-firma.de). Sie wird als Reply-To gesetzt und gehört zu dem Postfach unten.') }}
+						</p>
+						<div class="pw-settings__row">
+							<NcTextField
+								v-model="form.replyAddress"
+								:label="t('projektwerk', 'Antwortadresse (Reply-To)')"
+								:disabled="busy"
+								type="email"
+								autocomplete="off" />
+						</div>
+					</section>
+
+					<section class="pw-settingspage__block">
+						<h3 class="pw-settingspage__head">
+							{{ t('projektwerk', 'Posteingang (IMAP)') }}
+						</h3>
+
+						<div class="pw-settings__row">
+							<NcTextField
+								v-model="form.imapHost"
+								:label="t('projektwerk', 'Server')"
+								placeholder="imap.ihre-firma.de"
+								:disabled="busy"
+								autocomplete="off" />
+							<NcTextField
+								v-model.number="form.imapPort"
+								:label="t('projektwerk', 'Port')"
+								type="number"
+								:disabled="busy"
+								class="pw-replymail__port" />
+						</div>
+
+						<div class="pw-settings__row">
+							<label class="pw-replymail__field">
+								<span class="pw-replymail__label">{{ t('projektwerk', 'Verschlüsselung') }}</span>
+								<select v-model="form.imapSecurity" :disabled="busy" class="pw-replymail__select">
+									<option value="ssl">SSL/TLS</option>
+									<option value="starttls">STARTTLS</option>
+									<option value="tls">TLS</option>
+								</select>
+							</label>
+							<NcTextField
+								v-model="form.imapFolder"
+								:label="t('projektwerk', 'Ordner')"
+								placeholder="INBOX"
+								:disabled="busy"
+								autocomplete="off" />
+						</div>
+
+						<div class="pw-settings__row">
+							<NcTextField
+								v-model="form.imapUser"
+								:label="t('projektwerk', 'Benutzername')"
+								:disabled="busy"
+								autocomplete="off" />
+							<NcTextField
+								v-model="passwordDraft"
+								:label="t('projektwerk', 'Passwort')"
+								type="password"
+								:placeholder="form.imapPasswordSet ? t('projektwerk', 'Gespeichert — zum Ändern neu eingeben') : ''"
+								:disabled="busy || passwordClear"
+								autocomplete="off" />
+						</div>
+
+						<label v-if="form.imapPasswordSet" class="pw-settings__check">
+							<input v-model="passwordClear" type="checkbox" :disabled="busy">
+							{{ t('projektwerk', 'Gespeichertes Passwort entfernen') }}
+						</label>
+
+						<p v-if="testResult" class="pw-settings__status" :class="testOk ? 'pw-replymail__ok' : 'pw-replymail__err'">
+							<CheckIcon v-if="testOk" :size="18" class="pw-settings__status-icon pw-settings__status-icon--ok" />
+							<AlertIcon v-else :size="18" class="pw-settings__status-icon" />
+							{{ testResult }}
+						</p>
+
+						<div class="pw-settings__row pw-replymail__actions">
+							<NcButton :disabled="busy || form.imapHost.trim() === ''" @click="verbindungTesten">
+								<template #icon>
+									<NcLoadingIcon v-if="testing" :size="20" />
+									<LanConnectIcon v-else :size="20" />
+								</template>
+								{{ t('projektwerk', 'Verbindung testen') }}
+							</NcButton>
+							<NcButton variant="primary" :disabled="busy" @click="speichern">
+								{{ t('projektwerk', 'Speichern') }}
+							</NcButton>
+						</div>
+					</section>
 				</div>
-
-				<div class="pw-settings__row">
-					<NcTextField
-						v-model="form.imapUser"
-						:label="t('projektwerk', 'Benutzername')"
-						:disabled="busy"
-						autocomplete="off" />
-					<NcTextField
-						v-model="passwordDraft"
-						:label="t('projektwerk', 'Passwort')"
-						type="password"
-						:placeholder="form.imapPasswordSet ? t('projektwerk', 'Gespeichert — zum Ändern neu eingeben') : ''"
-						:disabled="busy || passwordClear"
-						autocomplete="off" />
-				</div>
-
-				<label v-if="form.imapPasswordSet" class="pw-settings__check">
-					<input v-model="passwordClear" type="checkbox" :disabled="busy">
-					{{ t('projektwerk', 'Gespeichertes Passwort entfernen') }}
-				</label>
-
-				<p v-if="testResult" class="pw-settings__status" :class="testOk ? 'pw-replymail__ok' : 'pw-replymail__err'">
-					<CheckIcon v-if="testOk" :size="18" class="pw-settings__status-icon pw-settings__status-icon--ok" />
-					<AlertIcon v-else :size="18" class="pw-settings__status-icon" />
-					{{ testResult }}
-				</p>
-
-				<div class="pw-settings__row pw-replymail__actions">
-					<NcButton :disabled="busy || form.imapHost.trim() === ''" @click="verbindungTesten">
-						<template #icon>
-							<NcLoadingIcon v-if="testing" :size="20" />
-							<LanConnectIcon v-else :size="20" />
-						</template>
-						{{ t('projektwerk', 'Verbindung testen') }}
-					</NcButton>
-					<NcButton variant="primary" :disabled="busy" @click="speichern">
-						{{ t('projektwerk', 'Speichern') }}
-					</NcButton>
-				</div>
-			</section>
+			</div>
 		</div>
 	</div>
 </template>
@@ -132,6 +170,8 @@ import NcTextField from '@nextcloud/vue/components/NcTextField'
 import AlertIcon from 'vue-material-design-icons/AlertCircleOutline.vue'
 import CheckIcon from 'vue-material-design-icons/CheckCircleOutline.vue'
 import LanConnectIcon from 'vue-material-design-icons/LanConnect.vue'
+import PwSettingsNav from '@/components/PwSettingsNav.vue'
+import { ownCompany, saveOwnCompany } from '@/services/ownCompany'
 import { fetchReplyMailbox, saveReplyMailbox, testReplyMailbox } from '@/services/replyMailbox'
 import { showError, showSuccess } from '@/services/toast'
 
@@ -150,10 +190,13 @@ import { showError, showSuccess } from '@/services/toast'
 export default defineComponent({
 	name: 'ReplyMailboxSettingsView',
 
-	components: { AlertIcon, CheckIcon, LanConnectIcon, NcButton, NcCheckboxRadioSwitch, NcLoadingIcon, NcTextField },
+	components: { AlertIcon, CheckIcon, LanConnectIcon, NcButton, NcCheckboxRadioSwitch, NcLoadingIcon, NcTextField, PwSettingsNav },
 
 	data() {
 		return {
+			activeSection: 'firma',
+			/** Das Eingabefeld der eigenen Firma, bis es gespeichert wird. */
+			firmaEntwurf: ownCompany.value,
 			busy: false,
 			testing: false,
 			form: {
@@ -176,6 +219,21 @@ export default defineComponent({
 			/** Ob die letzte Testmeldung ein Erfolg war. */
 			testOk: false,
 		}
+	},
+
+	computed: {
+		/** Die Bereiche der Verwaltung. */
+		sections(): { key: string, label: string }[] {
+			return [
+				{ key: 'firma', label: t('projektwerk', 'Eigene Firma') },
+				{ key: 'antworten', label: t('projektwerk', 'Antworten per E-Mail') },
+			]
+		},
+
+		/** Der gespeicherte Name, zum Vergleich mit dem Entwurf. */
+		ownCompany(): string {
+			return ownCompany.value
+		},
 	},
 
 	async mounted() {
@@ -225,6 +283,23 @@ export default defineComponent({
 				this.testResult = (e as { message?: string }).message ?? t('projektwerk', 'Verbindung fehlgeschlagen.')
 			} finally {
 				this.testing = false
+				this.busy = false
+			}
+		},
+
+		/** Die eigene Firma speichern. */
+		async firmaSpeichern(): Promise<void> {
+			if (this.busy) {
+				return
+			}
+
+			this.busy = true
+			try {
+				this.firmaEntwurf = await saveOwnCompany(this.firmaEntwurf.trim())
+				showSuccess(t('projektwerk', 'Einstellungen gespeichert.'))
+			} catch (e) {
+				showError((e as { message?: string }).message ?? t('projektwerk', 'Einstellungen konnten nicht gespeichert werden'))
+			} finally {
 				this.busy = false
 			}
 		},

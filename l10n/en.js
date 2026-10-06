@@ -457,6 +457,8 @@ OC.L10N.register(
     "Noch keine Neuerungen." : "No news yet.",
     "Schließen" : "Close",
     "Endgültig löschen" : "Delete permanently",
-    "Erledigt: {title}" : "Done: {title}"
+    "Erledigt: {title}" : "Done: {title}",
+    "Der Name Ihrer Firma. Neue Projekte übernehmen ihn als „Eigene Firma\"; im einzelnen Projekt lässt er sich ändern. Bestehende Projekte bleiben unverändert." : "Your company name. New projects take it as “Own company”; it can be changed in each project. Existing projects stay unchanged.",
+    "Der Firmenname darf höchstens %s Zeichen lang sein." : "The company name may be at most %s characters long."
 },
 "nplurals=2; plural=(n != 1);");
