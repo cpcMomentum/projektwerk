@@ -128,6 +128,22 @@ class TicketMapper extends QBMapper {
 	}
 
 	/**
+	 * Wie {@see findVisible()}, über die Vorgangsnummer statt der ID.
+	 *
+	 * @throws DoesNotExistException
+	 */
+	public function findVisibleByNumber(ViewerContext $viewer, int $number): Ticket {
+		$qb = $this->scopedQuery($viewer->userId, $viewer->boardId);
+		$qb->select(self::T . '.*')
+			->andWhere($qb->expr()->eq(
+				self::T . '.number',
+				$qb->createNamedParameter($number, IQueryBuilder::PARAM_INT),
+			));
+
+		return $this->findEntity($qb);
+	}
+
+	/**
 	 * Ein Ticket ueber alle Boards hinweg — fuer den Deep-Link.
 	 *
 	 * Der Deep-Link kennt **nur die Ticketnummer**, kein Board. Die naive
