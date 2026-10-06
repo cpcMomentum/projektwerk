@@ -154,26 +154,28 @@ export async function personWaehlen(seite: Page, feld: string, name: string): Pr
  * tippen — das ist mit #99 weggefallen und hier festgehalten, damit es nicht in
  * Vergessenheit geraet.
  *
- * Gewaehlt wird im **angezeigten Monat**, ohne Blaettern: Monatsnavigation
- * waere eine zweite Fehlerquelle in einem Test, der die Frist pruefen will und
- * nicht den Kalender.
+ * Gewaehlt wird im **naechsten Monat** (#349). Ein fester Tag im angezeigten
+ * Monat lag ab dessen Mitte in der Vergangenheit, und eine vergangene Frist
+ * nimmt der Kalender nicht an — der Test brach jeden Monat ab dem 20. Ein Tag im
+ * Folgemonat liegt immer in der Zukunft, auch ueber den Jahreswechsel.
  *
  * @param seite Die Playwright-Seite.
  * @param umschlag Der Bereich, in dem das Feld steht.
- * @param tag Der Tag im angezeigten Monat, z. B. 20.
+ * @param tag Der Tag im naechsten Monat, z. B. 20 (hoechstens 28).
  * @returns Das gewaehlte Datum als `JJJJ-MM-TT`.
  */
 export async function fristSetzen(seite: Page, umschlag: Locator, tag: number): Promise<string> {
 	await umschlag.locator('.dp__input').click()
 
 	const kalender = seite.locator('.dp--menu-wrapper').last()
-	await kalender.locator('.dp__cell_inner', { hasText: new RegExp(`^${tag}$`) }).first().click()
+	await kalender.locator('[data-dp-element="action-next"]').first().click()
+	// Nur Tage des angezeigten Monats, nicht die eingestreuten Nachbartage.
+	await kalender.locator('.dp__cell_inner:not(.dp__cell_offset)', { hasText: new RegExp(`^${tag}$`) }).first().click()
 
-	// Der Kalender zeigt Monat und Jahr; daraus entsteht der erwartete Wert,
-	// damit der Test nicht an einem festen Datum klebt.
-	const jetzt = new Date()
+	const heute = new Date()
+	const ziel = new Date(heute.getFullYear(), heute.getMonth() + 1, tag)
 
-	return `${jetzt.getFullYear()}-${String(jetzt.getMonth() + 1).padStart(2, '0')}-${String(tag).padStart(2, '0')}`
+	return `${ziel.getFullYear()}-${String(ziel.getMonth() + 1).padStart(2, '0')}-${String(tag).padStart(2, '0')}`
 }
 
 /**
