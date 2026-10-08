@@ -21,7 +21,7 @@
 		v-model="lokal"
 		:group="{ name: 'pw-board' }"
 		:animation="150"
-		:delay="180"
+		:delay="300"
 		:delayOnTouchOnly="true"
 		tag="div"
 		class="pw-stack__drag"
@@ -66,6 +66,10 @@ import { useBoardStore } from '@/stores/boardStore'
  * Ziehen per langem Antippen (`delay` + `delayOnTouchOnly`) lässt vertikales
  * Scrollen auf dem Touchgerät erhalten; mit der Maus zieht die Bewegung sofort,
  * ein Klick ohne Bewegung öffnet weiterhin die Karte.
+ *
+ * **300 ms statt 180 ms** (#244): Jede Fingerbewegung vor Ablauf bricht das
+ * Ziehen ohnehin ab; gelöst hat sich die Karte nur, wenn der Finger vor dem
+ * Scrollen kurz ruhte. Den Spaltenwechsel am Handy trägt „Verschieben nach …".
  *
  * Die Kartendaten kommen aus demselben Store wie in `BoardView` — es ist
  * derselbe Pinia-Speicher, kein zweiter Lesepfad.
