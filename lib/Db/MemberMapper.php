@@ -130,14 +130,19 @@ class MemberMapper extends QBMapper {
 	 * @return array<int, string> Board-Kennung => Rolle.
 	 */
 	public function rolesForUser(string $userId): array {
+		// Die Mitgliedschaft gilt je Projekt (#246) und damit für jedes Board des
+		// Projekts — nicht nur für das Board, an dem die Zeile hängt (#357). Dieselbe
+		// Auflösung wie in `BoardAccess`.
 		$qb = $this->db->getQueryBuilder();
-		$qb->select('board_id', 'role')
-			->from($this->tableName)
-			->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+		$qb->selectAlias('b.id', 'board_id')
+			->addSelect('m.role')
+			->from($this->tableName, 'm')
+			->innerJoin('m', 'pwerk_boards', 'b', $qb->expr()->eq('b.project_id', 'm.project_id'))
+			->where($qb->expr()->eq('m.user_id', $qb->createNamedParameter($userId)))
 			// Feste Reihenfolge, damit die Zuordnung deterministisch ist — die
 			// Reihenfolge selbst nutzt niemand, aber ein Test darf sich auf sie
 			// verlassen dürfen.
-			->orderBy('board_id', 'ASC');
+			->orderBy('b.id', 'ASC');
 
 		$roles = [];
 		$result = $qb->executeQuery();

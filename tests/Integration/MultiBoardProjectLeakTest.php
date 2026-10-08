@@ -24,6 +24,7 @@ use OCA\Projektwerk\Db\ProjectMapper;
 use OCA\Projektwerk\Db\TaskFilter;
 use OCA\Projektwerk\Db\Ticket;
 use OCA\Projektwerk\Db\TicketMapper;
+use OCA\Projektwerk\Service\MemberService;
 use OCP\Server;
 
 /**
@@ -245,6 +246,22 @@ final class MultiBoardProjectLeakTest extends IntegrationTestCase {
 			$this->assertSame($role, $context->role, $userId . ' traegt seine Projektrolle auch auf Board B.');
 			$this->assertSame($isManager, $context->isManager, $userId . ' behaelt sein Verwaltungsrecht projektweit.');
 		}
+	}
+
+	/**
+	 * Die Boardliste nennt die eigene Rolle auch für Board B (#357) — dieselbe Auflösung
+	 * über das Projekt wie `BoardAccess`, sonst stünde dort `null`.
+	 */
+	public function testTheBoardListCarriesTheRoleOnEverySiblingBoard(): void {
+		$service = Server::get(MemberService::class);
+
+		foreach (self::MEMBERS as $userId => [$role]) {
+			$roles = $service->rolesForUserBoards($userId);
+
+			$this->assertSame($role, $roles[$this->boardAId] ?? null, $userId . ' auf Board A');
+			$this->assertSame($role, $roles[$this->boardBId] ?? null, $userId . ' auf Board B');
+		}
+		$this->assertSame([], $service->rolesForUserBoards(self::FREMD));
 	}
 
 	/**
