@@ -98,18 +98,26 @@ function looksLikeJson(response: AxiosResponse | undefined): boolean {
 /**
  * Sieht diese schon als Nicht-JSON erkannte Antwort nach der Guests-Freigabeliste aus?
  *
- * **Der Unterscheider ist der Inhalt, nicht der Status** (#307). Spike S1 hat
- * gemessen, dass ein abgewiesener Gast eine HTML-Seite mit „forbidden for
- * guests" bekommt — mit Status 500, nicht 403. Ein echter Serverfehler (#303:
- * AppConfig-Typkonflikt) liefert **ebenfalls** 500 und HTML, aber die generische
- * Nextcloud-Fehlerseite ohne diesen Marker. Am Status sind die beiden nicht zu
- * trennen, am Rumpf schon.
+ * **Der Unterscheider ist der Inhalt, nicht der Status** (#307). Ein abgewiesener
+ * Gast bekommt eine HTML-Seite mit **500** (`printErrorPage` überschreibt den 403
+ * der Guests-App, gemessen #328); ein echter Serverfehler (#303) ebenfalls.
+ *
+ * **Der Marker ist die App-ID in Klammern** (#328). Der Satz selbst ist übersetzt,
+ * und zwar in die Sprache des **Kontos**, nicht des Browsers: Ein deutscher Gast
+ * bekommt „… (projektwerk) ist für Gäste untersagt". Die Klammer mit der App-ID
+ * (`%s`) steht in allen 15 Übersetzungen der Guests-App; Nextclouds eigene
+ * Fehlerseite nennt sie nicht. Der englische Satz bleibt als zweiter Marker.
  *
  * @param response Die Antwort, deren Rumpf bereits als Nicht-JSON feststeht.
  */
 function looksLikeGuestsForbidden(response: AxiosResponse | undefined): boolean {
 	const body = response?.data
-	return typeof body === 'string' && body.toLowerCase().includes('forbidden for guests')
+	if (typeof body !== 'string') {
+		return false
+	}
+	const text = body.toLowerCase()
+
+	return text.includes('(projektwerk)') || text.includes('forbidden for guests')
 }
 
 /**

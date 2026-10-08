@@ -12,8 +12,8 @@
  *
  * Weil aber ein **echter** Serverfehler (#303) ebenfalls 500 und HTML liefert,
  * darf nicht jede HTML-Antwort als Freigabelisten-Problem gelten (#307). Getrennt
- * wird am Rumpf: nur der Marker „forbidden for guests" ist die Guests-Absage,
- * alles andere ein Serverfehler.
+ * wird am Rumpf: nur die App-ID in Klammern „(projektwerk)" (in jeder Sprache)
+ * oder „forbidden for guests" ist die Guests-Absage, alles andere ein Serverfehler.
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -45,6 +45,17 @@ const { apiGet } = await import('@/services/api')
 /** Die HTML-Fehlerseite, die ein abgewiesener Gast tatsächlich bekommt. */
 const GUEST_ERROR_PAGE
 	= '<!DOCTYPE html><html><body>Access to this resource (projektwerk) is forbidden for guests</body></html>'
+
+/**
+ * Dieselbe Seite für ein **deutsches** Gastkonto, Wortlaut gemessen am 2026-10-07
+ * (#328): Die Guests-App übersetzt in die Sprache des Kontos, nicht des Browsers.
+ */
+const GUEST_ERROR_PAGE_DE
+	= '<!DOCTYPE html><html><body><p>Der Zugriff auf diese Ressource (projektwerk) ist für Gäste untersagt. </p></body></html>'
+
+/** Nextclouds Fehlerseite mit technischen Details (Debug) nennt den Pfad, nie „(projektwerk)". */
+const SERVER_ERROR_PAGE_DEBUG
+	= '<!DOCTYPE html><html><body><h2>Internal Server Error</h2><li>File: /var/www/html/custom_apps/projektwerk/lib/Service/X.php</li></body></html>'
 
 /**
  * Die generische Nextcloud-Fehlerseite bei einem **echten** HTTP 500 — ohne den
@@ -84,6 +95,25 @@ describe('Nicht-JSON-Wächter', () => {
 		await expect(apiGet('/boards')).rejects.toMatchObject({ notJson: true, status: 500 })
 		expect(showError).toHaveBeenCalledOnce()
 		expect(showError.mock.calls[0][0]).toContain('Freigabeliste')
+	})
+
+	it('erkennt die Absage auch auf einer deutschen Oberfläche (#328)', async () => {
+		rejectWith({
+			status: 500,
+			headers: { 'content-type': 'text/html; charset=UTF-8' },
+			data: GUEST_ERROR_PAGE_DE,
+		})
+
+		await expect(apiGet('/boards')).rejects.toMatchObject({ notJson: true, status: 500 })
+		expect(showError).toHaveBeenCalledOnce()
+		expect(showError.mock.calls[0][0]).toContain('Freigabeliste')
+	})
+
+	it('hält einen Serverfehler mit App-Pfad nicht für die Absage (#328)', async () => {
+		rejectWith({ status: 500, headers: { 'content-type': 'text/html' }, data: SERVER_ERROR_PAGE_DEBUG })
+
+		await expect(apiGet('/boards')).rejects.toMatchObject({ notJson: true })
+		expect(showError.mock.calls[0][0]).not.toContain('Freigabeliste')
 	})
 
 	it('meldet einen echten 500 als Serverfehler, nicht als Freigabeliste-Problem (#307)', async () => {
