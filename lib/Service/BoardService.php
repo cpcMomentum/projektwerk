@@ -69,6 +69,7 @@ class BoardService {
 		private ProjectFolderService $folders,
 		private AccountType $accountType,
 		private EntitlementService $entitlement,
+		private OwnCompanySettings $ownCompany,
 	) {
 	}
 
@@ -106,6 +107,9 @@ class BoardService {
 		}
 		$this->assertTitle($title);
 		$now = new \DateTime();
+		// Ohne Angabe gilt die eigene Firma der Instanz (#352), auch für Wege ohne
+		// den Assistenten.
+		$orgInternal = $this->trimOrNull($orgInternal) ?? $this->ownCompany->get();
 
 		$this->db->beginTransaction();
 

@@ -206,6 +206,7 @@ import NcButton from '@nextcloud/vue/components/NcButton'
 import NcDialog from '@nextcloud/vue/components/NcDialog'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
 import { fetchBoard } from '@/services/boards'
+import { ownCompany } from '@/services/ownCompany'
 import { addMember, searchCandidates, updateBoard } from '@/services/settings'
 import { showError } from '@/services/toast'
 import { useBoardStore } from '@/stores/boardStore'
@@ -320,7 +321,8 @@ export default defineComponent({
 			this.saving = false
 			this.title = ''
 			this.description = ''
-			this.orgInternal = ''
+			// Vorbelegt mit der eigenen Firma der Instanz (#352), änderbar.
+			this.orgInternal = ownCompany.value
 			this.customer = ''
 			this.memberSearch = ''
 			this.newMember = ''

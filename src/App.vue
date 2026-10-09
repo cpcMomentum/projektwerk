@@ -83,18 +83,18 @@
 			-->
 			<template #footer>
 				<!--
-					Antwort-Postfach (#286): Instanz-Einstellung, nur für
-					Administratoren. Der Eintrag blendet sich per `OC.isUserAdmin()`
+					Verwaltung (#286, #352): Instanz-Einstellungen (eigene Firma,
+					Antwort-Postfach), nur für Administratoren. Der Eintrag blendet sich per `OC.isUserAdmin()`
 					aus, wo er ohnehin ins Leere liefe — die Sperre selbst sitzt
 					serverseitig an den Endpunkten.
 				-->
 				<NcAppNavigationItem
 					v-if="isAdmin"
-					:name="t('projektwerk', 'Antworten per E-Mail')"
+					:name="t('projektwerk', 'Verwaltung')"
 					:to="{ name: 'reply-mailbox' }"
 					@click="closeNavigationOnMobile">
 					<template #icon>
-						<EmailIcon :size="20" />
+						<ShieldAccountIcon :size="20" />
 					</template>
 				</NcAppNavigationItem>
 				<NcAppNavigationItem
@@ -149,9 +149,9 @@ import NcAppNavigationItem from '@nextcloud/vue/components/NcAppNavigationItem'
 import NcContent from '@nextcloud/vue/components/NcContent'
 import BullhornOutlineIcon from 'vue-material-design-icons/BullhornOutline.vue'
 import CogIcon from 'vue-material-design-icons/Cog.vue'
-import EmailIcon from 'vue-material-design-icons/EmailOutline.vue'
 import FolderMultipleIcon from 'vue-material-design-icons/FolderMultiple.vue'
 import FormatListChecksIcon from 'vue-material-design-icons/FormatListChecks.vue'
+import ShieldAccountIcon from 'vue-material-design-icons/ShieldAccountOutline.vue'
 import StarIcon from 'vue-material-design-icons/Star.vue'
 import ViewDashboardIcon from 'vue-material-design-icons/ViewDashboardOutline.vue'
 import WhatsNewDialog from '@/components/WhatsNewDialog.vue'
@@ -159,7 +159,7 @@ import { useBoardStore } from '@/stores/boardStore'
 
 export default {
 	name: 'App',
-	components: { NcContent, NcAppNavigation, NcAppNavigationCaption, NcAppNavigationItem, NcAppContent, BullhornOutlineIcon, FolderMultipleIcon, FormatListChecksIcon, StarIcon, ViewDashboardIcon, CogIcon, EmailIcon, WhatsNewDialog },
+	components: { NcContent, NcAppNavigation, NcAppNavigationCaption, NcAppNavigationItem, NcAppContent, BullhornOutlineIcon, FolderMultipleIcon, FormatListChecksIcon, StarIcon, ViewDashboardIcon, CogIcon, ShieldAccountIcon, WhatsNewDialog },
 
 	setup() {
 		// Gäste bekommen keine Produktmeldungen (#329): blendet den

@@ -176,5 +176,9 @@ return [
 		// ebenfalls in ROUTES_WITHOUT_DATA.
 		['name' => 'whatsNew#all', 'url' => '/api/v1/whatsnew/all', 'verb' => 'GET'],
 		['name' => 'whatsNew#seen', 'url' => '/api/v1/whatsnew/seen', 'verb' => 'POST'],
+
+		// Eigene Firma der Instanz (#352), admin-only. Kein GET: Der Wert kommt als
+		// Initial-State mit der Seite, weil ihn jede Person beim Projektanlegen braucht.
+		['name' => 'ownCompany#save', 'url' => '/api/v1/admin/own-company', 'verb' => 'PUT'],
 	],
 ];
