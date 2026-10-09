@@ -460,6 +460,13 @@ class BoardService {
 	}
 
 	/**
+	 * Der Name des Projekts, zu dem das Board gehört (#350) — der Titel im Kopf der Boardansicht.
+	 */
+	public function projectTitle(ViewerContext $viewer): string {
+		return (string)$this->projects->findForViewer($viewer)->getTitle();
+	}
+
+	/**
 	 * Ob das Projekt des Boards „Mitglieder dürfen Boards anlegen" gesetzt hat
 	 * (#281) — für die Anzeige des „Board hinzufügen" im Frontend.
 	 */
