@@ -64,6 +64,7 @@ export async function createSiblingBoard(boardId: number, title: string): Promis
  * @param changes.chatUrl
  * @param changes.folderPublicPath
  * @param changes.folderInternalPath
+ * @param changes.folderRootPath
  * @param changes.githubEnabled
  * @param changes.githubRepo
  */
@@ -82,6 +83,8 @@ export async function updateBoard(boardId: number, changes: {
 	 */
 	folderPublicPath?: string
 	folderInternalPath?: string
+	/** Der Projektordner (#351), Oberordner der beiden Vorgangs-Ordner. */
+	folderRootPath?: string
 	/** Ist dieses Projekt ein Softwareprojekt — schaltet die GitHub-Überführung frei (#12). */
 	githubEnabled?: boolean
 	/** Ziel-Repository „owner/repo"; leerer String entfernt das Ziel. */

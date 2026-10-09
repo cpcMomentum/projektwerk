@@ -77,7 +77,8 @@ test('traegt einen Ordner ein und gibt den aufgeloesten Pfad zurueck', async ({ 
 	// zurueckkommt, muss die Schreibweise aus dem Dateibaum sein — sonst stuende
 	// in den Einstellungen ein Pfad, den es so nirgends gibt.
 	await feld.fill(`/${ORDNER}/`)
-	await page.getByRole('button', { name: 'Übernehmen' }).first().click()
+	// Über die Zeile des Feldes, nicht die Position: Darüber steht seit #351 der Projektordner.
+	await page.locator('.pw-settings__row', { has: feld }).getByRole('button', { name: 'Übernehmen' }).click()
 
 	await expect(feld).toHaveValue(ORDNER, { timeout: 15_000 })
 
@@ -104,7 +105,8 @@ test('weist einen unbekannten Pfad ab, ohne den bisherigen zu verlieren', async 
 	await expect(feld).toHaveValue(ORDNER, { timeout: 30_000 })
 
 	await feld.fill('Gibt/Es/Nicht')
-	await page.getByRole('button', { name: 'Übernehmen' }).first().click()
+	// Über die Zeile des Feldes, nicht die Position: Darüber steht seit #351 der Projektordner.
+	await page.locator('.pw-settings__row', { has: feld }).getByRole('button', { name: 'Übernehmen' }).click()
 
 	await expect(page.getByText('Dieser Ordner ist nicht erreichbar.')).toBeVisible({ timeout: 15_000 })
 
@@ -124,7 +126,8 @@ test('ein leeres Feld entfernt die Zuordnung', async ({ page }) => {
 	await expect(feld).toHaveValue(ORDNER, { timeout: 30_000 })
 
 	await feld.fill('')
-	await page.getByRole('button', { name: 'Übernehmen' }).first().click()
+	// Über die Zeile des Feldes, nicht die Position: Darüber steht seit #351 der Projektordner.
+	await page.locator('.pw-settings__row', { has: feld }).getByRole('button', { name: 'Übernehmen' }).click()
 
 	await expect(feld).toHaveValue('', { timeout: 15_000 })
 	await page.reload()

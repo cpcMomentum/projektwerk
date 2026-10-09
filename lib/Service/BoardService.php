@@ -264,7 +264,7 @@ class BoardService {
 	 * nichts gesetzt — die Anhänge aus Phase 5 sind der erste Anlass. Ohne sie
 	 * hätte ein Anhang keinen Ort, an den er gehört.
 	 *
-	 * @param array{title?: string, description?: ?string, orgInternal?: ?string, customer?: ?string, chatUrl?: ?string, folderPublicPath?: ?string, folderInternalPath?: ?string, githubEnabled?: bool, githubRepo?: ?string} $changes
+	 * @param array{title?: string, description?: ?string, orgInternal?: ?string, customer?: ?string, chatUrl?: ?string, folderPublicPath?: ?string, folderInternalPath?: ?string, folderRootPath?: ?string, githubEnabled?: bool, githubRepo?: ?string} $changes
 	 * @throws NotManagerException
 	 * @throws \OCP\Files\NotPermittedException Ordner nicht erreichbar oder nicht beschreibbar
 	 */
@@ -338,6 +338,10 @@ class BoardService {
 		}
 		if (array_key_exists('folderInternalPath', $changes)) {
 			$this->setFolder($viewer, $project, Attachment::LOCATION_INTERNAL, $changes['folderInternalPath']);
+			$projectChanged = true;
+		}
+		if (array_key_exists('folderRootPath', $changes)) {
+			$this->setRootFolder($viewer, $project, $changes['folderRootPath']);
 			$projectChanged = true;
 		}
 		if (array_key_exists('githubEnabled', $changes)) {
@@ -467,6 +471,18 @@ class BoardService {
 	}
 
 	/**
+	 * Der Projektordner (#351): Datei-ID zum Öffnen, Pfad zur Anzeige; null ohne Ordner.
+	 *
+	 * @return array{id: int, path: string}|null
+	 */
+	public function projectFolder(ViewerContext $viewer): ?array {
+		$project = $this->projects->findForViewer($viewer);
+		$id = $project->getFolderRootId();
+
+		return $id === null ? null : ['id' => (int)$id, 'path' => (string)$project->getFolderRootPath()];
+	}
+
+	/**
 	 * Ob das Projekt des Boards „Mitglieder dürfen Boards anlegen" gesetzt hat
 	 * (#281) — für die Anzeige des „Board hinzufügen" im Frontend.
 	 */
@@ -478,6 +494,22 @@ class BoardService {
 		if (trim($title) === '') {
 			throw new \InvalidArgumentException('Ein Projekt braucht einen Titel.');
 		}
+	}
+
+	/**
+	 * Den Projektordner setzen oder leeren (#351) — aufgelöst wie die Vorgangs-Ordner.
+	 */
+	private function setRootFolder(ViewerContext $viewer, Project $project, ?string $path): void {
+		if ($path === null || trim($path) === '') {
+			$project->setFolderRootId(null);
+			$project->setFolderRootPath(null);
+
+			return;
+		}
+
+		$folder = $this->folders->resolvePath($viewer->userId, $path);
+		$project->setFolderRootId($folder->getId());
+		$project->setFolderRootPath($this->folders->displayPath($viewer->userId, $folder));
 	}
 
 	/**

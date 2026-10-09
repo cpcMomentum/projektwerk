@@ -41,6 +41,22 @@
 					</template>
 				</NcButton>
 
+				<!--
+					Projektordner (#351): öffnet die Dateien-App am Ordner, über die
+					Datei-ID (`/f/<id>`), weil der Pfad je Person anders heißen kann.
+					Ohne hinterlegten Ordner entfällt der Knopf.
+				-->
+				<NcButton
+					v-if="store.projectFolder"
+					:href="projectFolderUrl"
+					target="_blank"
+					rel="noopener">
+					<template #icon>
+						<FolderOpenIcon :size="20" />
+					</template>
+					{{ t('projektwerk', 'Projektordner') }}
+				</NcButton>
+
 				<!-- Ohne hinterlegte Adresse entfaellt der Knopf ersatzlos (§9). -->
 				<NcButton
 					v-if="store.board?.chatUrl"
@@ -299,6 +315,7 @@ import type { Column, Visibility } from '@/types/board'
 import type { Attachment, Comment, Step, Ticket } from '@/types/ticket'
 
 import { n, t } from '@nextcloud/l10n'
+import { generateUrl } from '@nextcloud/router'
 import { defineComponent } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcDialog from '@nextcloud/vue/components/NcDialog'
@@ -310,6 +327,7 @@ import ChevronLeftIcon from 'vue-material-design-icons/ChevronLeft.vue'
 import ClockAlertIcon from 'vue-material-design-icons/ClockAlertOutline.vue'
 import CogIcon from 'vue-material-design-icons/Cog.vue'
 import FolderMultipleIcon from 'vue-material-design-icons/FolderMultiple.vue'
+import FolderOpenIcon from 'vue-material-design-icons/FolderOpenOutline.vue'
 import PlusIcon from 'vue-material-design-icons/Plus.vue'
 import BoardDragLayer from '@/components/board/BoardDragLayer.vue'
 import CreateTicketDialog from '@/components/CreateTicketDialog.vue'
@@ -336,7 +354,7 @@ interface ColumnView {
 export default defineComponent({
 	name: 'BoardView',
 
-	components: { BoardDragLayer, ChevronLeftIcon, ClockAlertIcon, CogIcon, CreateTicketDialog, FolderMultipleIcon, NcButton, NcDialog, NcEmptyContent, NcRadioGroup, NcRadioGroupButton, NcTextField, PlusIcon, TicketDetail },
+	components: { BoardDragLayer, ChevronLeftIcon, ClockAlertIcon, CogIcon, CreateTicketDialog, FolderMultipleIcon, FolderOpenIcon, NcButton, NcDialog, NcEmptyContent, NcRadioGroup, NcRadioGroupButton, NcTextField, PlusIcon, TicketDetail },
 
 	setup() {
 		return { store: useBoardStore() }
@@ -364,6 +382,11 @@ export default defineComponent({
 	},
 
 	computed: {
+		/** Link in die Dateien-App am Projektordner (#351), über die Datei-ID. */
+		projectFolderUrl(): string {
+			return this.store.projectFolder ? generateUrl('/f/{id}', { id: this.store.projectFolder.id }) : ''
+		},
+
 		boardId(): number {
 			return Number(this.$route.params.boardId)
 		},

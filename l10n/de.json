@@ -500,7 +500,9 @@
 		"Endgültig löschen": "Endgültig löschen",
 		"Erledigt: {title}": "Erledigt: {title}",
 		"Der Name Ihrer Firma. Neue Projekte übernehmen ihn als „Eigene Firma\"; im einzelnen Projekt lässt er sich ändern. Bestehende Projekte bleiben unverändert.": "Der Name Ihrer Firma. Neue Projekte übernehmen ihn als „Eigene Firma\"; im einzelnen Projekt lässt er sich ändern. Bestehende Projekte bleiben unverändert.",
-		"Der Firmenname darf höchstens %s Zeichen lang sein.": "Der Firmenname darf höchstens %s Zeichen lang sein."
+		"Der Firmenname darf höchstens %s Zeichen lang sein.": "Der Firmenname darf höchstens %s Zeichen lang sein.",
+		"Projektordner": "Projektordner",
+		"Der Oberordner des Projekts. Der Knopf „Projektordner\" im Projektkopf öffnet ihn, und die Ordnerauswahl für die beiden Ordner darunter beginnt hier.": "Der Oberordner des Projekts. Der Knopf „Projektordner\" im Projektkopf öffnet ihn, und die Ordnerauswahl für die beiden Ordner darunter beginnt hier."
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }
