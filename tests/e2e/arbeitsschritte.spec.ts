@@ -207,3 +207,23 @@ test('auf dem Handy stehen Zustaendige und Frist im Stift nebeneinander', async 
 	const ueber = await schritt.locator('.pw-step__rechts').evaluate((el) => el.scrollWidth - el.clientWidth)
 	expect(ueber, 'Die Schrittzeile ragt seitlich heraus').toBeLessThanOrEqual(1)
 })
+
+/**
+ * #367: Das X schließt das Fenster nicht mehr an angefangenen Texten vorbei.
+ * Gegenprobe am Server, weil ein Verlust im DOM nach dem Schließen unsichtbar ist.
+ */
+test('sichert eine angefangene Beschreibung beim Schließen per X', async ({ page, request }) => {
+	await page.goto(`${APP_PFAD}#/boards/${projekt.boardId}`)
+	await expect(page.getByText(projekt.oeffentlich.title)).toBeVisible({ timeout: 30_000 })
+	await page.getByText(projekt.oeffentlich.title).click()
+
+	const schritt = await schrittAnlegenUndOeffnen(page, 'Rueckruf Telekom')
+	await schritt.locator('.pw-step__felder-text textarea').first().fill('Zusatzrabatt 50 Euro')
+
+	await page.locator('.modal-container__close').click()
+	await expect(page.locator('.pw-detail')).toBeHidden()
+
+	await expect
+		.poll(async () => (await schrittAusDerDatenbank(request, 'Rueckruf Telekom'))?.description)
+		.toBe('Zusatzrabatt 50 Euro')
+})
