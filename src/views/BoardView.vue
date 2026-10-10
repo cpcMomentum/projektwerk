@@ -12,7 +12,8 @@
 
 		<div class="pw-view__head pw-view__head--split">
 			<div class="pw-view__ident">
-				<h2>{{ store.board?.title ?? t('projektwerk', 'Projekt') }}</h2>
+				<!-- #350: Der Kopf nennt das Projekt; welches Board offen ist, zeigen die Reiter. -->
+				<h2>{{ store.projectTitle || store.board?.title || t('projektwerk', 'Projekt') }}</h2>
 				<div v-if="orgLine" class="pw-view__org">
 					{{ orgLine }}
 				</div>
@@ -27,36 +28,6 @@
 				</NcButton>
 
 				<!--
-					Der Board-Wechsler (#246): die Boards dieses Projekts. Er
-					erscheint, sobald es mehr als eins gibt — oder für Verwalter,
-					die ein weiteres anlegen dürfen. Bei genau einem Board und
-					ohne Verwaltungsrecht bleibt er aus.
-				-->
-				<NcActions
-					v-if="store.siblingBoards.length > 1 || store.canAddBoard"
-					:menuName="t('projektwerk', 'Boards')">
-					<template #icon>
-						<ViewDashboardIcon :size="20" />
-					</template>
-					<NcActionButton
-						v-for="b in store.siblingBoards"
-						:key="b.id"
-						:disabled="b.id === boardId"
-						@click="switchBoard(b.id)">
-						{{ b.title }}
-					</NcActionButton>
-					<NcActionButton
-						v-if="store.canAddBoard"
-						class="pw-add-board"
-						@click="addingBoard = true">
-						<template #icon>
-							<PlusIcon :size="20" />
-						</template>
-						{{ t('projektwerk', 'Board hinzufügen') }}
-					</NcActionButton>
-				</NcActions>
-
-				<!--
 					Der Weg in die Einstellungen steht Managern offen — und seit
 					#281 auch dem Ersteller eines Boards, der dort nur seinen
 					board-scopeden Teil (Titel, Spalten, Archiv) sieht.
@@ -68,6 +39,22 @@
 					<template #icon>
 						<CogIcon :size="20" />
 					</template>
+				</NcButton>
+
+				<!--
+					Projektordner (#351): öffnet die Dateien-App am Ordner, über die
+					Datei-ID (`/f/<id>`), weil der Pfad je Person anders heißen kann.
+					Ohne hinterlegten Ordner entfällt der Knopf.
+				-->
+				<NcButton
+					v-if="store.projectFolder"
+					:href="projectFolderUrl"
+					target="_blank"
+					rel="noopener">
+					<template #icon>
+						<FolderOpenIcon :size="20" />
+					</template>
+					{{ t('projektwerk', 'Projektordner') }}
 				</NcButton>
 
 				<!-- Ohne hinterlegte Adresse entfaellt der Knopf ersatzlos (§9). -->
@@ -94,6 +81,39 @@
 					{{ t('projektwerk', 'Nur wartend') }} ({{ store.waitingCount }})
 				</NcButton>
 			</div>
+		</div>
+
+		<!--
+			Die Boards des Projekts als Reiter (#350, vorher ein Menü „Boards"):
+			Zustand und Wechsel in einem Element. Derselbe Umschalter wie die
+			Sichtbarkeit im Vorgang, kein zweites Muster. Erscheint ab zwei Boards;
+			wer ein Board anlegen darf, sieht ihn auch bei einem, mit „+" dahinter.
+		-->
+		<div v-if="store.siblingBoards.length > 1 || store.canAddBoard" class="pw-boardtabs">
+			<div class="pw-boardtabs__group">
+				<NcRadioGroup
+					:modelValue="String(boardId)"
+					:label="t('projektwerk', 'Boards')"
+					:hideLabel="true"
+					@update:modelValue="switchBoard(Number($event))">
+					<NcRadioGroupButton
+						v-for="b in store.siblingBoards"
+						:key="b.id"
+						:value="String(b.id)"
+						:label="b.title" />
+				</NcRadioGroup>
+			</div>
+			<NcButton
+				v-if="store.canAddBoard"
+				class="pw-add-board"
+				variant="tertiary"
+				:aria-label="t('projektwerk', 'Board hinzufügen')"
+				:title="t('projektwerk', 'Board hinzufügen')"
+				@click="addingBoard = true">
+				<template #icon>
+					<PlusIcon :size="20" />
+				</template>
+			</NcButton>
 		</div>
 
 		<div v-if="store.loading" class="pw-board">
@@ -295,19 +315,20 @@ import type { Column, Visibility } from '@/types/board'
 import type { Attachment, Comment, Step, Ticket } from '@/types/ticket'
 
 import { n, t } from '@nextcloud/l10n'
+import { generateUrl } from '@nextcloud/router'
 import { defineComponent } from 'vue'
-import NcActionButton from '@nextcloud/vue/components/NcActionButton'
-import NcActions from '@nextcloud/vue/components/NcActions'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcDialog from '@nextcloud/vue/components/NcDialog'
 import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
+import NcRadioGroup from '@nextcloud/vue/components/NcRadioGroup'
+import NcRadioGroupButton from '@nextcloud/vue/components/NcRadioGroupButton'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
 import ChevronLeftIcon from 'vue-material-design-icons/ChevronLeft.vue'
 import ClockAlertIcon from 'vue-material-design-icons/ClockAlertOutline.vue'
 import CogIcon from 'vue-material-design-icons/Cog.vue'
 import FolderMultipleIcon from 'vue-material-design-icons/FolderMultiple.vue'
+import FolderOpenIcon from 'vue-material-design-icons/FolderOpenOutline.vue'
 import PlusIcon from 'vue-material-design-icons/Plus.vue'
-import ViewDashboardIcon from 'vue-material-design-icons/ViewDashboard.vue'
 import BoardDragLayer from '@/components/board/BoardDragLayer.vue'
 import CreateTicketDialog from '@/components/CreateTicketDialog.vue'
 import TicketDetail from '@/components/TicketDetail.vue'
@@ -333,7 +354,7 @@ interface ColumnView {
 export default defineComponent({
 	name: 'BoardView',
 
-	components: { BoardDragLayer, ChevronLeftIcon, ClockAlertIcon, CogIcon, CreateTicketDialog, FolderMultipleIcon, NcActionButton, NcActions, NcButton, NcDialog, NcEmptyContent, NcTextField, PlusIcon, TicketDetail, ViewDashboardIcon },
+	components: { BoardDragLayer, ChevronLeftIcon, ClockAlertIcon, CogIcon, CreateTicketDialog, FolderMultipleIcon, FolderOpenIcon, NcButton, NcDialog, NcEmptyContent, NcRadioGroup, NcRadioGroupButton, NcTextField, PlusIcon, TicketDetail },
 
 	setup() {
 		return { store: useBoardStore() }
@@ -361,6 +382,11 @@ export default defineComponent({
 	},
 
 	computed: {
+		/** Link in die Dateien-App am Projektordner (#351), über die Datei-ID. */
+		projectFolderUrl(): string {
+			return this.store.projectFolder ? generateUrl('/f/{id}', { id: this.store.projectFolder.id }) : ''
+		},
+
 		boardId(): number {
 			return Number(this.$route.params.boardId)
 		},

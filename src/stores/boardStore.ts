@@ -43,6 +43,10 @@ interface State {
 	viewer: ViewerInfo | null
 	/** Ob das Projekt „Mitglieder dürfen Boards anlegen" gesetzt hat (#281). */
 	memberBoardsAllowed: boolean
+	/** Der Name des Projekts des geöffneten Boards (#350). */
+	projectTitle: string
+	/** Der Projektordner des geöffneten Boards (#351), oder null. */
+	projectFolder: { id: number, path: string } | null
 	tickets: Map<number, Ticket>
 	/** Ticket-IDs je Spalte, in Serverreihenfolge. */
 	columnOrder: Map<number, number[]>
@@ -76,6 +80,8 @@ export const useBoardStore = defineStore('board', {
 		columns: [],
 		viewer: null,
 		memberBoardsAllowed: false,
+		projectTitle: '',
+		projectFolder: null,
 		tickets: new Map(),
 		columnOrder: new Map(),
 		counts: null,
@@ -146,9 +152,9 @@ export const useBoardStore = defineStore('board', {
 		 *
 		 * @param state Der Speicher.
 		 */
-		companySuggestions: (state): string[] => [...new Set(
-			state.members.map((m) => m.company?.trim()).filter((c): c is string => !!c),
-		)].sort((a, b) => a.localeCompare(b)),
+		companySuggestions: (state): string[] => [...new Set(state.members
+			.map((m) => m.company?.trim())
+			.filter((c): c is string => !!c))].sort((a, b) => a.localeCompare(b)),
 
 		/**
 		 * Kunden-Vorschläge (#309): die schon vergebenen Kunden der geladenen
@@ -157,9 +163,9 @@ export const useBoardStore = defineStore('board', {
 		 *
 		 * @param state Der Speicher.
 		 */
-		customerSuggestions: (state): string[] => [...new Set(
-			state.boards.map((b) => b.customer?.trim()).filter((c): c is string => !!c),
-		)].sort((a, b) => a.localeCompare(b)),
+		customerSuggestions: (state): string[] => [...new Set(state.boards
+			.map((b) => b.customer?.trim())
+			.filter((c): c is string => !!c))].sort((a, b) => a.localeCompare(b)),
 
 		/**
 		 * Die Boards des geöffneten Projekts (#246) — für den Board-Wechsler.
@@ -377,6 +383,8 @@ export const useBoardStore = defineStore('board', {
 				this.columns = detail.columns
 				this.viewer = detail.viewer
 				this.memberBoardsAllowed = detail.memberBoardsAllowed ?? false
+				this.projectTitle = detail.projectTitle ?? ''
+				this.projectFolder = detail.projectFolder ?? null
 
 				this.applyTickets(await fetchTickets(boardId))
 			} catch (e) {

@@ -48,6 +48,10 @@ use OCP\DB\Types;
  * @method void setFolderInternalId(?int $folderInternalId)
  * @method ?string getFolderInternalPath()
  * @method void setFolderInternalPath(?string $folderInternalPath)
+ * @method ?int getFolderRootId()
+ * @method void setFolderRootId(?int $folderRootId)
+ * @method ?string getFolderRootPath()
+ * @method void setFolderRootPath(?string $folderRootPath)
  * @method ?string getChatUrl()
  * @method void setChatUrl(?string $chatUrl)
  * @method int getTicketCounter()
@@ -74,6 +78,9 @@ class Project extends Entity {
 	protected ?string $folderPublicPath = null;
 	protected ?int $folderInternalId = null;
 	protected ?string $folderInternalPath = null;
+	/** Der Projektordner (#351), Oberordner der Vorgangs-Ordner. */
+	protected ?int $folderRootId = null;
+	protected ?string $folderRootPath = null;
 	protected ?string $chatUrl = null;
 	protected ?int $ticketCounter = null;
 	/** #281: Dürfen Mitglieder (intern wie extern) hier Boards anlegen? 0/1. */
@@ -93,6 +100,8 @@ class Project extends Entity {
 		$this->addType('folderPublicPath', Types::STRING);
 		$this->addType('folderInternalId', Types::INTEGER);
 		$this->addType('folderInternalPath', Types::STRING);
+		$this->addType('folderRootId', Types::INTEGER);
+		$this->addType('folderRootPath', Types::STRING);
 		$this->addType('chatUrl', Types::STRING);
 		$this->addType('ticketCounter', Types::INTEGER);
 		// SMALLINT 0/1, nie Types::BOOLEAN mit notnull (#281).

@@ -6,11 +6,19 @@
 		als Ueberschrift in der Karte. `labelId` benennt den Dialog ueber die
 		Ueberschrift, die ohnehin da ist.
 	-->
+	<!--
+		**Schließen sichert zuerst** (#367). `:show` fest auf `true` und
+		`@update:show` statt `@close`: So blendet NcModal sich bei X oder Esc
+		nicht selbst aus, sondern fragt nur an. Erst wenn alle Entwürfe
+		gespeichert sind, geht das Fenster zu; scheitert das Speichern, bleibt
+		es mit der Fehlermeldung offen, und nichts ist verloren.
+	-->
 	<NcModal
 		v-if="ticket"
 		size="large"
 		:labelId="titleId"
-		@close="$emit('close')">
+		:show="true"
+		@update:show="beiSchliessen">
 		<!--
 			Die App-Klasse MUSS hier drin stehen, nicht nur aussen an der App.
 			NcModal teleportiert seinen Inhalt an den `body`; er haengt damit
@@ -320,6 +328,13 @@
 					Die sichtbare Ueberschrift entfaellt (#99); zwei Namen mit
 					Avatar erklaeren sich. Fuer Screenreader bleibt sie stehen.
 				-->
+				<!--
+					**Eckdaten, Variante B** (#345): Ersteller, Zuständigkeit und
+					Fälligkeit werden gelesen; **ein** Stift öffnet Zuständig und Frist
+					gemeinsam, mit Beschriftung über dem Feld und „Fertig" darunter —
+					dasselbe Muster wie am Arbeitsschritt. Beide Felder speichern
+					sofort; „Fertig" schließt nur.
+				-->
 				<div class="pw-personen">
 					<h3 class="hidden-visually">
 						{{ t('projektwerk', 'Personen') }}
@@ -334,49 +349,12 @@
 							:hideStatus="true" />
 						<span class="pw-person__body">
 							<span class="pw-person__name">{{ nameOf(ticket.creatorUserId) }}</span>
-							<!--
-								Die Firma steht unter JEDEM Namen, auch unter den
-								internen — sonst waere die eine Seite stumm „der
-								Normalfall".
-							-->
 							<span class="pw-person__org">{{ orgLine(ticket.creatorUserId, ticket.creatorRole, t('projektwerk', 'angelegt')) }}</span>
 						</span>
 					</div>
 
-					<!--
-						**Die Zustaendigkeit war bis #97 nirgends setzbar.** Server
-						und Dienst konnten sie von Anfang an, nur fuehrte kein Weg
-						der Oberflaeche dorthin — und der bereits gebaute Ausloeser
-						`EVENT_TICKET_ASSIGNED` blieb damit unerreichbar.
-
-						Dasselbe Muster wie bei den Arbeitsschritten: Wo etwas
-						steht, steht Text; wo nichts steht, steht ein flacher Knopf.
-					-->
-					<div class="pw-person">
-						<template v-if="editingResponsible">
-							<label class="hidden-visually" :for="responsibleInputId">
-								{{ t('projektwerk', 'Zuständig') }}
-							</label>
-							<NcSelectUsers
-								class="pw-person__picker"
-								:options="assignableOptions"
-								:modelValue="responsibleOption"
-								:inputId="responsibleInputId"
-								:labelOutside="true"
-								:disabled="busy"
-								:placeholder="t('projektwerk', 'Niemand')"
-								@update:modelValue="setResponsible" />
-							<NcButton
-								variant="tertiary"
-								:ariaLabel="t('projektwerk', 'Abbrechen')"
-								@click="editingResponsible = false">
-								<template #icon>
-									<CloseIcon :size="20" />
-								</template>
-							</NcButton>
-						</template>
-
-						<template v-else-if="ticket.responsibleUserId">
+					<div v-if="!editingResponsible" class="pw-person">
+						<template v-if="ticket.responsibleUserId">
 							<NcAvatar
 								:user="ticket.responsibleUserId"
 								:displayName="nameOf(ticket.responsibleUserId)"
@@ -387,58 +365,79 @@
 								<span class="pw-person__name">{{ nameOf(ticket.responsibleUserId) }}</span>
 								<span class="pw-person__org">{{ orgLine(ticket.responsibleUserId, roleOf(ticket.responsibleUserId), t('projektwerk', 'zuständig')) }}</span>
 							</span>
-							<NcButton
-								variant="tertiary"
-								:ariaLabel="t('projektwerk', 'Zuständigkeit ändern')"
-								@click="startEditResponsible">
-								<template #icon>
-									<PencilOutlineIcon :size="20" />
-								</template>
-							</NcButton>
 						</template>
-
-						<NcButton
-							v-else
-							variant="tertiary"
-							class="pw-person__flach"
-							@click="startEditResponsible">
-							<template #icon>
-								<AccountPlusIcon :size="20" />
-							</template>
-							{{ t('projektwerk', 'Zuständige Person festlegen') }}
-						</NcButton>
+						<span v-else class="pw-person__body">
+							<span class="pw-person__name pw-person__name--leer">{{ t('projektwerk', 'Niemand zuständig') }}</span>
+						</span>
 					</div>
 				</div>
 
-				<!--
-					Die Fälligkeit des Vorgangs (#72) — „bis wann ist die Sache
-					fertig", verschieden von der Frist eines einzelnen Schritts.
-					Immer sichtbar und leer löschbar, wie der Datumswähler am
-					Schritt; überfällig wird kräftig markiert, aber nur wenn das
-					Datum wirklich gerissen ist.
-				-->
-				<div class="pw-frist" :class="{ 'pw-frist--overdue': dueOverdue }">
+				<div v-if="!editingResponsible" class="pw-frist" :class="{ 'pw-frist--overdue': dueOverdue }">
 					<span class="pw-frist__label">
 						<CalendarAlertIcon v-if="dueOverdue" :size="18" />
 						<CalendarIcon v-else :size="18" />
 						{{ t('projektwerk', 'Fällig bis') }}
 					</span>
-					<NcDateTimePicker
-						:modelValue="dueValue"
-						type="date"
-						class="pw-frist__picker"
-						:clearable="true"
-						:appendToBody="true"
-						:disabled="busy"
-						:ariaLabel="t('projektwerk', 'Fällig bis')"
-						:placeholder="t('projektwerk', 'Keine Frist')"
-						@update:modelValue="setDue" />
+					<span class="pw-frist__wert">{{ dueText }}</span>
 					<span v-if="dueOverdue" class="pw-frist__marke">
 						{{ t('projektwerk', 'überfällig') }}
 					</span>
+					<NcButton
+						class="pw-eckdaten__stift"
+						variant="tertiary"
+						:ariaLabel="t('projektwerk', 'Zuständigkeit und Fälligkeit ändern')"
+						:title="t('projektwerk', 'Bearbeiten')"
+						@click="startEditResponsible">
+						<template #icon>
+							<PencilOutlineIcon :size="20" />
+						</template>
+					</NcButton>
+				</div>
+
+				<div v-else class="pw-eckdaten__edit">
+					<div class="pw-eckdaten__felder">
+						<div class="pw-field pw-eckdaten__person">
+							<label :for="responsibleInputId">{{ t('projektwerk', 'Zuständig') }}</label>
+							<NcSelectUsers
+								class="pw-person__picker"
+								:options="assignableOptions"
+								:modelValue="responsibleOption"
+								:inputId="responsibleInputId"
+								:labelOutside="true"
+								:disabled="busy"
+								:placeholder="t('projektwerk', 'Niemand')"
+								@update:modelValue="setResponsible" />
+						</div>
+						<div class="pw-field pw-eckdaten__frist">
+							<label>{{ t('projektwerk', 'Fällig bis') }}</label>
+							<NcDateTimePicker
+								:modelValue="dueValue"
+								type="date"
+								class="pw-frist__picker"
+								:clearable="true"
+								:appendToBody="true"
+								:disabled="busy"
+								:ariaLabel="t('projektwerk', 'Fällig bis')"
+								:placeholder="t('projektwerk', 'Keine Frist')"
+								@update:modelValue="setDue" />
+						</div>
+					</div>
+					<div class="pw-step__felder-aktionen">
+						<NcButton
+							variant="primary"
+							:ariaLabel="t('projektwerk', 'Fertig')"
+							:disabled="busy"
+							@click="editingResponsible = false">
+							<template #icon>
+								<CheckIcon :size="20" />
+							</template>
+							{{ t('projektwerk', 'Fertig') }}
+						</NcButton>
+					</div>
 				</div>
 
 				<StepList
+					ref="steps"
 					:boardId="ticket.boardId"
 					:ticketId="ticket.id"
 					:steps="steps"
@@ -471,57 +470,13 @@
 					@changed="$emit('commentsChanged')" />
 
 				<!--
-					Feststehende Fußzeile (#331): die Lebenszyklus-Aktionen
-					beschriftet und immer sichtbar, statt icon-only oben rechts.
-					Klebt unten (position: sticky), spiegelbildlich zum klebenden
-					Kopf. „Zurück" links schließt nur das Modal; die Ausgänge rechts,
-					Löschen rot und abgesetzt, damit das Endgültige nicht zum
-					Fehlklick einlädt (die Rückfrage bleibt trotzdem).
+					Feststehende Fußzeile (#331, neu geordnet #368): links die
+					Aktionen am Vorgang, rechts abgesetzt der Ausgang. Unten rechts
+					greift die Hand zum Verlassen; dort stand „Erledigt" und schloss
+					den Vorgang statt des Fensters.
 				-->
 				<footer class="pw-detail__fuss">
-					<NcButton
-						variant="tertiary"
-						:disabled="busy"
-						@click="$emit('close')">
-						{{ t('projektwerk', 'Zurück') }}
-					</NcButton>
-
 					<div class="pw-detail__fuss-aktionen">
-						<template v-if="!ticket.closedAt">
-							<NcButton
-								variant="primary"
-								:disabled="busy"
-								:title="t('projektwerk', 'Als erledigt abschließen')"
-								:ariaLabel="t('projektwerk', 'Als erledigt abschließen')"
-								@click="closeWith('done')">
-								<template #icon>
-									<CheckIcon :size="20" />
-								</template>
-								{{ t('projektwerk', 'Erledigt') }}
-							</NcButton>
-							<NcButton
-								variant="secondary"
-								:disabled="busy"
-								:title="t('projektwerk', 'Als verworfen abschließen')"
-								:ariaLabel="t('projektwerk', 'Als verworfen abschließen')"
-								@click="closeWith('discarded')">
-								<template #icon>
-									<CancelIcon :size="20" />
-								</template>
-								{{ t('projektwerk', 'Verworfen') }}
-							</NcButton>
-						</template>
-						<NcButton
-							v-else
-							variant="secondary"
-							:disabled="busy"
-							@click="reopen">
-							<template #icon>
-								<RestoreIcon :size="20" />
-							</template>
-							{{ t('projektwerk', 'Wieder öffnen') }}
-						</NcButton>
-
 						<NcButton
 							class="pw-detail__loeschen"
 							variant="tertiary"
@@ -534,7 +489,50 @@
 							</template>
 							{{ t('projektwerk', 'Löschen') }}
 						</NcButton>
+
+						<template v-if="!ticket.closedAt">
+							<NcButton
+								variant="secondary"
+								:disabled="busy"
+								:title="t('projektwerk', 'Als verworfen abschließen')"
+								:ariaLabel="t('projektwerk', 'Als verworfen abschließen')"
+								@click="closeWith('discarded')">
+								<template #icon>
+									<CancelIcon :size="20" />
+								</template>
+								{{ t('projektwerk', 'Verworfen') }}
+							</NcButton>
+							<NcButton
+								variant="success"
+								:disabled="busy"
+								:title="t('projektwerk', 'Als erledigt abschließen')"
+								:ariaLabel="t('projektwerk', 'Als erledigt abschließen')"
+								@click="closeWith('done')">
+								<template #icon>
+									<CheckIcon :size="20" />
+								</template>
+								{{ t('projektwerk', 'Erledigt') }}
+							</NcButton>
+						</template>
+						<NcButton
+							v-else
+							variant="secondary"
+							:disabled="busy"
+							@click="reopen">
+							<template #icon>
+								<RestoreIcon :size="20" />
+							</template>
+							{{ t('projektwerk', 'Wieder öffnen') }}
+						</NcButton>
 					</div>
+
+					<NcButton
+						class="pw-detail__ausgang"
+						variant="primary"
+						:disabled="busy"
+						@click="schliessen">
+						{{ t('projektwerk', 'Zum Board') }}
+					</NcButton>
 				</footer>
 			</div>
 		</div>
@@ -556,14 +554,12 @@ import NcRichText from '@nextcloud/vue/components/NcRichText'
 import NcSelectUsers from '@nextcloud/vue/components/NcSelectUsers'
 import NcTextArea from '@nextcloud/vue/components/NcTextArea'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
-import AccountPlusIcon from 'vue-material-design-icons/AccountPlusOutline.vue'
 import CalendarAlertIcon from 'vue-material-design-icons/CalendarAlert.vue'
 import CalendarIcon from 'vue-material-design-icons/CalendarOutline.vue'
 import CancelIcon from 'vue-material-design-icons/Cancel.vue'
 import CheckIcon from 'vue-material-design-icons/Check.vue'
 import ChevronDownIcon from 'vue-material-design-icons/ChevronDown.vue'
 import ChevronUpIcon from 'vue-material-design-icons/ChevronUp.vue'
-import CloseIcon from 'vue-material-design-icons/Close.vue'
 import DeleteOutlineIcon from 'vue-material-design-icons/DeleteOutline.vue'
 import FormatBoldIcon from 'vue-material-design-icons/FormatBold.vue'
 import FormatListBulletedIcon from 'vue-material-design-icons/FormatListBulleted.vue'
@@ -596,7 +592,7 @@ interface PersonOption {
 export default defineComponent({
 	name: 'TicketDetail',
 
-	components: { AccountPlusIcon, AttachmentList, CalendarIcon, CalendarAlertIcon, CancelIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, CloseIcon, CommentList, DeleteOutlineIcon, FormatBoldIcon, FormatListBulletedIcon, FormatListNumberedIcon, GithubIcon, NcAvatar, NcButton, NcDateTimePicker, NcModal, NcRichText, NcSelectUsers, NcTextArea, NcTextField, PencilOutlineIcon, PlusIcon, RestoreIcon, StepList, VisibilityControl, WaitBadge },
+	components: { AttachmentList, CalendarIcon, CalendarAlertIcon, CancelIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, CommentList, DeleteOutlineIcon, FormatBoldIcon, FormatListBulletedIcon, FormatListNumberedIcon, GithubIcon, NcAvatar, NcButton, NcDateTimePicker, NcModal, NcRichText, NcSelectUsers, NcTextArea, NcTextField, PencilOutlineIcon, PlusIcon, RestoreIcon, StepList, VisibilityControl, WaitBadge },
 
 	props: {
 		ticket: { type: Object as PropType<Ticket | null>, default: null },
@@ -625,6 +621,8 @@ export default defineComponent({
 	data() {
 		return {
 			busy: false,
+			/** Das Schließen läuft gerade (Entwürfe werden gesichert, #367). */
+			schliesst: false,
 			/** Der Titel wird gerade bearbeitet (#169). */
 			editingTitle: false,
 			titleEntwurf: '',
@@ -676,6 +674,14 @@ export default defineComponent({
 		/** Die Fälligkeit als `Date` für den Datumswähler, oder null. */
 		dueValue(): Date | null {
 			return asDate(this.ticket?.dueDate ?? null)
+		},
+
+		/** Die Fälligkeit als Text für den Lesemodus (#345). */
+		dueText(): string {
+			const datum = this.dueValue
+			return datum === null
+				? t('projektwerk', 'Keine Frist')
+				: datum.toLocaleDateString(undefined, { day: '2-digit', month: '2-digit', year: 'numeric' })
 		},
 
 		/** Ist die Fälligkeit gerissen? Ein fehlendes Datum nie (#72). */
@@ -918,6 +924,78 @@ export default defineComponent({
 			}
 		},
 
+		/**
+		 * NcModal meldet X oder Esc (#367).
+		 *
+		 * @param sichtbar Der gewünschte Zustand; nur `false` heißt schließen.
+		 */
+		beiSchliessen(sichtbar: boolean): void {
+			if (!sichtbar) {
+				this.schliessen()
+			}
+		},
+
+		/**
+		 * Das Fenster schließen — nach dem Sichern aller Entwürfe (#367).
+		 * Scheitert das Speichern, bleibt das Fenster offen.
+		 */
+		async schliessen(): Promise<void> {
+			if (this.schliesst) {
+				return
+			}
+			this.schliesst = true
+			try {
+				if (await this.entwuerfeSichern()) {
+					this.$emit('close')
+				}
+			} finally {
+				this.schliesst = false
+			}
+		},
+
+		/**
+		 * Offene Entwürfe speichern statt verwerfen (#367): Titel und
+		 * Beschreibung des Vorgangs in **einem** Aufruf (zwei nacheinander
+		 * scheiterten an der `version` des ersten), danach der offene
+		 * Arbeitsschritt.
+		 *
+		 * @return `true`, wenn nichts offen war oder alles gespeichert ist.
+		 */
+		async entwuerfeSichern(): Promise<boolean> {
+			if (this.ticket === null) {
+				return true
+			}
+
+			const changes: { title?: string, description?: string | null } = {}
+			if (this.editingTitle && this.titleSpeicherbar) {
+				changes.title = this.titleEntwurf.trim()
+			}
+			if (this.editingText && this.textGeaendert) {
+				const text = this.textEntwurf.trim()
+				changes.description = text === '' ? null : text
+			}
+
+			if (Object.keys(changes).length > 0) {
+				this.busy = true
+				try {
+					const updated = await updateTicket(this.ticket.boardId, this.ticket.id, this.ticket.version, changes)
+					this.$emit('changed', updated)
+					this.cancelEditTitle()
+					this.cancelEditText()
+				} catch (e) {
+					reportWriteError(e, t('projektwerk', 'Änderungen konnten nicht gespeichert werden'))
+
+					return false
+				} finally {
+					this.busy = false
+				}
+			}
+
+			const schritte = this.$refs.steps as { sichern?: () => Promise<boolean> } | undefined
+
+			return schritte?.sichern ? await schritte.sichern() : true
+		},
+
 		startEditTitle(): void {
 			this.titleEntwurf = this.ticket?.title ?? ''
 			this.editingTitle = true
@@ -1126,8 +1204,6 @@ export default defineComponent({
 			const gewaehlt = Array.isArray(option) ? (option[0] ?? null) : option
 			const userId = gewaehlt?.id ?? null
 			if (userId === (this.ticket.responsibleUserId ?? null)) {
-				this.editingResponsible = false
-
 				return
 			}
 
@@ -1140,7 +1216,6 @@ export default defineComponent({
 					{ responsibleUserId: userId },
 				)
 				this.$emit('changed', updated)
-				this.editingResponsible = false
 			} catch (e) {
 				reportWriteError(e, t('projektwerk', 'Zuständigkeit konnte nicht gesetzt werden'))
 			} finally {

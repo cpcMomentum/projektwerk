@@ -155,6 +155,20 @@ async function fuelleZeile(
 }
 
 /**
+ * Der „Fertig"-Knopf unter den Feldern des geöffneten Schritts (#345).
+ *
+ * @param wrapper Die gemountete Liste.
+ */
+function fertig(wrapper: ReturnType<typeof mountList>) {
+	const knopf = wrapper.findAll('.pw-step__felder-aktionen button').find((b) => b.text().includes('Fertig'))
+	if (knopf === undefined) {
+		throw new Error('Kein „Fertig"-Knopf im geöffneten Schritt')
+	}
+
+	return knopf
+}
+
+/**
  * Die Bearbeitung einer bestehenden Schrittzeile oeffnen.
  *
  * Seit Variante C (#99) stehen Zuweisung und Frist dort als **Text**; die
@@ -214,9 +228,8 @@ describe('StepList', () => {
 		// Kein Schreiben, solange nur getippt wird.
 		expect(updateStep).not.toHaveBeenCalled()
 
-		// Während des Bearbeitens ist „Fertig" der einzige Knopf in der Zeile
-		// (der Papierkorb ist ausgeblendet).
-		await wrapper.find('.pw-step__rechts button').trigger('click')
+		// „Fertig" steht unter den Feldern (#345).
+		await fertig(wrapper).trigger('click')
 		await new Promise((resolve) => setTimeout(resolve, 0))
 
 		expect(updateStep).toHaveBeenCalledWith(7, 5, { result: 'Hetzner 12, IONOS 15, Empfehlung Hetzner' })
@@ -260,7 +273,7 @@ describe('StepList', () => {
 
 		const titel = wrapper.findAll('.pw-step__felder-text input[type="text"]')[0]
 		await titel.setValue('Mit Frist korrigiert')
-		await wrapper.find('.pw-step__rechts button').trigger('click')
+		await fertig(wrapper).trigger('click')
 		await new Promise((resolve) => setTimeout(resolve, 0))
 
 		expect(updateStep).toHaveBeenCalledWith(7, 5, { title: 'Mit Frist korrigiert' })
@@ -276,7 +289,7 @@ describe('StepList', () => {
 
 		const titel = wrapper.findAll('.pw-step__felder-text input[type="text"]')[0]
 		await titel.setValue('   ')
-		await wrapper.find('.pw-step__rechts button').trigger('click')
+		await fertig(wrapper).trigger('click')
 		await new Promise((resolve) => setTimeout(resolve, 0))
 
 		expect(updateStep).not.toHaveBeenCalled()
@@ -391,5 +404,68 @@ describe('StepList', () => {
 		await wrapper.vm.$nextTick()
 
 		expect(updateStep).toHaveBeenCalledWith(7, 5, { dueDate: null })
+	})
+
+	/**
+	 * #367: Wer das Fenster schließt, verliert nichts — der Vorgang ruft
+	 * `sichern()` und schließt erst danach.
+	 */
+	it('sichert die Beschreibung, wenn das Fenster schließt', async () => {
+		const wrapper = mountList([mitFrist('2026-08-11')])
+		await oeffneZeile(wrapper)
+		await wrapper.findAll('.pw-step__felder-text textarea')[0].setValue('Rückruf von Frau I.')
+
+		const gesichert = await (wrapper.vm as unknown as { sichern: () => Promise<boolean> }).sichern()
+
+		expect(gesichert).toBe(true)
+		expect(updateStep).toHaveBeenCalledWith(7, 5, { description: 'Rückruf von Frau I.' })
+	})
+
+	it('meldet ein gescheitertes Sichern, damit das Fenster offen bleibt', async () => {
+		updateStep.mockRejectedValueOnce(new Error('offline'))
+		const wrapper = mountList([mitFrist('2026-08-11')])
+		await oeffneZeile(wrapper)
+		await wrapper.findAll('.pw-step__felder-text textarea')[0].setValue('Text')
+
+		const gesichert = await (wrapper.vm as unknown as { sichern: () => Promise<boolean> }).sichern()
+
+		expect(gesichert).toBe(false)
+		expect(wrapper.find('.pw-step__felder-text').exists()).toBe(true)
+	})
+
+	it('sichert den offenen Schritt, wenn ein anderer geöffnet wird', async () => {
+		const zweiter = { ...mitFrist('2026-08-12'), id: 6, title: 'Zweiter', position: 1 }
+		const wrapper = mountList([mitFrist('2026-08-11'), zweiter])
+		await oeffneZeile(wrapper)
+		await wrapper.findAll('.pw-step__felder-text textarea')[0].setValue('Erst das')
+
+		await wrapper.findAll('.pw-step__title').find((b) => b.text() === 'Zweiter')!.trigger('click')
+		await new Promise((resolve) => setTimeout(resolve, 0))
+
+		expect(updateStep).toHaveBeenCalledWith(7, 5, { description: 'Erst das' })
+		expect((wrapper.find('.pw-step__felder-text input').element as HTMLInputElement).value).toBe('Zweiter')
+	})
+
+	it('sichert den offenen Schritt beim Wechsel des Vorgangs', async () => {
+		const wrapper = mountList([mitFrist('2026-08-11')])
+		await oeffneZeile(wrapper)
+		await wrapper.findAll('.pw-step__felder-text textarea')[1].setValue('Ergebnis')
+
+		await wrapper.setProps({ ticketId: 43, steps: [] } as Record<string, unknown>)
+		await new Promise((resolve) => setTimeout(resolve, 0))
+
+		expect(updateStep).toHaveBeenCalledWith(7, 5, { result: 'Ergebnis' })
+	})
+
+	it('nimmt die Änderung mit Esc zurück, ohne zu schreiben', async () => {
+		const wrapper = mountList([mitFrist('2026-08-11')])
+		await oeffneZeile(wrapper)
+		const feld = wrapper.findAll('.pw-step__felder-text textarea')[0]
+		await feld.setValue('verworfen')
+		await feld.trigger('keydown', { key: 'Escape' })
+
+		expect(wrapper.find('.pw-step__felder-text').exists()).toBe(false)
+		expect(await (wrapper.vm as unknown as { sichern: () => Promise<boolean> }).sichern()).toBe(true)
+		expect(updateStep).not.toHaveBeenCalled()
 	})
 })

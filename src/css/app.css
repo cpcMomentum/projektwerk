@@ -606,7 +606,8 @@
  * (§9). Sie steht neben Titel und Beschreibung, für alle Rollen gleich
  * voreingestellt.
  */
-.app-projektwerk .pw-vischoice {
+.app-projektwerk .pw-vischoice,
+.app-projektwerk .pw-boardtabs__group {
 	display: flex;
 	flex-direction: column;
 	gap: 6px;
@@ -629,7 +630,8 @@
  * Behaelter innerhalb der Gruppe — setzt `flex: 1 1` auf seine Kinder; ohne
  * `fit-content` waeren die drei Segmente so breit wie die Kopfzeile.
  */
-.app-projektwerk .pw-vischoice {
+.app-projektwerk .pw-vischoice,
+.app-projektwerk .pw-boardtabs__group {
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
@@ -645,8 +647,23 @@
  * und braucht seinen Abstand. `gap: 0` galt vorher fuer alles, weil ausser den
  * Segmenten ohnehin nichts da war.
  */
-.app-projektwerk .pw-vischoice--knapp {
+.app-projektwerk .pw-vischoice--knapp,
+.app-projektwerk .pw-boardtabs__group {
 	gap: 0;
+}
+
+/*
+ * Die Boards eines Projekts als Reiter (#350): derselbe Umschalter wie die
+ * Sichtbarkeit, links unter dem Projektkopf, „+" daneben. Viele Boards rollen
+ * waagerecht statt umzubrechen.
+ */
+.app-projektwerk .pw-boardtabs {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	max-width: 100%;
+	overflow-x: auto;
+	margin-bottom: 12px;
 }
 
 /*
@@ -667,7 +684,8 @@
  * Gilt nur fuer `--knapp`, also nur im Vorgang. Im Anlege-Formular bleibt es
  * bei der Plattformgroesse.
  */
-.app-projektwerk .pw-vischoice--knapp [class*='_radioGroupButton_'] {
+.app-projektwerk .pw-vischoice--knapp [class*='_radioGroupButton_'],
+.app-projektwerk .pw-boardtabs__group [class*='_radioGroupButton_'] {
 	min-height: var(--default-clickable-area, 34px);
 }
 
@@ -679,7 +697,8 @@
  * nichts umzubrechen; wird der Platz zu knapp, schiebt sich die Gruppe lieber
  * als Ganzes.
  */
-.app-projektwerk .pw-vischoice--knapp [class*='_radioGroupButton__label'] {
+.app-projektwerk .pw-vischoice--knapp [class*='_radioGroupButton__label'],
+.app-projektwerk .pw-boardtabs__group [class*='_radioGroupButton__label'] {
 	font-size: 13px;
 	min-height: 0;
 	white-space: nowrap;
@@ -691,7 +710,8 @@
  * die Beschriftung. Auf die Groesse des Sinnbilds festgelegt; die Klickflaeche
  * bleibt am Knopf und damit bei 34 px.
  */
-.app-projektwerk .pw-vischoice--knapp [class*='_radioGroupButton__icon'] {
+.app-projektwerk .pw-vischoice--knapp [class*='_radioGroupButton__icon'],
+.app-projektwerk .pw-boardtabs__group [class*='_radioGroupButton__icon'] {
 	height: 20px;
 	min-height: 0;
 }
@@ -708,7 +728,8 @@
  * Gilt für alle drei Einsatzorte (Detail, Anlege-Dialog, Wizard); die
  * Größen-Feinheiten oben bleiben auf `--knapp` beschränkt.
  */
-.app-projektwerk .pw-vischoice [class*='_ncFormBox_row'] {
+.app-projektwerk .pw-vischoice [class*='_ncFormBox_row'],
+.app-projektwerk .pw-boardtabs__group [class*='_ncFormBox_row'] {
 	background: var(--color-background-dark);
 	border-radius: var(--border-radius-element, 8px);
 	padding: 3px;
@@ -722,11 +743,13 @@
  * trotzdem sichtbar — hinter den transparenten inaktiven Segmenten und in den
  * Lücken. Das großzügigere Polster gilt nur im Anlege-Dialog/Wizard.
  */
-.app-projektwerk .pw-vischoice--knapp [class*='_ncFormBox_row'] {
+.app-projektwerk .pw-vischoice--knapp [class*='_ncFormBox_row'],
+.app-projektwerk .pw-boardtabs__group [class*='_ncFormBox_row'] {
 	padding: 0;
 }
 
-.app-projektwerk .pw-vischoice [class*='_radioGroupButton_'] {
+.app-projektwerk .pw-vischoice [class*='_radioGroupButton_'],
+.app-projektwerk .pw-boardtabs__group [class*='_radioGroupButton_'] {
 	background: none;
 	border: none;
 	border-radius: var(--border-radius-element, 8px);
@@ -734,7 +757,8 @@
 	box-shadow: none;
 }
 
-.app-projektwerk .pw-vischoice [class*='_radioGroupButton_']:hover {
+.app-projektwerk .pw-vischoice [class*='_radioGroupButton_']:hover,
+.app-projektwerk .pw-boardtabs__group [class*='_radioGroupButton_']:hover {
 	background: var(--color-background-hover);
 }
 
@@ -743,7 +767,9 @@
  * gewinnt die Reihenfolge: weiße Kachel, blaue Schrift, zarter Schatten.
  */
 .app-projektwerk .pw-vischoice [class*='_radioGroupButton_active'],
-.app-projektwerk .pw-vischoice [class*='_radioGroupButton_active']:hover {
+.app-projektwerk .pw-boardtabs__group [class*='_radioGroupButton_active'],
+.app-projektwerk .pw-vischoice [class*='_radioGroupButton_active']:hover,
+.app-projektwerk .pw-boardtabs__group [class*='_radioGroupButton_active']:hover {
 	background: var(--color-main-background);
 	color: var(--color-primary-element);
 	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
@@ -864,21 +890,24 @@ body .modal-wrapper:has(.pw-detail) > .modal-container {
 
 /* „Zurück" links, die Ausgänge und Löschen rechts. */
 .app-projektwerk .pw-detail__fuss-aktionen {
-	margin-inline-start: auto;
 	display: flex;
 	align-items: center;
 	gap: 8px;
 	flex-wrap: wrap;
-	justify-content: flex-end;
+}
+
+/* Der Ausgang rechts abgesetzt (#368), getrennt von den Aktionen am Vorgang. */
+.app-projektwerk .pw-detail__ausgang {
+	margin-inline-start: auto;
 }
 
 /*
- * Löschen abgesetzt und rot (#331): endgültig, darum nicht als gleichwertiger
+ * Löschen ganz links, abgesetzt und rot (#331, #368): endgültig, darum nicht als gleichwertiger
  * Knopf. Rote Schrift statt roter Fläche — deutlich, ohne die Zeile zu
  * dominieren; die Rückfrage bleibt der eigentliche Schutz.
  */
 .app-projektwerk .pw-detail__loeschen {
-	margin-inline-start: 12px;
+	margin-inline-end: 12px;
 	/*
 	 * `--color-error-text` (dunkles Rot), NICHT `--color-error`: Letzteres ist
 	 * in NCs Token-System eine helle Fehler-Fläche (#FFE7E7) und als Schriftfarbe
@@ -950,6 +979,8 @@ body .modal-wrapper:has(.pw-detail) > .modal-container {
  * einzige Weg, die Sichtbarkeit zu aendern.
  */
 .app-projektwerk .pw-meta .pw-num {
+	/* Keine Monospace mehr im Vorgang (#345): eine Schriftart im ganzen Fenster. */
+	font-family: inherit;
 	font-size: 15px;
 	font-weight: 600;
 	font-variant-numeric: tabular-nums;
@@ -966,7 +997,7 @@ body .modal-wrapper:has(.pw-detail) > .modal-container {
  */
 .app-projektwerk .pw-meta__column {
 	font-size: 15px;
-	font-weight: 500;
+	font-weight: 400;
 	color: var(--color-main-text);
 }
 
@@ -1224,6 +1255,7 @@ body .modal-wrapper:has(.pw-detail) > .modal-container {
 
 .app-projektwerk .pw-personen .pw-person__name {
 	font-size: 15px;
+	font-weight: 600;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -1297,7 +1329,7 @@ body .modal-wrapper:has(.pw-detail) > .modal-container {
 }
 
 .app-projektwerk .pw-abschnitt__zaehler {
-	font-size: 12px;
+	font-size: 13px;
 	font-variant-numeric: tabular-nums;
 	color: var(--color-text-maxcontrast);
 }
@@ -1576,11 +1608,6 @@ body .modal-wrapper:has(.pw-detail) > .modal-container {
 	min-width: 0;
 }
 
-/* Ohne Titel daneben bekäme die Personenauswahl sonst nur ihre Mindestbreite. */
-.app-projektwerk .pw-step__rechts:has(.pw-step__picker) {
-	flex: 1 1 auto;
-}
-
 /*
  * Variante C: Wo etwas gesetzt ist, steht Text — kein Formularfeld. Bei fuenf
  * Schritten waeren das sonst fuenf Comboboxen und fuenf Datumsfelder
@@ -1596,29 +1623,65 @@ body .modal-wrapper:has(.pw-detail) > .modal-container {
 	font-variant-numeric: tabular-nums;
 }
 
-.app-projektwerk .pw-step__flach {
-	color: var(--color-text-maxcontrast);
-	font-weight: 400;
-}
-
 .app-projektwerk .pw-step__confirm {
 	font-size: 13px;
 	color: var(--color-text-maxcontrast);
 }
 
 /*
- * Beim Bearbeiten teilen sich Personenauswahl und Datum die Zeile. Die Auswahl
- * schrumpft, das Datum nicht: Ihm Breite zu nehmen entfernt keine Zeichen,
- * sondern die Bedienung.
+ * Beim Bearbeiten teilen sich Personenauswahl und Datum die Zeile, beide mit
+ * Beschriftung darüber (#345). Die Auswahl schrumpft, das Datum nicht: Ihm Breite
+ * zu nehmen entfernt keine Zeichen, sondern die Bedienung.
  */
-.app-projektwerk .pw-step__picker {
-	flex: 1 1 160px;
+.app-projektwerk .pw-step__felder-zeile {
+	display: flex;
+	align-items: flex-end;
+	gap: 12px;
+}
+
+/* So breit wie Name und Firma, nicht wie die Zeile: sonst rückt die Frist an den Rand. */
+.app-projektwerk .pw-step__picker-feld {
+	flex: 0 1 280px;
 	min-width: 0;
 }
 
+.app-projektwerk .pw-step__datum-feld {
+	flex: 0 0 180px;
+}
+
+.app-projektwerk .pw-step__picker,
 .app-projektwerk .pw-step__datum {
-	flex: 0 0 auto;
-	width: 150px;
+	width: 100%;
+}
+
+/*
+ * Auswahl und Datum gleich hoch und gleich umrandet (#345): beide auf die
+ * Plattform-Klickhöhe inklusive Rahmen, beide mit dem Kontrastrahmen der Auswahl.
+ */
+.app-projektwerk .pw-step__picker .vs__dropdown-toggle,
+.app-projektwerk .pw-person__picker .vs__dropdown-toggle {
+	box-sizing: border-box;
+	min-height: var(--default-clickable-area, 34px);
+}
+
+.app-projektwerk .pw-step__datum .dp__input,
+.app-projektwerk .pw-eckdaten__frist .dp__input {
+	/*
+	 * Die Auswahl ist 36 px hoch: Suchfeld und Knöpfe darin haben fest 32 px plus
+	 * Polster und Rahmen, und die gewählte Person steht zweizeilig. Das Datum zieht
+	 * mit, statt die Auswahl zu stauchen.
+	 */
+	min-height: calc(var(--default-clickable-area, 34px) + 2px);
+	border-color: var(--color-border-maxcontrast);
+}
+
+.app-projektwerk .pw-step__felder-text .pw-field {
+	margin-bottom: 0;
+}
+
+.app-projektwerk .pw-step__felder-aktionen {
+	display: flex;
+	justify-content: flex-end;
 }
 
 .app-projektwerk .pw-step__title {
@@ -1724,8 +1787,12 @@ body .modal-wrapper:has(.pw-detail) > .modal-container {
 	width: 100%;
 }
 
-/* `NcTextArea` bringt zwei Zeilen Mindesthöhe mit; die Höhe setzt `autoGrowFelder()`. */
-.app-projektwerk .pw-step__felder-text textarea {
+/*
+ * `NcTextArea` bringt mit Beschriftung außerhalb 80 px Mindesthöhe mit (#345); die
+ * Höhe setzt `autoGrowFelder()`. Die zweite Klasse hebt die Regel über die der
+ * Komponente.
+ */
+.app-projektwerk .pw-step__felder-text .pw-step__feld textarea {
 	min-height: var(--default-clickable-area, 34px);
 	max-height: 40vh;
 	overflow-y: auto;
@@ -3071,6 +3138,56 @@ body .modal-wrapper:has(.pw-detail) > .modal-container {
 	color: var(--color-error-text, var(--color-error));
 	font-weight: 600;
 }
+
+.app-projektwerk .pw-frist__wert {
+	font-variant-numeric: tabular-nums;
+}
+
+.app-projektwerk .pw-frist--overdue .pw-frist__wert {
+	color: var(--color-error-text, var(--color-error));
+}
+
+/* Der eine Stift für Zuständig und Frist (#345) steht am Zeilenende. */
+.app-projektwerk .pw-eckdaten__stift {
+	margin-inline-start: auto;
+}
+
+.app-projektwerk .pw-person__name--leer {
+	font-weight: 400;
+	color: var(--color-text-maxcontrast);
+}
+
+/* Geöffnete Eckdaten: Zuständig und Frist nebeneinander, Beschriftung darüber. */
+.app-projektwerk .pw-eckdaten__edit {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding-block: 8px;
+}
+
+.app-projektwerk .pw-eckdaten__felder {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	gap: 12px;
+}
+
+.app-projektwerk .pw-eckdaten__person {
+	flex: 0 1 280px;
+	min-width: 0;
+	margin-bottom: 0;
+}
+
+.app-projektwerk .pw-eckdaten__frist {
+	flex: 0 0 180px;
+	margin-bottom: 0;
+}
+
+.app-projektwerk .pw-eckdaten__frist .pw-frist__picker {
+	width: 100%;
+}
+
+
 
 /* ---- Tabelle in „Meine Einstellungen" ------------------------------------ */
 

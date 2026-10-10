@@ -50,71 +50,33 @@
 					</NcButton>
 				</template>
 
-				<template v-else>
-					<template v-if="editing === step.id">
-						<label class="hidden-visually" :for="'pw-step-user-' + step.id">
-							{{ t('projektwerk', 'Zuständig') }}
-						</label>
-						<NcSelectUsers
-							class="pw-step__picker"
-							:options="options"
-							:modelValue="optionFor(step.assignedUserId)"
-							:inputId="'pw-step-user-' + step.id"
-							:labelOutside="true"
-							:disabled="busy"
-							:placeholder="t('projektwerk', 'Niemand')"
-							@update:modelValue="assign(step, $event)" />
-
-						<NcDateTimePicker
-							type="date"
-							class="pw-step__datum"
-							:modelValue="asDate(step.dueDate)"
-							:clearable="true"
-							:appendToBody="true"
-							:ariaLabel="t('projektwerk', 'Fälligkeit')"
-							:placeholder="t('projektwerk', 'Fälligkeit')"
-							:disabled="busy"
-							@update:modelValue="setDue(step, $event)" />
-
-						<NcButton variant="tertiary" :ariaLabel="t('projektwerk', 'Fertig')" @click="saveDetails(step)">
-							<template #icon>
-								<CheckIcon :size="20" />
-							</template>
-						</NcButton>
-					</template>
-
-					<template v-else-if="step.assignedUserId || step.dueDate">
-						<span class="pw-step__info">
-							<NcAvatar
-								v-if="step.assignedUserId"
-								:user="step.assignedUserId"
-								:displayName="nameOf(step.assignedUserId)"
-								:size="24"
-								:disableMenu="true"
-								:hideStatus="true" />
-							{{ infoFor(step) }}
-						</span>
-						<NcButton
-							variant="tertiary"
-							:ariaLabel="t('projektwerk', 'Zuweisung und Fälligkeit ändern: {title}', { title: step.title })"
-							@click="beginEdit(step)">
-							<template #icon>
-								<PencilOutlineIcon :size="20" />
-							</template>
-						</NcButton>
-					</template>
-
+				<template v-else-if="editing !== step.id">
+					<!--
+						**Variante B** (#345): lesen, Stift je Schritt. Zuweisung und
+						Frist stehen als Text; ob gesetzt oder nicht, der Weg zum
+						Ändern ist derselbe Stift.
+					-->
+					<span v-if="step.assignedUserId || step.dueDate" class="pw-step__info">
+						<NcAvatar
+							v-if="step.assignedUserId"
+							:user="step.assignedUserId"
+							:displayName="nameOf(step.assignedUserId)"
+							:size="24"
+							:disableMenu="true"
+							:hideStatus="true" />
+						{{ infoFor(step) }}
+					</span>
 					<NcButton
-						v-else
 						variant="tertiary"
-						class="pw-step__flach"
+						:ariaLabel="t('projektwerk', 'Arbeitsschritt bearbeiten: {title}', { title: step.title })"
+						:title="t('projektwerk', 'Bearbeiten')"
 						@click="beginEdit(step)">
-						{{ t('projektwerk', 'Zuweisen oder Frist setzen') }}
+						<template #icon>
+							<PencilOutlineIcon :size="20" />
+						</template>
 					</NcButton>
 
-					<!-- Der Papierkorb — nicht während des Bearbeitens, sonst wird die Zeile eng. -->
 					<NcButton
-						v-if="editing !== step.id"
 						variant="tertiary"
 						:ariaLabel="t('projektwerk', 'Arbeitsschritt löschen: {title}', { title: step.title })"
 						@click="removing = step.id">
@@ -141,43 +103,104 @@
 				<span class="pw-step__ergebnis-text">{{ step.result }}</span>
 			</div>
 
+			<!--
+				Der geöffnete Schritt (#345): Beschriftung **über** dem Feld wie im
+				übrigen App-Formular (`pw-field`), Zuständig und Frist in einer Zeile
+				und gleich hoch, „Fertig" unten statt eines Häkchens am Rand.
+				Zuweisung und Frist speichern sofort; Titel, Beschreibung und
+				Ergebnis mit „Fertig" (oder Enter bzw. Strg/Cmd+Enter) — und
+				automatisch, sobald man den Schritt verlässt (#367). Esc im Feld
+				nimmt die Änderung zurück.
+			-->
 			<div v-if="editing === step.id" class="pw-step__felder-text">
-				<!--
-					Titel im Bearbeiten-Modus (#308). Vorher liess sich ein
-					Tippfehler nur durch Loeschen und Neuanlegen beheben — den
-					Titel gab es allein als Anzeige. Speichert gepuffert ueber
-					„Fertig", wie Beschreibung und Ergebnis.
-				-->
-				<NcTextField
-					class="pw-step__feld"
-					:modelValue="editTitle"
-					:label="t('projektwerk', 'Titel')"
-					:disabled="busy"
-					@update:modelValue="editTitle = $event"
-					@keydown.enter="saveDetails(step)" />
+				<div class="pw-field">
+					<label :for="'pw-step-title-' + step.id">{{ t('projektwerk', 'Titel') }}</label>
+					<NcTextField
+						:id="'pw-step-title-' + step.id"
+						class="pw-step__feld"
+						:modelValue="editTitle"
+						:label="t('projektwerk', 'Titel')"
+						:labelOutside="true"
+						:disabled="busy"
+						@update:modelValue="editTitle = $event"
+						@keydown.esc.stop="cancelEdit"
+						@keydown.enter="saveDetails(step)" />
+				</div>
 
-				<!-- Mehrzeilig: Enter bricht um, Speichern über „Fertig“ oder Strg/Cmd+Enter. -->
-				<NcTextArea
-					class="pw-step__feld"
-					:modelValue="editDescription"
-					:label="t('projektwerk', 'Beschreibung')"
-					:rows="1"
-					resize="none"
-					:disabled="busy"
-					@update:modelValue="editDescription = $event"
-					@keydown.enter.ctrl.exact="saveDetails(step)"
-					@keydown.enter.meta.exact="saveDetails(step)" />
+				<div class="pw-step__felder-zeile">
+					<div class="pw-field pw-step__picker-feld">
+						<label :for="'pw-step-user-' + step.id">{{ t('projektwerk', 'Zuständig') }}</label>
+						<NcSelectUsers
+							class="pw-step__picker"
+							:options="options"
+							:modelValue="optionFor(step.assignedUserId)"
+							:inputId="'pw-step-user-' + step.id"
+							:labelOutside="true"
+							:disabled="busy"
+							:placeholder="t('projektwerk', 'Niemand')"
+							@update:modelValue="assign(step, $event)" />
+					</div>
+					<div class="pw-field pw-step__datum-feld">
+						<label>{{ t('projektwerk', 'Fällig bis') }}</label>
+						<NcDateTimePicker
+							type="date"
+							class="pw-step__datum"
+							:modelValue="asDate(step.dueDate)"
+							:clearable="true"
+							:appendToBody="true"
+							:ariaLabel="t('projektwerk', 'Fälligkeit')"
+							:placeholder="t('projektwerk', 'Keine Frist')"
+							:disabled="busy"
+							@update:modelValue="setDue(step, $event)" />
+					</div>
+				</div>
 
-				<NcTextArea
-					class="pw-step__feld"
-					:modelValue="editResult"
-					:label="t('projektwerk', 'Ergebnis')"
-					:rows="1"
-					resize="none"
-					:disabled="busy"
-					@update:modelValue="editResult = $event"
-					@keydown.enter.ctrl.exact="saveDetails(step)"
-					@keydown.enter.meta.exact="saveDetails(step)" />
+				<div class="pw-field">
+					<label :for="'pw-step-desc-' + step.id">{{ t('projektwerk', 'Beschreibung') }}</label>
+					<NcTextArea
+						:id="'pw-step-desc-' + step.id"
+						class="pw-step__feld"
+						:modelValue="editDescription"
+						:label="t('projektwerk', 'Beschreibung')"
+						:labelOutside="true"
+						:rows="1"
+						resize="none"
+						:disabled="busy"
+						@update:modelValue="editDescription = $event"
+						@keydown.esc.stop="cancelEdit"
+						@keydown.enter.ctrl.exact="saveDetails(step)"
+						@keydown.enter.meta.exact="saveDetails(step)" />
+				</div>
+
+				<div class="pw-field">
+					<label :for="'pw-step-result-' + step.id">{{ t('projektwerk', 'Ergebnis') }}</label>
+					<NcTextArea
+						:id="'pw-step-result-' + step.id"
+						class="pw-step__feld"
+						:modelValue="editResult"
+						:label="t('projektwerk', 'Ergebnis')"
+						:labelOutside="true"
+						:rows="1"
+						resize="none"
+						:disabled="busy"
+						@update:modelValue="editResult = $event"
+						@keydown.esc.stop="cancelEdit"
+						@keydown.enter.ctrl.exact="saveDetails(step)"
+						@keydown.enter.meta.exact="saveDetails(step)" />
+				</div>
+
+				<div class="pw-step__felder-aktionen">
+					<NcButton
+						variant="primary"
+						:ariaLabel="t('projektwerk', 'Fertig')"
+						:disabled="busy"
+						@click="saveDetails(step)">
+						<template #icon>
+							<CheckIcon :size="20" />
+						</template>
+						{{ t('projektwerk', 'Fertig') }}
+					</NcButton>
+				</div>
 			</div>
 		</div>
 
@@ -325,6 +348,12 @@ export default defineComponent({
 			 */
 			editing: null as number | null,
 			/**
+			 * Der Schritt, wie er beim Öffnen war (#367). Beim Wechsel des
+			 * Vorgangs zeigt `steps` schon den neuen; gesichert wird trotzdem
+			 * der Schritt, an dem getippt wurde.
+			 */
+			editingStep: null as Step | null,
+			/**
 			 * Puffer für Beschreibung und Ergebnis des gerade bearbeiteten
 			 * Schritts (#247). Anders als Zuweisung und Frist, die sofort beim
 			 * Ändern speichern, sind das Freitextfelder — hier gilt dasselbe
@@ -389,9 +418,11 @@ export default defineComponent({
 			handler() {
 				this.loadAssignable()
 				// Angefangenes gehört zum vorigen Vorgang und darf nicht stehen
-				// bleiben.
+				// bleiben — ein offener Schritt wird vorher gesichert (#367).
+				this.sichern()
 				this.newTitle = ''
 				this.editing = null
+				this.editingStep = null
 				this.removing = null
 			},
 		},
@@ -599,7 +630,14 @@ export default defineComponent({
 		 * @param step Der Schritt, der bearbeitet wird.
 		 */
 		beginEdit(step: Step) {
+			// Der bisher offene Schritt wird gesichert, nicht verworfen (#367).
+			// Ohne `await`: `saveDetails` liest den Puffer sofort, die Schreibkette
+			// reiht den Aufruf ein.
+			if (this.editing !== null && this.editing !== step.id) {
+				this.sichern()
+			}
 			this.editing = step.id
+			this.editingStep = step
 			this.editTitle = step.title
 			this.editDescription = step.description ?? ''
 			this.editResult = step.result ?? ''
@@ -642,7 +680,7 @@ export default defineComponent({
 		 *
 		 * @param step Der Schritt.
 		 */
-		saveDetails(step: Step) {
+		saveDetails(step: Step): Promise<boolean> {
 			const titel = this.editTitle.trim()
 			const beschreibung = this.editDescription.trim()
 			const ergebnis = this.editResult.trim()
@@ -659,18 +697,57 @@ export default defineComponent({
 			}
 
 			if (Object.keys(changes).length === 0) {
-				this.editing = null
+				this.schliesseEdit(step.id)
 
-				return
+				return Promise.resolve(true)
 			}
 
+			let gesichert = false
 			return this.write(
 				async () => {
 					await updateStep(this.boardId, step.id, changes)
-					this.editing = null
+					gesichert = true
+					this.schliesseEdit(step.id)
 				},
 				t('projektwerk', 'Ändern fehlgeschlagen'),
-			)
+			).then(() => gesichert)
+		},
+
+		/**
+		 * Den Bearbeiten-Modus verlassen — aber nur, wenn noch **dieser**
+		 * Schritt offen ist. Wer inzwischen einen anderen geöffnet hat, behält ihn.
+		 *
+		 * @param stepId Der Schritt, dessen Bearbeitung endet.
+		 */
+		schliesseEdit(stepId: number): void {
+			if (this.editing === stepId) {
+				this.editing = null
+				this.editingStep = null
+			}
+		},
+
+		/**
+		 * Den offenen Schritt sichern (#367): beim Schließen des Fensters, beim
+		 * Öffnen eines anderen Schritts und beim Wechsel des Vorgangs.
+		 * Angefangenes wird nie still verworfen.
+		 *
+		 * @return `true`, wenn nichts offen war oder das Speichern gelang.
+		 */
+		sichern(): Promise<boolean> {
+			if (this.editing === null || this.editingStep === null) {
+				return Promise.resolve(true)
+			}
+			// Den aktuellen Stand nehmen, sonst vergliche `saveDetails` mit dem
+			// Titel von vor einer zwischenzeitlichen Änderung.
+			const step = this.steps.find((s) => s.id === this.editing) ?? this.editingStep
+
+			return this.saveDetails(step)
+		},
+
+		/** Esc im Feld (#367): Änderung zurücknehmen, Schritt zuklappen. */
+		cancelEdit(): void {
+			this.editing = null
+			this.editingStep = null
 		},
 
 		/**

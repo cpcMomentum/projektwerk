@@ -143,4 +143,8 @@ export interface BoardDetail {
 	viewer: ViewerInfo
 	/** Ob das Projekt „Mitglieder dürfen Boards anlegen" gesetzt hat (#281). */
 	memberBoardsAllowed: boolean
+	/** Der Name des Projekts, zu dem das Board gehört (#350). */
+	projectTitle?: string
+	/** Der Projektordner (#351): Datei-ID zum Öffnen, Pfad zur Anzeige. */
+	projectFolder?: { id: number, path: string } | null
 }
