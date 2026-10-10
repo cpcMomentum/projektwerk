@@ -466,6 +466,7 @@ OC.L10N.register(
     "Bearbeiten" : "Edit",
     "Niemand zuständig" : "Nobody responsible",
     "Zuständigkeit und Fälligkeit ändern" : "Change responsibility and due date",
-    "Änderungen konnten nicht gespeichert werden" : "Changes could not be saved"
+    "Änderungen konnten nicht gespeichert werden" : "Changes could not be saved",
+    "Zum Board" : "Back to board"
 },
 "nplurals=2; plural=(n != 1);");

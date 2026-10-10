@@ -890,21 +890,24 @@ body .modal-wrapper:has(.pw-detail) > .modal-container {
 
 /* „Zurück" links, die Ausgänge und Löschen rechts. */
 .app-projektwerk .pw-detail__fuss-aktionen {
-	margin-inline-start: auto;
 	display: flex;
 	align-items: center;
 	gap: 8px;
 	flex-wrap: wrap;
-	justify-content: flex-end;
+}
+
+/* Der Ausgang rechts abgesetzt (#368), getrennt von den Aktionen am Vorgang. */
+.app-projektwerk .pw-detail__ausgang {
+	margin-inline-start: auto;
 }
 
 /*
- * Löschen abgesetzt und rot (#331): endgültig, darum nicht als gleichwertiger
+ * Löschen ganz links, abgesetzt und rot (#331, #368): endgültig, darum nicht als gleichwertiger
  * Knopf. Rote Schrift statt roter Fläche — deutlich, ohne die Zeile zu
  * dominieren; die Rückfrage bleibt der eigentliche Schutz.
  */
 .app-projektwerk .pw-detail__loeschen {
-	margin-inline-start: 12px;
+	margin-inline-end: 12px;
 	/*
 	 * `--color-error-text` (dunkles Rot), NICHT `--color-error`: Letzteres ist
 	 * in NCs Token-System eine helle Fehler-Fläche (#FFE7E7) und als Schriftfarbe

@@ -470,57 +470,13 @@
 					@changed="$emit('commentsChanged')" />
 
 				<!--
-					Feststehende Fußzeile (#331): die Lebenszyklus-Aktionen
-					beschriftet und immer sichtbar, statt icon-only oben rechts.
-					Klebt unten (position: sticky), spiegelbildlich zum klebenden
-					Kopf. „Zurück" links schließt nur das Modal; die Ausgänge rechts,
-					Löschen rot und abgesetzt, damit das Endgültige nicht zum
-					Fehlklick einlädt (die Rückfrage bleibt trotzdem).
+					Feststehende Fußzeile (#331, neu geordnet #368): links die
+					Aktionen am Vorgang, rechts abgesetzt der Ausgang. Unten rechts
+					greift die Hand zum Verlassen; dort stand „Erledigt" und schloss
+					den Vorgang statt des Fensters.
 				-->
 				<footer class="pw-detail__fuss">
-					<NcButton
-						variant="tertiary"
-						:disabled="busy"
-						@click="schliessen">
-						{{ t('projektwerk', 'Zurück') }}
-					</NcButton>
-
 					<div class="pw-detail__fuss-aktionen">
-						<template v-if="!ticket.closedAt">
-							<NcButton
-								variant="primary"
-								:disabled="busy"
-								:title="t('projektwerk', 'Als erledigt abschließen')"
-								:ariaLabel="t('projektwerk', 'Als erledigt abschließen')"
-								@click="closeWith('done')">
-								<template #icon>
-									<CheckIcon :size="20" />
-								</template>
-								{{ t('projektwerk', 'Erledigt') }}
-							</NcButton>
-							<NcButton
-								variant="secondary"
-								:disabled="busy"
-								:title="t('projektwerk', 'Als verworfen abschließen')"
-								:ariaLabel="t('projektwerk', 'Als verworfen abschließen')"
-								@click="closeWith('discarded')">
-								<template #icon>
-									<CancelIcon :size="20" />
-								</template>
-								{{ t('projektwerk', 'Verworfen') }}
-							</NcButton>
-						</template>
-						<NcButton
-							v-else
-							variant="secondary"
-							:disabled="busy"
-							@click="reopen">
-							<template #icon>
-								<RestoreIcon :size="20" />
-							</template>
-							{{ t('projektwerk', 'Wieder öffnen') }}
-						</NcButton>
-
 						<NcButton
 							class="pw-detail__loeschen"
 							variant="tertiary"
@@ -533,7 +489,50 @@
 							</template>
 							{{ t('projektwerk', 'Löschen') }}
 						</NcButton>
+
+						<template v-if="!ticket.closedAt">
+							<NcButton
+								variant="secondary"
+								:disabled="busy"
+								:title="t('projektwerk', 'Als verworfen abschließen')"
+								:ariaLabel="t('projektwerk', 'Als verworfen abschließen')"
+								@click="closeWith('discarded')">
+								<template #icon>
+									<CancelIcon :size="20" />
+								</template>
+								{{ t('projektwerk', 'Verworfen') }}
+							</NcButton>
+							<NcButton
+								variant="success"
+								:disabled="busy"
+								:title="t('projektwerk', 'Als erledigt abschließen')"
+								:ariaLabel="t('projektwerk', 'Als erledigt abschließen')"
+								@click="closeWith('done')">
+								<template #icon>
+									<CheckIcon :size="20" />
+								</template>
+								{{ t('projektwerk', 'Erledigt') }}
+							</NcButton>
+						</template>
+						<NcButton
+							v-else
+							variant="secondary"
+							:disabled="busy"
+							@click="reopen">
+							<template #icon>
+								<RestoreIcon :size="20" />
+							</template>
+							{{ t('projektwerk', 'Wieder öffnen') }}
+						</NcButton>
 					</div>
+
+					<NcButton
+						class="pw-detail__ausgang"
+						variant="primary"
+						:disabled="busy"
+						@click="schliessen">
+						{{ t('projektwerk', 'Zum Board') }}
+					</NcButton>
 				</footer>
 			</div>
 		</div>
