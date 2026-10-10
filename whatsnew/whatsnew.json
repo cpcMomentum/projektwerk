@@ -1,4 +1,91 @@
 {
+	"0.4.19": [
+		{
+			"title": {
+				"de": "Eingaben gehen nicht mehr verloren",
+				"en": "Your input is no longer lost"
+			},
+			"text": {
+				"de": "Was du in einem Vorgang oder Arbeitsschritt tippst, wird beim Schließen gespeichert. Esc in einem Feld nimmt die Änderung zurück. Ein angefangener Kommentar bleibt als Entwurf stehen.",
+				"en": "Whatever you type in a ticket or step is saved when you close it. Esc in a field undoes the change. A comment you started stays as a draft."
+			},
+			"icon": "file-document",
+			"where": {
+				"de": "In jedem Vorgang",
+				"en": "In every ticket"
+			},
+			"adminOnly": false,
+			"plus": false
+		},
+		{
+			"title": {
+				"de": "Vorgang lesen, Abschnitt bearbeiten",
+				"en": "Read the ticket, edit a section"
+			},
+			"text": {
+				"de": "Ein Vorgang öffnet sich zum Lesen. Bearbeitet wird je Abschnitt über den Stift. Unten führt „Zum Board“ aus dem Vorgang heraus, ohne ihn abzuschließen.",
+				"en": "A ticket opens for reading. Each section is edited via its pencil. At the bottom, “Back to board” leaves the ticket without closing it."
+			},
+			"icon": "file-document",
+			"where": {
+				"de": "In jedem Vorgang",
+				"en": "In every ticket"
+			},
+			"adminOnly": false,
+			"plus": false
+		},
+		{
+			"title": {
+				"de": "Boards als Reiter",
+				"en": "Boards as tabs"
+			},
+			"text": {
+				"de": "Der Projektname steht oben, die Boards eines Projekts als Reiter darunter.",
+				"en": "The project name is shown at the top, the project's boards as tabs below it."
+			},
+			"icon": "chart-bar",
+			"where": {
+				"de": "Im Board",
+				"en": "On the board"
+			},
+			"adminOnly": false,
+			"plus": false
+		},
+		{
+			"title": {
+				"de": "Projektordner",
+				"en": "Project folder"
+			},
+			"text": {
+				"de": "Im Projektkopf lässt sich ein Ordner aus deinen Dateien hinterlegen und direkt öffnen. Beim Anhängen startet die Auswahl dort.",
+				"en": "In the project header you can link a folder from your files and open it directly. When attaching files, the picker starts there."
+			},
+			"icon": "folder",
+			"where": {
+				"de": "Im Projektkopf",
+				"en": "In the project header"
+			},
+			"adminOnly": false,
+			"plus": false
+		},
+		{
+			"title": {
+				"de": "Eigene Firma zentral festlegen",
+				"en": "Set your own company once"
+			},
+			"text": {
+				"de": "Die eigene Firma wird einmal in der Verwaltung festgelegt. Neue Projekte übernehmen sie.",
+				"en": "Your own company is set once in the administration settings. New projects use it."
+			},
+			"icon": "cog",
+			"where": {
+				"de": "Verwaltung",
+				"en": "Administration"
+			},
+			"adminOnly": true,
+			"plus": false
+		}
+	],
 	"0.4.18": [
 		{
 			"title": {

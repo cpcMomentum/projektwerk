@@ -4,6 +4,39 @@ Alle nennenswerten Änderungen an ProjektWerk werden hier dokumentiert.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.4.19] - 2026-10-10
+
+### Added
+
+- **Projektordner** (#351): Im Projektkopf lässt sich ein Ordner aus den eigenen Dateien
+  hinterlegen und mit einem Klick öffnen. Beim Anhängen von Dateien startet die Auswahl dort.
+- **Eigene Firma einmal je Instanz** (#352): Die Verwaltung legt die eigene Firma zentral in den
+  Verwaltungs-Einstellungen fest, neue Projekte übernehmen sie.
+
+### Changed
+
+- **Vorgang zum Lesen öffnen** (#345): Ein Vorgang öffnet sich als Ansicht. Bearbeitet wird je
+  Abschnitt über den Stift, das Abhak-Kästchen der Arbeitsschritte bleibt direkt bedienbar.
+- **Neue Fußzeile im Vorgang** (#368): Löschen, Verworfen und Erledigt stehen links, rechts
+  abgesetzt führt „Zum Board" aus dem Vorgang heraus, ohne etwas abzuschließen.
+- **Projektname als Titel, Boards als Reiter** (#350): Hat ein Projekt mehrere Boards, stehen sie
+  als Reiter unter dem Projektnamen; das aktive Board ist erkennbar.
+- **Breiteres Feld „Zuständig"** (#367): Zuständig und Fälligkeit stehen nebeneinander auf gleicher
+  Höhe.
+
+### Fixed
+
+- **Eingaben gehen beim Schließen nicht mehr verloren** (#367): Was in einem Vorgang oder
+  Arbeitsschritt getippt wurde, wird beim Schließen, beim Öffnen eines anderen Schritts und beim
+  Wechsel des Vorgangs gespeichert. Esc in einem Feld nimmt die Änderung zurück. Ein angefangener
+  Kommentar bleibt als Entwurf im Browser stehen und wird nie von selbst gesendet.
+- **Handy: Karten heben sich beim Scrollen nicht mehr an** (#244): Eine Karte lässt sich erst nach
+  kurzem Halten ziehen.
+- **Gäste auf deutscher Oberfläche** (#328): Die Absage für Gäste wird auch auf Deutsch erkannt,
+  statt als „Server-Fehler" zu erscheinen.
+- **Eigene Rolle in weiteren Boards** (#357): Für das zweite und dritte Board eines Projekts lieferte
+  der Server die eigene Rolle nicht mit.
+
 ## [0.4.18] - 2026-10-04
 
 ### Changed
