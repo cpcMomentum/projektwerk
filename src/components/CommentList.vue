@@ -188,6 +188,7 @@ import NcButton from '@nextcloud/vue/components/NcButton'
 import NcDateTime from '@nextcloud/vue/components/NcDateTime'
 import NcRichContenteditable from '@nextcloud/vue/components/NcRichContenteditable'
 import NcRichText from '@nextcloud/vue/components/NcRichText'
+import { loadCommentDraft, saveCommentDraft } from '@/services/commentDraft'
 import { createComment, deleteComment, updateComment } from '@/services/comments'
 import { fetchAssignable } from '@/services/steps'
 import { showError } from '@/services/toast'
@@ -301,18 +302,24 @@ export default defineComponent({
 	},
 
 	watch: {
-		// Beim Wechsel des Vorgangs alles Angefangene fallen lassen: Sonst
+		// Beim Wechsel des Vorgangs den Entwurf dieses Vorgangs holen: Sonst
 		// stünde der Entwurf zum Kommentar des vorigen Tickets unter dem neuen.
 		// `immediate`, damit die Erwähnungs-Menge schon beim ersten Öffnen steht.
 		ticketId: {
 			immediate: true,
 			handler() {
 				this.loadAssignable()
-				this.newBody = ''
+				this.newBody = this.viewer ? loadCommentDraft(this.viewer.userId, this.ticketId) : ''
 				this.cancel()
 				this.removing = null
 				this.fokusZiel = null
 			},
+		},
+
+		newBody(body: string) {
+			if (this.viewer) {
+				saveCommentDraft(this.viewer.userId, this.ticketId, body)
+			}
 		},
 
 		/**

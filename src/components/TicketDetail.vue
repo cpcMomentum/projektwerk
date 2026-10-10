@@ -6,11 +6,19 @@
 		als Ueberschrift in der Karte. `labelId` benennt den Dialog ueber die
 		Ueberschrift, die ohnehin da ist.
 	-->
+	<!--
+		**Schließen sichert zuerst** (#367). `:show` fest auf `true` und
+		`@update:show` statt `@close`: So blendet NcModal sich bei X oder Esc
+		nicht selbst aus, sondern fragt nur an. Erst wenn alle Entwürfe
+		gespeichert sind, geht das Fenster zu; scheitert das Speichern, bleibt
+		es mit der Fehlermeldung offen, und nichts ist verloren.
+	-->
 	<NcModal
 		v-if="ticket"
 		size="large"
 		:labelId="titleId"
-		@close="$emit('close')">
+		:show="true"
+		@update:show="beiSchliessen">
 		<!--
 			Die App-Klasse MUSS hier drin stehen, nicht nur aussen an der App.
 			NcModal teleportiert seinen Inhalt an den `body`; er haengt damit
@@ -429,6 +437,7 @@
 				</div>
 
 				<StepList
+					ref="steps"
 					:boardId="ticket.boardId"
 					:ticketId="ticket.id"
 					:steps="steps"
@@ -472,7 +481,7 @@
 					<NcButton
 						variant="tertiary"
 						:disabled="busy"
-						@click="$emit('close')">
+						@click="schliessen">
 						{{ t('projektwerk', 'Zurück') }}
 					</NcButton>
 
@@ -613,6 +622,8 @@ export default defineComponent({
 	data() {
 		return {
 			busy: false,
+			/** Das Schließen läuft gerade (Entwürfe werden gesichert, #367). */
+			schliesst: false,
 			/** Der Titel wird gerade bearbeitet (#169). */
 			editingTitle: false,
 			titleEntwurf: '',
@@ -912,6 +923,78 @@ export default defineComponent({
 			} finally {
 				this.busy = false
 			}
+		},
+
+		/**
+		 * NcModal meldet X oder Esc (#367).
+		 *
+		 * @param sichtbar Der gewünschte Zustand; nur `false` heißt schließen.
+		 */
+		beiSchliessen(sichtbar: boolean): void {
+			if (!sichtbar) {
+				this.schliessen()
+			}
+		},
+
+		/**
+		 * Das Fenster schließen — nach dem Sichern aller Entwürfe (#367).
+		 * Scheitert das Speichern, bleibt das Fenster offen.
+		 */
+		async schliessen(): Promise<void> {
+			if (this.schliesst) {
+				return
+			}
+			this.schliesst = true
+			try {
+				if (await this.entwuerfeSichern()) {
+					this.$emit('close')
+				}
+			} finally {
+				this.schliesst = false
+			}
+		},
+
+		/**
+		 * Offene Entwürfe speichern statt verwerfen (#367): Titel und
+		 * Beschreibung des Vorgangs in **einem** Aufruf (zwei nacheinander
+		 * scheiterten an der `version` des ersten), danach der offene
+		 * Arbeitsschritt.
+		 *
+		 * @return `true`, wenn nichts offen war oder alles gespeichert ist.
+		 */
+		async entwuerfeSichern(): Promise<boolean> {
+			if (this.ticket === null) {
+				return true
+			}
+
+			const changes: { title?: string, description?: string | null } = {}
+			if (this.editingTitle && this.titleSpeicherbar) {
+				changes.title = this.titleEntwurf.trim()
+			}
+			if (this.editingText && this.textGeaendert) {
+				const text = this.textEntwurf.trim()
+				changes.description = text === '' ? null : text
+			}
+
+			if (Object.keys(changes).length > 0) {
+				this.busy = true
+				try {
+					const updated = await updateTicket(this.ticket.boardId, this.ticket.id, this.ticket.version, changes)
+					this.$emit('changed', updated)
+					this.cancelEditTitle()
+					this.cancelEditText()
+				} catch (e) {
+					reportWriteError(e, t('projektwerk', 'Änderungen konnten nicht gespeichert werden'))
+
+					return false
+				} finally {
+					this.busy = false
+				}
+			}
+
+			const schritte = this.$refs.steps as { sichern?: () => Promise<boolean> } | undefined
+
+			return schritte?.sichern ? await schritte.sichern() : true
 		},
 
 		startEditTitle(): void {

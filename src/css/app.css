@@ -1636,13 +1636,14 @@ body .modal-wrapper:has(.pw-detail) > .modal-container {
 	gap: 12px;
 }
 
+/* So breit wie Name und Firma, nicht wie die Zeile: sonst rückt die Frist an den Rand. */
 .app-projektwerk .pw-step__picker-feld {
-	flex: 1 1 160px;
+	flex: 0 1 280px;
 	min-width: 0;
 }
 
 .app-projektwerk .pw-step__datum-feld {
-	flex: 0 0 150px;
+	flex: 0 0 180px;
 }
 
 .app-projektwerk .pw-step__picker,
@@ -3169,7 +3170,7 @@ body .modal-wrapper:has(.pw-detail) > .modal-container {
 }
 
 .app-projektwerk .pw-eckdaten__person {
-	flex: 1 1 220px;
+	flex: 0 1 280px;
 	min-width: 0;
 	margin-bottom: 0;
 }

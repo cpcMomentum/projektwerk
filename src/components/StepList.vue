@@ -108,7 +108,9 @@
 				übrigen App-Formular (`pw-field`), Zuständig und Frist in einer Zeile
 				und gleich hoch, „Fertig" unten statt eines Häkchens am Rand.
 				Zuweisung und Frist speichern sofort; Titel, Beschreibung und
-				Ergebnis mit „Fertig" (oder Enter bzw. Strg/Cmd+Enter).
+				Ergebnis mit „Fertig" (oder Enter bzw. Strg/Cmd+Enter) — und
+				automatisch, sobald man den Schritt verlässt (#367). Esc im Feld
+				nimmt die Änderung zurück.
 			-->
 			<div v-if="editing === step.id" class="pw-step__felder-text">
 				<div class="pw-field">
@@ -121,6 +123,7 @@
 						:labelOutside="true"
 						:disabled="busy"
 						@update:modelValue="editTitle = $event"
+						@keydown.esc.stop="cancelEdit"
 						@keydown.enter="saveDetails(step)" />
 				</div>
 
@@ -164,6 +167,7 @@
 						resize="none"
 						:disabled="busy"
 						@update:modelValue="editDescription = $event"
+						@keydown.esc.stop="cancelEdit"
 						@keydown.enter.ctrl.exact="saveDetails(step)"
 						@keydown.enter.meta.exact="saveDetails(step)" />
 				</div>
@@ -180,6 +184,7 @@
 						resize="none"
 						:disabled="busy"
 						@update:modelValue="editResult = $event"
+						@keydown.esc.stop="cancelEdit"
 						@keydown.enter.ctrl.exact="saveDetails(step)"
 						@keydown.enter.meta.exact="saveDetails(step)" />
 				</div>
@@ -343,6 +348,12 @@ export default defineComponent({
 			 */
 			editing: null as number | null,
 			/**
+			 * Der Schritt, wie er beim Öffnen war (#367). Beim Wechsel des
+			 * Vorgangs zeigt `steps` schon den neuen; gesichert wird trotzdem
+			 * der Schritt, an dem getippt wurde.
+			 */
+			editingStep: null as Step | null,
+			/**
 			 * Puffer für Beschreibung und Ergebnis des gerade bearbeiteten
 			 * Schritts (#247). Anders als Zuweisung und Frist, die sofort beim
 			 * Ändern speichern, sind das Freitextfelder — hier gilt dasselbe
@@ -407,9 +418,11 @@ export default defineComponent({
 			handler() {
 				this.loadAssignable()
 				// Angefangenes gehört zum vorigen Vorgang und darf nicht stehen
-				// bleiben.
+				// bleiben — ein offener Schritt wird vorher gesichert (#367).
+				this.sichern()
 				this.newTitle = ''
 				this.editing = null
+				this.editingStep = null
 				this.removing = null
 			},
 		},
@@ -617,7 +630,14 @@ export default defineComponent({
 		 * @param step Der Schritt, der bearbeitet wird.
 		 */
 		beginEdit(step: Step) {
+			// Der bisher offene Schritt wird gesichert, nicht verworfen (#367).
+			// Ohne `await`: `saveDetails` liest den Puffer sofort, die Schreibkette
+			// reiht den Aufruf ein.
+			if (this.editing !== null && this.editing !== step.id) {
+				this.sichern()
+			}
 			this.editing = step.id
+			this.editingStep = step
 			this.editTitle = step.title
 			this.editDescription = step.description ?? ''
 			this.editResult = step.result ?? ''
@@ -660,7 +680,7 @@ export default defineComponent({
 		 *
 		 * @param step Der Schritt.
 		 */
-		saveDetails(step: Step) {
+		saveDetails(step: Step): Promise<boolean> {
 			const titel = this.editTitle.trim()
 			const beschreibung = this.editDescription.trim()
 			const ergebnis = this.editResult.trim()
@@ -677,18 +697,57 @@ export default defineComponent({
 			}
 
 			if (Object.keys(changes).length === 0) {
-				this.editing = null
+				this.schliesseEdit(step.id)
 
-				return
+				return Promise.resolve(true)
 			}
 
+			let gesichert = false
 			return this.write(
 				async () => {
 					await updateStep(this.boardId, step.id, changes)
-					this.editing = null
+					gesichert = true
+					this.schliesseEdit(step.id)
 				},
 				t('projektwerk', 'Ändern fehlgeschlagen'),
-			)
+			).then(() => gesichert)
+		},
+
+		/**
+		 * Den Bearbeiten-Modus verlassen — aber nur, wenn noch **dieser**
+		 * Schritt offen ist. Wer inzwischen einen anderen geöffnet hat, behält ihn.
+		 *
+		 * @param stepId Der Schritt, dessen Bearbeitung endet.
+		 */
+		schliesseEdit(stepId: number): void {
+			if (this.editing === stepId) {
+				this.editing = null
+				this.editingStep = null
+			}
+		},
+
+		/**
+		 * Den offenen Schritt sichern (#367): beim Schließen des Fensters, beim
+		 * Öffnen eines anderen Schritts und beim Wechsel des Vorgangs.
+		 * Angefangenes wird nie still verworfen.
+		 *
+		 * @return `true`, wenn nichts offen war oder das Speichern gelang.
+		 */
+		sichern(): Promise<boolean> {
+			if (this.editing === null || this.editingStep === null) {
+				return Promise.resolve(true)
+			}
+			// Den aktuellen Stand nehmen, sonst vergliche `saveDetails` mit dem
+			// Titel von vor einer zwischenzeitlichen Änderung.
+			const step = this.steps.find((s) => s.id === this.editing) ?? this.editingStep
+
+			return this.saveDetails(step)
+		},
+
+		/** Esc im Feld (#367): Änderung zurücknehmen, Schritt zuklappen. */
+		cancelEdit(): void {
+			this.editing = null
+			this.editingStep = null
 		},
 
 		/**

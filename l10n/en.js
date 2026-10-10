@@ -465,6 +465,7 @@ OC.L10N.register(
     "Arbeitsschritt bearbeiten: {title}" : "Edit step: {title}",
     "Bearbeiten" : "Edit",
     "Niemand zuständig" : "Nobody responsible",
-    "Zuständigkeit und Fälligkeit ändern" : "Change responsibility and due date"
+    "Zuständigkeit und Fälligkeit ändern" : "Change responsibility and due date",
+    "Änderungen konnten nicht gespeichert werden" : "Changes could not be saved"
 },
 "nplurals=2; plural=(n != 1);");
