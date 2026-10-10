@@ -451,7 +451,7 @@ describe('StepList', () => {
 		await oeffneZeile(wrapper)
 		await wrapper.findAll('.pw-step__felder-text textarea')[1].setValue('Ergebnis')
 
-		await wrapper.setProps({ ticketId: 43, steps: [] })
+		await wrapper.setProps({ ticketId: 43, steps: [] } as Record<string, unknown>)
 		await new Promise((resolve) => setTimeout(resolve, 0))
 
 		expect(updateStep).toHaveBeenCalledWith(7, 5, { result: 'Ergebnis' })
