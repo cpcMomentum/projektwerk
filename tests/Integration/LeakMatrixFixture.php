@@ -179,6 +179,9 @@ final class LeakMatrixFixture {
 	/** @var array<string, int> Bezeichnung => Ticket-ID */
 	public array $ticketIds = [];
 
+	/** @var array<string, int> Bezeichnung => Vorgangsnummer (je Projekt ab 1, beide Boards überlappen) */
+	public array $ticketNumbers = [];
+
 	/** @var array<string, int> Spaltentitel => Spalten-ID */
 	public array $columnIds = [];
 
@@ -268,6 +271,7 @@ final class LeakMatrixFixture {
 			$ticket->setUpdatedAt($now);
 			$ticketId = (int)$tickets->insert($ticket)->getId();
 			$this->ticketIds[$label] = $ticketId;
+			$this->ticketNumbers[$label] = $number;
 
 			// Genau ein Kind je Tabelle und Ticket. Damit ist jeder Zaehler
 			// entweder 1 (sichtbar) oder gar nicht erst vorhanden (verborgen) —
@@ -421,6 +425,7 @@ final class LeakMatrixFixture {
 			$ticket->setCreatedAt($now);
 			$ticket->setUpdatedAt($now);
 			$this->ticketIds[$label] = (int)$tickets->insert($ticket)->getId();
+			$this->ticketNumbers[$label] = $number;
 		}
 
 		$step = new Step();

@@ -41,6 +41,8 @@ final class ReadPathRegistry {
 		// ueber TicketScope (§3.1).
 		'TicketMapper::findVisibleInBoard',
 		'TicketMapper::findVisible',
+		// Dieselbe Einzelabfrage über die Vorgangsnummer (MCP `get_ticket`).
+		'TicketMapper::findVisibleByNumber',
 		'TicketMapper::findVisibleAcrossBoards',
 		// Der Ueberblick (#76) — **alles Sichtbare** ueber alle Boards, nicht
 		// nur das eigene. Die breiteste Menge der Matrix: Jeder andere Pfad
@@ -287,6 +289,24 @@ final class ReadPathRegistry {
 		// und ohne die Marke zu beruehren — derselbe Leak-freie Pfad.
 		'whatsNew#all' => 'Liest nur die ausgelieferte whatsnew.json (alle Versionen), '
 			. 'keine Board-/Vorgangsdaten.',
+		// Der MCP-Endpunkt liest per POST; seine Lesepfade stehen in MCP_TOOLS.
+		'mcp#methodNotAllowed' => 'Antwortet nur 404/405 (GET/DELETE gibt es am MCP-Endpunkt nicht), '
+			. 'keine Board-/Vorgangsdaten.',
+		'mcpMetadata#protectedResource' => 'RFC-9728-Metadaten (Endpunkt-URL, Autorisierungsserver), '
+			. 'instanzweit und ohne Board-/Vorgangsdaten.',
+	];
+
+	/**
+	 * Die lesenden MCP-Werkzeuge. Sie laufen per POST und entgehen damit dem Routen-Waechter;
+	 * die Leak-Matrix vergleicht jedes mit seinem REST-Zwilling.
+	 *
+	 * @var string[]
+	 */
+	public const MCP_TOOLS = [
+		'list_boards',
+		'list_columns',
+		'list_tickets',
+		'get_ticket',
 	];
 
 	/**
