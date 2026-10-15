@@ -1602,6 +1602,20 @@ class LeakMatrixTest extends IntegrationTestCase {
 					$userId . ': Zähler „' . $kind . '" nennt andere Tickets als die sichtbaren.',
 				);
 			}
+
+			// Schritt-Titel (#373): ein Schritt je Fixture-Ticket, also genau die sichtbaren.
+			$this->assertSame(
+				$this->fixture->idsFor($expected),
+				$this->sortedKeys($data['stepTitles']),
+				$userId . ': Schritt-Titel nennen andere Tickets als die sichtbaren.',
+			);
+			foreach ($expected as $label) {
+				$this->assertSame(
+					['Schritt zu ' . $label],
+					$data['stepTitles'][$this->fixture->ticketIds[$label]],
+					$userId . ': Schritt-Titel an ' . $label . ' gehören zu einem anderen Ticket.',
+				);
+			}
 		}
 	}
 

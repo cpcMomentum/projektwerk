@@ -154,6 +154,8 @@ export interface TicketList {
 	 * drin, und nur solche, die du schon einmal geöffnet hast.
 	 */
 	changed: Record<number, boolean>
+	/** Die Schritt-Titel je Vorgang, für die Suche im Board (#373). Ohne Schritte kein Eintrag. */
+	stepTitles?: Record<number, string[]>
 }
 
 export interface TicketDetail {

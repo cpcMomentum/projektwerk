@@ -57,6 +57,10 @@ interface State {
 	changed: Record<number, boolean>
 	/** Filterschalter „Nur wartend"; liegt quer zu den Spalten. */
 	onlyWaiting: boolean
+	/** Suchtext im Board-Kopf (#373), bereits entprellt. Leer heißt: keine Suche. */
+	search: string
+	/** Schritt-Titel je Vorgang, nur für die Suche (#373). */
+	stepTitles: Record<number, string[]>
 	/** Spalten, in denen „ältere anzeigen" gerade aufgeklappt ist (#59). */
 	expandedColumns: number[]
 	loading: boolean
@@ -88,6 +92,8 @@ export const useBoardStore = defineStore('board', {
 		waiting: {},
 		changed: {},
 		onlyWaiting: false,
+		search: '',
+		stepTitles: {},
 		expandedColumns: [],
 		loading: false,
 		loaded: false,
@@ -218,6 +224,16 @@ export const useBoardStore = defineStore('board', {
 		 * @param state Der Speicher.
 		 */
 		waitingCount: (state): number => Object.keys(state.waiting).length,
+
+		/**
+		 * Die Suchbegriffe (#373): kleingeschrieben, an Leerraum getrennt. Ein
+		 * Vorgang muss **alle** enthalten — „rechnung müller" grenzt ein, statt
+		 * zu erweitern. Ein einzelnes `#` ist der Anfang einer Nummer, kein
+		 * Begriff — sonst stünde beim Tippen von „#42" kurz „keine Vorgänge".
+		 *
+		 * @param state Der Speicher.
+		 */
+		searchTerms: (state): string[] => state.search.toLocaleLowerCase().split(/\s+/).filter((term) => term !== '' && term !== '#'),
 
 		/**
 		 * Alle Anzeigenamen des Boards auf einmal — Kennung => Name.
@@ -375,6 +391,8 @@ export const useBoardStore = defineStore('board', {
 			// erklärte, warum.
 			if (this.board?.id !== boardId) {
 				this.expandedColumns = []
+				// Eine Suche gilt dem Board, auf dem sie getippt wurde (#373).
+				this.search = ''
 			}
 			try {
 				const detail: BoardDetail = await fetchBoard(boardId)
@@ -489,6 +507,7 @@ export const useBoardStore = defineStore('board', {
 			this.waiting = list.waiting ?? {}
 			// „Seit deinem Blick geändert" (#79) — kommt mit derselben Antwort.
 			this.changed = list.changed ?? {}
+			this.stepTitles = list.stepTitles ?? {}
 
 			const order = new Map<number, number[]>()
 			for (const column of this.columns) {
@@ -512,18 +531,50 @@ export const useBoardStore = defineStore('board', {
 		 * geschlossener Vorgang wartet nie (E8). Ist „Nur wartend" an, ist
 		 * ohnehin nichts Geschlossenes übrig, das man ausblenden könnte.
 		 *
+		 * **Bei aktiver Suche wird ebenfalls nichts eingeklappt** (#373): Wer
+		 * einen alten erledigten Vorgang sucht, fände ihn sonst nicht. Suche und
+		 * „Nur wartend" gelten zusammen.
+		 *
 		 * @param columnId Kennung der Spalte.
 		 */
 		ticketsIn(columnId: number): Ticket[] {
 			const inColumn = this.visibleIn(columnId)
+			const terms = this.searchTerms
 
-			if (this.onlyWaiting) {
-				return inColumn.filter((ticket) => this.waiting[ticket.id] !== undefined)
+			if (this.onlyWaiting || terms.length > 0) {
+				return inColumn.filter((ticket) => (!this.onlyWaiting || this.waiting[ticket.id] !== undefined)
+					&& this.matchesSearch(ticket, terms))
 			}
 
 			return this.expandedColumns.includes(columnId)
 				? inColumn
 				: this.withoutOlderClosed(inColumn)
+		},
+
+		/**
+		 * Ob ein Vorgang alle Suchbegriffe trägt (#373).
+		 *
+		 * Durchsucht werden Titel, Beschreibung, der Name der zuständigen Person
+		 * und die Titel der Arbeitsschritte. Die Nummer zählt nur exakt, mit oder
+		 * ohne `#`: „4" soll nicht jeden Vorgang mit einer 4 in der Nummer treffen.
+		 *
+		 * @param ticket Der Vorgang.
+		 * @param terms Die Suchbegriffe aus `searchTerms`.
+		 */
+		matchesSearch(ticket: Ticket, terms: string[]): boolean {
+			if (terms.length === 0) {
+				return true
+			}
+
+			const text = [
+				ticket.title,
+				ticket.description ?? '',
+				this.nameOf(ticket.responsibleUserId),
+				...(this.stepTitles[ticket.id] ?? []),
+			].join('\n').toLocaleLowerCase()
+
+			return terms.every((term) => text.includes(term)
+				|| term.replace(/^#/, '') === String(ticket.number))
 		},
 
 		/**
@@ -620,8 +671,9 @@ export const useBoardStore = defineStore('board', {
 		 */
 		collapsibleCount(columnId: number): number {
 			// Bei „Nur wartend" ist nichts Geschlossenes in der Menge; ein
-			// Angebot „12 ältere anzeigen" führte dann ins Leere.
-			if (this.onlyWaiting) {
+			// Angebot „12 ältere anzeigen" führte dann ins Leere. Bei der Suche
+			// (#373) sind die älteren schon drin.
+			if (this.onlyWaiting || this.searchTerms.length > 0) {
 				return 0
 			}
 
