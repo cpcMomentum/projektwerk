@@ -45,7 +45,7 @@ class TicketReadModel {
 	/**
 	 * Die sichtbaren Tickets eines Boards; Zähler aus derselben gefilterten ID-Menge.
 	 *
-	 * @return array{tickets: Ticket[], waiting: array<int, mixed>, counts: array<string, array<int, int>>, changed: array<int, true>}
+	 * @return array{tickets: Ticket[], waiting: array<int, mixed>, counts: array<string, array<int, int>>, stepTitles: array<int, string[]>, changed: array<int, true>}
 	 */
 	public function index(ViewerContext $viewer, ?int $columnId = null): array {
 		$tickets = $this->tickets->findVisibleInBoard($viewer, $columnId);
@@ -63,6 +63,8 @@ class TicketReadModel {
 				'attachments' => $this->attachments->countForTickets($ids),
 				'collaborators' => $this->ticketUsers->countForTickets($ids),
 			],
+			// Für die Suche im Board (#373); dieselben Zeilen wie oben.
+			'stepTitles' => $this->stepTitles($steps),
 			'changed' => $this->changedSince($viewer, $tickets, $ids),
 		];
 	}
@@ -121,6 +123,22 @@ class TicketReadModel {
 		}
 
 		return $done;
+	}
+
+	/**
+	 * Die Schritt-Titel je Ticket, nur Titel: Beschreibung und Ergebnis
+	 * blähten die Board-Antwort auf (#373). Ein Ticket ohne Schritte fehlt.
+	 *
+	 * @param \OCA\Projektwerk\Db\Step[] $steps
+	 * @return array<int, string[]>
+	 */
+	private function stepTitles(array $steps): array {
+		$titles = [];
+		foreach ($steps as $step) {
+			$titles[(int)$step->getTicketId()][] = (string)$step->getTitle();
+		}
+
+		return $titles;
 	}
 
 	/**

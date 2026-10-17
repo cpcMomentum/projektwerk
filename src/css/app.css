@@ -89,6 +89,30 @@
 	gap: 10px 12px;
 }
 
+/*
+ * Suchfeld im Board-Kopf (#373): feste Breite, auf dem Handy die ganze Zeile.
+ * Über `.pw-view__actions`, weil NcInputField `width: 100%` gleich spezifisch setzt.
+ */
+.app-projektwerk .pw-view__actions .pw-board-search {
+	width: 240px;
+}
+
+@media (max-width: 700px) {
+	.app-projektwerk .pw-view__actions .pw-board-search {
+		width: 100%;
+	}
+}
+
+.app-projektwerk .pw-search-empty {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px 12px;
+	margin-bottom: 12px;
+	color: var(--color-text-maxcontrast);
+	font-size: 14px;
+}
+
 /* ---- Abschnittskopf: 13 px, Satzschreibung ------------------------------ */
 
 /*

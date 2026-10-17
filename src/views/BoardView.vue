@@ -80,6 +80,22 @@
 					</template>
 					{{ t('projektwerk', 'Nur wartend') }} ({{ store.waitingCount }})
 				</NcButton>
+
+				<!-- Suche im Board (#373): grenzt die Karten im Browser ein, die Spalten bleiben stehen. -->
+				<NcTextField
+					v-model="searchInput"
+					class="pw-board-search"
+					:label="t('projektwerk', 'Vorgänge durchsuchen')"
+					:showTrailingButton="searchInput !== ''"
+					trailingButtonIcon="close"
+					:trailingButtonLabel="t('projektwerk', 'Suche zurücksetzen')"
+					@update:modelValue="onSearchInput"
+					@trailingButtonClick="clearSearch"
+					@keydown.esc="clearSearch">
+					<template #icon>
+						<MagnifyIcon :size="20" />
+					</template>
+				</NcTextField>
 			</div>
 		</div>
 
@@ -114,6 +130,17 @@
 					<PlusIcon :size="20" />
 				</template>
 			</NcButton>
+		</div>
+
+		<!-- Leerzustand der Suche (#373): einmal über dem Board, die Spalten bleiben darunter stehen. -->
+		<!-- Die Live-Region steht immer da: Eine mit ihrem Text eingefügte sagen Screenreader oft nicht an. -->
+		<div role="status">
+			<div v-if="noSearchHits" class="pw-search-empty">
+				<span>{{ t('projektwerk', 'Keine Vorgänge zu „{suche}“', { suche: store.search.trim() }, undefined, { escape: false }) }}</span>
+				<NcButton variant="tertiary" @click="clearSearch">
+					{{ t('projektwerk', 'Suche zurücksetzen') }}
+				</NcButton>
+			</div>
 		</div>
 
 		<div v-if="store.loading" class="pw-board">
@@ -213,9 +240,11 @@
 
 					<!-- Leerzustaende sprechen (§9) — auch der gefilterte. -->
 					<div v-if="view.tickets.length === 0" class="pw-empty">
-						{{ store.onlyWaiting
-							? t('projektwerk', 'Hier wartet nichts.')
-							: t('projektwerk', 'Hier liegt gerade nichts.') }}
+						{{ store.searchTerms.length > 0
+							? t('projektwerk', 'Kein Treffer.')
+							: store.onlyWaiting
+								? t('projektwerk', 'Hier wartet nichts.')
+								: t('projektwerk', 'Hier liegt gerade nichts.') }}
 					</div>
 				</div>
 			</div>
@@ -328,6 +357,7 @@ import ClockAlertIcon from 'vue-material-design-icons/ClockAlertOutline.vue'
 import CogIcon from 'vue-material-design-icons/Cog.vue'
 import FolderMultipleIcon from 'vue-material-design-icons/FolderMultiple.vue'
 import FolderOpenIcon from 'vue-material-design-icons/FolderOpenOutline.vue'
+import MagnifyIcon from 'vue-material-design-icons/Magnify.vue'
 import PlusIcon from 'vue-material-design-icons/Plus.vue'
 import BoardDragLayer from '@/components/board/BoardDragLayer.vue'
 import CreateTicketDialog from '@/components/CreateTicketDialog.vue'
@@ -354,7 +384,7 @@ interface ColumnView {
 export default defineComponent({
 	name: 'BoardView',
 
-	components: { BoardDragLayer, ChevronLeftIcon, ClockAlertIcon, CogIcon, CreateTicketDialog, FolderMultipleIcon, FolderOpenIcon, NcButton, NcDialog, NcEmptyContent, NcRadioGroup, NcRadioGroupButton, NcTextField, PlusIcon, TicketDetail },
+	components: { BoardDragLayer, ChevronLeftIcon, ClockAlertIcon, CogIcon, CreateTicketDialog, FolderMultipleIcon, FolderOpenIcon, MagnifyIcon, NcButton, NcDialog, NcEmptyContent, NcRadioGroup, NcRadioGroupButton, NcTextField, PlusIcon, TicketDetail },
 
 	setup() {
 		return { store: useBoardStore() }
@@ -378,6 +408,9 @@ export default defineComponent({
 			addingBoard: false,
 			newBoardTitle: '',
 			addBusy: false,
+			// Das Suchfeld (#373): sofort, was getippt wird; der Store bekommt es entprellt.
+			searchInput: '',
+			searchTimer: null as number | null,
 		}
 	},
 
@@ -431,12 +464,23 @@ export default defineComponent({
 				expanded: this.store.expandedColumns.includes(column.id),
 			}))
 		},
+
+		/** Ob die Suche (#373) auf dem ganzen Board nichts findet. */
+		noSearchHits(): boolean {
+			return !this.store.loading
+				&& this.store.searchTerms.length > 0
+				&& this.columnViews.every((view) => view.tickets.length === 0)
+		},
 	},
 
 	watch: {
 		boardId: {
 			immediate: true,
 			async handler(id: number) {
+				// Die Suche gilt der Ansicht, in der sie getippt wurde (#373) —
+				// auch beim Zurückkommen aus den Einstellungen auf dasselbe Board,
+				// wo `open()` sie nicht leert. Feld und Store sonst auseinander.
+				this.clearSearch()
 				await this.store.open(id)
 				await this.openFromQuery()
 			},
@@ -449,10 +493,39 @@ export default defineComponent({
 		if (this.highlightTimer !== null) {
 			window.clearTimeout(this.highlightTimer)
 		}
+		this.cancelSearchTimer()
 	},
 
 	methods: {
 		t,
+
+		/**
+		 * Suchtext entprellt an den Store geben (#373): Bei jedem Tastendruck
+		 * neu zu filtern ließe ein großes Board beim Tippen ruckeln.
+		 *
+		 * @param value Der Inhalt des Suchfelds.
+		 */
+		onSearchInput(value: string | number): void {
+			this.cancelSearchTimer()
+			this.searchTimer = window.setTimeout(() => {
+				this.searchTimer = null
+				this.store.search = String(value)
+			}, 200)
+		},
+
+		/** Suche sofort leeren — Esc, Kreuz im Feld, Knopf im Leerzustand. */
+		clearSearch(): void {
+			this.cancelSearchTimer()
+			this.searchInput = ''
+			this.store.search = ''
+		},
+
+		cancelSearchTimer(): void {
+			if (this.searchTimer !== null) {
+				window.clearTimeout(this.searchTimer)
+				this.searchTimer = null
+			}
+		},
 
 		/**
 		 * Zu einem anderen Board desselben Projekts wechseln (#246).

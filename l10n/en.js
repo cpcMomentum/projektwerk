@@ -475,6 +475,10 @@ OC.L10N.register(
     "Die kanonische Endpunkt-URL fehlt (mcp_resource_url). Der Endpunkt bleibt geschlossen." : "The canonical endpoint URL is missing (mcp_resource_url). The endpoint stays closed.",
     "Es ist kein verteilter Cache eingerichtet (memcache.distributed). Die Begrenzung fehlgeschlagener Anmeldungen am MCP-Endpunkt wirkt dann nicht." : "No distributed cache is configured (memcache.distributed). The limit on failed sign-ins at the MCP endpoint does not work without it.",
     "Die Verlängerung von oidc-Tokens läuft nach %s Sekunden ab (refresh_expire_time). Wer Claude länger nicht nutzt, muss sich danach neu anmelden. Empfohlen sind mindestens 30 Tage." : "oidc refresh tokens expire after %s seconds (refresh_expire_time). Anyone who does not use Claude for longer has to sign in again. At least 30 days is recommended.",
-    "Der MCP-Endpunkt ist eingeschaltet und vollständig eingerichtet." : "The MCP endpoint is switched on and fully configured."
+    "Der MCP-Endpunkt ist eingeschaltet und vollständig eingerichtet." : "The MCP endpoint is switched on and fully configured.",
+    "Vorgänge durchsuchen" : "Search items",
+    "Suche zurücksetzen" : "Clear search",
+    "Keine Vorgänge zu „{suche}“" : "No items matching “{suche}”",
+    "Kein Treffer." : "No matches."
 },
 "nplurals=2; plural=(n != 1);");
