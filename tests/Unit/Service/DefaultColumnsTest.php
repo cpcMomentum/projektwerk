@@ -81,4 +81,14 @@ class DefaultColumnsTest extends TestCase {
 			$this->assertStringNotContainsStringIgnoringCase('warten', $title);
 		}
 	}
+
+	public function testTheFinalOutcomesNameDefaultColumns(): void {
+		$this->assertSame(
+			['Erledigt' => 'done', 'Verworfen' => 'discarded'],
+			BoardService::DEFAULT_FINAL_OUTCOMES,
+		);
+		foreach (array_keys(BoardService::DEFAULT_FINAL_OUTCOMES) as $title) {
+			$this->assertContains($title, BoardService::DEFAULT_COLUMNS);
+		}
+	}
 }
