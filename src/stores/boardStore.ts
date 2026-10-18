@@ -478,9 +478,9 @@ export const useBoardStore = defineStore('board', {
 		/**
 		 * Ein einzelnes Ticket durch den Stand vom Server ersetzen.
 		 *
-		 * Kein Neuladen der ganzen Liste, weil sich weder Spalte noch
-		 * Reihenfolge ändern können: Der Aufrufer ist die Sichtbarkeitsänderung,
-		 * und die lässt `columnId` unberührt.
+		 * Kein Neuladen der ganzen Liste. Hat der Server die Spalte gewechselt
+		 * (Abschließen schiebt in die Endspalte), wandert das Ticket ans Ende der
+		 * neuen Spalte, so wie der Server es einsortiert hat.
 		 *
 		 * Das Ticket bleibt danach sichtbar, auch wenn es gerade verborgener
 		 * wurde — wer die Sichtbarkeit ändern darf, gehört nach §7 zur
@@ -489,11 +489,19 @@ export const useBoardStore = defineStore('board', {
 		 * @param ticket Der neue Stand.
 		 */
 		replaceTicket(ticket: Ticket): void {
+			const previous = this.tickets.get(ticket.id)
 			// Neue Map statt Mutation: Pinia verfolgt bei einer Map die Identität,
 			// nicht die Einträge — ein `set()` allein löste kein Neuzeichnen aus.
 			const next = new Map(this.tickets)
 			next.set(ticket.id, ticket)
 			this.tickets = next
+
+			if (previous !== undefined && previous.columnId !== ticket.columnId) {
+				const order = new Map(this.columnOrder)
+				order.set(previous.columnId, (order.get(previous.columnId) ?? []).filter((id) => id !== ticket.id))
+				order.set(ticket.columnId, [...(order.get(ticket.columnId) ?? []), ticket.id])
+				this.columnOrder = order
+			}
 		},
 
 		/**
