@@ -281,12 +281,23 @@ class TicketService {
 		}
 
 		$this->touch($ticket, $viewer);
-		$gespeichert = $this->tickets->update($ticket);
+
+		// Position lesen und schreiben in einer Transaktion, wie beim Anlegen.
+		$this->db->beginTransaction();
+		try {
+			if ($frischGeschlossen) {
+				$this->moveToFinalColumn($viewer, $ticket);
+			}
+			$gespeichert = $this->tickets->update($ticket);
+			$this->db->commit();
+		} catch (\Throwable $e) {
+			$this->db->rollBack();
+
+			throw $e;
+		}
 
 		// Ankuendigen, senden — **in dieser Reihenfolge und nach dem Schreiben**.
-		// `update()` laeuft hier ohne eigene Transaktion; der Versand steht
-		// trotzdem hinter dem Schreibvorgang, damit ein toter Mailserver ihn
-		// nicht mitreisst.
+		// Versand erst nach dem Commit, damit ein toter Mailserver nichts zurückrollt.
 		if ($neuZugewiesen !== null) {
 			$vorgemerkt = $this->notifications->announce(
 				$gespeichert,
@@ -314,6 +325,33 @@ class TicketService {
 		}
 
 		return $gespeichert;
+	}
+
+	/**
+	 * Ans Ende der ersten Endspalte von links mit dem Abschluss-Ergebnis; ohne passende bleibt der Vorgang stehen.
+	 */
+	private function moveToFinalColumn(ViewerContext $viewer, Ticket $ticket): void {
+		$outcome = $ticket->getClosedOutcome();
+		if ($outcome === null) {
+			return;
+		}
+		$ziel = null;
+		foreach ($this->columns->findForBoard($viewer) as $column) {
+			if ($column->getFinalOutcome() === $outcome) {
+				if ((int)$column->getId() === (int)$ticket->getColumnId()) {
+					return;
+				}
+				$ziel ??= (int)$column->getId();
+			}
+		}
+		if ($ziel === null) {
+			return;
+		}
+
+		// Ungefiltert, damit die Position nicht davon abhängt, wer abschließt.
+		$last = $this->tickets->findLastPositionInColumn($viewer, $ziel);
+		$ticket->setColumnId($ziel);
+		$ticket->setPosition($this->positions->between($last, null));
 	}
 
 	/**

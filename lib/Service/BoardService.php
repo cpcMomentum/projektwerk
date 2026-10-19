@@ -20,6 +20,7 @@ use OCA\Projektwerk\Db\Member;
 use OCA\Projektwerk\Db\MemberMapper;
 use OCA\Projektwerk\Db\Project;
 use OCA\Projektwerk\Db\ProjectMapper;
+use OCA\Projektwerk\Db\Ticket;
 use OCP\IDBConnection;
 use OCP\IL10N;
 
@@ -57,6 +58,9 @@ class BoardService {
 	 * @var string[]
 	 */
 	public const DEFAULT_COLUMNS = ['Eingegangen', 'Bestätigt', 'Eingeplant', 'In Arbeit', 'Erledigt', 'Verworfen'];
+
+	/** Endspalten der Vorgabe, Schlüssel ist der unübersetzte Spaltentitel. */
+	public const DEFAULT_FINAL_OUTCOMES = ['Erledigt' => Ticket::OUTCOME_DONE, 'Verworfen' => Ticket::OUTCOME_DISCARDED];
 
 	public function __construct(
 		private IDBConnection $db,
@@ -162,13 +166,7 @@ class BoardService {
 			$member->setAddedAt($now);
 			$this->members->insert($member);
 
-			foreach (self::DEFAULT_COLUMNS as $position => $columnTitle) {
-				$column = new Column();
-				$column->setBoardId((int)$board->getId());
-				$column->setTitle($this->l10n->t($columnTitle));
-				$column->setPosition($position);
-				$this->columns->insert($column);
-			}
+			$this->insertDefaultColumns((int)$board->getId());
 
 			$this->db->commit();
 
@@ -238,13 +236,7 @@ class BoardService {
 			$board->setUpdatedAt($now);
 			$board = $this->boards->insert($board);
 
-			foreach (self::DEFAULT_COLUMNS as $position => $columnTitle) {
-				$column = new Column();
-				$column->setBoardId((int)$board->getId());
-				$column->setTitle($this->l10n->t($columnTitle));
-				$column->setPosition($position);
-				$this->columns->insert($column);
-			}
+			$this->insertDefaultColumns((int)$board->getId());
 
 			$this->db->commit();
 
@@ -436,6 +428,17 @@ class BoardService {
 		$board->setUpdatedAt(new \DateTime());
 
 		return $this->boards->update($board);
+	}
+
+	private function insertDefaultColumns(int $boardId): void {
+		foreach (self::DEFAULT_COLUMNS as $position => $columnTitle) {
+			$column = new Column();
+			$column->setBoardId($boardId);
+			$column->setTitle($this->l10n->t($columnTitle));
+			$column->setPosition($position);
+			$column->setFinalOutcome(self::DEFAULT_FINAL_OUTCOMES[$columnTitle] ?? null);
+			$this->columns->insert($column);
+		}
 	}
 
 	/**

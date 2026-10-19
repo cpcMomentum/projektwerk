@@ -497,3 +497,44 @@ describe('Suche im Board (#373)', () => {
 		expect(store.stepTitles).toEqual({})
 	})
 })
+
+describe('replaceTicket mit Spaltenwechsel', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia())
+	})
+
+	it('nimmt den Vorgang aus der alten Spalte und hängt ihn hinten an die neue', () => {
+		const store = useBoardStore()
+		store.columns = [{ id: 1 }, { id: 2 }] as never
+		store.applyTickets({
+			tickets: [
+				{ id: 10, columnId: 1, closedAt: null },
+				{ id: 11, columnId: 1, closedAt: null },
+				{ id: 20, columnId: 2, closedAt: null },
+			] as unknown as Ticket[],
+			counts: {} as never,
+			waiting: {},
+			changed: {},
+		})
+
+		store.replaceTicket({ id: 10, columnId: 2, closedAt: '2026-10-18T10:00:00+00:00' } as unknown as Ticket)
+
+		expect(store.visibleIn(1).map((t) => t.id)).toEqual([11])
+		expect(store.visibleIn(2).map((t) => t.id)).toEqual([20, 10])
+	})
+
+	it('lässt die Reihenfolge stehen, wenn die Spalte gleich bleibt', () => {
+		const store = useBoardStore()
+		store.columns = [{ id: 1 }] as never
+		store.applyTickets({
+			tickets: [{ id: 10, columnId: 1, closedAt: null }, { id: 11, columnId: 1, closedAt: null }] as unknown as Ticket[],
+			counts: {} as never,
+			waiting: {},
+			changed: {},
+		})
+
+		store.replaceTicket({ id: 10, columnId: 1, closedAt: '2026-10-18T10:00:00+00:00' } as unknown as Ticket)
+
+		expect(store.visibleIn(1).map((t) => t.id)).toEqual([10, 11])
+	})
+})
