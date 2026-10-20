@@ -130,6 +130,21 @@
 					<PlusIcon :size="20" />
 				</template>
 			</NcButton>
+			<NcActions
+				v-if="store.canConfigureBoard && store.siblingBoards.length > 1"
+				:forceMenu="true"
+				:ariaLabel="t('projektwerk', 'Aktionen für dieses Board')">
+				<NcActionButton
+					:disabled="!store.deletable"
+					:description="store.deletable ? '' : t('projektwerk', 'Enthält Vorgänge. Verschieben oder Board archivieren.')"
+					:closeAfterClick="true"
+					@click="deletingBoard = true">
+					<template #icon>
+						<DeleteOutlineIcon :size="20" />
+					</template>
+					{{ t('projektwerk', 'Board „{title}“ löschen', { title: store.board?.title ?? '' }, undefined, { escape: false }) }}
+				</NcActionButton>
+			</NcActions>
 		</div>
 
 		<!-- Leerzustand der Suche (#373): einmal über dem Board, die Spalten bleiben darunter stehen. -->
@@ -336,6 +351,30 @@
 				</NcButton>
 			</template>
 		</NcDialog>
+
+		<NcDialog
+			v-if="deletingBoard"
+			:open="true"
+			:name="t('projektwerk', 'Board „{title}“ löschen?', { title: store.board?.title ?? '' }, undefined, { escape: false })"
+			size="normal"
+			@update:open="deletingBoard = false">
+			<div class="app-projektwerk">
+				<p class="pw-detail__empty">
+					{{ t('projektwerk', 'Das Board enthält keine Vorgänge. Es wird mit seinen Spalten endgültig gelöscht; Dateien bleiben unberührt.') }}
+				</p>
+			</div>
+			<template #actions>
+				<NcButton @click="deletingBoard = false">
+					{{ t('projektwerk', 'Abbrechen') }}
+				</NcButton>
+				<NcButton
+					variant="error"
+					:disabled="deleteBusy"
+					@click="confirmDeleteBoard">
+					{{ t('projektwerk', 'Löschen') }}
+				</NcButton>
+			</template>
+		</NcDialog>
 	</div>
 </template>
 
@@ -346,6 +385,8 @@ import type { Attachment, Comment, Step, Ticket } from '@/types/ticket'
 import { n, t } from '@nextcloud/l10n'
 import { generateUrl } from '@nextcloud/router'
 import { defineComponent } from 'vue'
+import NcActionButton from '@nextcloud/vue/components/NcActionButton'
+import NcActions from '@nextcloud/vue/components/NcActions'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcDialog from '@nextcloud/vue/components/NcDialog'
 import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
@@ -355,6 +396,7 @@ import NcTextField from '@nextcloud/vue/components/NcTextField'
 import ChevronLeftIcon from 'vue-material-design-icons/ChevronLeft.vue'
 import ClockAlertIcon from 'vue-material-design-icons/ClockAlertOutline.vue'
 import CogIcon from 'vue-material-design-icons/Cog.vue'
+import DeleteOutlineIcon from 'vue-material-design-icons/DeleteOutline.vue'
 import FolderMultipleIcon from 'vue-material-design-icons/FolderMultiple.vue'
 import FolderOpenIcon from 'vue-material-design-icons/FolderOpenOutline.vue'
 import MagnifyIcon from 'vue-material-design-icons/Magnify.vue'
@@ -384,7 +426,7 @@ interface ColumnView {
 export default defineComponent({
 	name: 'BoardView',
 
-	components: { BoardDragLayer, ChevronLeftIcon, ClockAlertIcon, CogIcon, CreateTicketDialog, FolderMultipleIcon, FolderOpenIcon, MagnifyIcon, NcButton, NcDialog, NcEmptyContent, NcRadioGroup, NcRadioGroupButton, NcTextField, PlusIcon, TicketDetail },
+	components: { BoardDragLayer, ChevronLeftIcon, ClockAlertIcon, CogIcon, CreateTicketDialog, DeleteOutlineIcon, FolderMultipleIcon, FolderOpenIcon, MagnifyIcon, NcActionButton, NcActions, NcButton, NcDialog, NcEmptyContent, NcRadioGroup, NcRadioGroupButton, NcTextField, PlusIcon, TicketDetail },
 
 	setup() {
 		return { store: useBoardStore() }
@@ -408,6 +450,8 @@ export default defineComponent({
 			addingBoard: false,
 			newBoardTitle: '',
 			addBusy: false,
+			deletingBoard: false,
+			deleteBusy: false,
 			// Das Suchfeld (#373): sofort, was getippt wird; der Store bekommt es entprellt.
 			searchInput: '',
 			searchTimer: null as number | null,
@@ -565,6 +609,26 @@ export default defineComponent({
 				showError((e as { message?: string }).message ?? t('projektwerk', 'Anlegen fehlgeschlagen'))
 			} finally {
 				this.addBusy = false
+			}
+		},
+
+		/** Das geöffnete Board löschen und auf das verbleibende wechseln. */
+		async confirmDeleteBoard(): Promise<void> {
+			if (this.deleteBusy) {
+				return
+			}
+			this.deleteBusy = true
+			try {
+				const next = await this.store.deleteCurrentBoard()
+				this.deletingBoard = false
+				this.$router.push({ name: 'board', params: { boardId: String(next) } })
+			} catch (e) {
+				showError((e as { message?: string }).message ?? t('projektwerk', 'Löschen fehlgeschlagen'))
+				this.deletingBoard = false
+				// Der Server weiß es besser als der geladene Stand, etwa wenn inzwischen ein Vorgang dazukam.
+				await this.store.open(this.boardId)
+			} finally {
+				this.deleteBusy = false
 			}
 		},
 

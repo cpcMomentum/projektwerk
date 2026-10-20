@@ -73,6 +73,7 @@ class BoardReadModel {
 				'isManager' => $viewer->isManager,
 				'isBoardCreator' => $viewer->isBoardCreator,
 			],
+			'deletable' => $this->boardService->isDeletable($viewer),
 			'memberBoardsAllowed' => $this->boardService->projectAllowsMemberBoards($viewer),
 			// #350: Der Kopf zeigt das Projekt, die Boards stehen als Reiter darunter.
 			'projectTitle' => $this->boardService->projectTitle($viewer),

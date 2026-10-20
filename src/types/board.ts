@@ -147,4 +147,6 @@ export interface BoardDetail {
 	projectTitle?: string
 	/** Der Projektordner (#351): Datei-ID zum Öffnen, Pfad zur Anzeige. */
 	projectFolder?: { id: number, path: string } | null
+	/** Ob der Betrachter dieses Board jetzt löschen dürfte. */
+	deletable?: boolean
 }

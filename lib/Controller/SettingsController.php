@@ -152,6 +152,12 @@ class SettingsController extends Controller {
 	}
 
 	#[NoAdminRequired]
+	public function deleteBoard(int $boardId): JSONResponse {
+		return $this->write($boardId, fn (ViewerContext $viewer): mixed
+			=> $this->boardService->delete($viewer));
+	}
+
+	#[NoAdminRequired]
 	public function createColumn(int $boardId, string $title, ?string $color = null): JSONResponse {
 		return $this->write($boardId, fn (ViewerContext $viewer): mixed
 			=> $this->columnService->create($viewer, $title, $color), Http::STATUS_CREATED);

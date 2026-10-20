@@ -21,6 +21,7 @@ use OCA\Projektwerk\Db\MemberMapper;
 use OCA\Projektwerk\Db\Project;
 use OCA\Projektwerk\Db\ProjectMapper;
 use OCA\Projektwerk\Db\Ticket;
+use OCA\Projektwerk\Db\TicketMapper;
 use OCP\IDBConnection;
 use OCP\IL10N;
 
@@ -74,6 +75,7 @@ class BoardService {
 		private AccountType $accountType,
 		private EntitlementService $entitlement,
 		private OwnCompanySettings $ownCompany,
+		private TicketMapper $tickets,
 	) {
 	}
 
@@ -483,6 +485,67 @@ class BoardService {
 		$id = $project->getFolderRootId();
 
 		return $id === null ? null : ['id' => (int)$id, 'path' => (string)$project->getFolderRootPath()];
+	}
+
+	/**
+	 * Ob der Betrachter dieses Board jetzt löschen dürfte; dieselbe Prüfung wie {@see delete()}.
+	 */
+	public function isDeletable(ViewerContext $viewer): bool {
+		return ($viewer->isManager || $viewer->isBoardCreator)
+			&& $this->otherBoardId($viewer) !== null
+			&& $this->tickets->countLiveInBoard($viewer) === 0;
+	}
+
+	/**
+	 * Ein leeres Board endgültig löschen; Heimat-Mitglieder wandern auf ein anderes Board des Projekts.
+	 *
+	 * @return array{nextBoardId: int}
+	 * @throws NotManagerException
+	 * @throws \InvalidArgumentException
+	 */
+	public function delete(ViewerContext $viewer): array {
+		$this->assertBoardConfigurer($viewer);
+
+		$this->db->beginTransaction();
+		try {
+			// Sperrt die Board-Zeile gegen gleichzeitiges Anlegen von Vorgängen.
+			$this->boards->bumpChangeSeq($viewer);
+			$ziel = $this->otherBoardId($viewer);
+			if ($ziel === null) {
+				throw new \InvalidArgumentException($this->l10n->t('Das letzte Board eines Projekts kann nicht gelöscht werden.'));
+			}
+			// Bewusst ohne Anzahl: Sie verriete Vorgänge, die der Betrachter nicht sehen darf.
+			if ($this->tickets->countLiveInBoard($viewer) > 0) {
+				throw new \InvalidArgumentException($this->l10n->t('Dieses Board kann nicht gelöscht werden.'));
+			}
+
+			$this->members->moveHomeBoard($viewer, $ziel);
+			$this->tickets->purgeDeletedInBoard($viewer);
+			$this->boards->purge($viewer);
+			$this->db->commit();
+		} catch (\Throwable $e) {
+			$this->db->rollBack();
+
+			throw $e;
+		}
+
+		return ['nextBoardId' => $ziel];
+	}
+
+	/** Ein anderes Board desselben Projekts, aktive vor archivierten. */
+	private function otherBoardId(ViewerContext $viewer): ?int {
+		$archiviert = null;
+		foreach ($this->boards->findAllForUser($viewer->userId, true) as $board) {
+			if ((int)$board->getProjectId() !== $viewer->projectId || (int)$board->getId() === $viewer->boardId) {
+				continue;
+			}
+			if (!$board->isArchived()) {
+				return (int)$board->getId();
+			}
+			$archiviert ??= (int)$board->getId();
+		}
+
+		return $archiviert;
 	}
 
 	/**

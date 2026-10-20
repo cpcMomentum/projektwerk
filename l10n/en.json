@@ -520,7 +520,14 @@
 		"Vorgänge durchsuchen": "Search items",
 		"Suche zurücksetzen": "Clear search",
 		"Keine Vorgänge zu „{suche}“": "No items matching “{suche}”",
-		"Kein Treffer.": "No matches."
+		"Kein Treffer.": "No matches.",
+		"Aktionen für dieses Board": "Actions for this board",
+		"Enthält Vorgänge. Verschieben oder Board archivieren.": "Contains tickets. Move them or archive the board.",
+		"Board „{title}“ löschen": "Delete board “{title}”",
+		"Board „{title}“ löschen?": "Delete board “{title}”?",
+		"Das Board enthält keine Vorgänge. Es wird mit seinen Spalten endgültig gelöscht; Dateien bleiben unberührt.": "The board contains no tickets. It will be deleted permanently together with its columns; files are not touched.",
+		"Das letzte Board eines Projekts kann nicht gelöscht werden.": "The last board of a project cannot be deleted.",
+		"Dieses Board kann nicht gelöscht werden.": "This board cannot be deleted."
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }
