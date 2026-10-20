@@ -16,7 +16,7 @@ import type { Ticket, TicketList, WaitState } from '@/types/ticket'
 import { t } from '@nextcloud/l10n'
 import { defineStore } from 'pinia'
 import { fetchBoard, fetchBoards, setBoardPin } from '@/services/boards'
-import { createBoard as createBoardRequest, createSiblingBoard as createSiblingBoardRequest } from '@/services/settings'
+import { createBoard as createBoardRequest, createSiblingBoard as createSiblingBoardRequest, deleteBoard as deleteBoardRequest } from '@/services/settings'
 import { fetchTickets, markTicketRead, moveTicket as moveTicketRequest } from '@/services/tickets'
 import { showError } from '@/services/toast'
 
@@ -47,6 +47,8 @@ interface State {
 	projectTitle: string
 	/** Der Projektordner des geöffneten Boards (#351), oder null. */
 	projectFolder: { id: number, path: string } | null
+	/** Ob der Betrachter das geöffnete Board jetzt löschen dürfte. */
+	deletable: boolean
 	tickets: Map<number, Ticket>
 	/** Ticket-IDs je Spalte, in Serverreihenfolge. */
 	columnOrder: Map<number, number[]>
@@ -86,6 +88,7 @@ export const useBoardStore = defineStore('board', {
 		memberBoardsAllowed: false,
 		projectTitle: '',
 		projectFolder: null,
+		deletable: false,
 		tickets: new Map(),
 		columnOrder: new Map(),
 		counts: null,
@@ -351,6 +354,19 @@ export const useBoardStore = defineStore('board', {
 		},
 
 		/**
+		 * Das geöffnete Board löschen und die Kennung des Boards liefern, auf das die Ansicht wechseln soll.
+		 */
+		async deleteCurrentBoard(): Promise<number> {
+			const current = this.board
+			if (current === null) {
+				throw new Error('Kein Projekt geöffnet.')
+			}
+			const { nextBoardId } = await deleteBoardRequest(current.id)
+			this.boards = this.boards.filter((b) => b.id !== current.id)
+			return nextBoardId
+		},
+
+		/**
 		 * Ein Projekt an- oder abpinnen und den neuen Stand sofort zeigen (#115).
 		 *
 		 * Optimistisch mit Rückabwicklung: Der Stern kippt sofort, und nur wenn
@@ -403,6 +419,7 @@ export const useBoardStore = defineStore('board', {
 				this.memberBoardsAllowed = detail.memberBoardsAllowed ?? false
 				this.projectTitle = detail.projectTitle ?? ''
 				this.projectFolder = detail.projectFolder ?? null
+				this.deletable = detail.deletable ?? false
 
 				this.applyTickets(await fetchTickets(boardId))
 			} catch (e) {

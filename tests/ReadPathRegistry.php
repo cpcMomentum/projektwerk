@@ -71,6 +71,8 @@ final class ReadPathRegistry {
 		// Liest ungefiltert (§3.8) und ist deshalb der einzige Pfad, dessen
 		// Erwartung lautet: fuer jeden Betrachter derselbe Wert.
 		'TicketMapper::findLastPositionInColumn',
+		// Ungefiltert wie die Position: Erwartung ist derselbe Wert fuer jeden Betrachter.
+		'TicketMapper::countLiveInBoard',
 		// Erledigt-Zaehler je Board fuers Dashboard (#226), sichtbarkeits-
 		// gefiltert ueber dieselbe `scopedQuery` wie jede andere Ticketmenge und
 		// auf die uebergebenen (aktiven) Boards eingeschraenkt. Die Erwartung

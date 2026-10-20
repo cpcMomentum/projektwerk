@@ -258,6 +258,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'TicketMapper::findForRestore' => 'testRestoreLookupIsScopedToBoardAndOwningRole',
 		'TicketMapper::countVisibleInBoard' => 'testCountersNeverCountWhatIsHidden',
 		'TicketMapper::findLastPositionInColumn' => 'testLastPositionIsTheSameForEveryViewer',
+		'TicketMapper::countLiveInBoard' => 'testLiveCountIsTheSameForEveryViewer',
 		'TicketMapper::countClosedByBoard' => 'testOverviewEndpointMatchesTheVisibleSetAcrossBoards',
 		'TicketMapper::countInWindow' => 'testOverviewEndpointMatchesTheVisibleSetAcrossBoards',
 		'TicketMapper::findTimestampsInWindow' => 'testOverviewEndpointMatchesTheVisibleSetAcrossBoards',
@@ -1572,6 +1573,23 @@ class LeakMatrixTest extends IntegrationTestCase {
 				. 'dann sagt sie etwas über die gefilterte Menge aus. ' . json_encode($values),
 			);
 			$this->assertNotNull(reset($values), $columnTitle . ' ist leer, der Test prüft nichts.');
+		}
+	}
+
+	public function testLiveCountIsTheSameForEveryViewer(): void {
+		$tickets = Server::get(TicketMapper::class);
+
+		$values = [];
+		foreach (array_keys(self::VISIBLE) as $userId) {
+			$values[$userId] = $tickets->countLiveInBoard($this->contextFor($userId));
+		}
+
+		$this->assertCount(1, array_unique($values), 'Der ungefilterte Zähler hängt am Betrachter: ' . json_encode($values));
+		$this->assertGreaterThan(0, reset($values), 'Das Board ist leer, der Test prüft nichts.');
+
+		foreach ([LeakMatrixFixture::ANNA, LeakMatrixFixture::CARLA] as $userId) {
+			$show = Server::get(\OCA\Projektwerk\Service\BoardReadModel::class)->show($this->contextFor($userId));
+			$this->assertFalse($show['deletable'], $userId . ': ein Board mit Vorgängen ist nie löschbar.');
 		}
 	}
 

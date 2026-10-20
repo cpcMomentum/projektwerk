@@ -125,3 +125,79 @@ describe('Suchfeld im Board (#373)', () => {
 		expect(store.search).toBe('')
 	})
 })
+
+describe('Board löschen', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia())
+		route.params.boardId = '5'
+	})
+
+	async function mountWith(boards: number, deletable: boolean, isManager = true) {
+		const push = vi.fn()
+		const wrapper = shallowMount(BoardView, {
+			global: {
+				mocks: { $route: route, $router: { push } },
+				stubs: {
+					NcActions: { template: '<div><slot /></div>' },
+					NcDialog: { template: '<div><slot /><slot name="actions" /></div>' },
+				},
+			},
+		})
+		await flushPromises()
+		const store = useBoardStore()
+		store.board = { id: 5, projectId: 1, title: 'Versehen' } as never
+		store.boards = Array.from({ length: boards }, (_, i) => ({ id: 5 + i, projectId: 1, title: 'B' + i })) as never
+		store.viewer = { isManager, isBoardCreator: false } as never
+		store.deletable = deletable
+		await flushPromises()
+		return { wrapper, store, push }
+	}
+
+	const deleteItem = (wrapper: Awaited<ReturnType<typeof mountWith>>['wrapper']) => wrapper.findComponent({ name: 'NcActionButton' })
+
+	it('zeigt kein Menü bei nur einem Board', async () => {
+		const { wrapper } = await mountWith(1, true)
+		expect(deleteItem(wrapper).exists()).toBe(false)
+	})
+
+	it('zeigt kein Menü ohne Einrichte-Recht', async () => {
+		const { wrapper } = await mountWith(2, true, false)
+		expect(deleteItem(wrapper).exists()).toBe(false)
+	})
+
+	it('graut den Eintrag aus, solange das Board nicht löschbar ist', async () => {
+		const { wrapper } = await mountWith(2, false)
+		expect(deleteItem(wrapper).props('disabled')).toBe(true)
+	})
+
+	it('löscht nach der Rückfrage und wechselt auf das verbleibende Board', async () => {
+		const { wrapper, store, push } = await mountWith(2, true)
+		expect(deleteItem(wrapper).props('disabled')).toBe(false)
+		const spy = vi.spyOn(store, 'deleteCurrentBoard').mockResolvedValue(6)
+
+		deleteItem(wrapper).vm.$emit('click')
+		await flushPromises()
+		const confirm = wrapper.findAllComponents({ name: 'NcButton' }).find((b) => b.props('variant') === 'error')
+		expect(confirm).toBeDefined()
+		confirm!.vm.$emit('click')
+		await flushPromises()
+
+		expect(spy).toHaveBeenCalledOnce()
+		expect(push).toHaveBeenCalledWith({ name: 'board', params: { boardId: '6' } })
+	})
+
+	it('schließt die Rückfrage bei Ablehnung und lädt das Board neu', async () => {
+		const { wrapper, store, push } = await mountWith(2, true)
+		vi.spyOn(store, 'deleteCurrentBoard').mockRejectedValue(new Error('Dieses Board kann nicht gelöscht werden.'))
+		const open = vi.spyOn(store, 'open').mockResolvedValue()
+
+		deleteItem(wrapper).vm.$emit('click')
+		await flushPromises()
+		wrapper.findAllComponents({ name: 'NcButton' }).find((b) => b.props('variant') === 'error')!.vm.$emit('click')
+		await flushPromises()
+
+		expect(open).toHaveBeenCalledWith(5)
+		expect(push).not.toHaveBeenCalled()
+		expect(wrapper.findAllComponents({ name: 'NcButton' }).some((b) => b.props('variant') === 'error')).toBe(false)
+	})
+})

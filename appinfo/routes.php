@@ -117,6 +117,7 @@ return [
 		['name' => 'settings#createSiblingBoard', 'url' => '/api/v1/boards/{boardId}/boards', 'verb' => 'POST'],
 		['name' => 'settings#updateBoard', 'url' => '/api/v1/boards/{boardId}', 'verb' => 'PATCH'],
 		['name' => 'settings#archiveBoard', 'url' => '/api/v1/boards/{boardId}/archived', 'verb' => 'PUT'],
+		['name' => 'settings#deleteBoard', 'url' => '/api/v1/boards/{boardId}', 'verb' => 'DELETE'],
 
 		['name' => 'settings#createColumn', 'url' => '/api/v1/boards/{boardId}/columns', 'verb' => 'POST'],
 		['name' => 'settings#renameColumn', 'url' => '/api/v1/boards/{boardId}/columns/{columnId}', 'verb' => 'PATCH'],

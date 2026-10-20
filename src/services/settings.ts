@@ -106,6 +106,15 @@ export async function setBoardArchived(boardId: number, archived: boolean): Prom
 }
 
 /**
+ * Ein leeres Board endgültig löschen; der Server verweigert, solange Vorgänge darin liegen.
+ *
+ * @param boardId Kennung des Boards.
+ */
+export async function deleteBoard(boardId: number): Promise<{ nextBoardId: number }> {
+	return apiDelete<{ nextBoardId: number }>(`/boards/${boardId}`)
+}
+
+/**
  * Eine neue Spalte, hinten angehängt.
  *
  * @param boardId Kennung des Projekts.

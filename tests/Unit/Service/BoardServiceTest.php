@@ -17,6 +17,7 @@ use OCA\Projektwerk\Db\ColumnMapper;
 use OCA\Projektwerk\Db\MemberMapper;
 use OCA\Projektwerk\Db\Project;
 use OCA\Projektwerk\Db\ProjectMapper;
+use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Service\AccountType;
 use OCA\Projektwerk\Service\BoardService;
 use OCA\Projektwerk\Service\EntitlementService;
@@ -61,6 +62,7 @@ class BoardServiceTest extends TestCase {
 			$accountType,
 			$this->createStub(EntitlementService::class),
 			$this->createStub(OwnCompanySettings::class),
+			$this->createStub(TicketMapper::class),
 		);
 
 		$this->expectException(GuestNotAllowedException::class);
@@ -104,6 +106,7 @@ class BoardServiceTest extends TestCase {
 			$this->createStub(AccountType::class),
 			$this->createStub(EntitlementService::class),
 			$this->createStub(OwnCompanySettings::class),
+			$this->createStub(TicketMapper::class),
 		);
 
 		// Externes Mitglied ohne Verwaltungsrecht.
@@ -145,6 +148,7 @@ class BoardServiceTest extends TestCase {
 			$this->createStub(AccountType::class),
 			$this->createStub(EntitlementService::class),
 			$this->createStub(OwnCompanySettings::class),
+			$this->createStub(TicketMapper::class),
 		);
 
 		$viewer = ViewerContext::forMember('carla', 1, 9, ViewerContext::ROLE_EXTERNAL, false);
@@ -177,6 +181,7 @@ class BoardServiceTest extends TestCase {
 			$this->createStub(AccountType::class),
 			$this->createStub(EntitlementService::class),
 			$this->createStub(OwnCompanySettings::class),
+			$this->createStub(TicketMapper::class),
 		);
 
 		// Externer Ersteller: kein Manager, aber isBoardCreator.
@@ -207,6 +212,7 @@ class BoardServiceTest extends TestCase {
 			$this->createStub(AccountType::class),
 			$this->createStub(EntitlementService::class),
 			$this->createStub(OwnCompanySettings::class),
+			$this->createStub(TicketMapper::class),
 		);
 
 		$viewer = ViewerContext::forMember('carla', 1, 9, ViewerContext::ROLE_EXTERNAL, false, true);

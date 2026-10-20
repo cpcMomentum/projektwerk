@@ -706,12 +706,12 @@ class TicketService {
 		$this->db->beginTransaction();
 
 		try {
-			$this->assertColumnInBoard($viewer, $columnId);
-
 			// Nummer projektweit fortlaufend (#246 PR 4); der Board-Änderungs-
 			// zähler zählt separat mit, weil der Delta-Poll je Board pollt.
 			$number = $this->projects->claimTicketNumber($viewer);
 			$this->boards->bumpChangeSeq($viewer);
+			// Erst nach der Board-Sperre prüfen, damit ein gleichzeitiges Board-Löschen keinen verwaisten Vorgang hinterlässt.
+			$this->assertColumnInBoard($viewer, $columnId);
 			$last = $this->tickets->findLastPositionInColumn($viewer, $columnId);
 			$now = new \DateTime();
 
