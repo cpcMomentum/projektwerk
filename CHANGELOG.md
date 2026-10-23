@@ -4,6 +4,28 @@ Alle nennenswerten Änderungen an ProjektWerk werden hier dokumentiert.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.4.20] - 2026-10-23
+
+### Added
+
+- **Suche im Board** (#373): Ein Suchfeld über den Spalten grenzt die Vorgänge schon beim Tippen
+  ein.
+- **Leeres Board löschen** (#381): Das ⋯-Menü neben dem „+“ an den Board-Reitern löscht ein Board,
+  sobald es leer ist. Es erscheint ab zwei Boards, für Verwalter und den Ersteller des Boards.
+  Danach öffnet sich ein verbleibendes Board.
+
+### Changed
+
+- **Abschließen verschiebt in die Endspalte** (#375): Ein erledigter Vorgang wandert in die
+  Spalte, die als „Erledigt“ markiert ist, ein verworfener in die Spalte „Verworfen“. Gibt es
+  keine passende Endspalte, bleibt er stehen. Neue Boards legen beide Endspalten gleich an,
+  bestehende Boards bleiben unverändert.
+
+### Internal
+
+- **MCP-Endpunkt, nur lesend** (#343): Grundlage für die Anbindung von KI-Werkzeugen. Ab Werk
+  ausgeschaltet; ohne ausdrückliche Einrichtung antwortet er nicht.
+
 ## [0.4.19] - 2026-10-10
 
 ### Added
