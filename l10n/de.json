@@ -508,7 +508,26 @@
 		"Niemand zuständig": "Niemand zuständig",
 		"Zuständigkeit und Fälligkeit ändern": "Zuständigkeit und Fälligkeit ändern",
 		"Änderungen konnten nicht gespeichert werden": "Änderungen konnten nicht gespeichert werden",
-		"Zum Board": "Zum Board"
+		"Zum Board": "Zum Board",
+		"ProjektWerk: MCP-Endpunkt für Claude": "ProjektWerk: MCP-Endpunkt für Claude",
+		"Der MCP-Endpunkt ist ausgeschaltet.": "Der MCP-Endpunkt ist ausgeschaltet.",
+		"Die App „OpenID Connect Provider“ (oidc) ist nicht aktiv. Ohne sie kann sich niemand am MCP-Endpunkt anmelden.": "Die App „OpenID Connect Provider“ (oidc) ist nicht aktiv. Ohne sie kann sich niemand am MCP-Endpunkt anmelden.",
+		"Es ist kein zugelassener oidc-Client eingetragen (mcp_allowed_clients). Der Endpunkt bleibt geschlossen.": "Es ist kein zugelassener oidc-Client eingetragen (mcp_allowed_clients). Der Endpunkt bleibt geschlossen.",
+		"Die kanonische Endpunkt-URL fehlt (mcp_resource_url). Der Endpunkt bleibt geschlossen.": "Die kanonische Endpunkt-URL fehlt (mcp_resource_url). Der Endpunkt bleibt geschlossen.",
+		"Es ist kein verteilter Cache eingerichtet (memcache.distributed). Die Begrenzung fehlgeschlagener Anmeldungen am MCP-Endpunkt wirkt dann nicht.": "Es ist kein verteilter Cache eingerichtet (memcache.distributed). Die Begrenzung fehlgeschlagener Anmeldungen am MCP-Endpunkt wirkt dann nicht.",
+		"Die Verlängerung von oidc-Tokens läuft nach %s Sekunden ab (refresh_expire_time). Wer Claude länger nicht nutzt, muss sich danach neu anmelden. Empfohlen sind mindestens 30 Tage.": "Die Verlängerung von oidc-Tokens läuft nach %s Sekunden ab (refresh_expire_time). Wer Claude länger nicht nutzt, muss sich danach neu anmelden. Empfohlen sind mindestens 30 Tage.",
+		"Der MCP-Endpunkt ist eingeschaltet und vollständig eingerichtet.": "Der MCP-Endpunkt ist eingeschaltet und vollständig eingerichtet.",
+		"Vorgänge durchsuchen": "Vorgänge durchsuchen",
+		"Suche zurücksetzen": "Suche zurücksetzen",
+		"Keine Vorgänge zu „{suche}“": "Keine Vorgänge zu „{suche}“",
+		"Kein Treffer.": "Kein Treffer.",
+		"Aktionen für dieses Board": "Aktionen für dieses Board",
+		"Enthält Vorgänge. Verschieben oder Board archivieren.": "Enthält Vorgänge. Verschieben oder Board archivieren.",
+		"Board „{title}“ löschen": "Board „{title}“ löschen",
+		"Board „{title}“ löschen?": "Board „{title}“ löschen?",
+		"Das Board enthält keine Vorgänge. Es wird mit seinen Spalten endgültig gelöscht; Dateien bleiben unberührt.": "Das Board enthält keine Vorgänge. Es wird mit seinen Spalten endgültig gelöscht; Dateien bleiben unberührt.",
+		"Das letzte Board eines Projekts kann nicht gelöscht werden.": "Das letzte Board eines Projekts kann nicht gelöscht werden.",
+		"Dieses Board kann nicht gelöscht werden.": "Dieses Board kann nicht gelöscht werden."
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }

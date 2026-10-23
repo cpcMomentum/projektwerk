@@ -80,6 +80,22 @@
 					</template>
 					{{ t('projektwerk', 'Nur wartend') }} ({{ store.waitingCount }})
 				</NcButton>
+
+				<!-- Suche im Board (#373): grenzt die Karten im Browser ein, die Spalten bleiben stehen. -->
+				<NcTextField
+					v-model="searchInput"
+					class="pw-board-search"
+					:label="t('projektwerk', 'Vorgänge durchsuchen')"
+					:showTrailingButton="searchInput !== ''"
+					trailingButtonIcon="close"
+					:trailingButtonLabel="t('projektwerk', 'Suche zurücksetzen')"
+					@update:modelValue="onSearchInput"
+					@trailingButtonClick="clearSearch"
+					@keydown.esc="clearSearch">
+					<template #icon>
+						<MagnifyIcon :size="20" />
+					</template>
+				</NcTextField>
 			</div>
 		</div>
 
@@ -114,6 +130,32 @@
 					<PlusIcon :size="20" />
 				</template>
 			</NcButton>
+			<NcActions
+				v-if="store.canConfigureBoard && store.siblingBoards.length > 1"
+				:forceMenu="true"
+				:ariaLabel="t('projektwerk', 'Aktionen für dieses Board')">
+				<NcActionButton
+					:disabled="!store.deletable"
+					:description="store.deletable ? '' : t('projektwerk', 'Enthält Vorgänge. Verschieben oder Board archivieren.')"
+					:closeAfterClick="true"
+					@click="deletingBoard = true">
+					<template #icon>
+						<DeleteOutlineIcon :size="20" />
+					</template>
+					{{ t('projektwerk', 'Board „{title}“ löschen', { title: store.board?.title ?? '' }, undefined, { escape: false }) }}
+				</NcActionButton>
+			</NcActions>
+		</div>
+
+		<!-- Leerzustand der Suche (#373): einmal über dem Board, die Spalten bleiben darunter stehen. -->
+		<!-- Die Live-Region steht immer da: Eine mit ihrem Text eingefügte sagen Screenreader oft nicht an. -->
+		<div role="status">
+			<div v-if="noSearchHits" class="pw-search-empty">
+				<span>{{ t('projektwerk', 'Keine Vorgänge zu „{suche}“', { suche: store.search.trim() }, undefined, { escape: false }) }}</span>
+				<NcButton variant="tertiary" @click="clearSearch">
+					{{ t('projektwerk', 'Suche zurücksetzen') }}
+				</NcButton>
+			</div>
 		</div>
 
 		<div v-if="store.loading" class="pw-board">
@@ -213,9 +255,11 @@
 
 					<!-- Leerzustaende sprechen (§9) — auch der gefilterte. -->
 					<div v-if="view.tickets.length === 0" class="pw-empty">
-						{{ store.onlyWaiting
-							? t('projektwerk', 'Hier wartet nichts.')
-							: t('projektwerk', 'Hier liegt gerade nichts.') }}
+						{{ store.searchTerms.length > 0
+							? t('projektwerk', 'Kein Treffer.')
+							: store.onlyWaiting
+								? t('projektwerk', 'Hier wartet nichts.')
+								: t('projektwerk', 'Hier liegt gerade nichts.') }}
 					</div>
 				</div>
 			</div>
@@ -307,6 +351,30 @@
 				</NcButton>
 			</template>
 		</NcDialog>
+
+		<NcDialog
+			v-if="deletingBoard"
+			:open="true"
+			:name="t('projektwerk', 'Board „{title}“ löschen?', { title: store.board?.title ?? '' }, undefined, { escape: false })"
+			size="normal"
+			@update:open="deletingBoard = false">
+			<div class="app-projektwerk">
+				<p class="pw-detail__empty">
+					{{ t('projektwerk', 'Das Board enthält keine Vorgänge. Es wird mit seinen Spalten endgültig gelöscht; Dateien bleiben unberührt.') }}
+				</p>
+			</div>
+			<template #actions>
+				<NcButton @click="deletingBoard = false">
+					{{ t('projektwerk', 'Abbrechen') }}
+				</NcButton>
+				<NcButton
+					variant="error"
+					:disabled="deleteBusy"
+					@click="confirmDeleteBoard">
+					{{ t('projektwerk', 'Löschen') }}
+				</NcButton>
+			</template>
+		</NcDialog>
 	</div>
 </template>
 
@@ -317,6 +385,8 @@ import type { Attachment, Comment, Step, Ticket } from '@/types/ticket'
 import { n, t } from '@nextcloud/l10n'
 import { generateUrl } from '@nextcloud/router'
 import { defineComponent } from 'vue'
+import NcActionButton from '@nextcloud/vue/components/NcActionButton'
+import NcActions from '@nextcloud/vue/components/NcActions'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcDialog from '@nextcloud/vue/components/NcDialog'
 import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
@@ -326,8 +396,10 @@ import NcTextField from '@nextcloud/vue/components/NcTextField'
 import ChevronLeftIcon from 'vue-material-design-icons/ChevronLeft.vue'
 import ClockAlertIcon from 'vue-material-design-icons/ClockAlertOutline.vue'
 import CogIcon from 'vue-material-design-icons/Cog.vue'
+import DeleteOutlineIcon from 'vue-material-design-icons/DeleteOutline.vue'
 import FolderMultipleIcon from 'vue-material-design-icons/FolderMultiple.vue'
 import FolderOpenIcon from 'vue-material-design-icons/FolderOpenOutline.vue'
+import MagnifyIcon from 'vue-material-design-icons/Magnify.vue'
 import PlusIcon from 'vue-material-design-icons/Plus.vue'
 import BoardDragLayer from '@/components/board/BoardDragLayer.vue'
 import CreateTicketDialog from '@/components/CreateTicketDialog.vue'
@@ -354,7 +426,7 @@ interface ColumnView {
 export default defineComponent({
 	name: 'BoardView',
 
-	components: { BoardDragLayer, ChevronLeftIcon, ClockAlertIcon, CogIcon, CreateTicketDialog, FolderMultipleIcon, FolderOpenIcon, NcButton, NcDialog, NcEmptyContent, NcRadioGroup, NcRadioGroupButton, NcTextField, PlusIcon, TicketDetail },
+	components: { BoardDragLayer, ChevronLeftIcon, ClockAlertIcon, CogIcon, CreateTicketDialog, DeleteOutlineIcon, FolderMultipleIcon, FolderOpenIcon, MagnifyIcon, NcActionButton, NcActions, NcButton, NcDialog, NcEmptyContent, NcRadioGroup, NcRadioGroupButton, NcTextField, PlusIcon, TicketDetail },
 
 	setup() {
 		return { store: useBoardStore() }
@@ -378,6 +450,11 @@ export default defineComponent({
 			addingBoard: false,
 			newBoardTitle: '',
 			addBusy: false,
+			deletingBoard: false,
+			deleteBusy: false,
+			// Das Suchfeld (#373): sofort, was getippt wird; der Store bekommt es entprellt.
+			searchInput: '',
+			searchTimer: null as number | null,
 		}
 	},
 
@@ -431,12 +508,23 @@ export default defineComponent({
 				expanded: this.store.expandedColumns.includes(column.id),
 			}))
 		},
+
+		/** Ob die Suche (#373) auf dem ganzen Board nichts findet. */
+		noSearchHits(): boolean {
+			return !this.store.loading
+				&& this.store.searchTerms.length > 0
+				&& this.columnViews.every((view) => view.tickets.length === 0)
+		},
 	},
 
 	watch: {
 		boardId: {
 			immediate: true,
 			async handler(id: number) {
+				// Die Suche gilt der Ansicht, in der sie getippt wurde (#373) —
+				// auch beim Zurückkommen aus den Einstellungen auf dasselbe Board,
+				// wo `open()` sie nicht leert. Feld und Store sonst auseinander.
+				this.clearSearch()
 				await this.store.open(id)
 				await this.openFromQuery()
 			},
@@ -449,10 +537,39 @@ export default defineComponent({
 		if (this.highlightTimer !== null) {
 			window.clearTimeout(this.highlightTimer)
 		}
+		this.cancelSearchTimer()
 	},
 
 	methods: {
 		t,
+
+		/**
+		 * Suchtext entprellt an den Store geben (#373): Bei jedem Tastendruck
+		 * neu zu filtern ließe ein großes Board beim Tippen ruckeln.
+		 *
+		 * @param value Der Inhalt des Suchfelds.
+		 */
+		onSearchInput(value: string | number): void {
+			this.cancelSearchTimer()
+			this.searchTimer = window.setTimeout(() => {
+				this.searchTimer = null
+				this.store.search = String(value)
+			}, 200)
+		},
+
+		/** Suche sofort leeren — Esc, Kreuz im Feld, Knopf im Leerzustand. */
+		clearSearch(): void {
+			this.cancelSearchTimer()
+			this.searchInput = ''
+			this.store.search = ''
+		},
+
+		cancelSearchTimer(): void {
+			if (this.searchTimer !== null) {
+				window.clearTimeout(this.searchTimer)
+				this.searchTimer = null
+			}
+		},
 
 		/**
 		 * Zu einem anderen Board desselben Projekts wechseln (#246).
@@ -492,6 +609,26 @@ export default defineComponent({
 				showError((e as { message?: string }).message ?? t('projektwerk', 'Anlegen fehlgeschlagen'))
 			} finally {
 				this.addBusy = false
+			}
+		},
+
+		/** Das geöffnete Board löschen und auf das verbleibende wechseln. */
+		async confirmDeleteBoard(): Promise<void> {
+			if (this.deleteBusy) {
+				return
+			}
+			this.deleteBusy = true
+			try {
+				const next = await this.store.deleteCurrentBoard()
+				this.deletingBoard = false
+				this.$router.push({ name: 'board', params: { boardId: String(next) } })
+			} catch (e) {
+				showError((e as { message?: string }).message ?? t('projektwerk', 'Löschen fehlgeschlagen'))
+				this.deletingBoard = false
+				// Der Server weiß es besser als der geladene Stand, etwa wenn inzwischen ein Vorgang dazukam.
+				await this.store.open(this.boardId)
+			} finally {
+				this.deleteBusy = false
 			}
 		},
 

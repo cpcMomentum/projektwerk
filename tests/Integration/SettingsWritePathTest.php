@@ -449,6 +449,22 @@ class SettingsWritePathTest extends IntegrationTestCase {
 		$this->assertSame($l10n->t('Eingegangen'), $titles[0], 'Die erste Spalte ist der Eingang.');
 		$this->assertNotContains($l10n->t('Wartet auf Kunde'), $titles);
 		$this->assertCount(1, Server::get(MemberMapper::class)->findForBoard($viewer));
+		$this->assertSame(
+			[null, null, null, null, 'done', 'discarded'],
+			array_map(static fn ($c): ?string => $c->getFinalOutcome(), $columns),
+		);
+	}
+
+	public function testABoardAddedToAProjectAlsoMarksItsFinalColumns(): void {
+		$board = $this->boardService->create('lm-neu', 'Mit Vorgabe');
+		$viewer = Server::get(BoardAccess::class)->contextFor('lm-neu', (int)$board->getId());
+		$zweites = $this->boardService->createInProject($viewer, 'Zweites Board');
+		$viewer2 = Server::get(BoardAccess::class)->contextFor('lm-neu', (int)$zweites->getId());
+
+		$this->assertSame(
+			[null, null, null, null, 'done', 'discarded'],
+			array_map(static fn ($c): ?string => $c->getFinalOutcome(), Server::get(ColumnMapper::class)->findForBoard($viewer2)),
+		);
 	}
 
 	/**

@@ -16,7 +16,7 @@ import type { Ticket, TicketList, WaitState } from '@/types/ticket'
 import { t } from '@nextcloud/l10n'
 import { defineStore } from 'pinia'
 import { fetchBoard, fetchBoards, setBoardPin } from '@/services/boards'
-import { createBoard as createBoardRequest, createSiblingBoard as createSiblingBoardRequest } from '@/services/settings'
+import { createBoard as createBoardRequest, createSiblingBoard as createSiblingBoardRequest, deleteBoard as deleteBoardRequest } from '@/services/settings'
 import { fetchTickets, markTicketRead, moveTicket as moveTicketRequest } from '@/services/tickets'
 import { showError } from '@/services/toast'
 
@@ -47,6 +47,8 @@ interface State {
 	projectTitle: string
 	/** Der Projektordner des geöffneten Boards (#351), oder null. */
 	projectFolder: { id: number, path: string } | null
+	/** Ob der Betrachter das geöffnete Board jetzt löschen dürfte. */
+	deletable: boolean
 	tickets: Map<number, Ticket>
 	/** Ticket-IDs je Spalte, in Serverreihenfolge. */
 	columnOrder: Map<number, number[]>
@@ -57,6 +59,10 @@ interface State {
 	changed: Record<number, boolean>
 	/** Filterschalter „Nur wartend"; liegt quer zu den Spalten. */
 	onlyWaiting: boolean
+	/** Suchtext im Board-Kopf (#373), bereits entprellt. Leer heißt: keine Suche. */
+	search: string
+	/** Schritt-Titel je Vorgang, nur für die Suche (#373). */
+	stepTitles: Record<number, string[]>
 	/** Spalten, in denen „ältere anzeigen" gerade aufgeklappt ist (#59). */
 	expandedColumns: number[]
 	loading: boolean
@@ -82,12 +88,15 @@ export const useBoardStore = defineStore('board', {
 		memberBoardsAllowed: false,
 		projectTitle: '',
 		projectFolder: null,
+		deletable: false,
 		tickets: new Map(),
 		columnOrder: new Map(),
 		counts: null,
 		waiting: {},
 		changed: {},
 		onlyWaiting: false,
+		search: '',
+		stepTitles: {},
 		expandedColumns: [],
 		loading: false,
 		loaded: false,
@@ -220,6 +229,16 @@ export const useBoardStore = defineStore('board', {
 		waitingCount: (state): number => Object.keys(state.waiting).length,
 
 		/**
+		 * Die Suchbegriffe (#373): kleingeschrieben, an Leerraum getrennt. Ein
+		 * Vorgang muss **alle** enthalten — „rechnung müller" grenzt ein, statt
+		 * zu erweitern. Ein einzelnes `#` ist der Anfang einer Nummer, kein
+		 * Begriff — sonst stünde beim Tippen von „#42" kurz „keine Vorgänge".
+		 *
+		 * @param state Der Speicher.
+		 */
+		searchTerms: (state): string[] => state.search.toLocaleLowerCase().split(/\s+/).filter((term) => term !== '' && term !== '#'),
+
+		/**
 		 * Alle Anzeigenamen des Boards auf einmal — Kennung => Name.
 		 *
 		 * Für Bauteile, die **mehrere** Personen zeigen (die Kugeln der
@@ -335,6 +354,19 @@ export const useBoardStore = defineStore('board', {
 		},
 
 		/**
+		 * Das geöffnete Board löschen und die Kennung des Boards liefern, auf das die Ansicht wechseln soll.
+		 */
+		async deleteCurrentBoard(): Promise<number> {
+			const current = this.board
+			if (current === null) {
+				throw new Error('Kein Projekt geöffnet.')
+			}
+			const { nextBoardId } = await deleteBoardRequest(current.id)
+			this.boards = this.boards.filter((b) => b.id !== current.id)
+			return nextBoardId
+		},
+
+		/**
 		 * Ein Projekt an- oder abpinnen und den neuen Stand sofort zeigen (#115).
 		 *
 		 * Optimistisch mit Rückabwicklung: Der Stern kippt sofort, und nur wenn
@@ -375,6 +407,8 @@ export const useBoardStore = defineStore('board', {
 			// erklärte, warum.
 			if (this.board?.id !== boardId) {
 				this.expandedColumns = []
+				// Eine Suche gilt dem Board, auf dem sie getippt wurde (#373).
+				this.search = ''
 			}
 			try {
 				const detail: BoardDetail = await fetchBoard(boardId)
@@ -385,6 +419,7 @@ export const useBoardStore = defineStore('board', {
 				this.memberBoardsAllowed = detail.memberBoardsAllowed ?? false
 				this.projectTitle = detail.projectTitle ?? ''
 				this.projectFolder = detail.projectFolder ?? null
+				this.deletable = detail.deletable ?? false
 
 				this.applyTickets(await fetchTickets(boardId))
 			} catch (e) {
@@ -460,9 +495,9 @@ export const useBoardStore = defineStore('board', {
 		/**
 		 * Ein einzelnes Ticket durch den Stand vom Server ersetzen.
 		 *
-		 * Kein Neuladen der ganzen Liste, weil sich weder Spalte noch
-		 * Reihenfolge ändern können: Der Aufrufer ist die Sichtbarkeitsänderung,
-		 * und die lässt `columnId` unberührt.
+		 * Kein Neuladen der ganzen Liste. Hat der Server die Spalte gewechselt
+		 * (Abschließen schiebt in die Endspalte), wandert das Ticket ans Ende der
+		 * neuen Spalte, so wie der Server es einsortiert hat.
 		 *
 		 * Das Ticket bleibt danach sichtbar, auch wenn es gerade verborgener
 		 * wurde — wer die Sichtbarkeit ändern darf, gehört nach §7 zur
@@ -471,11 +506,19 @@ export const useBoardStore = defineStore('board', {
 		 * @param ticket Der neue Stand.
 		 */
 		replaceTicket(ticket: Ticket): void {
+			const previous = this.tickets.get(ticket.id)
 			// Neue Map statt Mutation: Pinia verfolgt bei einer Map die Identität,
 			// nicht die Einträge — ein `set()` allein löste kein Neuzeichnen aus.
 			const next = new Map(this.tickets)
 			next.set(ticket.id, ticket)
 			this.tickets = next
+
+			if (previous !== undefined && previous.columnId !== ticket.columnId) {
+				const order = new Map(this.columnOrder)
+				order.set(previous.columnId, (order.get(previous.columnId) ?? []).filter((id) => id !== ticket.id))
+				order.set(ticket.columnId, [...(order.get(ticket.columnId) ?? []), ticket.id])
+				this.columnOrder = order
+			}
 		},
 
 		/**
@@ -489,6 +532,7 @@ export const useBoardStore = defineStore('board', {
 			this.waiting = list.waiting ?? {}
 			// „Seit deinem Blick geändert" (#79) — kommt mit derselben Antwort.
 			this.changed = list.changed ?? {}
+			this.stepTitles = list.stepTitles ?? {}
 
 			const order = new Map<number, number[]>()
 			for (const column of this.columns) {
@@ -512,18 +556,50 @@ export const useBoardStore = defineStore('board', {
 		 * geschlossener Vorgang wartet nie (E8). Ist „Nur wartend" an, ist
 		 * ohnehin nichts Geschlossenes übrig, das man ausblenden könnte.
 		 *
+		 * **Bei aktiver Suche wird ebenfalls nichts eingeklappt** (#373): Wer
+		 * einen alten erledigten Vorgang sucht, fände ihn sonst nicht. Suche und
+		 * „Nur wartend" gelten zusammen.
+		 *
 		 * @param columnId Kennung der Spalte.
 		 */
 		ticketsIn(columnId: number): Ticket[] {
 			const inColumn = this.visibleIn(columnId)
+			const terms = this.searchTerms
 
-			if (this.onlyWaiting) {
-				return inColumn.filter((ticket) => this.waiting[ticket.id] !== undefined)
+			if (this.onlyWaiting || terms.length > 0) {
+				return inColumn.filter((ticket) => (!this.onlyWaiting || this.waiting[ticket.id] !== undefined)
+					&& this.matchesSearch(ticket, terms))
 			}
 
 			return this.expandedColumns.includes(columnId)
 				? inColumn
 				: this.withoutOlderClosed(inColumn)
+		},
+
+		/**
+		 * Ob ein Vorgang alle Suchbegriffe trägt (#373).
+		 *
+		 * Durchsucht werden Titel, Beschreibung, der Name der zuständigen Person
+		 * und die Titel der Arbeitsschritte. Die Nummer zählt nur exakt, mit oder
+		 * ohne `#`: „4" soll nicht jeden Vorgang mit einer 4 in der Nummer treffen.
+		 *
+		 * @param ticket Der Vorgang.
+		 * @param terms Die Suchbegriffe aus `searchTerms`.
+		 */
+		matchesSearch(ticket: Ticket, terms: string[]): boolean {
+			if (terms.length === 0) {
+				return true
+			}
+
+			const text = [
+				ticket.title,
+				ticket.description ?? '',
+				this.nameOf(ticket.responsibleUserId),
+				...(this.stepTitles[ticket.id] ?? []),
+			].join('\n').toLocaleLowerCase()
+
+			return terms.every((term) => text.includes(term)
+				|| term.replace(/^#/, '') === String(ticket.number))
 		},
 
 		/**
@@ -620,8 +696,9 @@ export const useBoardStore = defineStore('board', {
 		 */
 		collapsibleCount(columnId: number): number {
 			// Bei „Nur wartend" ist nichts Geschlossenes in der Menge; ein
-			// Angebot „12 ältere anzeigen" führte dann ins Leere.
-			if (this.onlyWaiting) {
+			// Angebot „12 ältere anzeigen" führte dann ins Leere. Bei der Suche
+			// (#373) sind die älteren schon drin.
+			if (this.onlyWaiting || this.searchTerms.length > 0) {
 				return 0
 			}
 

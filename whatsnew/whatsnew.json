@@ -1,4 +1,57 @@
 {
+	"0.4.20": [
+		{
+			"title": {
+				"de": "Suche im Board",
+				"en": "Search on the board"
+			},
+			"text": {
+				"de": "Ein Suchfeld über den Spalten grenzt die Vorgänge schon beim Tippen ein.",
+				"en": "A search field above the columns narrows down the tickets as you type."
+			},
+			"icon": "magnify",
+			"where": {
+				"de": "Im Board",
+				"en": "On the board"
+			},
+			"adminOnly": false,
+			"plus": false
+		},
+		{
+			"title": {
+				"de": "Abschließen verschiebt in die Endspalte",
+				"en": "Closing moves to the final column"
+			},
+			"text": {
+				"de": "Ein erledigter Vorgang wandert in die Spalte, die als „Erledigt“ markiert ist, ein verworfener in „Verworfen“. Neue Boards legen beide Endspalten gleich an.",
+				"en": "A completed ticket moves to the column marked as “Done”, a discarded one to “Discarded”. New boards create both final columns right away."
+			},
+			"icon": "chart-bar",
+			"where": {
+				"de": "Im Board",
+				"en": "On the board"
+			},
+			"adminOnly": false,
+			"plus": false
+		},
+		{
+			"title": {
+				"de": "Leeres Board löschen",
+				"en": "Delete an empty board"
+			},
+			"text": {
+				"de": "Über das ⋯-Menü neben dem „+“ an den Board-Reitern lässt sich ein leeres Board löschen.",
+				"en": "An empty board can be deleted via the ⋯ menu next to the “+” at the board tabs."
+			},
+			"icon": "cog",
+			"where": {
+				"de": "An den Board-Reitern",
+				"en": "At the board tabs"
+			},
+			"adminOnly": false,
+			"plus": false
+		}
+	],
 	"0.4.19": [
 		{
 			"title": {

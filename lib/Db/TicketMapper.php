@@ -128,6 +128,22 @@ class TicketMapper extends QBMapper {
 	}
 
 	/**
+	 * Wie {@see findVisible()}, über die Vorgangsnummer statt der ID.
+	 *
+	 * @throws DoesNotExistException
+	 */
+	public function findVisibleByNumber(ViewerContext $viewer, int $number): Ticket {
+		$qb = $this->scopedQuery($viewer->userId, $viewer->boardId);
+		$qb->select(self::T . '.*')
+			->andWhere($qb->expr()->eq(
+				self::T . '.number',
+				$qb->createNamedParameter($number, IQueryBuilder::PARAM_INT),
+			));
+
+		return $this->findEntity($qb);
+	}
+
+	/**
 	 * Ein Ticket ueber alle Boards hinweg — fuer den Deep-Link.
 	 *
 	 * Der Deep-Link kennt **nur die Ticketnummer**, kein Board. Die naive
@@ -358,6 +374,23 @@ class TicketMapper extends QBMapper {
 	public function countVisibleInBoard(ViewerContext $viewer): int {
 		$qb = $this->scopedQuery($viewer->userId, $viewer->boardId);
 		$qb->select($qb->func()->count(self::T . '.id'));
+
+		$result = $qb->executeQuery();
+		$count = (int)$result->fetchOne();
+		$result->closeCursor();
+
+		return $count;
+	}
+
+	/**
+	 * Ungefiltert, damit ein Board mit fremden Vorgängen nie als leer gilt; verlässt den Dienst nur als Ja/Nein.
+	 */
+	public function countLiveInBoard(ViewerContext $viewer): int {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select($qb->func()->count('id'))
+			->from($this->tableName)
+			->where($qb->expr()->eq('board_id', $qb->createNamedParameter($viewer->boardId, IQueryBuilder::PARAM_INT)))
+			->andWhere($qb->expr()->isNull('deleted_at'));
 
 		$result = $qb->executeQuery();
 		$count = (int)$result->fetchOne();
@@ -766,5 +799,49 @@ class TicketMapper extends QBMapper {
 		$this->scope->apply($qb, self::T, $userId, $boardId);
 
 		return $qb;
+	}
+
+	/**
+	 * Gelöschte Vorgänge eines Boards samt Kindzeilen endgültig entfernen; Dateien bleiben.
+	 *
+	 * @throws \LogicException wenn noch ein nicht gelöschter Vorgang im Board liegt
+	 */
+	public function purgeDeletedInBoard(ViewerContext $viewer): void {
+		$boardId = $viewer->boardId;
+
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('id', 'deleted_at')
+			->from($this->tableName)
+			->where($qb->expr()->eq('board_id', $qb->createNamedParameter($boardId, IQueryBuilder::PARAM_INT)));
+		$result = $qb->executeQuery();
+		$ticketIds = [];
+		while ($row = $result->fetch()) {
+			if ($row['deleted_at'] === null) {
+				$result->closeCursor();
+				throw new \LogicException('Board ' . $boardId . ' enthält noch Vorgänge.');
+			}
+			$ticketIds[] = (int)$row['id'];
+		}
+		$result->closeCursor();
+
+		// Blöcke wegen der Parametergrenze mancher Datenbanken.
+		foreach (array_chunk($ticketIds, 1000) as $chunk) {
+			// Vorgänge zuerst und nur noch gelöschte: Wurde einer inzwischen wiederhergestellt, rollt der Aufrufer alles zurück.
+			$tickets = $this->db->getQueryBuilder();
+			$tickets->delete($this->tableName)
+				->where($tickets->expr()->in('id', $tickets->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)))
+				->andWhere($tickets->expr()->eq('board_id', $tickets->createNamedParameter($boardId, IQueryBuilder::PARAM_INT)))
+				->andWhere($tickets->expr()->isNotNull('deleted_at'));
+			if ($tickets->executeStatement() !== count($chunk)) {
+				throw new \LogicException('Board ' . $boardId . ': ein Vorgang wurde während des Löschens wiederhergestellt.');
+			}
+
+			foreach (['pwerk_steps', 'pwerk_comments', 'pwerk_attachments', 'pwerk_reads', 'pwerk_ticket_users', 'pwerk_mail_outbox'] as $table) {
+				$delete = $this->db->getQueryBuilder();
+				$delete->delete($table)
+					->where($delete->expr()->in('ticket_id', $delete->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)));
+				$delete->executeStatement();
+			}
+		}
 	}
 }

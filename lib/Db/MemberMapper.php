@@ -153,4 +153,16 @@ class MemberMapper extends QBMapper {
 
 		return $roles;
 	}
+
+	/**
+	 * Mitgliedschaften mit diesem Heimat-Board auf ein anderes Board desselben Projekts umhängen.
+	 */
+	public function moveHomeBoard(ViewerContext $viewer, int $toBoardId): void {
+		$qb = $this->db->getQueryBuilder();
+		$qb->update($this->tableName)
+			->set('board_id', $qb->createNamedParameter($toBoardId, IQueryBuilder::PARAM_INT))
+			->where($qb->expr()->eq('board_id', $qb->createNamedParameter($viewer->boardId, IQueryBuilder::PARAM_INT)))
+			->andWhere($qb->expr()->eq('project_id', $qb->createNamedParameter($viewer->projectId, IQueryBuilder::PARAM_INT)));
+		$qb->executeStatement();
+	}
 }

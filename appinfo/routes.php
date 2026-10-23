@@ -117,6 +117,7 @@ return [
 		['name' => 'settings#createSiblingBoard', 'url' => '/api/v1/boards/{boardId}/boards', 'verb' => 'POST'],
 		['name' => 'settings#updateBoard', 'url' => '/api/v1/boards/{boardId}', 'verb' => 'PATCH'],
 		['name' => 'settings#archiveBoard', 'url' => '/api/v1/boards/{boardId}/archived', 'verb' => 'PUT'],
+		['name' => 'settings#deleteBoard', 'url' => '/api/v1/boards/{boardId}', 'verb' => 'DELETE'],
 
 		['name' => 'settings#createColumn', 'url' => '/api/v1/boards/{boardId}/columns', 'verb' => 'POST'],
 		['name' => 'settings#renameColumn', 'url' => '/api/v1/boards/{boardId}/columns/{columnId}', 'verb' => 'PATCH'],
@@ -180,5 +181,12 @@ return [
 		// Eigene Firma der Instanz (#352), admin-only. Kein GET: Der Wert kommt als
 		// Initial-State mit der Seite, weil ihn jede Person beim Projektanlegen braucht.
 		['name' => 'ownCompany#save', 'url' => '/api/v1/admin/own-company', 'verb' => 'PUT'],
+
+		// MCP-Endpunkt fuer Claude (#343), Bearer-Token statt Sitzung. Keine OCS-Route:
+		// Claude sendet kein `OCS-APIRequest` und bekaeme 412.
+		['name' => 'mcp#handle', 'url' => '/mcp', 'verb' => 'POST'],
+		['name' => 'mcp#methodNotAllowed', 'url' => '/mcp', 'verb' => 'GET'],
+		['name' => 'mcp#methodNotAllowed', 'url' => '/mcp', 'verb' => 'DELETE', 'postfix' => 'delete'],
+		['name' => 'mcpMetadata#protectedResource', 'url' => '/mcp/oauth-protected-resource', 'verb' => 'GET'],
 	],
 ];

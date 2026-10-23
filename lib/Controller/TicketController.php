@@ -10,22 +10,16 @@ declare(strict_types=1);
 namespace OCA\Projektwerk\Controller;
 
 use OCA\Projektwerk\Access\BoardAccess;
-use OCA\Projektwerk\Access\ChangeHighlighter;
 use OCA\Projektwerk\Access\NotAMemberException;
 use OCA\Projektwerk\Access\ViewerContext;
-use OCA\Projektwerk\Access\WaitStateCalculator;
 use OCA\Projektwerk\AppInfo\Application;
-use OCA\Projektwerk\Db\AttachmentMapper;
-use OCA\Projektwerk\Db\CommentMapper;
-use OCA\Projektwerk\Db\StepMapper;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Db\TicketReadMapper;
-use OCA\Projektwerk\Db\TicketUserMapper;
-use OCA\Projektwerk\Service\AttachmentService;
 use OCA\Projektwerk\Service\ConflictException;
 use OCA\Projektwerk\Service\GithubTransferException;
 use OCA\Projektwerk\Service\NoFolderException;
 use OCA\Projektwerk\Service\NotOwningSideException;
+use OCA\Projektwerk\Service\TicketReadModel;
 use OCA\Projektwerk\Service\TicketService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Db\DoesNotExistException;
@@ -52,15 +46,9 @@ class TicketController extends Controller {
 	public function __construct(
 		IRequest $request,
 		private TicketMapper $tickets,
-		private CommentMapper $comments,
-		private StepMapper $steps,
-		private AttachmentMapper $attachments,
-		private TicketUserMapper $ticketUsers,
 		private TicketReadMapper $reads,
 		private TicketService $service,
-		private AttachmentService $attachmentService,
-		private WaitStateCalculator $waitState,
-		private ChangeHighlighter $highlighter,
+		private TicketReadModel $readModel,
 		private BoardAccess $access,
 		private ?string $userId,
 	) {
@@ -69,75 +57,24 @@ class TicketController extends Controller {
 
 	/**
 	 * Die sichtbaren Tickets eines Boards, mit den Zählern ihrer Kinder.
-	 *
-	 * Die Zähler kommen aus derselben gefilterten ID-Menge wie die Tickets
-	 * selbst. §5.8 nennt sie ausdrücklich: Ein Zähler, der mitzählt, was
-	 * verborgen ist, verrät dessen Existenz genauso wie eine Zeile.
 	 */
 	#[NoAdminRequired]
 	public function index(int $boardId, ?int $columnId = null): JSONResponse {
-		return $this->withViewer($boardId, function (ViewerContext $viewer) use ($columnId): JSONResponse {
-			$tickets = $this->tickets->findVisibleInBoard($viewer, $columnId);
-			$ids = array_map(static fn ($ticket): int => (int)$ticket->getId(), $tickets);
-			$steps = $this->steps->findForTickets($ids);
-
-			return new JSONResponse([
-				'tickets' => $tickets,
-				// „Wartet auf Kunde" wird gerechnet, nie gespeichert — und aus
-				// **denselben** Schritten, die auch die Zaehler speisen. Eine
-				// zweite Abfrage waere ein zweiter Ort, an dem die Sichtbarkeit
-				// stimmen muesste.
-				'waiting' => $this->waitState->forTickets($tickets, $steps),
-				'counts' => [
-					'comments' => $this->comments->countForTickets($ids),
-					'steps' => $this->steps->countForTickets($ids),
-					// Erledigte je Ticket aus **derselben** Menge wie die
-					// Gesamtzahl — „3 von 5" darf nicht aus zwei Abfragen
-					// stammen, sonst zeigt die Karte irgendwann 6 von 5.
-					'stepsDone' => $this->doneCounts($steps),
-					'attachments' => $this->attachments->countForTickets($ids),
-					'collaborators' => $this->ticketUsers->countForTickets($ids),
-				],
-				// „Neu oder seit deinem Blick geändert" (#79, #175) — aus **seinem**
-				// Lesestand und der Bewegung (fremde Ticket-Änderung oder fremder
-				// Kommentar), beides über die bereits gefilterte Menge. Auch ein
-				// fremd angelegter, noch ungesehener Vorgang leuchtet (#175).
-				'changed' => $this->changedSince($viewer, $tickets, $ids),
-			]);
-		});
+		return $this->withViewer($boardId, fn (ViewerContext $viewer): JSONResponse
+			=> new JSONResponse($this->readModel->index($viewer, $columnId)));
 	}
 
 	/**
 	 * Ein Ticket mit seinen Kindern.
-	 *
-	 * Die Kinder werden über eine **Einermenge** geladen — sperriger als ein
-	 * direkter Zugriff, und genau so gemeint: Es gibt keine Methode, die
-	 * „die Kommentare zu Ticket 42" lädt, sondern nur „die Kommentare zu den
-	 * Tickets, die dieser Betrachter sehen darf".
 	 */
 	#[NoAdminRequired]
 	public function show(int $boardId, int $ticketId): JSONResponse {
 		return $this->withViewer($boardId, function (ViewerContext $viewer) use ($ticketId): JSONResponse {
 			try {
-				$ticket = $this->tickets->findVisible($viewer, $ticketId);
+				return new JSONResponse($this->readModel->show($viewer, $ticketId));
 			} catch (DoesNotExistException) {
 				return new JSONResponse([], Http::STATUS_NOT_FOUND);
 			}
-
-			$ids = [(int)$ticket->getId()];
-			$steps = $this->steps->findForTickets($ids);
-
-			return new JSONResponse([
-				'ticket' => $ticket,
-				'waiting' => $this->waitState->forTicket($ticket, $steps),
-				'comments' => $this->comments->findForTickets($ids),
-				'steps' => $steps,
-				// Mit `missing`-Angabe je Anhang (#9): verwaiste Dateien werden
-				// gezeigt, nicht verschwiegen. Die Menge kommt weiter über den
-				// gefilterten `findForTickets()`-Weg.
-				'attachments' => $this->attachmentService->withPresence($viewer, $this->attachments->findForTickets($ids)),
-				'collaborators' => $this->ticketUsers->findForTickets($ids),
-			]);
 		});
 	}
 
@@ -309,54 +246,6 @@ class TicketController extends Controller {
 	public function restore(int $boardId, int $ticketId): JSONResponse {
 		return $this->write($boardId, fn (ViewerContext $viewer): mixed
 			=> $this->service->restore($viewer, $ticketId));
-	}
-
-	/**
-	 * Wie viele Schritte je Ticket erledigt sind.
-	 *
-	 * Aus derselben Menge wie die Gesamtzahl — „3 von 5" darf nicht aus zwei
-	 * Abfragen stammen, sonst zeigt die Karte irgendwann 6 von 5.
-	 *
-	 * @param \OCA\Projektwerk\Db\Step[] $steps
-	 * @return array<int, int>
-	 */
-	private function doneCounts(array $steps): array {
-		$done = [];
-		foreach ($steps as $step) {
-			$ticketId = (int)$step->getTicketId();
-			$done[$ticketId] ??= 0;
-			if ($step->isDone()) {
-				$done[$ticketId]++;
-			}
-		}
-
-		return $done;
-	}
-
-	/**
-	 * „Neu oder seit deinem Blick geändert" je Vorgang (#79, #175) — nur die
-	 * hervorzuhebenden stehen drin, wie beim Wartezustand.
-	 *
-	 * **Die Regel steht im {@see ChangeHighlighter}**, eine reine Berechnung.
-	 * Hier werden nur die beiden Zutaten beigebracht, beide über die bereits
-	 * gefilterte Menge: der eigene Lesestand (nach `user_id`) und der jüngste
-	 * Kommentar je Vorgang (mit Autor, damit der eigene nicht leuchtet, #175).
-	 * Seit #175 leuchtet auch ein fremd angelegter, noch ungesehener Vorgang.
-	 *
-	 * @param \OCA\Projektwerk\Db\Ticket[] $tickets
-	 * @param int[] $ids
-	 * @return array<int, true> Nur die hervorzuhebenden Vorgänge.
-	 */
-	private function changedSince(ViewerContext $viewer, array $tickets, array $ids): array {
-		// Die Regel selbst steht im {@see ChangeHighlighter} — hier werden nur
-		// der eigene Lesestand und der jüngste Kommentar je Vorgang beigebracht,
-		// beides über die bereits gefilterte Menge.
-		return $this->highlighter->detect(
-			$tickets,
-			$this->reads->findSeenForTickets($viewer->userId, $ids),
-			$this->comments->findNewestForTickets($ids),
-			$viewer->userId,
-		);
 	}
 
 	/**

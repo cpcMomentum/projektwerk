@@ -362,3 +362,179 @@ describe('ensureBoards + internalSomewhere', () => {
 		expect(store.internalSomewhere).toBe(false)
 	})
 })
+
+/**
+ * Ein Vorgang mit den Feldern, die die Suche (#373) liest.
+ *
+ * @param id Kennung.
+ * @param fields Was abweicht.
+ */
+function searchable(id: number, fields: Partial<Ticket> = {}): Ticket {
+	return {
+		id,
+		columnId: COLUMN,
+		number: id,
+		title: `Vorgang ${id}`,
+		description: null,
+		responsibleUserId: null,
+		closedAt: null,
+		...fields,
+	} as unknown as Ticket
+}
+
+describe('Suche im Board (#373)', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia())
+	})
+
+	const shown = (store: ReturnType<typeof useBoardStore>) => store.ticketsIn(COLUMN).map((t) => t.id)
+
+	it('findet über Titel, Beschreibung, Zuständige und Schritt-Titel', () => {
+		const store = fill([
+			searchable(1, { title: 'Angebot Logo' }),
+			searchable(2, { description: 'Bitte das LOGO tauschen' }),
+			searchable(3, { responsibleUserId: 'u3' }),
+			searchable(4),
+			searchable(5),
+		])
+		store.members = [{ userId: 'u3', resolvedName: 'Lotte Logowski' }] as never
+		store.stepTitles = { 4: ['Logo freigeben'] }
+
+		store.search = 'logo'
+
+		expect(shown(store)).toEqual([1, 2, 3, 4])
+	})
+
+	it('verlangt alle Wörter, nicht eines davon', () => {
+		const store = fill([
+			searchable(1, { title: 'Rechnung Müller' }),
+			searchable(2, { title: 'Rechnung Schulz' }),
+		])
+
+		store.search = '  rechnung   MÜLLER '
+
+		expect(shown(store)).toEqual([1])
+	})
+
+	it('trifft die Nummer genau, mit und ohne #', () => {
+		const store = fill([searchable(4), searchable(42), searchable(142)])
+
+		store.search = '#42'
+		expect(shown(store)).toEqual([42])
+
+		// Ohne # trifft „42" zusätzlich jeden Titel, der „42" enthält — hier
+		// „Vorgang 42" und „Vorgang 142", aber nicht die Nummer 4.
+		store.search = '42'
+		expect(shown(store)).toEqual([42, 142])
+	})
+
+	it('wertet ein einzelnes # nicht als Begriff', () => {
+		const store = fill([searchable(1), searchable(2)])
+
+		// Beim Tippen von „#42" steht nach 200 ms kurz nur „#" im Feld.
+		store.search = '#'
+
+		expect(store.searchTerms).toEqual([])
+		expect(shown(store)).toEqual([1, 2])
+	})
+
+	it('gilt zusammen mit „Nur wartend"', () => {
+		const store = fill([
+			searchable(1, { title: 'Logo' }),
+			searchable(2, { title: 'Logo' }),
+			searchable(3, { title: 'Text' }),
+		])
+		store.waiting = { 2: {} as never, 3: {} as never }
+
+		store.onlyWaiting = true
+		store.search = 'logo'
+
+		expect(shown(store)).toEqual([2])
+	})
+
+	it('findet ältere Erledigte, ohne die Spalte aufzuklappen', () => {
+		const store = fill(Array.from({ length: 15 }, (_, i) => searchable(i + 1, { closedAt: closedRank(i + 1) })))
+		expect(store.ticketsIn(COLUMN)).toHaveLength(CLOSED_TAIL)
+
+		// Ticket 15 ist das älteste und eingeklappt.
+		store.search = '#15'
+
+		expect(shown(store)).toEqual([15])
+		// Kein „ältere anzeigen" über dem Treffer: Die Suche hat sie schon drin.
+		expect(store.collapsibleCount(COLUMN)).toBe(0)
+		expect(store.hiddenClosedCount(COLUMN)).toBe(0)
+	})
+
+	it('zeigt ohne Suchtext alles wie bisher', () => {
+		const store = fill([searchable(1), searchable(2)])
+
+		store.search = '   '
+
+		expect(store.searchTerms).toEqual([])
+		expect(shown(store)).toEqual([1, 2])
+	})
+
+	it('leert die Suche beim Board-Wechsel, nicht beim Neuladen', async () => {
+		const store = useBoardStore()
+		await store.open(1)
+		store.search = 'logo'
+
+		await store.open(1)
+		expect(store.search).toBe('logo')
+
+		await store.open(2)
+		expect(store.search).toBe('')
+	})
+
+	it('übernimmt die Schritt-Titel aus der Board-Antwort', () => {
+		const store = useBoardStore()
+
+		store.applyTickets({ tickets: [], counts: {} as never, waiting: {}, changed: {}, stepTitles: { 7: ['A'] } })
+		expect(store.stepTitles).toEqual({ 7: ['A'] })
+
+		// Ein älterer Server ohne das Feld lässt die Suche nicht scheitern.
+		store.applyTickets({ tickets: [], counts: {} as never, waiting: {}, changed: {} })
+		expect(store.stepTitles).toEqual({})
+	})
+})
+
+describe('replaceTicket mit Spaltenwechsel', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia())
+	})
+
+	it('nimmt den Vorgang aus der alten Spalte und hängt ihn hinten an die neue', () => {
+		const store = useBoardStore()
+		store.columns = [{ id: 1 }, { id: 2 }] as never
+		store.applyTickets({
+			tickets: [
+				{ id: 10, columnId: 1, closedAt: null },
+				{ id: 11, columnId: 1, closedAt: null },
+				{ id: 20, columnId: 2, closedAt: null },
+			] as unknown as Ticket[],
+			counts: {} as never,
+			waiting: {},
+			changed: {},
+		})
+
+		store.replaceTicket({ id: 10, columnId: 2, closedAt: '2026-10-18T10:00:00+00:00' } as unknown as Ticket)
+
+		expect(store.visibleIn(1).map((t) => t.id)).toEqual([11])
+		expect(store.visibleIn(2).map((t) => t.id)).toEqual([20, 10])
+	})
+
+	it('lässt die Reihenfolge stehen, wenn die Spalte gleich bleibt', () => {
+		const store = useBoardStore()
+		store.columns = [{ id: 1 }] as never
+		store.applyTickets({
+			tickets: [{ id: 10, columnId: 1, closedAt: null }, { id: 11, columnId: 1, closedAt: null }] as unknown as Ticket[],
+			counts: {} as never,
+			waiting: {},
+			changed: {},
+		})
+
+		store.replaceTicket({ id: 10, columnId: 1, closedAt: '2026-10-18T10:00:00+00:00' } as unknown as Ticket)
+
+		expect(store.visibleIn(1).map((t) => t.id)).toEqual([10, 11])
+	})
+})

@@ -94,6 +94,17 @@ ersten Kundeneinsatz derselbe Durchlauf mit einem **echten Gastkonto**.
 - `#[NoAdminRequired]` an **jeder** Endnutzer-Methode.
 - `#[NoCSRFRequired]` ausschließlich an der Seiten-Methode des PageControllers und an der
   Deep-Link-Route.
+- **Einzige Ausnahme: der MCP-Endpunkt (#343)**, `McpController` und `McpMetadataController`
+  tragen `#[PublicPage]` und `#[NoCSRFRequired]`. Grund: Claude meldet sich mit einem
+  Bearer-Token ohne Cookie-Sitzung an, CSRF hat damit keine Angriffsfläche. Und erst die App
+  selbst kann ein 401 mit `WWW-Authenticate: Bearer resource_metadata=…` beantworten und prüfen,
+  ob das Token für diesen Endpunkt und einen zugelassenen Client ausgestellt wurde. Ein fremdes
+  Bearer-Token lässt der Core still durch (`Session::tryTokenLogin` gibt `false` zurück, kein
+  Brute-Force-Zähler), gemessen in `docs/mcp-spike.md` (S4). `McpArchitectureTest` hält beide
+  Attribute an diesen Controllern fest.
+- **Der MCP-Endpunkt antwortet auf Englisch.** Werkzeugbeschreibungen und -meldungen sind für das
+  Modell bestimmt, nicht für die Oberfläche, und laufen deshalb nicht über `t()`. Sichtbare Texte
+  (Setup-Check) laufen wie überall über `t()`.
 - Ratenbegrenzung an den Endpunkten, die Mailversand auslösen (Ticket anlegen, Zuweisen) — die App
   verschickt sofort Mail, das ist ein Versandhebel in Kundenhand.
 - Kein Attribut-Routing: Alle fünf bestehenden Haus-Apps nutzen `appinfo/routes.php`, Mischbetrieb

@@ -155,4 +155,23 @@ class BoardMapper extends QBMapper {
 			));
 		$qb->executeStatement();
 	}
+
+	/**
+	 * Board samt Spalten und Board-Einstellungen entfernen; Vorgänge räumt vorher {@see TicketMapper::purgeDeletedInBoard()} ab.
+	 */
+	public function purge(ViewerContext $viewer): void {
+		$boardId = $viewer->boardId;
+
+		foreach (['pwerk_columns', 'pwerk_notify_prefs'] as $table) {
+			$delete = $this->db->getQueryBuilder();
+			$delete->delete($table)
+				->where($delete->expr()->eq('board_id', $delete->createNamedParameter($boardId, IQueryBuilder::PARAM_INT)));
+			$delete->executeStatement();
+		}
+
+		$delete = $this->db->getQueryBuilder();
+		$delete->delete($this->tableName)
+			->where($delete->expr()->eq('id', $delete->createNamedParameter($boardId, IQueryBuilder::PARAM_INT)));
+		$delete->executeStatement();
+	}
 }

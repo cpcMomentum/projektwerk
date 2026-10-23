@@ -12,6 +12,8 @@ namespace OCA\Projektwerk\Tests\Integration;
 use OCA\Projektwerk\Access\TicketScope;
 use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Db\AttachmentMapper;
+use OCA\Projektwerk\Db\Column;
+use OCA\Projektwerk\Db\ColumnMapper;
 use OCA\Projektwerk\Db\Ticket;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Service\NoFolderException;
@@ -956,6 +958,76 @@ class TicketWritePathTest extends IntegrationTestCase {
 
 		$quatsch = $this->service->update($bert, $ticketId, (int)$auf->getVersion(), ['closed' => true, 'outcome' => 'bogus']);
 		$this->assertSame(Ticket::OUTCOME_DONE, $quatsch->getClosedOutcome(), 'Ein unbekannter Wert faellt auf „erledigt".');
+	}
+
+	public function testClosingMovesIntoTheFinalColumnOfItsOutcome(): void {
+		$bert = $this->viewer(LeakMatrixFixture::BERT);
+		$erledigt = $this->markFinal(LeakMatrixFixture::COLUMN_B, 'done');
+		$verworfen = $this->addColumn('Verworfen', 2, 'discarded');
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+		$letzte = $this->tickets->findLastPositionInColumn($bert, $erledigt);
+
+		$zu = $this->service->update($bert, $ticketId, 1, ['closed' => true, 'outcome' => 'done']);
+		$this->assertSame($erledigt, (int)$zu->getColumnId(), 'Erledigt wandert in die Erledigt-Spalte.');
+		$this->assertGreaterThan($letzte, (int)$zu->getPosition(), 'Ans Ende der Spalte.');
+
+		$auf = $this->service->update($bert, $ticketId, (int)$zu->getVersion(), ['closed' => false]);
+		$this->assertSame($erledigt, (int)$auf->getColumnId(), 'Wieder öffnen schiebt nicht zurück.');
+
+		$weg = $this->service->update($bert, $ticketId, (int)$auf->getVersion(), ['closed' => true, 'outcome' => 'discarded']);
+		$this->assertSame($verworfen, (int)$weg->getColumnId(), 'Verworfen wandert in die Verworfen-Spalte.');
+	}
+
+	public function testClosingWithoutAMatchingFinalColumnStaysPut(): void {
+		$bert = $this->viewer(LeakMatrixFixture::BERT);
+		$this->markFinal(LeakMatrixFixture::COLUMN_B, 'discarded');
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+
+		$zu = $this->service->update($bert, $ticketId, 1, ['closed' => true, 'outcome' => 'done']);
+
+		$this->assertSame($this->fixture->columnIds[LeakMatrixFixture::COLUMN_A], (int)$zu->getColumnId());
+	}
+
+	public function testTheLeftmostMatchingFinalColumnWinsUnlessTheTicketIsInOneAlready(): void {
+		$bert = $this->viewer(LeakMatrixFixture::BERT);
+		$links = $this->markFinal(LeakMatrixFixture::COLUMN_B, 'done');
+		$rechts = $this->addColumn('Abgenommen', 2, 'done');
+
+		$ausOffen = $this->service->update($bert, $this->fixture->ticketIds['public/anna'], 1, ['closed' => true]);
+		$this->assertSame($links, (int)$ausOffen->getColumnId(), 'Die linke Endspalte gewinnt.');
+
+		$schonDa = $this->fixture->ticketIds['public/bert'];
+		$vorher = $this->tickets->findVisible($bert, $schonDa);
+		$this->service->move($bert, $schonDa, (int)$vorher->getVersion(), $rechts, null, null);
+		$verschoben = $this->tickets->findVisible($bert, $schonDa);
+
+		$zu = $this->service->update($bert, $schonDa, (int)$verschoben->getVersion(), ['closed' => true]);
+		$this->assertSame($rechts, (int)$zu->getColumnId(), 'Schon in einer passenden Endspalte: bleibt.');
+		$this->assertSame((int)$verschoben->getPosition(), (int)$zu->getPosition());
+	}
+
+	private function markFinal(string $title, string $outcome): int {
+		$columns = Server::get(ColumnMapper::class);
+		foreach ($columns->findForBoard($this->viewer(LeakMatrixFixture::ANNA)) as $column) {
+			if ($column->getTitle() === $title) {
+				$column->setFinalOutcome($outcome);
+				$columns->update($column);
+
+				return (int)$column->getId();
+			}
+		}
+		$this->fail('Spalte fehlt: ' . $title);
+	}
+
+	private function addColumn(string $title, int $position, string $outcome): int {
+		$column = new Column();
+		$column->setBoardId($this->fixture->boardId);
+		$column->setTitle($title);
+		$column->setPosition($position);
+		$column->setColor('#0082c9');
+		$column->setFinalOutcome($outcome);
+
+		return (int)Server::get(ColumnMapper::class)->insert($column)->getId();
 	}
 
 	/**
