@@ -6,6 +6,8 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.4.21] - 2026-11-01
+
 ### Fixed
 
 - **Endspalten auf bestehenden Boards** (#393): Boards ohne Endspalte bekommen beim Update
