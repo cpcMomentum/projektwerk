@@ -4,6 +4,16 @@ Alle nennenswerten Änderungen an ProjektWerk werden hier dokumentiert.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unreleased]
+
+## [0.4.21] - 2026-11-01
+
+### Fixed
+
+- **Endspalten auf bestehenden Boards** (#393): Boards ohne Endspalte bekommen beim Update
+  „Erledigt“ und „Verworfen“ als Endspalten, damit Abschließen auch dort in die Endspalte
+  verschiebt. Boards mit selbst gesetzter Endspalte und umbenannte Spalten bleiben unverändert.
+
 ## [0.4.20] - 2026-10-23
 
 ### Added
