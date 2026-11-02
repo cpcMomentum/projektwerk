@@ -24,6 +24,8 @@ export interface Ticket {
 	creatorUserId: string
 	/** Am Ticket eingefroren, nicht zur Laufzeit ermittelt. */
 	creatorRole: MemberRole
+	/** `'tool'` = über ein KI-Werkzeug angelegt, sonst `null`. */
+	createdVia?: string | null
 	responsibleUserId: string | null
 	/** „Bis wann ist die Sache fertig" (#72). `JJJJ-MM-TT` ohne Uhrzeit, oder `null`. */
 	dueDate: string | null
@@ -63,6 +65,8 @@ export interface Comment {
 	id: number
 	ticketId: number
 	authorUserId: string
+	/** `'tool'` = über ein KI-Werkzeug angelegt, sonst `null`. */
+	createdVia?: string | null
 	/** Markdown. Wird mit `NcRichText` gerendert, ohne `interactive`. */
 	body: string
 	createdAt: string | null
@@ -87,6 +91,8 @@ export interface Attachment {
 	/** 'public' | 'internal' — in welchem der beiden Projektordner sie liegt. */
 	location: string
 	uploadedBy: string
+	/** `'tool'` = über ein KI-Werkzeug angelegt, sonst `null`. */
+	createdVia?: string | null
 	createdAt: string | null
 	/**
 	 * Ob die Datei im Dateibaum noch da ist (#9). `true` heißt: gelöscht oder
@@ -105,6 +111,8 @@ export interface Step {
 	/** Mehrzeilig: was dabei herauskam (#247). `null`, wenn nicht gesetzt. */
 	result: string | null
 	assignedUserId: string | null
+	/** `'tool'` = über ein KI-Werkzeug angelegt, sonst `null`. */
+	createdVia?: string | null
 	/** Bei der Zuweisung **kopiert**, nicht zur Laufzeit ermittelt. */
 	assignedRole: MemberRole | null
 	assignedAt: string | null

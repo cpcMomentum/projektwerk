@@ -309,6 +309,7 @@ final class ReadPathRegistry {
 		'list_columns',
 		'list_tickets',
 		'get_ticket',
+		'list_members',
 	];
 
 	/**

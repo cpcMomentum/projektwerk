@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace OCA\Projektwerk\Service;
 
+use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Db\BoardMapper;
 use OCA\Projektwerk\Db\MailOutbox;
 use OCA\Projektwerk\Db\Ticket;
@@ -79,6 +80,9 @@ class MailComposer {
 		$nummer = str_pad((string)$ticket->getNumber(), 4, '0', STR_PAD_LEFT);
 		$titel = (string)$ticket->getTitle();
 		$actor = $this->actorName($zeile);
+		if ($actor !== null && $zeile->getActorVia() === ViewerContext::VIA_TOOL) {
+			$actor = $l->t('%1$s (über KI-Werkzeug)', [$actor]);
+		}
 		$schritt = $this->leer($zeile->getStepTitle());
 		$projekt = $this->projectName((string)$zeile->getRecipientUid(), (int)$ticket->getBoardId());
 

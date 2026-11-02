@@ -232,7 +232,9 @@ export default defineComponent({
 		 * @param file Der Anhang.
 		 */
 		metaFor(file: Attachment): string {
-			return t('projektwerk', 'von {name}', { name: this.nameOf(file.uploadedBy) })
+			return file.createdVia === 'tool'
+				? t('projektwerk', 'von {name} über KI-Werkzeug', { name: this.nameOf(file.uploadedBy) })
+				: t('projektwerk', 'von {name}', { name: this.nameOf(file.uploadedBy) })
 		},
 
 		choose() {

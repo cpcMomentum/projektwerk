@@ -33,6 +33,9 @@
 					<span v-if="edited(comment)" class="pw-comment__edited">
 						{{ t('projektwerk', 'bearbeitet') }}
 					</span>
+					<span v-if="comment.createdVia === 'tool'" class="pw-comment__edited">
+						{{ t('projektwerk', 'über KI-Werkzeug') }}
+					</span>
 				</header>
 
 				<!--

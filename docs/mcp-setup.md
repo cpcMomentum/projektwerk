@@ -1,6 +1,7 @@
 # MCP-Endpunkt einrichten (Claude-Connector)
 
-Der Endpunkt ist **ab Werk aus** und antwortet dann mit 404. Er ist nur lesend (Phase 1 von #343).
+Der Endpunkt ist **ab Werk aus** und antwortet dann mit 404. Eingeschaltet liest und schreibt er
+(#343 lesend, #389 schreibend); was genau, steht unter „Was der KI-Zugang darf“.
 Diese Anleitung gilt für eine Admin-Person mit `occ`-Zugang.
 
 ## Voraussetzungen
@@ -76,6 +77,36 @@ Beim ersten Verbinden öffnet sich die Nextcloud-Anmeldung (mit 2FA) und die Ein
 Wer sich verbinden kann: jedes aktive Konto, dem ProjektWerk freigegeben ist (gleiche
 Gruppenfreigabe wie im Browser). **Gäste** (Guests-App) bekommen 403. Gesehen wird genau das, was
 die Person auch in der Weboberfläche sieht.
+
+## Was der KI-Zugang darf
+
+Lesen: Boards, Spalten, Mitglieder, Vorgänge mit Schritten, Anhängen und Kommentaren.
+
+Schreiben (dieselben Rechte und Regeln wie im Browser, über dieselben Dienste):
+
+| Werkzeug | Was |
+|---|---|
+| `create_ticket`, `update_ticket` | Vorgang anlegen/ändern, mit Zuständigem und Fälligkeit |
+| `move_ticket`, `close_ticket` | ans Ende einer Spalte schieben; als erledigt/verworfen abschließen |
+| `add_step`, `update_step` | Arbeitsschritt anlegen, zuweisen, Frist, abhaken |
+| `add_comment` | Kommentar, `@kennung` benachrichtigt |
+| `add_attachment`, `attach_file` | Datei mitschicken (≤ 1 MB je Anfrage) oder aus der eigenen Nextcloud kopieren |
+| `transfer_to_github` | als GitHub-Issue übertragen (nur interne Seite) |
+
+Nicht über den KI-Zugang: löschen, wiederöffnen, Sichtbarkeit ändern, Kommentare bearbeiten,
+Mitglieder und Board-Einstellungen.
+
+- **Kundensichtbares nur mit Bestätigung:** Jede Änderung an einem öffentlichen Vorgang (und das
+  Anlegen eines öffentlichen) lehnt der Server ohne `confirm_public: true` ab; die Ablehnung fordert
+  die KI auf, die Person zu fragen. Der Server kann nicht prüfen, ob sie wirklich gefragt hat.
+- **Kennzeichnung:** Kommentare, angelegte Vorgänge, Schritte, Anhänge und die Benachrichtigungen
+  tragen „über KI-Werkzeug“ (`created_via` / `actor_via` = `tool`). Verschieben, Zuweisen und
+  Abschließen stehen sonst nur im Audit-Log (Verlauf: #397).
+- **Audit:** Jede Änderung erzeugt im Audit-Log von Nextcloud (App `admin_audit`) eine Zeile
+  `ProjektWerk MCP: <werkzeug> by <user> on board <id> ticket <id> via client <client-id>`,
+  ohne Inhalte.
+- **Grenzen je Person und Stunde:** 60 neue Vorgänge, 120 Kommentare, davon 10 an Kundensichtbares,
+  60 Anhänge, 120 sonstige Änderungen; lesen 1200.
 
 ## Ausschalten
 

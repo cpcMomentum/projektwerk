@@ -84,6 +84,7 @@ class StepService {
 		$step->setDueDate($this->parseDueDate($dueDate));
 		$step->setPosition($this->nextPosition($ticketId));
 		$step->setCreatedAt(new \DateTime());
+		$step->setCreatedVia($viewer->via);
 
 		$neu = $this->applyAssignment($step, $ticket, $viewer, $assignedUserId);
 		$gespeichert = $this->steps->insert($step);
@@ -182,6 +183,7 @@ class StepService {
 			$viewer->userId,
 			MailOutbox::EVENT_STEP_ASSIGNED,
 			$stepTitle,
+			$viewer->via,
 		);
 		$this->notifications->deliver($vorgemerkt, $ticket);
 	}

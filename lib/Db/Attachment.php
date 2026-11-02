@@ -42,6 +42,8 @@ use OCP\DB\Types;
  * @method void setUploadedBy(string $uploadedBy)
  * @method DateTime getCreatedAt()
  * @method void setCreatedAt(DateTime $createdAt)
+ * @method ?string getCreatedVia()
+ * @method void setCreatedVia(?string $createdVia)
  */
 class Attachment extends Entity implements JsonSerializable {
 
@@ -61,6 +63,7 @@ class Attachment extends Entity implements JsonSerializable {
 	protected ?string $location = null;
 	protected ?string $uploadedBy = null;
 	protected ?DateTime $createdAt = null;
+	protected ?string $createdVia = null;
 
 	public function __construct() {
 		$this->addType('ticketId', Types::INTEGER);
@@ -70,6 +73,7 @@ class Attachment extends Entity implements JsonSerializable {
 		$this->addType('location', Types::STRING);
 		$this->addType('uploadedBy', Types::STRING);
 		$this->addType('createdAt', Types::DATETIME);
+		$this->addType('createdVia', Types::STRING);
 	}
 
 	public function jsonSerialize(): array {
@@ -82,6 +86,7 @@ class Attachment extends Entity implements JsonSerializable {
 			'location' => $this->getLocation(),
 			'uploadedBy' => $this->getUploadedBy(),
 			'createdAt' => $this->getCreatedAt()?->format(DateTime::ATOM),
+			'createdVia' => $this->getCreatedVia(),
 		];
 	}
 }

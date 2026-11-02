@@ -68,6 +68,8 @@ use OCP\DB\Types;
  * @method void setActorUid(?string $actorUid)
  * @method ?string getStepTitle()
  * @method void setStepTitle(?string $stepTitle)
+ * @method ?string getActorVia()
+ * @method void setActorVia(?string $actorVia)
  * @method ?string getReplyToken()
  * @method void setReplyToken(?string $replyToken)
  * @method ?string getSentMessageId()
@@ -145,6 +147,7 @@ class MailOutbox extends Entity {
 	protected ?DateTime $sentAt = null;
 	protected ?string $actorUid = null;
 	protected ?string $stepTitle = null;
+	protected ?string $actorVia = null;
 
 	/**
 	 * Pro-Zeile-Anker für Antworten per E-Mail (#285).
@@ -180,6 +183,7 @@ class MailOutbox extends Entity {
 		$this->addType('sentAt', Types::DATETIME);
 		$this->addType('actorUid', Types::STRING);
 		$this->addType('stepTitle', Types::STRING);
+		$this->addType('actorVia', Types::STRING);
 		$this->addType('replyToken', Types::STRING);
 		$this->addType('sentMessageId', Types::STRING);
 	}

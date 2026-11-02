@@ -108,8 +108,9 @@ class MailDispatcher {
 	 * @param int $boardId Das Projekt — der Schalter kann projektweise stehen.
 	 * @param string|null $actorUid Wer den Anlass ausgelöst hat (für „von wem").
 	 * @param string|null $stepTitle Titel des zugewiesenen Schritts, eingefroren.
+	 * @param string|null $actorVia Herkunft der Handlung, siehe ViewerContext::$via.
 	 */
-	public function queue(string $recipientUid, int $ticketId, string $event, int $boardId, ?string $actorUid = null, ?string $stepTitle = null): ?MailOutbox {
+	public function queue(string $recipientUid, int $ticketId, string $event, int $boardId, ?string $actorUid = null, ?string $stepTitle = null, ?string $actorVia = null): ?MailOutbox {
 		// **Ohne Projekt.** Der Kanal ist global — „wie werde ich benachrichtigt"
 		// beantwortet niemand je Projekt anders. Ob dieser Anlass in diesem
 		// Projekt ueberhaupt zaehlt, hat der NotificationService schon
@@ -139,6 +140,7 @@ class MailDispatcher {
 			$unterdrueckt->setCreatedAt(new \DateTime());
 			$unterdrueckt->setActorUid($actorUid);
 			$unterdrueckt->setStepTitle($stepTitle);
+			$unterdrueckt->setActorVia($actorVia);
 			// Jede neue Zeile trägt einen Token (#285) — auch die unterdrückte,
 			// damit „jede Outbox-Zeile hat einen Token" ohne Ausnahme gilt.
 			$unterdrueckt->setReplyToken(self::neuerReplyToken());
@@ -161,6 +163,7 @@ class MailDispatcher {
 		$zeile->setCreatedAt(new \DateTime());
 		$zeile->setActorUid($actorUid);
 		$zeile->setStepTitle($stepTitle);
+		$zeile->setActorVia($actorVia);
 		// **Der Antwort-Token entsteht hier, beim Vormerken** (#285) — nicht beim
 		// Senden. Der Nachversand ({@see \OCA\Projektwerk\BackgroundJob\MailRetryJob})
 		// fasst dieselbe Zeile wieder an und darf keinen zweiten Token vergeben,

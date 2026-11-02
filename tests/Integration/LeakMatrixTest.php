@@ -49,6 +49,7 @@ use OCA\Projektwerk\Mcp\ToolResult;
 use OCA\Projektwerk\Mcp\Tools\GetTicket;
 use OCA\Projektwerk\Mcp\Tools\ListBoards;
 use OCA\Projektwerk\Mcp\Tools\ListColumns;
+use OCA\Projektwerk\Mcp\Tools\ListMembers;
 use OCA\Projektwerk\Mcp\Tools\ListTickets;
 use OCA\Projektwerk\Service\BoardReadModel;
 use OCA\Projektwerk\Service\TicketReadModel;
@@ -322,6 +323,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'list_columns' => 'testMcpToolsMatchTheirRestTwins',
 		'list_tickets' => 'testMcpToolsMatchTheirRestTwins',
 		'get_ticket' => 'testMcpToolsMatchTheirRestTwins',
+		'list_members' => 'testMcpToolsMatchTheirRestTwins',
 	];
 
 	/**
@@ -2072,12 +2074,17 @@ class LeakMatrixTest extends IntegrationTestCase {
 
 			$columns = Server::get(ListColumns::class)->call($caller, ['board_id' => $boardId]);
 			$tickets = Server::get(ListTickets::class)->call($caller, ['board_id' => $boardId]);
+			$members = Server::get(ListMembers::class)->call($caller, ['board_id' => $boardId]);
 			if ($userId === self::FREMD) {
+				$this->assertSame($notFound, ToolResult::encode($members->toArray()), 'list_members für das Nichtmitglied');
 				$this->assertSame($notFound, ToolResult::encode($columns->toArray()), 'list_columns für das Nichtmitglied');
 				$this->assertSame($notFound, ToolResult::encode($tickets->toArray()), 'list_tickets für das Nichtmitglied');
 			} else {
 				$restColumns = array_map(static fn ($c): int => (int)$c->getId(), $this->boardController($userId)->show($boardId)->getData()['columns']);
 				$this->assertSame($restColumns, array_column($columns->structured()['columns'], 'id'), $userId . ': list_columns');
+
+				$restMembers = array_column($this->boardController($userId)->show($boardId)->getData()['members'], 'userId');
+				$this->assertSame($restMembers, array_column($members->structured()['members'], 'userId'), $userId . ': list_members');
 
 				$restTickets = array_map(static fn ($t): int => (int)$t->getId(), $this->ticketController($userId)->index($boardId)->getData()['tickets']);
 				$mcpTickets = array_column($tickets->structured()['tickets'], 'id');

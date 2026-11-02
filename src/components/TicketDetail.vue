@@ -349,7 +349,7 @@
 							:hideStatus="true" />
 						<span class="pw-person__body">
 							<span class="pw-person__name">{{ nameOf(ticket.creatorUserId) }}</span>
-							<span class="pw-person__org">{{ orgLine(ticket.creatorUserId, ticket.creatorRole, t('projektwerk', 'angelegt')) }}</span>
+							<span class="pw-person__org">{{ orgLine(ticket.creatorUserId, ticket.creatorRole, ticket.createdVia === 'tool' ? t('projektwerk', 'angelegt über KI-Werkzeug') : t('projektwerk', 'angelegt')) }}</span>
 						</span>
 					</div>
 
