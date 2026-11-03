@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace OCA\Projektwerk\Tests\Unit\Service;
 
+use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Db\Board;
 use OCA\Projektwerk\Db\BoardMapper;
 use OCA\Projektwerk\Db\MailOutbox;
@@ -195,5 +196,17 @@ class MailComposerTest extends TestCase {
 
 		$this->assertStringNotContainsString('geloeschtes-konto', $text['einleitung']);
 		$this->assertStringContainsString('neuen Kommentar', $text['einleitung']);
+	}
+
+	public function testAnActionViaAnAiToolSaysSoInTheMail(): void {
+		$composer = new MailComposer($this->users(['anna' => 'Anna Reuter']), $this->boards([7 => 'Relaunch Website']));
+		$zeile = $this->zeile(MailOutbox::EVENT_COMMENT_ADDED, 'anna');
+		$zeile->setActorVia(ViewerContext::VIA_TOOL);
+
+		$viaTool = $composer->compose($zeile, $this->ticket(7, 'Logo liefern', 7), $this->l10n());
+		$browser = $composer->compose($this->zeile(MailOutbox::EVENT_COMMENT_ADDED, 'anna'), $this->ticket(7, 'Logo liefern', 7), $this->l10n());
+
+		$this->assertStringContainsString('Anna Reuter (über KI-Werkzeug)', $viaTool['einleitung']);
+		$this->assertStringNotContainsString('KI-Werkzeug', $browser['einleitung']);
 	}
 }

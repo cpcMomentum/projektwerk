@@ -58,6 +58,15 @@ class BoardReadModel {
 	}
 
 	/**
+	 * Nur die Mitglieder, mit aufgelöstem Anzeigenamen.
+	 *
+	 * @return list<array<string, mixed>>
+	 */
+	public function members(ViewerContext $viewer): array {
+		return $this->members->listForBoard($viewer);
+	}
+
+	/**
 	 * Ein Board mit Mitgliedern, Spalten und der eigenen Rolle.
 	 *
 	 * @return array<string, mixed>

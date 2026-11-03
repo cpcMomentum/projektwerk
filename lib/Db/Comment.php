@@ -29,6 +29,8 @@ use OCP\DB\Types;
  * @method void setBody(string $body)
  * @method DateTime getCreatedAt()
  * @method void setCreatedAt(DateTime $createdAt)
+ * @method ?string getCreatedVia()
+ * @method void setCreatedVia(?string $createdVia)
  * @method DateTime getUpdatedAt()
  * @method void setUpdatedAt(DateTime $updatedAt)
  */
@@ -38,6 +40,7 @@ class Comment extends Entity implements JsonSerializable {
 	protected ?string $authorUserId = null;
 	protected ?string $body = null;
 	protected ?DateTime $createdAt = null;
+	protected ?string $createdVia = null;
 	protected ?DateTime $updatedAt = null;
 
 	public function __construct() {
@@ -45,6 +48,7 @@ class Comment extends Entity implements JsonSerializable {
 		$this->addType('authorUserId', Types::STRING);
 		$this->addType('body', Types::TEXT);
 		$this->addType('createdAt', Types::DATETIME);
+		$this->addType('createdVia', Types::STRING);
 		$this->addType('updatedAt', Types::DATETIME);
 	}
 
@@ -55,6 +59,7 @@ class Comment extends Entity implements JsonSerializable {
 			'authorUserId' => $this->getAuthorUserId(),
 			'body' => $this->getBody(),
 			'createdAt' => $this->getCreatedAt()?->format(DateTime::ATOM),
+			'createdVia' => $this->getCreatedVia(),
 			'updatedAt' => $this->getUpdatedAt()?->format(DateTime::ATOM),
 		];
 	}

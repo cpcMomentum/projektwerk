@@ -94,6 +94,7 @@ class AttachmentService {
 		$attachment->setFileName($file->getName());
 		$attachment->setLocation((string)$this->folders->locationFor($ticket));
 		$attachment->setUploadedBy($viewer->userId);
+		$attachment->setCreatedVia($viewer->via);
 		$attachment->setCreatedAt(new \DateTime());
 
 		return $this->attachments->insert($attachment);

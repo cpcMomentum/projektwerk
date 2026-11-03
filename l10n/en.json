@@ -527,7 +527,11 @@
 		"Board „{title}“ löschen?": "Delete board “{title}”?",
 		"Das Board enthält keine Vorgänge. Es wird mit seinen Spalten endgültig gelöscht; Dateien bleiben unberührt.": "The board contains no tickets. It will be deleted permanently together with its columns; files are not touched.",
 		"Das letzte Board eines Projekts kann nicht gelöscht werden.": "The last board of a project cannot be deleted.",
-		"Dieses Board kann nicht gelöscht werden.": "This board cannot be deleted."
+		"Dieses Board kann nicht gelöscht werden.": "This board cannot be deleted.",
+		"von {name} über KI-Werkzeug": "by {name} via AI tool",
+		"über KI-Werkzeug": "via AI tool",
+		"angelegt über KI-Werkzeug": "created via AI tool",
+		"%1$s (über KI-Werkzeug)": "%1$s (via AI tool)"
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }

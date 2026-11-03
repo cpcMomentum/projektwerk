@@ -83,6 +83,8 @@ use OCP\DB\Types;
  * @method void setGithubIssueUrl(?string $githubIssueUrl)
  * @method DateTime getCreatedAt()
  * @method void setCreatedAt(DateTime $createdAt)
+ * @method ?string getCreatedVia()
+ * @method void setCreatedVia(?string $createdVia)
  * @method DateTime getUpdatedAt()
  * @method void setUpdatedAt(DateTime $updatedAt)
  */
@@ -140,6 +142,7 @@ class Ticket extends Entity implements JsonSerializable {
 	protected ?int $githubIssueNumber = null;
 	protected ?string $githubIssueUrl = null;
 	protected ?DateTime $createdAt = null;
+	protected ?string $createdVia = null;
 	protected ?DateTime $updatedAt = null;
 
 	public function __construct() {
@@ -165,6 +168,7 @@ class Ticket extends Entity implements JsonSerializable {
 		$this->addType('githubIssueNumber', Types::INTEGER);
 		$this->addType('githubIssueUrl', Types::STRING);
 		$this->addType('createdAt', Types::DATETIME);
+		$this->addType('createdVia', Types::STRING);
 		$this->addType('updatedAt', Types::DATETIME);
 	}
 
@@ -228,6 +232,7 @@ class Ticket extends Entity implements JsonSerializable {
 			'githubIssueNumber' => $this->getGithubIssueNumber(),
 			'githubIssueUrl' => $this->getGithubIssueUrl(),
 			'createdAt' => $this->getCreatedAt()?->format(DateTime::ATOM),
+			'createdVia' => $this->getCreatedVia(),
 			'updatedAt' => $this->getUpdatedAt()?->format(DateTime::ATOM),
 		];
 	}

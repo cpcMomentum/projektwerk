@@ -1,4 +1,23 @@
 {
+	"0.4.22": [
+		{
+			"title": {
+				"de": "Mit Claude in ProjektWerk arbeiten",
+				"en": "Work in ProjektWerk with Claude"
+			},
+			"text": {
+				"de": "Über den KI-Zugang kann Claude jetzt Vorgänge anlegen, Personen zuordnen, kommentieren, Arbeitsschritte abhaken, Dateien anhängen und abschließen. Alles erscheint unter deinem Namen mit dem Zusatz „über KI-Werkzeug“. Bei Vorgängen, die der Kunde sieht, fragt Claude vorher nach.",
+				"en": "Through the AI connector, Claude can now create tickets, assign people, comment, tick off work steps, attach files and close tickets. Everything appears under your name, marked “via AI tool”. For tickets the customer can see, Claude asks you first."
+			},
+			"icon": "file-document",
+			"where": {
+				"de": "In Claude (claude.ai, Desktop, Claude Code)",
+				"en": "In Claude (claude.ai, desktop, Claude Code)"
+			},
+			"adminOnly": false,
+			"plus": false
+		}
+	],
 	"0.4.20": [
 		{
 			"title": {

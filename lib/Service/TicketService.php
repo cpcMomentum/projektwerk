@@ -304,6 +304,8 @@ class TicketService {
 				$neuZugewiesen,
 				$viewer->userId,
 				MailOutbox::EVENT_TICKET_ASSIGNED,
+				null,
+				$viewer->via,
 			);
 			$this->notifications->deliver($vorgemerkt, $gespeichert);
 		}
@@ -320,6 +322,8 @@ class TicketService {
 				$gespeichert,
 				$viewer->userId,
 				MailOutbox::EVENT_TICKET_CLOSED,
+				[],
+				$viewer->via,
 			);
 			$this->notifications->deliver($vorgemerkt, $gespeichert);
 		}
@@ -731,6 +735,7 @@ class TicketService {
 			// Symmetrie von `internal`, sobald jemand die Rolle wechselt oder
 			// das Board verlässt.
 			$ticket->setCreatorRole($viewer->role);
+			$ticket->setCreatedVia($viewer->via);
 
 			// **Dieselbe Pruefung wie beim Aendern.** Sie loest hier heute keine
 			// Mail aus — `create()` benachrichtigt nicht —, aber ohne sie

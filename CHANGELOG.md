@@ -6,6 +6,16 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Added
+
+- **Schreiben über den KI-Zugang (MCP)** (#389): Claude kann Vorgänge anlegen und ändern (Zuständige,
+  Fälligkeit), verschieben, abschließen, Arbeitsschritte anlegen, zuweisen und abhaken, kommentieren
+  und Dateien anhängen (direkt mitgeschickt oder aus der eigenen Nextcloud), dazu Vorgänge nach GitHub
+  übertragen und die Board-Mitglieder lesen. Es gelten dieselben Rechte wie im Browser, Gäste bleiben
+  ausgeschlossen. Änderungen an kundensichtbaren Vorgängen lehnt der Server ohne ausdrückliche
+  Bestätigung ab. Kommentare, Vorgänge, Schritte, Anhänge und Benachrichtigungen tragen „über
+  KI-Werkzeug“; jede Änderung landet im Audit-Log von Nextcloud. Migration 24 ergänzt die Herkunft.
+
 ## [0.4.21] - 2026-11-01
 
 ### Fixed

@@ -63,7 +63,7 @@ class JsonRpcDispatcherTest extends TestCase {
 		$appManager->method('getAppVersion')->willReturn('0.4.18');
 
 		$this->dispatcher = new JsonRpcDispatcher(
-			new ToolRegistry($this->listBoards, ...$others),
+			new ToolRegistry($this->listBoards, ...$others, ...$this->writeToolStubs()),
 			new SchemaValidator(),
 			$this->rateLimiter,
 			$appManager,
@@ -164,7 +164,10 @@ class JsonRpcDispatcherTest extends TestCase {
 		$response = $this->dispatcher->dispatch($this->request('tools/list'), $this->legacyHeaders(), $this->caller);
 		$tools = $this->resultOf($response)['tools'];
 
-		$this->assertSame(['get_ticket', 'list_boards', 'list_columns', 'list_tickets'], array_column($tools, 'name'));
+		$this->assertSame(
+			['add_attachment', 'add_comment', 'add_step', 'attach_file', 'close_ticket', 'create_ticket', 'get_ticket', 'list_boards', 'list_columns', 'list_members', 'list_tickets', 'move_ticket', 'transfer_to_github', 'update_step', 'update_ticket'],
+			array_column($tools, 'name'),
+		);
 		$json = json_encode($response->body);
 		$this->assertStringContainsString('"properties":{}', $json, 'Leere properties müssen als Objekt hinaus.');
 	}
@@ -209,6 +212,7 @@ class JsonRpcDispatcherTest extends TestCase {
 			$this->createStub(ListColumns::class),
 			$this->createStub(ListTickets::class),
 			$this->createStub(GetTicket::class),
+			...$this->writeToolStubs(),
 		), new SchemaValidator(), $limiter, $appManager);
 
 		$response = $dispatcher->dispatch($this->request('tools/call', ['name' => 'list_boards']), $this->legacyHeaders(), $this->caller);
@@ -248,5 +252,31 @@ class JsonRpcDispatcherTest extends TestCase {
 		$this->assertSame(200, $response->status, (string)json_encode($response->body));
 
 		return json_decode((string)json_encode($response->body['result']), true);
+	}
+
+	/**
+	 * @return list<\OCA\Projektwerk\Mcp\Tool> in Konstruktor-Reihenfolge von ToolRegistry, je mit eigenem Namen
+	 */
+	private function writeToolStubs(): array {
+		$stubs = [];
+		foreach ([
+			\OCA\Projektwerk\Mcp\Tools\ListMembers::class => 'list_members',
+			\OCA\Projektwerk\Mcp\Tools\CreateTicket::class => 'create_ticket',
+			\OCA\Projektwerk\Mcp\Tools\UpdateTicket::class => 'update_ticket',
+			\OCA\Projektwerk\Mcp\Tools\MoveTicket::class => 'move_ticket',
+			\OCA\Projektwerk\Mcp\Tools\CloseTicket::class => 'close_ticket',
+			\OCA\Projektwerk\Mcp\Tools\AddStep::class => 'add_step',
+			\OCA\Projektwerk\Mcp\Tools\UpdateStep::class => 'update_step',
+			\OCA\Projektwerk\Mcp\Tools\AddComment::class => 'add_comment',
+			\OCA\Projektwerk\Mcp\Tools\AddAttachment::class => 'add_attachment',
+			\OCA\Projektwerk\Mcp\Tools\AttachFile::class => 'attach_file',
+			\OCA\Projektwerk\Mcp\Tools\TransferToGithub::class => 'transfer_to_github',
+		] as $class => $name) {
+			$stub = $this->createStub($class);
+			$stub->method('name')->willReturn($name);
+			$stubs[] = $stub;
+		}
+
+		return $stubs;
 	}
 }
