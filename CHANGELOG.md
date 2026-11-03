@@ -6,6 +6,8 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.4.22] - 2026-11-03
+
 ### Added
 
 - **Schreiben über den KI-Zugang (MCP)** (#389): Claude kann Vorgänge anlegen und ändern (Zuständige,
