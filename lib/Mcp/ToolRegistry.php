@@ -9,10 +9,21 @@ declare(strict_types=1);
 
 namespace OCA\Projektwerk\Mcp;
 
+use OCA\Projektwerk\Mcp\Tools\AddAttachment;
+use OCA\Projektwerk\Mcp\Tools\AddComment;
+use OCA\Projektwerk\Mcp\Tools\AddStep;
+use OCA\Projektwerk\Mcp\Tools\AttachFile;
+use OCA\Projektwerk\Mcp\Tools\CloseTicket;
+use OCA\Projektwerk\Mcp\Tools\CreateTicket;
 use OCA\Projektwerk\Mcp\Tools\GetTicket;
 use OCA\Projektwerk\Mcp\Tools\ListBoards;
 use OCA\Projektwerk\Mcp\Tools\ListColumns;
+use OCA\Projektwerk\Mcp\Tools\ListMembers;
 use OCA\Projektwerk\Mcp\Tools\ListTickets;
+use OCA\Projektwerk\Mcp\Tools\MoveTicket;
+use OCA\Projektwerk\Mcp\Tools\TransferToGithub;
+use OCA\Projektwerk\Mcp\Tools\UpdateStep;
+use OCA\Projektwerk\Mcp\Tools\UpdateTicket;
 
 /**
  * Die freigeschalteten Werkzeuge, in fester Reihenfolge (Modelle cachen die Liste).
@@ -27,8 +38,21 @@ class ToolRegistry {
 		ListColumns $listColumns,
 		ListTickets $listTickets,
 		GetTicket $getTicket,
+		ListMembers $listMembers,
+		CreateTicket $createTicket,
+		UpdateTicket $updateTicket,
+		MoveTicket $moveTicket,
+		CloseTicket $closeTicket,
+		AddStep $addStep,
+		UpdateStep $updateStep,
+		AddComment $addComment,
+		AddAttachment $addAttachment,
+		AttachFile $attachFile,
+		TransferToGithub $transferToGithub,
 	) {
-		foreach ([$listBoards, $listColumns, $listTickets, $getTicket] as $tool) {
+		$all = [$listBoards, $listColumns, $listTickets, $getTicket, $listMembers, $createTicket, $updateTicket, $moveTicket,
+			$closeTicket, $addStep, $updateStep, $addComment, $addAttachment, $attachFile, $transferToGithub];
+		foreach ($all as $tool) {
 			$this->tools[$tool->name()] = $tool;
 		}
 		ksort($this->tools);

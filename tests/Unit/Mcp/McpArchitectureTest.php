@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OCA\Projektwerk\Tests\Unit\Mcp;
 
 use OCA\Projektwerk\Mcp\Tool;
+use OCA\Projektwerk\Mcp\Tools\WriteTool;
 use OCA\Projektwerk\Tests\ReadPathRegistry;
 use PHPUnit\Framework\TestCase;
 
@@ -90,6 +91,21 @@ class McpArchitectureTest extends TestCase {
 		}
 	}
 
+	public function testEveryWritingToolGoesThroughTheGuardAndTheAudit(): void {
+		$writers = [];
+		foreach ($this->tools() as $tool) {
+			if ($tool->annotations()['readOnlyHint'] === true) {
+				continue;
+			}
+			$writers[] = $tool->name();
+			$this->assertInstanceOf(WriteTool::class, $tool, $tool->name() . ' muss über WriteTool laufen (Budget, Audit).');
+			$source = (string)file_get_contents((string)(new \ReflectionClass($tool))->getFileName());
+			$this->assertStringContainsString('$this->guard->', $source, $tool->name() . ' muss die PublicGuard fragen.');
+			$this->assertArrayHasKey('confirm_public', $tool->inputSchema()['properties'], $tool->name());
+		}
+		$this->assertNotEmpty($writers);
+	}
+
 	/**
 	 * @return list<Tool> ohne Abhängigkeiten gebaut; Name, Schema und Annotations brauchen keine
 	 */
@@ -98,7 +114,7 @@ class McpArchitectureTest extends TestCase {
 		foreach (glob(self::LIB . '/Mcp/Tools/*.php') as $file) {
 			$class = 'OCA\\Projektwerk\\Mcp\\Tools\\' . basename($file, '.php');
 			$reflection = new \ReflectionClass($class);
-			if ($reflection->implementsInterface(Tool::class)) {
+			if ($reflection->implementsInterface(Tool::class) && !$reflection->isAbstract()) {
 				$tools[] = $reflection->newInstanceWithoutConstructor();
 			}
 		}

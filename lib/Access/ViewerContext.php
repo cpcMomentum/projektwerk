@@ -46,8 +46,12 @@ final readonly class ViewerContext {
 		 * board-bezogene (statt projektweite) Berechtigung der App.
 		 */
 		public bool $isBoardCreator,
+		/** Herkunft: `null` = Browser, {@see VIA_TOOL} = KI-Werkzeug über MCP. */
+		public ?string $via = null,
 	) {
 	}
+
+	public const VIA_TOOL = 'tool';
 
 	/**
 	 * Einzige Tuer. Nur `BoardAccess` darf sie benutzen — durchgesetzt vom
@@ -70,6 +74,13 @@ final readonly class ViewerContext {
 		// isBoardCreator bleibt davon unberuehrt: Ein externes Mitglied DARF sein
 		// selbst angelegtes Board einrichten (#281) — das ist der Sinn des Rechts.
 		return new self($userId, $boardId, $projectId, $role, $isManager && $role === self::ROLE_INTERNAL, $isBoardCreator);
+	}
+
+	/**
+	 * Derselbe geprüfte Betrachter, gekennzeichnet als Handeln über ein KI-Werkzeug.
+	 */
+	public function viaTool(): self {
+		return new self($this->userId, $this->boardId, $this->projectId, $this->role, $this->isManager, $this->isBoardCreator, self::VIA_TOOL);
 	}
 
 	public function isInternal(): bool {

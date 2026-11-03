@@ -79,6 +79,7 @@ class CommentService {
 		$comment = new Comment();
 		$comment->setTicketId($ticketId);
 		$comment->setAuthorUserId($viewer->userId);
+		$comment->setCreatedVia($viewer->via);
 		$comment->setBody($text);
 		$comment->setCreatedAt($now);
 		// Gleich mitgesetzt, nicht nur weil die Spalte `notnull` ist: So heisst
@@ -119,7 +120,7 @@ class CommentService {
 		// Der Versand haengt bewusst **hinter** dem Insert: Ein toter Mailserver
 		// darf einen geschriebenen Kommentar nicht mitreissen. Dieselbe
 		// Reihenfolge wie bei Ticket und Arbeitsschritt.
-		$vorgemerkt = $this->notifications->announceComment($ticket, $viewer->userId, $erwaehntUids);
+		$vorgemerkt = $this->notifications->announceComment($ticket, $viewer->userId, $erwaehntUids, $viewer->via);
 		$this->notifications->deliver($vorgemerkt, $ticket);
 
 		return $gespeichert;

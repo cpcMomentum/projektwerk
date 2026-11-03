@@ -44,4 +44,16 @@ class ViewerContextTest extends TestCase {
 		$this->assertTrue($viewer->isBoardCreator, 'Externer Ersteller behält das Recht');
 		$this->assertFalse($viewer->isManager, 'Extern ist nie Manager (§8)');
 	}
+
+	public function testViaToolKeepsTheCheckedMembershipAndOnlyAddsTheOrigin(): void {
+		$viewer = ViewerContext::forMember('u', 1, 9, ViewerContext::ROLE_INTERNAL, true, true);
+		$tool = $viewer->viaTool();
+
+		$this->assertNull($viewer->via, 'Der Browser bleibt ohne Herkunft.');
+		$this->assertSame(ViewerContext::VIA_TOOL, $tool->via);
+		$this->assertSame(
+			[$viewer->userId, $viewer->boardId, $viewer->projectId, $viewer->role, $viewer->isManager, $viewer->isBoardCreator],
+			[$tool->userId, $tool->boardId, $tool->projectId, $tool->role, $tool->isManager, $tool->isBoardCreator],
+		);
+	}
 }

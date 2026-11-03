@@ -85,12 +85,12 @@ class NotificationService {
 	 * @param string|null $stepTitle Bei einer Schritt-Zuweisung der Schritt-Titel, sonst null.
 	 * @return MailOutbox[] Was nach dem Commit zu senden ist.
 	 */
-	public function announce(Ticket $ticket, string $recipientUid, string $actorUid, string $event, ?string $stepTitle = null): array {
+	public function announce(Ticket $ticket, string $recipientUid, string $actorUid, string $event, ?string $stepTitle = null, ?string $actorVia = null): array {
 		if (!$this->greift($ticket, $recipientUid, $actorUid, $event)) {
 			return [];
 		}
 
-		return $this->zustellen($ticket, $recipientUid, $actorUid, $event, $stepTitle);
+		return $this->zustellen($ticket, $recipientUid, $actorUid, $event, $stepTitle, $actorVia);
 	}
 
 	/**
@@ -105,10 +105,10 @@ class NotificationService {
 	 * @param string $event Einer der `EVENT_*`-Werte aus {@see MailOutbox}.
 	 * @return MailOutbox[] Die Mail-Zeile, falls eine entsteht; sonst leer.
 	 */
-	private function zustellen(Ticket $ticket, string $recipientUid, string $actorUid, string $event, ?string $stepTitle = null): array {
+	private function zustellen(Ticket $ticket, string $recipientUid, string $actorUid, string $event, ?string $stepTitle = null, ?string $actorVia = null): array {
 		$this->bell($ticket, $recipientUid, $event);
 
-		$zeile = $this->mail->queue($recipientUid, (int)$ticket->getId(), $event, (int)$ticket->getBoardId(), $actorUid, $stepTitle);
+		$zeile = $this->mail->queue($recipientUid, (int)$ticket->getId(), $event, (int)$ticket->getBoardId(), $actorUid, $stepTitle, $actorVia);
 
 		return $zeile === null ? [] : [$zeile];
 	}
@@ -163,7 +163,7 @@ class NotificationService {
 	 * @param string[] $mentionUids Die erwähnten, sichtberechtigten Kennungen.
 	 * @return MailOutbox[] Was nach dem Commit zu senden ist.
 	 */
-	public function announceComment(Ticket $ticket, string $actorUid, array $mentionUids): array {
+	public function announceComment(Ticket $ticket, string $actorUid, array $mentionUids, ?string $actorVia = null): array {
 		// Erst die Erwähnungen — und zugleich merken, wen sie tatsächlich
 		// erreichen. Nur diese fallen aus dem Rundruf. `greift()` wird je Person
 		// genau einmal ausgewertet: Es entscheidet den Ausschluss und schaltet
@@ -175,10 +175,10 @@ class NotificationService {
 				continue;
 			}
 			$erreicht[] = $uid;
-			$erwaehnt = [...$erwaehnt, ...$this->zustellen($ticket, $uid, $actorUid, MailOutbox::EVENT_COMMENT_MENTION)];
+			$erwaehnt = [...$erwaehnt, ...$this->zustellen($ticket, $uid, $actorUid, MailOutbox::EVENT_COMMENT_MENTION, null, $actorVia)];
 		}
 
-		$vorgemerkt = $this->announceToInvolved($ticket, $actorUid, MailOutbox::EVENT_COMMENT_ADDED, $erreicht);
+		$vorgemerkt = $this->announceToInvolved($ticket, $actorUid, MailOutbox::EVENT_COMMENT_ADDED, $erreicht, $actorVia);
 
 		return [...$vorgemerkt, ...$erwaehnt];
 	}
@@ -223,7 +223,7 @@ class NotificationService {
 	 * @param string[] $exclude Kennungen, die bereits anderweitig bedient werden und deshalb übersprungen werden.
 	 * @return MailOutbox[] Was nach dem Commit zu senden ist.
 	 */
-	public function announceToInvolved(Ticket $ticket, string $actorUid, string $event, array $exclude = []): array {
+	public function announceToInvolved(Ticket $ticket, string $actorUid, string $event, array $exclude = [], ?string $actorVia = null): array {
 		$ticketId = (int)$ticket->getId();
 
 		$beteiligte = [
@@ -244,7 +244,7 @@ class NotificationService {
 			if (in_array($uid, $exclude, true)) {
 				continue;
 			}
-			$vorgemerkt = [...$vorgemerkt, ...$this->announce($ticket, $uid, $actorUid, $event)];
+			$vorgemerkt = [...$vorgemerkt, ...$this->announce($ticket, $uid, $actorUid, $event, null, $actorVia)];
 		}
 
 		return $vorgemerkt;

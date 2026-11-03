@@ -52,6 +52,8 @@ use OCP\DB\Types;
  * @method void setPosition(int $position)
  * @method DateTime getCreatedAt()
  * @method void setCreatedAt(DateTime $createdAt)
+ * @method ?string getCreatedVia()
+ * @method void setCreatedVia(?string $createdVia)
  */
 class Step extends Entity implements JsonSerializable {
 
@@ -67,6 +69,7 @@ class Step extends Entity implements JsonSerializable {
 	protected ?DateTime $dueDate = null;
 	protected ?int $position = null;
 	protected ?DateTime $createdAt = null;
+	protected ?string $createdVia = null;
 
 	public function __construct() {
 		$this->addType('ticketId', Types::INTEGER);
@@ -81,6 +84,7 @@ class Step extends Entity implements JsonSerializable {
 		$this->addType('dueDate', Types::DATE);
 		$this->addType('position', Types::INTEGER);
 		$this->addType('createdAt', Types::DATETIME);
+		$this->addType('createdVia', Types::STRING);
 	}
 
 	public function isDone(): bool {
@@ -112,6 +116,7 @@ class Step extends Entity implements JsonSerializable {
 			'dueDate' => $this->getDueDate()?->format('Y-m-d'),
 			'position' => $this->getPosition(),
 			'createdAt' => $this->getCreatedAt()?->format(DateTime::ATOM),
+			'createdVia' => $this->getCreatedVia(),
 		];
 	}
 }

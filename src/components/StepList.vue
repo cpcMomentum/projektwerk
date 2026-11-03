@@ -66,6 +66,9 @@
 							:hideStatus="true" />
 						{{ infoFor(step) }}
 					</span>
+					<span v-if="step.createdVia === 'tool'" class="pw-step__info">
+						{{ t('projektwerk', 'über KI-Werkzeug') }}
+					</span>
 					<NcButton
 						variant="tertiary"
 						:ariaLabel="t('projektwerk', 'Arbeitsschritt bearbeiten: {title}', { title: step.title })"
