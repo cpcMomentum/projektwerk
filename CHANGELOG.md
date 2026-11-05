@@ -6,6 +6,11 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Zuständigen und Beschreibung im Browser leeren** (#399): Ein abgewählter Zuständiger und eine geleerte
+  Beschreibung blieben gespeichert, weil der Server ein gesendetes `null` als „nicht geschickt“ verwarf.
+
 ### Added
 
 - **Arbeiten bei schlechter Verbindung** (#400): Neue Vorgänge, Arbeitsschritte, Kommentare und Haken
