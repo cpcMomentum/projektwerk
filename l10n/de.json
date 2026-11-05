@@ -531,7 +531,33 @@
 		"von {name} über KI-Werkzeug": "von {name} über KI-Werkzeug",
 		"über KI-Werkzeug": "über KI-Werkzeug",
 		"angelegt über KI-Werkzeug": "angelegt über KI-Werkzeug",
-		"%1$s (über KI-Werkzeug)": "%1$s (über KI-Werkzeug)"
+		"%1$s (über KI-Werkzeug)": "%1$s (über KI-Werkzeug)",
+		"Nicht gespeichert: {reason}": "Nicht gespeichert: {reason}",
+		"Erneut versuchen": "Erneut versuchen",
+		"Verwerfen": "Verwerfen",
+		"Noch nicht gespeichert. Anhänge, Sichtbarkeit, Verschieben und Abschließen gehen, sobald der Vorgang gespeichert ist.": "Noch nicht gespeichert. Anhänge, Sichtbarkeit, Verschieben und Abschließen gehen, sobald der Vorgang gespeichert ist.",
+		"Der Vorgang wird gerade gesendet. Änderungen sind gleich danach möglich.": "Der Vorgang wird gerade gesendet. Änderungen sind gleich danach möglich.",
+		"Keine Verbindung, neuer Versuch folgt.": "Keine Verbindung, neuer Versuch folgt.",
+		"Der Vorgang ist nicht mehr da oder nicht mehr sichtbar.": "Der Vorgang ist nicht mehr da oder nicht mehr sichtbar.",
+		"Nicht gespeichert.": "Nicht gespeichert.",
+		"Jetzt senden": "Jetzt senden",
+		"_%n Änderung noch nicht gespeichert_::_%n Änderungen noch nicht gespeichert_": [
+			"%n Änderung noch nicht gespeichert",
+			"%n Änderungen noch nicht gespeichert"
+		],
+		"_%n Änderung abgelehnt, bitte prüfen_::_%n Änderungen abgelehnt, bitte prüfen_": [
+			"%n Änderung abgelehnt, bitte prüfen",
+			"%n Änderungen abgelehnt, bitte prüfen"
+		],
+		"Ungültige Kennung für die Anfrage.": "Ungültige Kennung für die Anfrage.",
+		"Die Anfrage wird gerade bearbeitet.": "Die Anfrage wird gerade bearbeitet.",
+		"Diese Kennung wurde bereits für eine andere Anfrage verwendet.": "Diese Kennung wurde bereits für eine andere Anfrage verwendet.",
+		"Wird gespeichert …": "Wird gespeichert …",
+		"Vorgang „{title}“": "Vorgang „{title}“",
+		"Arbeitsschritt „{title}“": "Arbeitsschritt „{title}“",
+		"Kommentar „{text}“": "Kommentar „{text}“",
+		"Arbeitsschritt abhaken": "Arbeitsschritt abhaken",
+		"Haken entfernen": "Haken entfernen"
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }

@@ -67,6 +67,51 @@ export function apiUrl(path: string): string {
  *
  * @param response
  */
+// Ohne Grenze wartet eine Anfrage in einem Funkloch unbegrenzt, und die Maske bleibt gesperrt.
+export const REQUEST_TIMEOUT_MS = 20000
+const UPLOAD_TIMEOUT_MS = 300000
+
+export interface WriteOptions {
+	/** Gleiche Kennung bei jeder Wiederholung derselben Anlage; der Server legt dann nur einmal an. */
+	idempotencyKey?: string
+}
+
+/**
+ * @param options Kennung der Anlage, falls vorhanden.
+ * @param timeout Zeitgrenze in Millisekunden.
+ */
+function writeConfig(options?: WriteOptions, timeout = REQUEST_TIMEOUT_MS) {
+	return {
+		timeout,
+		headers: options?.idempotencyKey !== undefined ? { 'Idempotency-Key': options.idempotencyKey } : undefined,
+	}
+}
+
+/**
+ * Lohnt sich ein erneuter Versuch? Kein Netz, Zeitüberschreitung, Server überlastet, oder die erste Anfrage mit derselben Kennung läuft noch (409).
+ *
+ * @param error Der Fehler aus einem Aufruf dieser Datei.
+ * @param idempotent Die Anfrage trug eine Kennung; nur dann ist 409 „läuft noch“ statt Versionskonflikt.
+ */
+export function isTransient(error: ApiError, idempotent = false): boolean {
+	if (error.notJson) {
+		return error.status >= 500 && error.status !== 501
+	}
+
+	return error.status === 0
+		|| error.status === 408
+		|| error.status === 425
+		|| error.status === 429
+		|| error.status === 502
+		|| error.status === 503
+		|| error.status === 504
+		|| (idempotent && error.status === 409)
+}
+
+/**
+ *
+ * @param response
+ */
 function looksLikeJson(response: AxiosResponse | undefined): boolean {
 	if (response === undefined) {
 		// Gar keine Antwort: Netzfehler, Abbruch, Zeitüberschreitung. Das ist
@@ -242,7 +287,7 @@ function unwrap<T>(response: AxiosResponse<T>): T {
  */
 export async function apiGet<T>(path: string): Promise<T> {
 	try {
-		return unwrap(await axios.get<T>(apiUrl(path)))
+		return unwrap(await axios.get<T>(apiUrl(path), { timeout: REQUEST_TIMEOUT_MS }))
 	} catch (e) {
 		throw isApiError(e) ? e : wrapError(e)
 	}
@@ -253,10 +298,11 @@ export async function apiGet<T>(path: string): Promise<T> {
  *
  * @param path Pfad relativ zu `/apps/projektwerk/api/v1`.
  * @param body Nutzlast, wird als JSON gesendet.
+ * @param options Kennung der Anlage für Wiederholungen.
  */
-export async function apiPost<T, B = unknown>(path: string, body: B): Promise<T> {
+export async function apiPost<T, B = unknown>(path: string, body: B, options?: WriteOptions): Promise<T> {
 	try {
-		return unwrap(await axios.post<T>(apiUrl(path), body))
+		return unwrap(await axios.post<T>(apiUrl(path), body, writeConfig(options)))
 	} catch (e) {
 		throw isApiError(e) ? e : wrapError(e)
 	}
@@ -275,13 +321,14 @@ export async function apiPost<T, B = unknown>(path: string, body: B): Promise<T>
  *
  * @param path Pfad relativ zu `/apps/projektwerk/api/v1`.
  * @param file Die Datei aus dem Auswahlfeld.
+ * @param options Kennung der Anlage für Wiederholungen.
  */
-export async function apiUpload<T>(path: string, file: File): Promise<T> {
+export async function apiUpload<T>(path: string, file: File, options?: WriteOptions): Promise<T> {
 	const form = new FormData()
 	form.append('file', file, file.name)
 
 	try {
-		return unwrap(await axios.post<T>(apiUrl(path), form))
+		return unwrap(await axios.post<T>(apiUrl(path), form, writeConfig(options, UPLOAD_TIMEOUT_MS)))
 	} catch (e) {
 		throw isApiError(e) ? e : wrapError(e)
 	}
@@ -295,7 +342,7 @@ export async function apiUpload<T>(path: string, file: File): Promise<T> {
  */
 export async function apiPut<T, B = unknown>(path: string, body: B): Promise<T> {
 	try {
-		return unwrap(await axios.put<T>(apiUrl(path), body))
+		return unwrap(await axios.put<T>(apiUrl(path), body, writeConfig()))
 	} catch (e) {
 		throw isApiError(e) ? e : wrapError(e)
 	}
@@ -309,7 +356,7 @@ export async function apiPut<T, B = unknown>(path: string, body: B): Promise<T> 
  */
 export async function apiPatch<T, B = unknown>(path: string, body: B): Promise<T> {
 	try {
-		return unwrap(await axios.patch<T>(apiUrl(path), body))
+		return unwrap(await axios.patch<T>(apiUrl(path), body, writeConfig()))
 	} catch (e) {
 		throw isApiError(e) ? e : wrapError(e)
 	}
@@ -330,7 +377,7 @@ export async function apiPatch<T, B = unknown>(path: string, body: B): Promise<T
  */
 export async function apiDelete<T = void, B = unknown>(path: string, body?: B): Promise<T> {
 	try {
-		return unwrap(await axios.delete<T>(apiUrl(path), body === undefined ? undefined : { data: body }))
+		return unwrap(await axios.delete<T>(apiUrl(path), body === undefined ? writeConfig() : { ...writeConfig(), data: body }))
 	} catch (e) {
 		throw isApiError(e) ? e : wrapError(e)
 	}
@@ -343,6 +390,6 @@ export async function apiDelete<T = void, B = unknown>(path: string, body?: B): 
  *
  * @param value
  */
-function isApiError(value: unknown): value is ApiError {
+export function isApiError(value: unknown): value is ApiError {
 	return typeof value === 'object' && value !== null && 'notJson' in value
 }

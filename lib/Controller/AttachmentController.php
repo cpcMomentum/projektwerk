@@ -14,6 +14,9 @@ use OCA\Projektwerk\Access\NotAMemberException;
 use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\AppInfo\Application;
 use OCA\Projektwerk\Service\AttachmentService;
+use OCA\Projektwerk\Service\IdempotencyInProgressException;
+use OCA\Projektwerk\Service\IdempotencyMismatchException;
+use OCA\Projektwerk\Service\IdempotencyService;
 use OCA\Projektwerk\Service\NoFolderException;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Db\DoesNotExistException;
@@ -47,6 +50,7 @@ class AttachmentController extends Controller {
 		IRequest $request,
 		private AttachmentService $service,
 		private BoardAccess $access,
+		private IdempotencyService $idem,
 		private ?string $userId,
 	) {
 		parent::__construct(Application::APP_ID, $request);
@@ -87,11 +91,11 @@ class AttachmentController extends Controller {
 		try {
 			return $this->run(
 				$boardId,
-				fn (ViewerContext $viewer): mixed => $this->service->create(
-					$viewer,
-					$ticketId,
-					(string)($datei['name'] ?? ''),
-					$strom,
+				fn (ViewerContext $viewer): mixed => $this->idem->once(
+					$viewer->userId,
+					$this->request->getHeader(IdempotencyService::HEADER),
+					['attachment', $boardId, $ticketId, (string)($datei['name'] ?? ''), (string)hash_file('sha256', $datei['tmp_name'])],
+					fn () => $this->service->create($viewer, $ticketId, (string)($datei['name'] ?? ''), $strom),
 				),
 				Http::STATUS_CREATED,
 			);
@@ -136,6 +140,10 @@ class AttachmentController extends Controller {
 			// Dieselbe Antwort fuer Nichtmitglied, unbekanntes Board, verborgenen
 			// Vorgang und unbekannten Anhang.
 			return new JSONResponse([], Http::STATUS_NOT_FOUND);
+		} catch (IdempotencyInProgressException $e) {
+			return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_CONFLICT);
+		} catch (IdempotencyMismatchException $e) {
+			return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_UNPROCESSABLE_ENTITY);
 		} catch (LockedException) {
 			// **409, und die Meldung sagt „nochmal versuchen".** Nextcloud sperrt
 			// eine Datei waehrend eines anderen Zugriffs; das ist voruebergehend

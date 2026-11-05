@@ -166,6 +166,8 @@ final class ReadPathRegistry {
 		// Eine Person liest nur ihre eigenen Stände. Deshalb ebenfalls in
 		// VIEWERLESS_MAPPERS; die Erwartung ist `testReadStateIsScopedToItsOwner`.
 		'TicketReadMapper::findSeenForTickets',
+		// Die Kennung je Anlage (#400): Grenze ist die Benutzerkennung wie beim Lesestand.
+		'IdemKeyMapper::findForUser',
 	];
 
 	/**
@@ -184,6 +186,7 @@ final class ReadPathRegistry {
 		// einen ViewerContext — genau das ist die Grenze. `findSeenForTickets`
 		// liefert nur die eigenen Stände.
 		'TicketReadMapper',
+		'IdemKeyMapper',
 	];
 
 	/**

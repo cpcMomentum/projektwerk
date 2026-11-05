@@ -17,6 +17,9 @@ use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Db\TicketReadMapper;
 use OCA\Projektwerk\Service\ConflictException;
 use OCA\Projektwerk\Service\GithubTransferException;
+use OCA\Projektwerk\Service\IdempotencyInProgressException;
+use OCA\Projektwerk\Service\IdempotencyMismatchException;
+use OCA\Projektwerk\Service\IdempotencyService;
 use OCA\Projektwerk\Service\NoFolderException;
 use OCA\Projektwerk\Service\NotOwningSideException;
 use OCA\Projektwerk\Service\TicketReadModel;
@@ -50,6 +53,7 @@ class TicketController extends Controller {
 		private TicketService $service,
 		private TicketReadModel $readModel,
 		private BoardAccess $access,
+		private IdempotencyService $idem,
 		private ?string $userId,
 	) {
 		parent::__construct(Application::APP_ID, $request);
@@ -124,12 +128,21 @@ class TicketController extends Controller {
 		?string $responsibleUserId = null,
 		?string $dueDate = null,
 	): JSONResponse {
-		return $this->withViewer($boardId, function (ViewerContext $viewer) use ($title, $columnId, $visibility, $description, $responsibleUserId, $dueDate): JSONResponse {
+		return $this->withViewer($boardId, function (ViewerContext $viewer) use ($boardId, $title, $columnId, $visibility, $description, $responsibleUserId, $dueDate): JSONResponse {
 			try {
 				return new JSONResponse(
-					$this->service->create($viewer, $title, $description, $visibility, $columnId, $responsibleUserId, $dueDate),
+					$this->idem->once(
+						$viewer->userId,
+						$this->request->getHeader(IdempotencyService::HEADER),
+						['ticket', $boardId, $title, $columnId, $visibility, $description, $responsibleUserId, $dueDate],
+						fn () => $this->service->create($viewer, $title, $description, $visibility, $columnId, $responsibleUserId, $dueDate),
+					),
 					Http::STATUS_CREATED,
 				);
+			} catch (IdempotencyInProgressException $e) {
+				return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_CONFLICT);
+			} catch (IdempotencyMismatchException $e) {
+				return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_UNPROCESSABLE_ENTITY);
 			} catch (\InvalidArgumentException $e) {
 				return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
 			}

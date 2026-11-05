@@ -9,6 +9,7 @@
  * Leseweg wäre der zweite Ort, an dem die Sichtbarkeit stimmen müsste.
  */
 
+import type { WriteOptions } from '@/services/api'
 import type { Comment } from '@/types/ticket'
 
 import { apiDelete, apiPatch, apiPost } from '@/services/api'
@@ -19,9 +20,10 @@ import { apiDelete, apiPatch, apiPost } from '@/services/api'
  * @param boardId Kennung des Projekts.
  * @param ticketId Kennung des Vorgangs.
  * @param body Der Text, Markdown.
+ * @param options Kennung der Anlage für Wiederholungen.
  */
-export async function createComment(boardId: number, ticketId: number, body: string): Promise<Comment> {
-	return apiPost<Comment, { body: string }>(`/boards/${boardId}/tickets/${ticketId}/comments`, { body })
+export async function createComment(boardId: number, ticketId: number, body: string, options?: WriteOptions): Promise<Comment> {
+	return apiPost<Comment, { body: string }>(`/boards/${boardId}/tickets/${ticketId}/comments`, { body }, options)
 }
 
 /**
