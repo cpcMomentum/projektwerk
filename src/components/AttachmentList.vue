@@ -154,8 +154,12 @@ import NcButton from '@nextcloud/vue/components/NcButton'
 import NcDialog from '@nextcloud/vue/components/NcDialog'
 import LinkOffIcon from 'vue-material-design-icons/LinkOff.vue'
 import PaperclipIcon from 'vue-material-design-icons/Paperclip.vue'
+import { isApiError, isTransient } from '@/services/api'
 import { createAttachment, deleteAttachment } from '@/services/attachments'
 import { showError } from '@/services/toast'
+import { newId } from '@/utils/id'
+
+const UPLOAD_VERSUCHE = 3
 
 /**
  * Die Anhänge eines Vorgangs.
@@ -273,9 +277,29 @@ export default defineComponent({
 
 			await this.write(async () => {
 				for (const file of files) {
-					await createAttachment(this.boardId, this.ticketId, file)
+					await this.uploadOnce(file)
 				}
 			})
+		},
+
+		/**
+		 * Eine Datei anhängen; bricht die Verbindung ab, mit derselben Kennung erneut, damit sie nicht doppelt ankommt.
+		 *
+		 * @param file Die Datei.
+		 */
+		async uploadOnce(file: File): Promise<void> {
+			const options = { idempotencyKey: newId() }
+			for (let versuch = 1; ; versuch++) {
+				try {
+					await createAttachment(this.boardId, this.ticketId, file, options)
+					return
+				} catch (e) {
+					if (versuch >= UPLOAD_VERSUCHE || !isApiError(e) || !isTransient(e, true)) {
+						throw e
+					}
+					await new Promise((resolve) => setTimeout(resolve, versuch * 2000))
+				}
+			}
 		},
 
 		/**

@@ -24,6 +24,8 @@ use OCA\Projektwerk\Db\AttachmentMapper;
 use OCA\Projektwerk\Db\BoardMapper;
 use OCA\Projektwerk\Db\ColumnMapper;
 use OCA\Projektwerk\Db\CommentMapper;
+use OCA\Projektwerk\Db\IdemKey;
+use OCA\Projektwerk\Db\IdemKeyMapper;
 use OCA\Projektwerk\Db\MailOutbox;
 use OCA\Projektwerk\Db\MailOutboxMapper;
 use OCA\Projektwerk\Db\MemberMapper;
@@ -34,6 +36,7 @@ use OCA\Projektwerk\Db\StepMapper;
 use OCA\Projektwerk\Db\TaskFilter;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Db\TicketReadMapper;
+use OCA\Projektwerk\Service\IdempotencyService;
 use OCA\Projektwerk\Db\TicketUserMapper;
 use OCA\Projektwerk\Service\BoardPinService;
 use OCA\Projektwerk\Service\BoardService;
@@ -289,6 +292,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'MailOutboxMapper::findByReplyToken' => 'testTheOutboxIsNotAViewerPath',
 		'NotifyPrefMapper::findForUser' => 'testChannelPreferencesAreScopedToTheirOwner',
 		'TicketReadMapper::findSeenForTickets' => 'testReadStateIsScopedToItsOwner',
+		'IdemKeyMapper::findForUser' => 'testIdempotencyKeysAreScopedToTheirOwner',
 	];
 
 	/**
@@ -462,6 +466,21 @@ class LeakMatrixTest extends IntegrationTestCase {
 			$reads->findSeenForTickets(LeakMatrixFixture::CARLA, [$ticketId]),
 			'Carla darf Annas Lesestand nicht sehen.',
 		);
+	}
+
+	public function testIdempotencyKeysAreScopedToTheirOwner(): void {
+		$keys = Server::get(IdemKeyMapper::class);
+		$row = new IdemKey();
+		$row->setUserId(LeakMatrixFixture::ANNA);
+		$row->setIdemKey('leak-matrix-key');
+		$row->setFingerprint(str_repeat('a', 64));
+		$row->setResponse('{"id":1}');
+		$row->setCreatedAt(new \DateTime());
+		$keys->insert($row);
+
+		$this->assertSame('{"id":1}', $keys->findForUser(LeakMatrixFixture::ANNA, 'leak-matrix-key')->getResponse());
+		$this->expectException(DoesNotExistException::class);
+		$keys->findForUser(LeakMatrixFixture::CARLA, 'leak-matrix-key');
 	}
 
 	/**
@@ -2262,6 +2281,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 			Server::get(TicketService::class),
 			Server::get(TicketReadModel::class),
 			Server::get(BoardAccess::class),
+			Server::get(IdempotencyService::class),
 			$userId,
 		);
 	}

@@ -22,6 +22,7 @@ import type { Member } from '@/types/board'
 import type { Step } from '@/types/ticket'
 
 import { mount } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const createStep = vi.fn()
@@ -96,6 +97,7 @@ vi.mock('@nextcloud/vue/components/NcCheckboxRadioSwitch', () => ({
 }))
 
 const StepList = (await import('@/components/StepList.vue')).default
+const { useOutboxStore } = await import('@/stores/outboxStore')
 
 const MEMBERS: Member[] = [
 	{ id: 1, boardId: 7, userId: 'anna', role: 'internal', isManager: true, displayName: 'Anna Ahrens', resolvedName: 'Anna Ahrens', company: 'cpcMomentum', addedBy: 'anna', addedAt: null },
@@ -195,6 +197,9 @@ async function klickeHinzufuegen(wrapper: ReturnType<typeof mountList>) {
 
 beforeEach(() => {
 	vi.clearAllMocks()
+	window.localStorage?.clear?.()
+	setActivePinia(createPinia())
+	useOutboxStore().init('anna')
 	fetchAssignable.mockResolvedValue(['anna', 'carla'])
 	createStep.mockResolvedValue({})
 	updateStep.mockResolvedValue({})
@@ -212,7 +217,7 @@ describe('StepList', () => {
 		await fuelleZeile(wrapper, 'Nur ein Titel')
 		await klickeHinzufuegen(wrapper)
 
-		expect(createStep).toHaveBeenCalledWith(7, 42, { title: 'Nur ein Titel' })
+		expect(createStep).toHaveBeenCalledWith(7, 42, { title: 'Nur ein Titel' }, { idempotencyKey: expect.any(String) })
 	})
 
 	/**

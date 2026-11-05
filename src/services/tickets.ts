@@ -6,6 +6,7 @@
  * Nicht-JSON-Wächter.
  */
 
+import type { WriteOptions } from '@/services/api'
 import type { Visibility } from '@/types/board'
 import type { Ticket, TicketDetail, TicketList } from '@/types/ticket'
 
@@ -61,6 +62,7 @@ export async function markTicketRead(boardId: number, ticketId: number): Promise
  * @param data.description
  * @param data.responsibleUserId
  * @param data.dueDate
+ * @param options Kennung der Anlage für Wiederholungen.
  */
 export async function createTicket(boardId: number, data: {
 	title: string
@@ -69,8 +71,8 @@ export async function createTicket(boardId: number, data: {
 	description?: string | null
 	responsibleUserId?: string | null
 	dueDate?: string | null
-}): Promise<Ticket> {
-	return apiPost<Ticket, typeof data>(`/boards/${boardId}/tickets`, data)
+}, options?: WriteOptions): Promise<Ticket> {
+	return apiPost<Ticket, typeof data>(`/boards/${boardId}/tickets`, data, options)
 }
 
 /**

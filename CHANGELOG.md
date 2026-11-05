@@ -6,6 +6,23 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Added
+
+- **Arbeiten bei schlechter Verbindung** (#400): Neue Vorgänge, Arbeitsschritte, Kommentare und Haken
+  erscheinen sofort mit „Wird gespeichert …“ und gehen der Reihe nach im Hintergrund raus. Die
+  Warteschlange liegt je Konto im Browser und übersteht Funklöcher und das Neuladen der Seite. Ein noch
+  nicht gespeicherter Vorgang lässt sich gleich öffnen; Schritte und Kommentare reihen sich hinter ihm
+  ein. Vom Server Abgelehntes bleibt mit Grund, „Erneut versuchen“ und „Verwerfen“ stehen; eine Leiste
+  über dem Board zeigt, was noch aussteht.
+
+### Fixed
+
+- **Doppelt angelegte Vorgänge bei langsamer Verbindung** (#400): Jede Anlage (Vorgang, Arbeitsschritt,
+  Kommentar, Anhang) trägt eine Kennung (`Idempotency-Key`); eine Wiederholung mit derselben Kennung legt
+  nicht neu an, sondern liefert das schon Angelegte. Migration 25 ergänzt dafür `pwerk_idem`, ein
+  Hintergrundjob räumt nach 180 Tagen auf. Anfragen haben eine Zeitgrenze statt endlos zu hängen, und nach
+  dem Speichern wird nur der betroffene Vorgang nachgeladen statt des ganzen Boards.
+
 ## [0.4.22] - 2026-11-03
 
 ### Added

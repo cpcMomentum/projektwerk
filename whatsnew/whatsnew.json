@@ -1,4 +1,23 @@
 {
+	"0.4.23": [
+		{
+			"title": {
+				"de": "Weiterarbeiten bei schlechter Verbindung",
+				"en": "Keep working on a poor connection"
+			},
+			"text": {
+				"de": "Neue Vorgänge, Arbeitsschritte, Kommentare und Haken erscheinen sofort und werden im Hintergrund gespeichert, auch nach einem Funkloch oder Neuladen der Seite. Ein Klick legt genau einmal an, auch wenn die Antwort lange dauert. Was noch nicht gespeichert ist, zeigt eine Leiste über dem Board.",
+				"en": "New tickets, work steps, comments and ticks appear right away and are saved in the background, even after a dead spot or a page reload. One click creates exactly one item, even if the answer takes long. A bar above the board shows what is not saved yet."
+			},
+			"icon": "star",
+			"where": {
+				"de": "Im Board und im Vorgang",
+				"en": "On the board and in the ticket"
+			},
+			"adminOnly": false,
+			"plus": false
+		}
+	],
 	"0.4.22": [
 		{
 			"title": {

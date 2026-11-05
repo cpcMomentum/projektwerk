@@ -2,7 +2,7 @@
 	<section class="pw-abschnitt">
 		<div class="pw-abschnitt__kopf">
 			<h3>{{ t('projektwerk', 'Kommentare') }}</h3>
-			<span v-if="comments.length > 0" class="pw-abschnitt__zaehler">{{ comments.length }}</span>
+			<span v-if="comments.length + pendingComments.length > 0" class="pw-abschnitt__zaehler">{{ comments.length + pendingComments.length }}</span>
 		</div>
 
 		<article
@@ -120,7 +120,41 @@
 			</div>
 		</article>
 
-		<p v-if="comments.length === 0" class="pw-detail__empty">
+		<article v-for="entry in pendingComments" :key="entry.id" class="pw-comment pw-comment--pending">
+			<NcAvatar
+				v-if="viewer"
+				:user="viewer.userId"
+				:displayName="nameOf(viewer.userId)"
+				:size="32"
+				:disableMenu="true"
+				:hideStatus="true" />
+			<div class="pw-comment__body">
+				<header class="pw-comment__head">
+					<span v-if="viewer" class="pw-comment__name">{{ nameOf(viewer.userId) }}</span>
+					<span class="pw-comment__edited" :class="{ 'pw-comment__edited--failed': entry.state === 'failed' }">
+						{{ entry.state === 'failed'
+							? t('projektwerk', 'Nicht gespeichert: {reason}', { reason: entry.error ?? '' })
+							: t('projektwerk', 'Wird gespeichert …') }}
+					</span>
+				</header>
+				<NcRichText
+					class="pw-comment__text"
+					:text="renderBody(entry.payload.body)"
+					:useMarkdown="true"
+					:useExtendedMarkdown="true"
+					:interactive="false" />
+				<div v-if="entry.state === 'failed'" class="pw-comment__actions">
+					<NcButton variant="tertiary" @click="outbox.retry(entry.id)">
+						{{ t('projektwerk', 'Erneut versuchen') }}
+					</NcButton>
+					<NcButton variant="tertiary" @click="outbox.discard(entry.id)">
+						{{ t('projektwerk', 'Verwerfen') }}
+					</NcButton>
+				</div>
+			</div>
+		</article>
+
+		<p v-if="comments.length === 0 && pendingComments.length === 0" class="pw-detail__empty">
 			{{ t('projektwerk', 'Noch keine Kommentare.') }}
 		</p>
 
@@ -181,6 +215,7 @@
 
 <script lang="ts">
 import type { PropType } from 'vue'
+import type { CommentEntry } from '@/stores/outboxStore'
 import type { Member, ViewerInfo } from '@/types/board'
 import type { Comment } from '@/types/ticket'
 
@@ -192,9 +227,10 @@ import NcDateTime from '@nextcloud/vue/components/NcDateTime'
 import NcRichContenteditable from '@nextcloud/vue/components/NcRichContenteditable'
 import NcRichText from '@nextcloud/vue/components/NcRichText'
 import { loadCommentDraft, saveCommentDraft } from '@/services/commentDraft'
-import { createComment, deleteComment, updateComment } from '@/services/comments'
+import { deleteComment, updateComment } from '@/services/comments'
 import { fetchAssignable } from '@/services/steps'
 import { showError } from '@/services/toast'
+import { useOutboxStore } from '@/stores/outboxStore'
 
 /**
  * Der Kommentarverlauf eines Vorgangs.
@@ -233,6 +269,10 @@ export default defineComponent({
 	},
 
 	emits: ['changed'],
+
+	setup() {
+		return { outbox: useOutboxStore() }
+	},
 
 	data() {
 		return {
@@ -285,6 +325,10 @@ export default defineComponent({
 	},
 
 	computed: {
+		pendingComments(): CommentEntry[] {
+			return this.outbox.commentsFor(this.ticketId)
+		},
+
 		/**
 		 * Wie `NcRichContenteditable` die Erwähnungen darstellt.
 		 *
@@ -506,22 +550,21 @@ export default defineComponent({
 			}
 		},
 
-		add() {
+		add(): void {
 			const body = this.newBody.trim()
 			if (body === '') {
 				return
 			}
 
-			return this.write(
-				async () => {
-					await createComment(this.boardId, this.ticketId, body)
-					this.newBody = ''
-					// Zurück ins Eingabefeld, nicht auf den `body`: Wer eben
-					// geschrieben hat, schreibt oft gleich weiter.
-					this.fokusZiel = '#pw-comment-new-input'
-				},
-				t('projektwerk', 'Kommentar konnte nicht gespeichert werden'),
-			)
+			this.outbox.enqueueComment(this.boardId, this.ticketId, body)
+			this.newBody = ''
+			// Zurück ins Feld: Der Knopf wird mit dem leeren Feld gesperrt und nähme den Fokus sonst mit auf den `body`.
+			this.$nextTick(() => {
+				const el = this.$el?.querySelector?.('#pw-comment-new-input')
+				if (el instanceof HTMLElement) {
+					el.focus()
+				}
+			})
 		},
 
 		/**

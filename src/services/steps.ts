@@ -9,6 +9,7 @@
  * Leseweg wäre der zweite Ort, an dem die Sichtbarkeit stimmen müsste.
  */
 
+import type { WriteOptions } from '@/services/api'
 import type { Step } from '@/types/ticket'
 
 import { apiDelete, apiGet, apiPatch, apiPost } from '@/services/api'
@@ -57,14 +58,15 @@ export async function fetchAssignableForNew(boardId: number, visibility: string)
  * @param data.description Eine Zeile Beschreibung, oder null.
  * @param data.assignedUserId Wer es tut, oder null.
  * @param data.dueDate Fälligkeit als JJJJ-MM-TT, oder null.
+ * @param options Kennung der Anlage für Wiederholungen.
  */
 export async function createStep(boardId: number, ticketId: number, data: {
 	title: string
 	description?: string | null
 	assignedUserId?: string | null
 	dueDate?: string | null
-}): Promise<Step> {
-	return apiPost<Step, typeof data>(`/boards/${boardId}/tickets/${ticketId}/steps`, data)
+}, options?: WriteOptions): Promise<Step> {
+	return apiPost<Step, typeof data>(`/boards/${boardId}/tickets/${ticketId}/steps`, data, options)
 }
 
 /**

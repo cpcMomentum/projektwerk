@@ -11,7 +11,7 @@
  */
 
 import type { Board, BoardDetail, Column, Member, ViewerInfo } from '@/types/board'
-import type { Ticket, TicketList, WaitState } from '@/types/ticket'
+import type { Ticket, TicketDetail, TicketList, WaitState } from '@/types/ticket'
 
 import { t } from '@nextcloud/l10n'
 import { defineStore } from 'pinia'
@@ -120,12 +120,16 @@ export const useBoardStore = defineStore('board', {
 		 * Ob der Betrachter dieses Board einrichten darf (#281): Projekt-Manager
 		 * ODER Ersteller genau dieses Boards. Trägt Spalten-/Umbenennen-/Archiv-
 		 * Aktionen im Frontend; der Server setzt dasselbe durch.
+		 *
+		 * @param state
 		 */
 		canConfigureBoard: (state): boolean => state.viewer?.isManager === true || state.viewer?.isBoardCreator === true,
 
 		/**
 		 * Ob der Betrachter hier ein weiteres Board anlegen darf (#281): Manager
 		 * oder wo das Projekt „Mitglieder dürfen Boards anlegen" gesetzt hat.
+		 *
+		 * @param state
 		 */
 		canAddBoard: (state): boolean => state.viewer?.isManager === true || state.memberBoardsAllowed,
 
@@ -183,6 +187,8 @@ export const useBoardStore = defineStore('board', {
 		 * Solange ein Projekt genau ein Board hat, ist das eine einelementige
 		 * Liste, und der Wechsler bleibt aus. Ohne geöffnetes Board oder ohne
 		 * `projectId` (Altbestand) ist die Liste leer.
+		 *
+		 * @param state
 		 */
 		siblingBoards: (state): Board[] => {
 			const projectId = state.board?.projectId
@@ -519,6 +525,51 @@ export const useBoardStore = defineStore('board', {
 				order.set(ticket.columnId, [...(order.get(ticket.columnId) ?? []), ticket.id])
 				this.columnOrder = order
 			}
+		},
+
+		/**
+		 * Einen neuen Vorgang ans Ende seiner Spalte setzen, wie der Server ihn einsortiert.
+		 *
+		 * @param ticket Der neue Vorgang.
+		 */
+		addTicket(ticket: Ticket): void {
+			if (this.tickets.has(ticket.id)) {
+				this.replaceTicket(ticket)
+				return
+			}
+			const next = new Map(this.tickets)
+			next.set(ticket.id, ticket)
+			this.tickets = next
+			const order = new Map(this.columnOrder)
+			order.set(ticket.columnId, [...(order.get(ticket.columnId) ?? []), ticket.id])
+			this.columnOrder = order
+		},
+
+		/**
+		 * Einen Vorgang samt Zählern aus seiner Detailantwort übernehmen, statt das ganze Board neu zu laden.
+		 *
+		 * @param detail Die Antwort von `ticket#show`.
+		 */
+		applyDetail(detail: TicketDetail): void {
+			const id = detail.ticket.id
+			this.addTicket(detail.ticket)
+			if (this.counts !== null) {
+				this.counts = {
+					comments: { ...this.counts.comments, [id]: detail.comments.length },
+					steps: { ...this.counts.steps, [id]: detail.steps.length },
+					stepsDone: { ...this.counts.stepsDone, [id]: detail.steps.filter((step) => step.done).length },
+					attachments: { ...this.counts.attachments, [id]: detail.attachments.length },
+					collaborators: { ...this.counts.collaborators, [id]: detail.collaborators.length },
+				}
+			}
+			const waiting = { ...this.waiting }
+			if (detail.waiting === null) {
+				delete waiting[id]
+			} else {
+				waiting[id] = detail.waiting
+			}
+			this.waiting = waiting
+			this.stepTitles = { ...this.stepTitles, [id]: detail.steps.map((step) => step.title) }
 		},
 
 		/**
