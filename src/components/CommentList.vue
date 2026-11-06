@@ -59,7 +59,9 @@
 					:text="renderBody(comment.body)"
 					:useMarkdown="true"
 					:useExtendedMarkdown="true"
-					:interactive="false" />
+					:interactive="false"
+					:referenceLimit="1"
+					:referenceInteractive="false" />
 
 				<!--
 					Geaendert wird an Ort und Stelle, nicht im Dialog: Das
@@ -142,7 +144,9 @@
 					:text="renderBody(entry.payload.body)"
 					:useMarkdown="true"
 					:useExtendedMarkdown="true"
-					:interactive="false" />
+					:interactive="false"
+					:referenceLimit="1"
+					:referenceInteractive="false" />
 				<div v-if="entry.state === 'failed'" class="pw-comment__actions">
 					<NcButton variant="tertiary" @click="outbox.retry(entry.id)">
 						{{ t('projektwerk', 'Erneut versuchen') }}

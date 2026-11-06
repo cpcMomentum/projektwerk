@@ -1224,6 +1224,12 @@ body .modal-wrapper:has(.pw-detail) > .modal-container {
 	text-underline-offset: 2px;
 }
 
+/* Die Vorschaukarte ist selbst ein Link und darf nicht wie Fliesstext unterstrichen werden. */
+.app-projektwerk .pw-comment__text .widgets--list a {
+	color: inherit;
+	text-decoration: none;
+}
+
 /*
  * **Das Bearbeiten-Feld waechst mit dem Inhalt** (#160). Die Hoehe selbst
  * setzt `autoGrowText()` in TicketDetail.vue je Tastendruck; hier stehen nur
@@ -1254,6 +1260,16 @@ body .modal-wrapper:has(.pw-detail) > .modal-container {
 
 .app-projektwerk .pw-beschreibung__mehr {
 	margin-block-start: 4px;
+}
+
+/* Link-Vorschau unter dem Deckel, mit etwas Luft zum Text. */
+.app-projektwerk .pw-beschreibung__vorschau {
+	margin-block-start: 8px;
+}
+
+/* Ein nicht zugaenglicher Link liefert ein leeres Widget; ohne das bliebe eine Luecke. */
+.app-projektwerk .widgets--list:not(.icon-loading):not(:has(> * > *)) {
+	display: none;
 }
 
 .app-projektwerk .pw-beschreibung__stift {
