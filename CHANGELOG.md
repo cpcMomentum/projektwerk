@@ -14,6 +14,9 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
   nicht gespeicherter Vorgang lässt sich gleich öffnen; Schritte und Kommentare reihen sich hinter ihm
   ein. Vom Server Abgelehntes bleibt mit Grund, „Erneut versuchen“ und „Verwerfen“ stehen; eine Leiste
   über dem Board zeigt, was noch aussteht.
+- **Person gleich beim Anlegen eines Arbeitsschritts** (#386): Neben „Neuer Arbeitsschritt“ wählt ein
+  Personen-Knopf, wem neue Schritte gehören. Die Auswahl bleibt stehen, so lassen sich mehrere Schritte
+  für dieselbe Person nacheinander mit Enter anlegen; „Niemand“ hebt sie auf.
 
 ### Fixed
 

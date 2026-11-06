@@ -1892,6 +1892,10 @@ body .modal-wrapper:has(.pw-detail) > .modal-container {
 	flex: 0 0 var(--default-clickable-area, 34px);
 }
 
+.app-projektwerk .pw-step__neu-person {
+	flex: 0 0 auto;
+}
+
 /* ---- Anhänge ------------------------------------------------------------- */
 
 .app-projektwerk .pw-attach {

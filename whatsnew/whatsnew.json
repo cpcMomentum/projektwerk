@@ -2,6 +2,23 @@
 	"0.4.23": [
 		{
 			"title": {
+				"de": "Arbeitsschritte gleich zuweisen",
+				"en": "Assign work steps right away"
+			},
+			"text": {
+				"de": "Neben „Neuer Arbeitsschritt“ wählst du mit dem Personen-Knopf, wem die neuen Schritte gehören. Die Auswahl bleibt stehen, so legst du mehrere Schritte für dieselbe Person mit Enter nacheinander an.",
+				"en": "Next to “New work step”, the person button sets who gets the new steps. The choice stays, so you can add several steps for the same person one after another with Enter."
+			},
+			"icon": "account-group",
+			"where": {
+				"de": "Im Vorgang bei den Arbeitsschritten",
+				"en": "In the ticket, under work steps"
+			},
+			"adminOnly": false,
+			"plus": false
+		},
+		{
+			"title": {
 				"de": "Weiterarbeiten bei schlechter Verbindung",
 				"en": "Keep working on a poor connection"
 			},

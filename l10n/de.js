@@ -510,6 +510,8 @@ OC.L10N.register(
     "Arbeitsschritt „{title}“" : "Arbeitsschritt „{title}“",
     "Kommentar „{text}“" : "Kommentar „{text}“",
     "Arbeitsschritt abhaken" : "Arbeitsschritt abhaken",
-    "Haken entfernen" : "Haken entfernen"
+    "Haken entfernen" : "Haken entfernen",
+    "Zuständig für neue Arbeitsschritte: niemand" : "Zuständig für neue Arbeitsschritte: niemand",
+    "Zuständig für neue Arbeitsschritte: {name}" : "Zuständig für neue Arbeitsschritte: {name}"
 },
 "nplurals=2; plural=(n != 1);");

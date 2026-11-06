@@ -211,18 +211,6 @@
 			{{ t('projektwerk', 'Noch keine Arbeitsschritte.') }}
 		</p>
 
-		<!--
-			Eingabezeile am Listenende: tippen, Enter, fertig. Ein Dialog fuer
-			einen einzeiligen Schritt waere drei Klicks fuer eine Zeile Text.
-
-			**Nur ein Feld „Neuer Arbeitsschritt" + „+"** (#308). Zuvor standen
-			hier vier Felder — Titel, Beschreibung (#247), Zuständig und Frist
-			(#86); die Anlege-Form wurde als zu wuchtig empfunden. #308 nimmt das
-			bewusst zurück: Zuweisung, Frist, Beschreibung und Ergebnis werden
-			**nach** dem Anlegen über den Stift des Schritts nachgetragen. Das
-			Zuweisen wird damit wieder ein zweiter Schritt — gewollt, nicht
-			übersehen.
-		-->
 		<div v-for="entry in pendingSteps" :key="entry.id" class="pw-step pw-step--pending">
 			<NcCheckboxRadioSwitch
 				type="checkbox"
@@ -233,6 +221,13 @@
 			</NcCheckboxRadioSwitch>
 			<span class="pw-step__wartend">{{ entry.payload.title }}</span>
 			<div class="pw-step__rechts">
+				<NcAvatar
+					v-if="entry.payload.assignedUserId"
+					:user="entry.payload.assignedUserId"
+					:displayName="nameOf(entry.payload.assignedUserId)"
+					:size="24"
+					:disableMenu="true"
+					:hideStatus="true" />
 				<span class="pw-step__info" :class="{ 'pw-step__info--failed': entry.state === 'failed' }">
 					{{ entry.state === 'failed'
 						? t('projektwerk', 'Nicht gespeichert: {reason}', { reason: entry.error ?? '' })
@@ -249,6 +244,7 @@
 			</div>
 		</div>
 
+		<!-- Nur Titel und Person; Frist, Beschreibung und Ergebnis kommen über den Stift, die Zeile bleibt schlank. -->
 		<div class="pw-step pw-step--new">
 			<NcTextField
 				v-model="newTitle"
@@ -256,6 +252,41 @@
 				:label="t('projektwerk', 'Neuer Arbeitsschritt')"
 				:disabled="busy"
 				@keydown.enter="add" />
+
+			<NcActions
+				ref="personMenu"
+				class="pw-step__neu-person"
+				:forceMenu="true"
+				:ariaLabel="newAssigneeLabel"
+				:title="newAssigneeLabel">
+				<template #icon>
+					<NcAvatar
+						v-if="newAssignee !== null"
+						:user="newAssignee"
+						:displayName="nameOf(newAssignee)"
+						:size="24"
+						:disableMenu="true"
+						:hideStatus="true" />
+					<AccountPlusOutlineIcon v-else :size="20" />
+				</template>
+				<NcActionButton
+					type="radio"
+					:modelValue="newAssignee === null"
+					:closeAfterClick="true"
+					@click="newAssignee = null">
+					{{ t('projektwerk', 'Niemand') }}
+				</NcActionButton>
+				<NcActionButton
+					v-for="option in options"
+					:key="option.id"
+					type="radio"
+					:modelValue="newAssignee === option.id"
+					:description="option.subname"
+					:closeAfterClick="true"
+					@click="newAssignee = option.id">
+					{{ option.displayName }}
+				</NcActionButton>
+			</NcActions>
 
 			<!--
 				**Ein Plus statt eines breiten Knopfes** (#99).
@@ -290,6 +321,8 @@ import type { Step } from '@/types/ticket'
 
 import { t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
+import NcActionButton from '@nextcloud/vue/components/NcActionButton'
+import NcActions from '@nextcloud/vue/components/NcActions'
 import NcAvatar from '@nextcloud/vue/components/NcAvatar'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
@@ -297,6 +330,7 @@ import NcDateTimePicker from '@nextcloud/vue/components/NcDateTimePicker'
 import NcSelectUsers from '@nextcloud/vue/components/NcSelectUsers'
 import NcTextArea from '@nextcloud/vue/components/NcTextArea'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
+import AccountPlusOutlineIcon from 'vue-material-design-icons/AccountPlusOutline.vue'
 import CheckIcon from 'vue-material-design-icons/Check.vue'
 import DeleteOutlineIcon from 'vue-material-design-icons/DeleteOutline.vue'
 import PencilOutlineIcon from 'vue-material-design-icons/PencilOutline.vue'
@@ -304,6 +338,24 @@ import PlusIcon from 'vue-material-design-icons/Plus.vue'
 import { deleteStep, fetchAssignable, fetchAssignableForNew, updateStep } from '@/services/steps'
 import { showError } from '@/services/toast'
 import { useOutboxStore } from '@/stores/outboxStore'
+
+const offeneListen = new Set<{ closePersonMenu: () => boolean }>()
+
+// Beim Laden angemeldet, also vor dem Escape des Vorgangsfensters: Sonst schlösse Escape das ganze Fenster statt nur das Menü.
+if (typeof window !== 'undefined') {
+	window.addEventListener('keydown', (event) => {
+		if (event.key !== 'Escape') {
+			return
+		}
+		for (const liste of offeneListen) {
+			if (liste.closePersonMenu()) {
+				event.stopImmediatePropagation()
+				event.preventDefault()
+				return
+			}
+		}
+	}, true)
+}
 
 interface PersonOption {
 	id: string
@@ -349,7 +401,7 @@ function alsIsoTag(date: Date | null): string | null {
 export default defineComponent({
 	name: 'StepList',
 
-	components: { CheckIcon, DeleteOutlineIcon, NcAvatar, NcButton, NcCheckboxRadioSwitch, NcDateTimePicker, NcSelectUsers, NcTextArea, NcTextField, PencilOutlineIcon, PlusIcon },
+	components: { AccountPlusOutlineIcon, CheckIcon, DeleteOutlineIcon, NcActionButton, NcActions, NcAvatar, NcButton, NcCheckboxRadioSwitch, NcDateTimePicker, NcSelectUsers, NcTextArea, NcTextField, PencilOutlineIcon, PlusIcon },
 
 	props: {
 		boardId: { type: Number, required: true },
@@ -376,6 +428,8 @@ export default defineComponent({
 			busy: false,
 			schreibkette: Promise.resolve() as Promise<void>,
 			newTitle: '',
+			/** Bleibt nach dem Anlegen stehen, damit mehrere Schritte für dieselbe Person schnell gehen. */
+			newAssignee: null as string | null,
 			assignable: [] as string[],
 			/**
 			 * Der Schritt, dessen Zuweisung und Frist gerade offenstehen.
@@ -430,6 +484,12 @@ export default defineComponent({
 			return this.outbox.doneOverrides(this.ticketId)
 		},
 
+		newAssigneeLabel(): string {
+			return this.newAssignee === null
+				? t('projektwerk', 'Zuständig für neue Arbeitsschritte: niemand')
+				: t('projektwerk', 'Zuständig für neue Arbeitsschritte: {name}', { name: this.nameOf(this.newAssignee) })
+		},
+
 		/** „2/5" — dieselbe Auskunft wie auf der Karte (§9). */
 		fortschritt(): string {
 			return `${this.steps.filter((s) => this.isDone(s)).length}/${this.steps.length + this.pendingSteps.length}`
@@ -460,12 +520,17 @@ export default defineComponent({
 	watch: {
 		ticketId: {
 			immediate: true,
-			handler() {
+			handler(neu: number, alt: number | undefined) {
 				this.loadAssignable()
+				// Derselbe Vorgang hat nur seine echte Nummer bekommen: Eingabe und gewählte Person bleiben stehen.
+				if (alt !== undefined && alt < 0 && this.outbox.realId(alt) === neu) {
+					return
+				}
 				// Angefangenes gehört zum vorigen Vorgang und darf nicht stehen
 				// bleiben — ein offener Schritt wird vorher gesichert (#367).
 				this.sichern()
 				this.newTitle = ''
+				this.newAssignee = null
 				this.editing = null
 				this.editingStep = null
 				this.removing = null
@@ -501,6 +566,14 @@ export default defineComponent({
 				}
 			})
 		},
+	},
+
+	mounted() {
+		offeneListen.add(this)
+	},
+
+	beforeUnmount() {
+		offeneListen.delete(this)
 	},
 
 	methods: {
@@ -583,6 +656,21 @@ export default defineComponent({
 		},
 
 		/**
+		 * Das Personen-Menü schließen, falls es offen ist.
+		 *
+		 * @return Ob es offen war.
+		 */
+		closePersonMenu(): boolean {
+			if (!this.$el?.querySelector?.('.pw-step__neu-person [aria-expanded="true"]')) {
+				return false
+			}
+			const menu = this.$refs.personMenu as { closeMenu?: (returnFocus?: boolean) => Promise<void> } | undefined
+			menu?.closeMenu?.(true)
+
+			return true
+		},
+
+		/**
 		 * Der gewünschte Haken, auch wenn er noch nicht gespeichert ist.
 		 *
 		 * @param step Der Schritt.
@@ -596,6 +684,9 @@ export default defineComponent({
 				this.assignable = this.ticketId < 0
 					? (this.visibility === '' ? [] : await fetchAssignableForNew(this.boardId, this.visibility))
 					: await fetchAssignable(this.boardId, this.ticketId)
+				if (this.newAssignee !== null && !this.assignable.includes(this.newAssignee)) {
+					this.newAssignee = null
+				}
 			} catch {
 				// Ohne Liste bleibt die Auswahl leer; das Ändern eines Schritts
 				// bleibt trotzdem möglich. Eine Meldung wäre hier Lärm — die
@@ -665,7 +756,7 @@ export default defineComponent({
 			}
 
 			// Sofort in die Warteschlange: Das Feld bleibt frei, der nächste Schritt lässt sich gleich tippen.
-			this.outbox.enqueueStep(this.boardId, this.ticketId, { title })
+			this.outbox.enqueueStep(this.boardId, this.ticketId, this.newAssignee === null ? { title } : { title, assignedUserId: this.newAssignee })
 			this.newTitle = ''
 			// Zurück ins Feld: Das Plus wird mit dem leeren Feld gesperrt und nähme den Fokus sonst mit auf den `body`.
 			this.$nextTick(() => {
