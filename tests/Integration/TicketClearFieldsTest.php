@@ -15,6 +15,7 @@ use OCA\Projektwerk\Db\Ticket;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Db\TicketReadMapper;
 use OCA\Projektwerk\Service\IdempotencyService;
+use OCA\Projektwerk\Service\TicketDependencyService;
 use OCA\Projektwerk\Service\TicketReadModel;
 use OCA\Projektwerk\Service\TicketService;
 use OCP\AppFramework\Http;
@@ -78,6 +79,7 @@ class TicketClearFieldsTest extends IntegrationTestCase {
 			Server::get(TicketReadModel::class),
 			Server::get(BoardAccess::class),
 			Server::get(IdempotencyService::class),
+			Server::get(TicketDependencyService::class),
 			LeakMatrixFixture::ANNA,
 		);
 

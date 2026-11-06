@@ -305,13 +305,18 @@
 			:steps="openSteps"
 			:comments="openComments"
 			:attachments="openAttachments"
+			:dependsOn="openLinks.dependsOn"
+			:neededBy="openLinks.neededBy"
+			:boardTickets="boardTicketList"
 			:waiting="openTicketData ? (store.waiting[openTicketData.id] ?? null) : null"
 			@close="openTicketData = null"
 			@changed="applyChanged"
 			@delete="deleteTicket"
 			@stepsChanged="reloadOpenTicket"
 			@commentsChanged="reloadOpenTicket"
-			@attachmentsChanged="reloadOpenTicket" />
+			@attachmentsChanged="reloadOpenTicket"
+			@openTicket="openById"
+			@linksChanged="openLinks = $event" />
 
 		<CreateTicketDialog
 			:open="creating"
@@ -409,7 +414,7 @@
 <script lang="ts">
 import type { OutboxEntry, SavedEvent, TicketEntry } from '@/stores/outboxStore'
 import type { Column, Visibility } from '@/types/board'
-import type { Attachment, Comment, Step, Ticket } from '@/types/ticket'
+import type { Attachment, Comment, Step, Ticket, TicketLinks } from '@/types/ticket'
 
 import { n, t } from '@nextcloud/l10n'
 import { generateUrl } from '@nextcloud/router'
@@ -470,6 +475,7 @@ export default defineComponent({
 			openSteps: [] as Step[],
 			openComments: [] as Comment[],
 			openAttachments: [] as Attachment[],
+			openLinks: { dependsOn: [], neededBy: [] } as TicketLinks,
 			// Die frisch angelegte Karte, die gerade kurz hervorgehoben wird (#165),
 			// und ihr Ablauf-Timer — beides rein lokal und vergänglich.
 			highlightId: null as number | null,
@@ -494,6 +500,11 @@ export default defineComponent({
 	},
 
 	computed: {
+		/** Die geladenen Vorgänge als Auswahl für Abhängigkeiten. */
+		boardTicketList(): Ticket[] {
+			return [...this.store.tickets.values()]
+		},
+
 		/** Link in die Dateien-App am Projektordner (#351), über die Datei-ID. */
 		projectFolderUrl(): string {
 			return this.store.projectFolder ? generateUrl('/f/{id}', { id: this.store.projectFolder.id }) : ''
@@ -786,6 +797,7 @@ export default defineComponent({
 				this.openSteps = []
 				this.openComments = []
 				this.openAttachments = []
+				this.openLinks = { dependsOn: [], neededBy: [] }
 				return
 			}
 			// Sofort leeren, nicht erst nach dem Laden: Sonst zeigt das Overlay
@@ -794,6 +806,7 @@ export default defineComponent({
 			this.openSteps = []
 			this.openComments = []
 			this.openAttachments = []
+			this.openLinks = { dependsOn: [], neededBy: [] }
 			// Öffnen heisst gelesen (#79): Der Punkt geht sofort aus. Ohne await
 			// — der Vermerk soll das Laden des Vorgangs nicht aufhalten.
 			this.store.markRead(ticket.id)
@@ -815,10 +828,12 @@ export default defineComponent({
 				this.openSteps = detail.steps
 				this.openComments = detail.comments
 				this.openAttachments = detail.attachments
+				this.openLinks = { dependsOn: detail.dependsOn ?? [], neededBy: detail.neededBy ?? [] }
 			} catch {
 				this.openSteps = []
 				this.openComments = []
 				this.openAttachments = []
+				this.openLinks = { dependsOn: [], neededBy: [] }
 			}
 		},
 
@@ -863,6 +878,15 @@ export default defineComponent({
 				return
 			}
 
+			await this.openById(wanted)
+		},
+
+		/**
+		 * Einen Vorgang über seine Kennung öffnen, auch wenn er nicht in der geladenen Menge steht.
+		 *
+		 * @param wanted Kennung des Vorgangs.
+		 */
+		async openById(wanted: number) {
 			const bekannt = this.store.tickets.get(wanted)
 			if (bekannt !== undefined) {
 				await this.openTicket(bekannt)
@@ -886,6 +910,7 @@ export default defineComponent({
 				this.openSteps = detail.steps
 				this.openComments = detail.comments
 				this.openAttachments = detail.attachments
+				this.openLinks = { dependsOn: detail.dependsOn ?? [], neededBy: detail.neededBy ?? [] }
 				this.store.markRead(wanted)
 			} catch {
 				// Verborgen oder nicht mehr vorhanden — bewusst still.
@@ -1180,6 +1205,7 @@ export default defineComponent({
 					this.openSteps = detail.steps
 					this.openComments = detail.comments
 					this.openAttachments = detail.attachments
+					this.openLinks = { dependsOn: detail.dependsOn ?? [], neededBy: detail.neededBy ?? [] }
 				}
 			} catch {
 				// Kein Netz: Beim nächsten Speichern oder Öffnen kommt der Stand nach.

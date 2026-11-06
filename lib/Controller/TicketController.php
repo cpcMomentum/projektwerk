@@ -22,6 +22,7 @@ use OCA\Projektwerk\Service\IdempotencyMismatchException;
 use OCA\Projektwerk\Service\IdempotencyService;
 use OCA\Projektwerk\Service\NoFolderException;
 use OCA\Projektwerk\Service\NotOwningSideException;
+use OCA\Projektwerk\Service\TicketDependencyService;
 use OCA\Projektwerk\Service\TicketReadModel;
 use OCA\Projektwerk\Service\TicketService;
 use OCP\AppFramework\Controller;
@@ -54,6 +55,7 @@ class TicketController extends Controller {
 		private TicketReadModel $readModel,
 		private BoardAccess $access,
 		private IdempotencyService $idem,
+		private TicketDependencyService $dependencies,
 		private ?string $userId,
 	) {
 		parent::__construct(Application::APP_ID, $request);
@@ -263,6 +265,32 @@ class TicketController extends Controller {
 	public function restore(int $boardId, int $ticketId): JSONResponse {
 		return $this->write($boardId, fn (ViewerContext $viewer): mixed
 			=> $this->service->restore($viewer, $ticketId));
+	}
+
+	/**
+	 * `$ticketId` wartet künftig auf `$dependsOnId`; Antwort sind beide Listen des Vorgangs.
+	 */
+	#[NoAdminRequired]
+	public function addDependency(int $boardId, int $ticketId, int $dependsOnId): JSONResponse {
+		return $this->write($boardId, fn (ViewerContext $viewer): array
+			=> self::links($this->dependencies->add($viewer, $ticketId, $dependsOnId)));
+	}
+
+	#[NoAdminRequired]
+	public function removeDependency(int $boardId, int $ticketId, int $dependsOnId): JSONResponse {
+		return $this->write($boardId, fn (ViewerContext $viewer): array
+			=> self::links($this->dependencies->remove($viewer, $ticketId, $dependsOnId)));
+	}
+
+	/**
+	 * @param array{ticket: \OCA\Projektwerk\Db\Ticket, dependsOn: \OCA\Projektwerk\Db\Ticket[], neededBy: \OCA\Projektwerk\Db\Ticket[]} $links
+	 * @return array<string, mixed>
+	 */
+	private static function links(array $links): array {
+		return [
+			'dependsOn' => TicketReadModel::linkSummaries($links['dependsOn']),
+			'neededBy' => TicketReadModel::linkSummaries($links['neededBy']),
+		];
 	}
 
 	/**

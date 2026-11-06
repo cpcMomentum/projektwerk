@@ -512,6 +512,17 @@ OC.L10N.register(
     "Arbeitsschritt abhaken" : "Arbeitsschritt abhaken",
     "Haken entfernen" : "Haken entfernen",
     "Zuständig für neue Arbeitsschritte: niemand" : "Zuständig für neue Arbeitsschritte: niemand",
-    "Zuständig für neue Arbeitsschritte: {name}" : "Zuständig für neue Arbeitsschritte: {name}"
+    "Zuständig für neue Arbeitsschritte: {name}" : "Zuständig für neue Arbeitsschritte: {name}",
+    "Hängt ab von" : "Hängt ab von",
+    "Abhängigkeit hinzufügen" : "Abhängigkeit hinzufügen",
+    "Vorgang, auf den dieser wartet" : "Vorgang, auf den dieser wartet",
+    "Vorgang suchen …" : "Vorgang suchen …",
+    "Wartet auf keinen anderen Vorgang." : "Wartet auf keinen anderen Vorgang.",
+    "Abhängigkeit von #{number} entfernen" : "Abhängigkeit von #{number} entfernen",
+    "Wird gebraucht für" : "Wird gebraucht für",
+    "Die Abhängigkeit konnte nicht gespeichert werden." : "Die Abhängigkeit konnte nicht gespeichert werden.",
+    "Die Abhängigkeit konnte nicht entfernt werden." : "Die Abhängigkeit konnte nicht entfernt werden.",
+    "Ein Vorgang kann nicht von sich selbst abhängen." : "Ein Vorgang kann nicht von sich selbst abhängen.",
+    "Dieser Vorgang wartet bereits auf den anderen; beide können nicht aufeinander warten." : "Dieser Vorgang wartet bereits auf den anderen; beide können nicht aufeinander warten."
 },
 "nplurals=2; plural=(n != 1);");

@@ -128,6 +128,37 @@ class TicketMapper extends QBMapper {
 	}
 
 	/**
+	 * Die sichtbaren Vorgänge, auf die `$ticketId` wartet; Sichtbarkeit am Partner, nicht am Paar.
+	 *
+	 * @return Ticket[]
+	 */
+	public function findVisibleDependencies(ViewerContext $viewer, int $ticketId): array {
+		return $this->findVisibleLinked($viewer, 'ticket_id', 'depends_on_id', $ticketId);
+	}
+
+	/**
+	 * Die sichtbaren Vorgänge, die auf `$ticketId` warten.
+	 *
+	 * @return Ticket[]
+	 */
+	public function findVisibleDependents(ViewerContext $viewer, int $ticketId): array {
+		return $this->findVisibleLinked($viewer, 'depends_on_id', 'ticket_id', $ticketId);
+	}
+
+	/**
+	 * @return Ticket[]
+	 */
+	private function findVisibleLinked(ViewerContext $viewer, string $anchorColumn, string $partnerColumn, int $ticketId): array {
+		$qb = $this->scopedQuery($viewer->userId, $viewer->boardId);
+		$qb->select(self::T . '.*')
+			->innerJoin(self::T, 'pwerk_ticket_deps', 'd', $qb->expr()->eq('d.' . $partnerColumn, self::T . '.id'))
+			->andWhere($qb->expr()->eq('d.' . $anchorColumn, $qb->createNamedParameter($ticketId, IQueryBuilder::PARAM_INT)))
+			->orderBy(self::T . '.number', 'ASC');
+
+		return $this->findEntities($qb);
+	}
+
+	/**
 	 * Wie {@see findVisible()}, über die Vorgangsnummer statt der ID.
 	 *
 	 * @throws DoesNotExistException
@@ -842,6 +873,14 @@ class TicketMapper extends QBMapper {
 					->where($delete->expr()->in('ticket_id', $delete->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)));
 				$delete->executeStatement();
 			}
+
+			$deps = $this->db->getQueryBuilder();
+			$deps->delete('pwerk_ticket_deps')
+				->where($deps->expr()->orX(
+					$deps->expr()->in('ticket_id', $deps->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)),
+					$deps->expr()->in('depends_on_id', $deps->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)),
+				));
+			$deps->executeStatement();
 		}
 	}
 }

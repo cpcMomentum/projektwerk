@@ -43,6 +43,9 @@ final class ReadPathRegistry {
 		'TicketMapper::findVisible',
 		// Dieselbe Einzelabfrage über die Vorgangsnummer (MCP `get_ticket`).
 		'TicketMapper::findVisibleByNumber',
+		// Abhaengigkeiten (#346): der Partner laeuft durch dieselbe Sichtbarkeitsregel, nicht das Paar.
+		'TicketMapper::findVisibleDependencies',
+		'TicketMapper::findVisibleDependents',
 		'TicketMapper::findVisibleAcrossBoards',
 		// Der Ueberblick (#76) — **alles Sichtbare** ueber alle Boards, nicht
 		// nur das eigene. Die breiteste Menge der Matrix: Jeder andere Pfad

@@ -18,6 +18,12 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
   Personen-Knopf, wem neue Schritte gehören. Die Auswahl bleibt stehen, so lassen sich mehrere Schritte
   für dieselbe Person nacheinander mit Enter anlegen; „Niemand“ hebt sie auf.
 
+- **Abhängigkeiten zwischen Vorgängen** (#346): Im Vorgang hält „Hängt ab von“ fest, auf welche anderen
+  Vorgänge desselben Boards er wartet; die Gegenseite zeigt „Wird gebraucht für“. Erledigtes und Verworfenes
+  steht durchgestrichen mit Status, ein Klick öffnet den Vorgang. Ein Kunde sieht nur Verknüpfungen zu
+  Vorgängen, die er auch sonst sieht, weder Titel noch Anzahl der übrigen. Der KI-Zugang liest die
+  Abhängigkeiten in `get_ticket` und setzt sie mit `add_dependency`/`remove_dependency`, bei
+  kundensichtbaren Vorgängen erst nach Rückfrage. Migration 26 ergänzt `pwerk_ticket_deps`.
 - **Link-Vorschau in Beschreibung und Kommentaren** (#406): Ein Link erscheint wie in Deck als
   Vorschaukarte (Titel, Seite, Bild). In der Beschreibung steht die Karte unter dem gekürzten Text und
   bleibt so auch bei langen Beschreibungen sichtbar. Aufgelöst wird über Nextclouds Reference-Mechanismus

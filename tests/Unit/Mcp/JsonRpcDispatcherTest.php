@@ -165,7 +165,7 @@ class JsonRpcDispatcherTest extends TestCase {
 		$tools = $this->resultOf($response)['tools'];
 
 		$this->assertSame(
-			['add_attachment', 'add_comment', 'add_step', 'attach_file', 'close_ticket', 'create_ticket', 'get_ticket', 'list_boards', 'list_columns', 'list_members', 'list_tickets', 'move_ticket', 'transfer_to_github', 'update_step', 'update_ticket'],
+			['add_attachment', 'add_comment', 'add_dependency', 'add_step', 'attach_file', 'close_ticket', 'create_ticket', 'get_ticket', 'list_boards', 'list_columns', 'list_members', 'list_tickets', 'move_ticket', 'remove_dependency', 'transfer_to_github', 'update_step', 'update_ticket'],
 			array_column($tools, 'name'),
 		);
 		$json = json_encode($response->body);
@@ -271,6 +271,8 @@ class JsonRpcDispatcherTest extends TestCase {
 			\OCA\Projektwerk\Mcp\Tools\AddAttachment::class => 'add_attachment',
 			\OCA\Projektwerk\Mcp\Tools\AttachFile::class => 'attach_file',
 			\OCA\Projektwerk\Mcp\Tools\TransferToGithub::class => 'transfer_to_github',
+			\OCA\Projektwerk\Mcp\Tools\AddDependency::class => 'add_dependency',
+			\OCA\Projektwerk\Mcp\Tools\RemoveDependency::class => 'remove_dependency',
 		] as $class => $name) {
 			$stub = $this->createStub($class);
 			$stub->method('name')->willReturn($name);

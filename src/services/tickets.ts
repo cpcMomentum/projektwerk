@@ -8,7 +8,7 @@
 
 import type { WriteOptions } from '@/services/api'
 import type { Visibility } from '@/types/board'
-import type { Ticket, TicketDetail, TicketList } from '@/types/ticket'
+import type { Ticket, TicketDetail, TicketLinks, TicketList } from '@/types/ticket'
 
 import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from '@/services/api'
 
@@ -189,4 +189,24 @@ export async function changeVisibility(
 		`/boards/${boardId}/tickets/${ticketId}/visibility`,
 		{ version, visibility },
 	)
+}
+
+/**
+ * `ticketId` wartet künftig auf `dependsOnId`; Antwort sind beide Listen des Vorgangs.
+ *
+ * @param boardId Kennung des Boards.
+ * @param ticketId Der wartende Vorgang.
+ * @param dependsOnId Der Vorgang, auf den er wartet.
+ */
+export async function addDependency(boardId: number, ticketId: number, dependsOnId: number): Promise<TicketLinks> {
+	return apiPost<TicketLinks, { dependsOnId: number }>(`/boards/${boardId}/tickets/${ticketId}/dependencies`, { dependsOnId })
+}
+
+/**
+ * @param boardId Kennung des Boards.
+ * @param ticketId Der wartende Vorgang.
+ * @param dependsOnId Der Vorgang, auf den er nicht mehr wartet.
+ */
+export async function removeDependency(boardId: number, ticketId: number, dependsOnId: number): Promise<TicketLinks> {
+	return apiDelete<TicketLinks>(`/boards/${boardId}/tickets/${ticketId}/dependencies/${dependsOnId}`)
 }

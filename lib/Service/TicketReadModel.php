@@ -103,7 +103,24 @@ class TicketReadModel {
 			'steps' => $steps,
 			'attachments' => $this->attachmentService->withPresence($viewer, $this->attachments->findForTickets($ids)),
 			'collaborators' => $this->ticketUsers->findForTickets($ids),
+			'dependsOn' => self::linkSummaries($this->tickets->findVisibleDependencies($viewer, $ids[0])),
+			'neededBy' => self::linkSummaries($this->tickets->findVisibleDependents($viewer, $ids[0])),
 		];
+	}
+
+	/**
+	 * @param Ticket[] $tickets
+	 * @return list<array{id: int, number: int, title: string, columnId: int, visibility: string, closedOutcome: ?string}>
+	 */
+	public static function linkSummaries(array $tickets): array {
+		return array_values(array_map(static fn (Ticket $ticket): array => [
+			'id' => (int)$ticket->getId(),
+			'number' => (int)$ticket->getNumber(),
+			'title' => (string)$ticket->getTitle(),
+			'columnId' => (int)$ticket->getColumnId(),
+			'visibility' => (string)$ticket->getVisibility(),
+			'closedOutcome' => $ticket->getClosedOutcome(),
+		], $tickets));
 	}
 
 	/**
