@@ -642,6 +642,197 @@
 
 /* ---- Formular ----------------------------------------------------------- */
 
+/*
+ * Feldsystem wie in VertragsWerk (ContractForm.vue, dort aus Vinarium): ein Rahmen für jedes Feld,
+ * kleine graue Beschriftung darüber, Abschnittsköpfe in Versalien mit feiner Trennlinie.
+ */
+.app-projektwerk .pw-form-section {
+	padding: 18px 0;
+	border-top: 1px solid var(--color-border-light, var(--color-border));
+}
+
+.app-projektwerk .pw-form-section:first-of-type {
+	border-top: none;
+	padding-top: 0;
+}
+
+.app-projektwerk .pw-form-section > h3 {
+	margin: 0 0 14px;
+	font-size: 12px;
+	font-weight: 700;
+	color: var(--color-text-maxcontrast);
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+.app-projektwerk .pw-feld {
+	display: block;
+	margin-bottom: 14px;
+}
+
+.app-projektwerk .pw-feld:last-child {
+	margin-bottom: 0;
+}
+
+.app-projektwerk .pw-feld__label {
+	display: block;
+	margin-bottom: 4px;
+	font-size: 13px;
+	font-weight: normal;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-feld__hinweis {
+	display: block;
+	margin-top: 4px;
+	font-size: 13px;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-feld-reihe {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 14px;
+	align-items: start;
+	margin-bottom: 14px;
+}
+
+.app-projektwerk .pw-feld-reihe:last-child {
+	margin-bottom: 0;
+}
+
+.app-projektwerk .pw-feld-reihe > .pw-feld {
+	margin-bottom: 0;
+}
+
+@media (max-width: 600px) {
+	.app-projektwerk .pw-feld-reihe {
+		grid-template-columns: 1fr;
+		gap: 12px;
+	}
+}
+
+/*
+ * Ein Rahmen für jedes Feld der App, auch für die NC-Komponenten (Textfeld, Textbereich, Auswahl, Datum,
+ * Kommentarfeld). `body` vorweg, weil die Kernregeln für Hover und Fokus sonst spezifischer sind.
+ */
+body .app-projektwerk :is(
+	.pw-input,
+	select,
+	textarea,
+	input:is(:not([type]), [type=text], [type=url], [type=email], [type=number], [type=password], [type=search]):not(.vs__search),
+	.input-field__input,
+	.vs__dropdown-toggle,
+	.rich-contenteditable__input
+) {
+	box-sizing: border-box;
+	min-height: 36px;
+	margin: 0;
+	border: 1px solid var(--color-border-dark, var(--color-border));
+	border-radius: var(--border-radius, 8px);
+	background-color: var(--color-main-background);
+	box-shadow: none;
+	color: var(--color-main-text);
+	font: inherit;
+}
+
+body .app-projektwerk :is(.pw-input, select, input:not([type=checkbox], [type=radio], .vs__search)) {
+	padding-block: 6px;
+}
+
+body .app-projektwerk .pw-input {
+	width: 100%;
+	padding-inline: 10px;
+}
+
+/* Dieselbe Argumentliste wie die Grundregel: `:is()` nimmt die Spezifität seines stärksten Arguments. */
+body .app-projektwerk :is(.pw-input, select, textarea, input:is(:not([type]), [type=text], [type=url], [type=email], [type=number], [type=password], [type=search]):not(.vs__search), .input-field__input, .rich-contenteditable__input):not(:disabled):not(:focus):hover,
+body .app-projektwerk .v-select:not(.vs--disabled):hover .vs__dropdown-toggle {
+	border-color: var(--color-border-maxcontrast, var(--color-border-dark));
+	box-shadow: none;
+}
+
+body .app-projektwerk :is(.pw-input, select, textarea, input:is(:not([type]), [type=text], [type=url], [type=email], [type=number], [type=password], [type=search]):not(.vs__search), .input-field__input, .rich-contenteditable__input):is(:focus, :focus-visible),
+body .app-projektwerk .v-select.vs--open .vs__dropdown-toggle,
+body .app-projektwerk .v-select:focus-within .vs__dropdown-toggle {
+	outline: none;
+	border-color: var(--color-primary-element);
+	/* `!important` nur hier: Der Kern setzt seinen Fokusring global mit `!important`. */
+	box-shadow: 0 0 0 2px var(--color-primary-element-light) !important;
+}
+
+/* Die Fokusregel von NcTextField trägt `[data-v-…]:focus:not([disabled])` und wäre sonst stärker. */
+body .app-projektwerk .input-field .input-field__input:is(:focus, :focus-visible):not([disabled]),
+body .app-projektwerk .textarea .textarea__input:is(:focus, :focus-visible):not([disabled]) {
+	border-width: 1px;
+	border-color: var(--color-primary-element);
+	box-shadow: 0 0 0 2px var(--color-primary-element-light) !important;
+}
+
+body .app-projektwerk .input-field .input-field__input:hover:not([disabled]):not(:focus),
+body .app-projektwerk .textarea .textarea__input:hover:not([disabled]):not(:focus) {
+	border-width: 1px;
+	border-color: var(--color-border-maxcontrast, var(--color-border-dark));
+	box-shadow: none;
+}
+
+/* NC hält 2 px Innenabstand für seinen dicken Fokusrand frei; mit dem durchgehenden 1-px-Rand rückt das Feld sonst ein. */
+body .app-projektwerk .input-field .input-field__main-wrapper,
+body .app-projektwerk .textarea .textarea__main-wrapper {
+	height: auto;
+	padding: 0;
+}
+
+.app-projektwerk .pw-settings__hint + .pw-feld {
+	margin-top: 8px;
+}
+
+body .app-projektwerk :is(input[type=checkbox], input[type=radio]) {
+	min-height: 0;
+	border: none;
+	box-shadow: none;
+}
+
+/* NC setzt `appearance: none` auf <select> und nimmt damit den Pfeil; ohne ihn wirkt die Auswahl wie ein Textfeld. */
+body .app-projektwerk select {
+	cursor: pointer;
+	padding-inline: 10px 32px;
+	background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%238b8b8b'%3E%3Cpath d='M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z'/%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: right 8px center;
+	background-size: 18px;
+}
+
+body .app-projektwerk textarea {
+	resize: vertical;
+	line-height: 1.5;
+}
+
+.app-projektwerk textarea.pw-input {
+	min-height: 6em;
+	max-height: 50vh;
+}
+
+.app-projektwerk .v-select.select {
+	min-width: 0;
+}
+
+.app-projektwerk .pw-feld .v-select.select,
+.app-projektwerk .pw-feld .mx-datepicker,
+.app-projektwerk .pw-feld .dp__main {
+	width: 100%;
+	max-width: none;
+}
+
+.app-projektwerk .vs__dropdown-toggle {
+	padding-bottom: 0;
+}
+
+.app-projektwerk .vs__selected-options {
+	padding: 0 4px;
+}
+
+
 .app-projektwerk .pw-field {
 	display: flex;
 	flex-direction: column;
@@ -651,7 +842,7 @@
 
 .app-projektwerk .pw-field > label {
 	font-size: 13px;
-	font-weight: 600;
+	font-weight: normal;
 	color: var(--color-text-maxcontrast);
 }
 
@@ -738,7 +929,7 @@
  * Gilt nur fuer `--knapp`, also nur im Vorgang. Im Anlege-Formular bleibt es
  * bei der Plattformgroesse.
  */
-.app-projektwerk .pw-vischoice--knapp [class*='_radioGroupButton_'],
+.app-projektwerk .pw-vischoice [class*='_radioGroupButton_'],
 .app-projektwerk .pw-boardtabs__group [class*='_radioGroupButton_'] {
 	min-height: var(--default-clickable-area, 34px);
 }
@@ -751,11 +942,15 @@
  * nichts umzubrechen; wird der Platz zu knapp, schiebt sich die Gruppe lieber
  * als Ganzes.
  */
+.app-projektwerk .pw-vischoice [class*='_radioGroupButton__label'],
+.app-projektwerk .pw-boardtabs__group [class*='_radioGroupButton__label'] {
+	min-height: 0;
+	white-space: nowrap;
+}
+
 .app-projektwerk .pw-vischoice--knapp [class*='_radioGroupButton__label'],
 .app-projektwerk .pw-boardtabs__group [class*='_radioGroupButton__label'] {
 	font-size: 13px;
-	min-height: 0;
-	white-space: nowrap;
 }
 
 /*
@@ -764,7 +959,7 @@
  * die Beschriftung. Auf die Groesse des Sinnbilds festgelegt; die Klickflaeche
  * bleibt am Knopf und damit bei 34 px.
  */
-.app-projektwerk .pw-vischoice--knapp [class*='_radioGroupButton__icon'],
+.app-projektwerk .pw-vischoice [class*='_radioGroupButton__icon'],
 .app-projektwerk .pw-boardtabs__group [class*='_radioGroupButton__icon'] {
 	height: 20px;
 	min-height: 0;
@@ -786,7 +981,8 @@
 .app-projektwerk .pw-boardtabs__group [class*='_ncFormBox_row'] {
 	background: var(--color-background-dark);
 	border-radius: var(--border-radius-element, 8px);
-	padding: 3px;
+	/* 34 px Knopf plus 2 × 1 px Schiene = 36 px, so hoch wie die Formularfelder. */
+	padding: 1px;
 	gap: 2px;
 }
 
@@ -1554,6 +1750,13 @@ body .modal-wrapper:has(.pw-detail) > .modal-container {
 	gap: 10px;
 }
 
+/* In einer Einstellungszeile teilt sich das Textfeld den Platz mit Auswahl und Knöpfen, statt die Zeile umzubrechen. */
+.app-projektwerk .pw-settings__row > .input-field {
+	flex: 1 1 220px;
+	width: auto;
+	min-width: 0;
+}
+
 /* Native Auswahl-Inputs mit datalist (#309): Firma je Mitglied, Kunde. */
 .app-projektwerk .pw-plaininput {
 	min-height: 34px;
@@ -1776,7 +1979,8 @@ body .modal-wrapper:has(.pw-detail) > .modal-container {
  */
 .app-projektwerk .pw-step__felder-zeile {
 	display: flex;
-	align-items: flex-end;
+	/* Oben bündig: Die Personenauswahl ist mit Untertitel höher als das Datum, die Beschriftungen sollen auf einer Linie stehen. */
+	align-items: flex-start;
 	gap: 12px;
 }
 
@@ -3313,7 +3517,7 @@ body .modal-wrapper:has(.pw-detail) > .modal-container {
 .app-projektwerk .pw-eckdaten__felder {
 	display: flex;
 	flex-wrap: wrap;
-	align-items: flex-end;
+	align-items: flex-start;
 	gap: 12px;
 }
 
@@ -3496,10 +3700,16 @@ body .modal-wrapper:has(.pw-detail) > .modal-container {
 	min-width: 0;
 }
 
-.app-projektwerk .pw-settingspage__head {
+/* Abschnittsköpfe wie in VertragsWerk: klein, grau, Versalien (siehe `.pw-form-section`). */
+.app-projektwerk .pw-settingspage__head,
+.app-projektwerk .pw-settings__block > .pw-col__head {
 	margin: 0 0 4px;
-	font-size: 18px;
+	padding: 0;
+	font-size: 12px;
 	font-weight: 700;
+	color: var(--color-text-maxcontrast);
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
 }
 
 .app-projektwerk .pw-settingspage__block {

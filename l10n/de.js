@@ -523,6 +523,8 @@ OC.L10N.register(
     "Die Abhängigkeit konnte nicht gespeichert werden." : "Die Abhängigkeit konnte nicht gespeichert werden.",
     "Die Abhängigkeit konnte nicht entfernt werden." : "Die Abhängigkeit konnte nicht entfernt werden.",
     "Ein Vorgang kann nicht von sich selbst abhängen." : "Ein Vorgang kann nicht von sich selbst abhängen.",
-    "Dieser Vorgang wartet bereits auf den anderen; beide können nicht aufeinander warten." : "Dieser Vorgang wartet bereits auf den anderen; beide können nicht aufeinander warten."
+    "Dieser Vorgang wartet bereits auf den anderen; beide können nicht aufeinander warten." : "Dieser Vorgang wartet bereits auf den anderen; beide können nicht aufeinander warten.",
+    "Beteiligte Firmen" : "Beteiligte Firmen",
+    "Zusammenarbeit" : "Zusammenarbeit"
 },
 "nplurals=2; plural=(n != 1);");

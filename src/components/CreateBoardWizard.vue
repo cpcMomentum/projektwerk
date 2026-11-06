@@ -26,6 +26,7 @@
 					<NcTextField
 						id="pw-wiz-title"
 						v-model="title"
+						:labelOutside="true"
 						:label="t('projektwerk', 'Titel')" />
 				</div>
 				<div class="pw-field">
@@ -50,6 +51,7 @@
 					<NcTextField
 						id="pw-wiz-orgi"
 						v-model="orgInternal"
+						:labelOutside="true"
 						:label="t('projektwerk', 'Eigene Firma')" />
 				</div>
 				<div class="pw-field">
@@ -161,6 +163,7 @@
 					<NcTextField
 						id="pw-wiz-chat"
 						v-model="chatUrl"
+						:labelOutside="true"
 						:label="t('projektwerk', 'Adresse des Projektchats')" />
 				</div>
 				<span class="pw-settings__hint">

@@ -35,18 +35,26 @@
 
 			<div class="pw-settingspage__content pw-settings">
 				<section v-show="activeSection === 'projekt'" class="pw-settings__block">
-					<h3 class="pw-col__head">
-						{{ t('projektwerk', 'Projekt') }}
-					</h3>
+					<div class="pw-form-section">
+						<h3>{{ t('projektwerk', 'Projekt') }}</h3>
 
-					<div class="pw-field">
-						<label for="pw-set-title">{{ t('projektwerk', 'Titel') }}</label>
-						<NcTextField id="pw-set-title" v-model="board.title" :label="t('projektwerk', 'Titel')" />
-					</div>
+						<div class="pw-feld">
+							<label class="pw-feld__label" for="pw-set-title">{{ t('projektwerk', 'Titel') }}</label>
+							<input
+								id="pw-set-title"
+								v-model="board.title"
+								class="pw-input"
+								type="text">
+						</div>
 
-					<div class="pw-field">
-						<label for="pw-set-desc">{{ t('projektwerk', 'Beschreibung') }}</label>
-						<textarea id="pw-set-desc" v-model="board.description" rows="3" />
+						<div class="pw-feld">
+							<label class="pw-feld__label" for="pw-set-desc">{{ t('projektwerk', 'Beschreibung') }}</label>
+							<textarea
+								id="pw-set-desc"
+								v-model="board.description"
+								class="pw-input"
+								rows="3" />
+						</div>
 					</div>
 
 					<!--
@@ -60,54 +68,68 @@
 						bearbeitet hier nur Titel und Beschreibung seines Boards.
 					-->
 					<template v-if="mayManage">
-						<div class="pw-settings__pair">
-							<div class="pw-field">
-								<label for="pw-set-orgi">{{ t('projektwerk', 'Eigene Firma') }}</label>
-								<NcTextField id="pw-set-orgi" v-model="board.orgInternal" :label="t('projektwerk', 'Eigene Firma')" />
-							</div>
-							<!--
+						<div class="pw-form-section">
+							<h3>{{ t('projektwerk', 'Beteiligte Firmen') }}</h3>
+							<div class="pw-feld-reihe">
+								<div class="pw-feld">
+									<label class="pw-feld__label" for="pw-set-orgi">{{ t('projektwerk', 'Eigene Firma') }}</label>
+									<input
+										id="pw-set-orgi"
+										v-model="board.orgInternal"
+										class="pw-input"
+										type="text">
+								</div>
+								<!--
 								Der Kunde des Projekts (#309) — filterbares Label, wofür das
 								Projekt läuft. Auswahl mit vorhandenen Kunden (datalist) oder
 								frei getippt. Nicht zu verwechseln mit der Firma je Mitglied:
 								Beteiligte können aus anderen Firmen kommen (z. B. Subunternehmer).
 							-->
-							<div class="pw-field">
-								<label for="pw-set-customer">{{ t('projektwerk', 'Kunde') }}</label>
-								<input
-									id="pw-set-customer"
-									v-model="board.customer"
-									class="pw-plaininput"
-									list="pw-customer-suggestions"
-									:placeholder="t('projektwerk', 'Kunde (optional)')">
-								<datalist id="pw-customer-suggestions">
-									<option v-for="c in store.customerSuggestions" :key="c" :value="c" />
-								</datalist>
+								<div class="pw-feld">
+									<label class="pw-feld__label" for="pw-set-customer">{{ t('projektwerk', 'Kunde') }}</label>
+									<input
+										id="pw-set-customer"
+										v-model="board.customer"
+										class="pw-input"
+										list="pw-customer-suggestions"
+										:placeholder="t('projektwerk', 'Kunde (optional)')">
+									<datalist id="pw-customer-suggestions">
+										<option v-for="c in store.customerSuggestions" :key="c" :value="c" />
+									</datalist>
+								</div>
 							</div>
 						</div>
 
-						<div class="pw-field">
-							<label for="pw-set-chat">{{ t('projektwerk', 'Adresse des Projektchats') }}</label>
-							<NcTextField id="pw-set-chat" v-model="board.chatUrl" :label="t('projektwerk', 'Adresse des Projektchats')" />
-							<!-- Ohne Adresse entfaellt der Knopf ersatzlos (§9). -->
-							<span class="pw-settings__hint">
-								{{ t('projektwerk', 'Leer lassen blendet den Knopf „Zum Projektchat“ aus.') }}
-							</span>
-						</div>
+						<div class="pw-form-section">
+							<h3>{{ t('projektwerk', 'Zusammenarbeit') }}</h3>
+							<div class="pw-feld">
+								<label class="pw-feld__label" for="pw-set-chat">{{ t('projektwerk', 'Adresse des Projektchats') }}</label>
+								<input
+									id="pw-set-chat"
+									v-model="board.chatUrl"
+									class="pw-input"
+									type="url">
+								<!-- Ohne Adresse entfaellt der Knopf ersatzlos (§9). -->
+								<span class="pw-feld__hinweis">
+									{{ t('projektwerk', 'Leer lassen blendet den Knopf „Zum Projektchat“ aus.') }}
+								</span>
+							</div>
 
-						<!--
+							<!--
 							#281: Der Projekt-Schalter. Ist er an, dürfen alle
 							Mitglieder (auch externe) hier weitere Boards anlegen und
 							einrichten (Arbeitsgruppen). Aus = nur der Manager.
 						-->
-						<div class="pw-field">
-							<NcCheckboxRadioSwitch
-								v-model="board.memberBoardsAllowed"
-								type="switch">
-								{{ t('projektwerk', 'Mitglieder dürfen eigene Boards in diesem Projekt anlegen') }}
-							</NcCheckboxRadioSwitch>
-							<span class="pw-settings__hint">
-								{{ t('projektwerk', 'Damit können Arbeitsgruppen selbst ein Board anlegen und dessen Spalten pflegen. Alle Projektmitglieder sehen weiterhin alle Boards.') }}
-							</span>
+							<div class="pw-feld">
+								<NcCheckboxRadioSwitch
+									v-model="board.memberBoardsAllowed"
+									type="switch">
+									{{ t('projektwerk', 'Mitglieder dürfen eigene Boards in diesem Projekt anlegen') }}
+								</NcCheckboxRadioSwitch>
+								<span class="pw-feld__hinweis">
+									{{ t('projektwerk', 'Damit können Arbeitsgruppen selbst ein Board anlegen und dessen Spalten pflegen. Alle Projektmitglieder sehen weiterhin alle Boards.') }}
+								</span>
+							</div>
 						</div>
 					</template>
 
@@ -159,6 +181,7 @@
 							<NcTextField
 								id="pw-set-ghrepo"
 								v-model="board.githubRepo"
+								:labelOutside="true"
 								:label="t('projektwerk', 'Ziel-Repository')"
 								placeholder="owner/repo"
 								@update:modelValue="repoSuchen" />
@@ -222,6 +245,7 @@
 							<NcTextField
 								:id="`pw-set-${slot.key}`"
 								v-model="folderDrafts[slot.key]"
+								:labelOutside="true"
 								:label="slot.label"
 								:placeholder="slot.placeholder"
 								:disabled="busy || !mayManage"

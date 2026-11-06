@@ -570,7 +570,9 @@
 		"Die Abhängigkeit konnte nicht gespeichert werden.": "The dependency could not be saved.",
 		"Die Abhängigkeit konnte nicht entfernt werden.": "The dependency could not be removed.",
 		"Ein Vorgang kann nicht von sich selbst abhängen.": "A ticket cannot depend on itself.",
-		"Dieser Vorgang wartet bereits auf den anderen; beide können nicht aufeinander warten.": "The other ticket already waits for this one; two tickets cannot wait for each other."
+		"Dieser Vorgang wartet bereits auf den anderen; beide können nicht aufeinander warten.": "The other ticket already waits for this one; two tickets cannot wait for each other.",
+		"Beteiligte Firmen": "Companies involved",
+		"Zusammenarbeit": "Collaboration"
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }
