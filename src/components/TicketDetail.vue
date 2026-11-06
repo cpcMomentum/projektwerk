@@ -460,6 +460,17 @@
 					</div>
 				</div>
 
+				<DependencyList
+					v-if="!pending"
+					:boardId="ticket.boardId"
+					:ticketId="ticket.id"
+					:dependsOn="dependsOn"
+					:neededBy="neededBy"
+					:boardTickets="boardTickets"
+					:columns="columns"
+					@open="$emit('openTicket', $event)"
+					@changed="$emit('linksChanged', $event)" />
+
 				<StepList
 					ref="steps"
 					:boardId="ticket.boardId"
@@ -569,7 +580,7 @@
 import type { PropType } from 'vue'
 import type { TicketEntry } from '@/stores/outboxStore'
 import type { Column, Member, ViewerInfo } from '@/types/board'
-import type { Attachment, Comment, Step, Ticket, WaitState } from '@/types/ticket'
+import type { Attachment, Comment, Step, Ticket, TicketLink, WaitState } from '@/types/ticket'
 
 import { t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
@@ -597,6 +608,7 @@ import PlusIcon from 'vue-material-design-icons/Plus.vue'
 import RestoreIcon from 'vue-material-design-icons/Restore.vue'
 import AttachmentList from '@/components/AttachmentList.vue'
 import CommentList from '@/components/CommentList.vue'
+import DependencyList from '@/components/DependencyList.vue'
 import StepList from '@/components/StepList.vue'
 import VisibilityControl from '@/components/VisibilityControl.vue'
 import WaitBadge from '@/components/WaitBadge.vue'
@@ -621,7 +633,7 @@ interface PersonOption {
 export default defineComponent({
 	name: 'TicketDetail',
 
-	components: { AttachmentList, CalendarIcon, CalendarAlertIcon, CancelIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, CommentList, DeleteOutlineIcon, FormatBoldIcon, FormatListBulletedIcon, FormatListNumberedIcon, GithubIcon, NcAvatar, NcButton, NcDateTimePicker, NcModal, NcReferenceList, NcRichText, NcSelectUsers, NcTextArea, NcTextField, PencilOutlineIcon, PlusIcon, RestoreIcon, StepList, VisibilityControl, WaitBadge },
+	components: { AttachmentList, CalendarIcon, CalendarAlertIcon, CancelIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, CommentList, DeleteOutlineIcon, DependencyList, FormatBoldIcon, FormatListBulletedIcon, FormatListNumberedIcon, GithubIcon, NcAvatar, NcButton, NcDateTimePicker, NcModal, NcReferenceList, NcRichText, NcSelectUsers, NcTextArea, NcTextField, PencilOutlineIcon, PlusIcon, RestoreIcon, StepList, VisibilityControl, WaitBadge },
 
 	props: {
 		ticket: { type: Object as PropType<Ticket | null>, default: null },
@@ -636,6 +648,9 @@ export default defineComponent({
 		steps: { type: Array as PropType<Step[]>, default: () => [] },
 		comments: { type: Array as PropType<Comment[]>, default: () => [] },
 		attachments: { type: Array as PropType<Attachment[]>, default: () => [] },
+		dependsOn: { type: Array as PropType<TicketLink[]>, default: () => [] },
+		neededBy: { type: Array as PropType<TicketLink[]>, default: () => [] },
+		boardTickets: { type: Array as PropType<Ticket[]>, default: () => [] },
 		waiting: { type: Object as PropType<WaitState | null>, default: null },
 		/** Aus Sicht der Kundenseite formuliert. */
 		fromClientSide: { type: Boolean, default: false },
@@ -645,7 +660,7 @@ export default defineComponent({
 		githubRepo: { type: String, default: '' },
 	},
 
-	emits: ['close', 'changed', 'delete', 'stepsChanged', 'commentsChanged', 'attachmentsChanged'],
+	emits: ['close', 'changed', 'delete', 'stepsChanged', 'commentsChanged', 'attachmentsChanged', 'openTicket', 'linksChanged'],
 
 	setup() {
 		return { outbox: useOutboxStore() }

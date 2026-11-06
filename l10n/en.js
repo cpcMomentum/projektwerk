@@ -512,6 +512,17 @@ OC.L10N.register(
     "Arbeitsschritt abhaken" : "Tick off work step",
     "Haken entfernen" : "Untick work step",
     "Zuständig für neue Arbeitsschritte: niemand" : "Responsible for new work steps: nobody",
-    "Zuständig für neue Arbeitsschritte: {name}" : "Responsible for new work steps: {name}"
+    "Zuständig für neue Arbeitsschritte: {name}" : "Responsible for new work steps: {name}",
+    "Hängt ab von" : "Depends on",
+    "Abhängigkeit hinzufügen" : "Add dependency",
+    "Vorgang, auf den dieser wartet" : "Ticket this one waits for",
+    "Vorgang suchen …" : "Search ticket …",
+    "Wartet auf keinen anderen Vorgang." : "Does not wait for another ticket.",
+    "Abhängigkeit von #{number} entfernen" : "Remove dependency on #{number}",
+    "Wird gebraucht für" : "Needed for",
+    "Die Abhängigkeit konnte nicht gespeichert werden." : "The dependency could not be saved.",
+    "Die Abhängigkeit konnte nicht entfernt werden." : "The dependency could not be removed.",
+    "Ein Vorgang kann nicht von sich selbst abhängen." : "A ticket cannot depend on itself.",
+    "Dieser Vorgang wartet bereits auf den anderen; beide können nicht aufeinander warten." : "The other ticket already waits for this one; two tickets cannot wait for each other."
 },
 "nplurals=2; plural=(n != 1);");

@@ -21,6 +21,7 @@ use OCA\Projektwerk\Db\TicketReadMapper;
 use OCA\Projektwerk\Service\CommentService;
 use OCA\Projektwerk\Service\IdempotencyService;
 use OCA\Projektwerk\Service\StepService;
+use OCA\Projektwerk\Service\TicketDependencyService;
 use OCA\Projektwerk\Service\TicketReadModel;
 use OCA\Projektwerk\Service\TicketService;
 use OCP\AppFramework\Http\JSONResponse;
@@ -167,6 +168,7 @@ class IdempotencyTest extends IntegrationTestCase {
 			Server::get(TicketReadModel::class),
 			Server::get(BoardAccess::class),
 			Server::get(IdempotencyService::class),
+			Server::get(TicketDependencyService::class),
 			$userId,
 		);
 

@@ -34,6 +34,8 @@ use OCA\Projektwerk\Db\NotifyPrefMapper;
 use OCA\Projektwerk\Db\ProjectMapper;
 use OCA\Projektwerk\Db\StepMapper;
 use OCA\Projektwerk\Db\TaskFilter;
+use OCA\Projektwerk\Db\TicketDep;
+use OCA\Projektwerk\Db\TicketDepMapper;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Db\TicketReadMapper;
 use OCA\Projektwerk\Service\IdempotencyService;
@@ -55,6 +57,7 @@ use OCA\Projektwerk\Mcp\Tools\ListColumns;
 use OCA\Projektwerk\Mcp\Tools\ListMembers;
 use OCA\Projektwerk\Mcp\Tools\ListTickets;
 use OCA\Projektwerk\Service\BoardReadModel;
+use OCA\Projektwerk\Service\TicketDependencyService;
 use OCA\Projektwerk\Service\TicketReadModel;
 use OCA\Projektwerk\Tests\ReadPathRegistry;
 use OCA\Projektwerk\AppInfo\Application;
@@ -254,6 +257,8 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'TicketMapper::findVisibleInBoard' => 'testEveryViewerSeesExactlyTheirTickets',
 		'TicketMapper::findVisible' => 'testSingleTicketAccessMatchesTheSameSet',
 		'TicketMapper::findVisibleByNumber' => 'testSingleTicketAccessMatchesTheSameSet',
+		'TicketMapper::findVisibleDependencies' => 'testDependencyListsNeverWidenBeyondTheVisibleSet',
+		'TicketMapper::findVisibleDependents' => 'testDependencyListsNeverWidenBeyondTheVisibleSet',
 		'TicketMapper::findVisibleAcrossBoards' => 'testMyTasksNeverWidensBeyondTheVisibleSet',
 		'TicketMapper::findVisibleAcrossBoardsAll' => 'testTheOverviewMapperNeverWidensBeyondTheVisibleSet',
 		'MemberMapper::findForUserBoards' => 'testMemberNamesCoverOnlyMyOwnBoards',
@@ -1275,6 +1280,38 @@ class LeakMatrixTest extends IntegrationTestCase {
 	 * wechseln, und `assigned_role` ist eingefroren. Die Sichtbarkeit muss
 	 * deshalb aus dem JOIN kommen und nicht aus der Zuweisung.
 	 */
+	/**
+	 * Ein Vorgang, mit allen anderen des Boards in beide Richtungen verknuepft: Jede Liste ist genau die Sichtmenge.
+	 */
+	public function testDependencyListsNeverWidenBeyondTheVisibleSet(): void {
+		$anchor = $this->fixture->ticketIds['public/anna'];
+		$deps = Server::get(TicketDepMapper::class);
+		foreach (array_keys(LeakMatrixFixture::TICKETS) as $label) {
+			$other = $this->fixture->ticketIds[$label];
+			if ($other === $anchor) {
+				continue;
+			}
+			foreach ([[$anchor, $other], [$other, $anchor]] as [$waiting, $target]) {
+				$dep = new TicketDep();
+				$dep->setBoardId($this->fixture->boardId);
+				$dep->setTicketId($waiting);
+				$dep->setDependsOnId($target);
+				$dep->setCreatedBy(self::ANNA);
+				$dep->setCreatedAt(new \DateTime());
+				$deps->insert($dep);
+			}
+		}
+
+		$tickets = Server::get(TicketMapper::class);
+		foreach (self::VISIBLE as $userId => $visible) {
+			$viewer = $this->contextFor($userId);
+			$expected = array_values(array_diff($visible, ['public/anna']));
+
+			$this->assertTicketLabels($expected, $tickets->findVisibleDependencies($viewer, $anchor), $userId . ': „Hängt ab von"');
+			$this->assertTicketLabels($expected, $tickets->findVisibleDependents($viewer, $anchor), $userId . ': „Wird gebraucht für"');
+		}
+	}
+
 	public function testMyStepsNeverWidensBeyondTheVisibleSet(): void {
 		$tickets = Server::get(TicketMapper::class);
 
@@ -2282,6 +2319,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 			Server::get(TicketReadModel::class),
 			Server::get(BoardAccess::class),
 			Server::get(IdempotencyService::class),
+			Server::get(TicketDependencyService::class),
 			$userId,
 		);
 	}

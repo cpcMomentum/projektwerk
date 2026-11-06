@@ -1408,6 +1408,77 @@ body .modal-wrapper:has(.pw-detail) > .modal-container {
 	margin-inline-start: auto;
 }
 
+/* ---- Abhängigkeiten ----------------------------------------------------- */
+
+.app-projektwerk .pw-deps__auswahl {
+	display: flex;
+	align-items: flex-end;
+	gap: 4px;
+	margin-block-end: 8px;
+}
+
+.app-projektwerk .pw-deps__select {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.app-projektwerk .pw-deps__liste {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.app-projektwerk .pw-deps__zeile {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-height: var(--default-clickable-area);
+}
+
+.app-projektwerk .pw-deps__link {
+	display: flex;
+	flex: 1 1 auto;
+	min-width: 0;
+	gap: 6px;
+	color: var(--color-main-text);
+}
+
+.app-projektwerk .pw-deps__link:hover .pw-deps__titel,
+.app-projektwerk .pw-deps__link:focus-visible .pw-deps__titel {
+	text-decoration: underline;
+}
+
+.app-projektwerk .pw-deps__nummer {
+	flex: 0 0 auto;
+	font-variant-numeric: tabular-nums;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-deps__titel {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* Abgeschlossenes durchgestrichen, der Status daneben sagt es zusätzlich in Worten. */
+.app-projektwerk .pw-deps__link--zu .pw-deps__titel {
+	text-decoration: line-through;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-deps__status {
+	flex: 0 0 auto;
+	font-size: 13px;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-deps__unterkopf {
+	margin: 8px 0 4px;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--color-text-maxcontrast);
+}
+
 /* ---- Sichtbarkeit ändern ------------------------------------------------ */
 
 .app-projektwerk .pw-viscontrol {

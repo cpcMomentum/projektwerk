@@ -44,6 +44,9 @@ return [
 		// `deleted_at` zurueck auf null; ohne `version`, weil idempotent.
 		['name' => 'ticket#restore', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/restore', 'verb' => 'POST'],
 		['name' => 'ticket#move', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/move', 'verb' => 'POST'],
+		// Abhängigkeiten (#346): Schreibwege; gelesen werden sie über ticket#show.
+		['name' => 'ticket#addDependency', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/dependencies', 'verb' => 'POST'],
+		['name' => 'ticket#removeDependency', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/dependencies/{dependsOnId}', 'verb' => 'DELETE'],
 		['name' => 'ticket#visibility', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/visibility', 'verb' => 'PUT'],
 		// GitHub-Überführung (#12, Stufe 1) — einseitig „Vorgang → Issue". Ein
 		// Schreibweg, deshalb POST und nicht in der Leak-Matrix (die faehrt nur

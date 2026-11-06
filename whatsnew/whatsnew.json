@@ -2,6 +2,23 @@
 	"0.4.23": [
 		{
 			"title": {
+				"de": "Abhängigkeiten zwischen Vorgängen",
+				"en": "Dependencies between tickets"
+			},
+			"text": {
+				"de": "Unter „Hängt ab von“ hältst du fest, auf welche anderen Vorgänge ein Vorgang wartet. Der andere Vorgang zeigt dann „Wird gebraucht für“, so sieht man auf beiden Seiten, was zusammenhängt.",
+				"en": "Under “Depends on” you note which other tickets a ticket waits for. The other ticket then shows “Needed for”, so both sides see what belongs together."
+			},
+			"icon": "star",
+			"where": {
+				"de": "Im Vorgang über den Arbeitsschritten",
+				"en": "In the ticket, above the work steps"
+			},
+			"adminOnly": false,
+			"plus": false
+		},
+		{
+			"title": {
 				"de": "Vorschau für Links",
 				"en": "Link previews"
 			},
