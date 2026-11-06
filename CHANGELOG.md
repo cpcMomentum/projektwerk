@@ -18,6 +18,12 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
   Personen-Knopf, wem neue Schritte gehören. Die Auswahl bleibt stehen, so lassen sich mehrere Schritte
   für dieselbe Person nacheinander mit Enter anlegen; „Niemand“ hebt sie auf.
 
+- **Link-Vorschau in Beschreibung und Kommentaren** (#406): Ein Link erscheint wie in Deck als
+  Vorschaukarte (Titel, Seite, Bild). In der Beschreibung steht die Karte unter dem gekürzten Text und
+  bleibt so auch bei langen Beschreibungen sichtbar. Aufgelöst wird über Nextclouds Reference-Mechanismus
+  als der angemeldete Nutzer: Eine Datei zeigt sich nur, wenn der Betrachter sie sehen darf, sonst bleibt
+  es beim Link. Interaktive Widgets fremder Apps (Deck, Talk) sind bewusst aus.
+
 ### Fixed
 
 - **Doppelt angelegte Vorgänge bei langsamer Verbindung** (#400): Jede Anlage (Vorgang, Arbeitsschritt,

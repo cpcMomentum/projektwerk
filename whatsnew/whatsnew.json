@@ -2,6 +2,23 @@
 	"0.4.23": [
 		{
 			"title": {
+				"de": "Vorschau für Links",
+				"en": "Link previews"
+			},
+			"text": {
+				"de": "Ein Link in der Beschreibung oder in einem Kommentar erscheint als Vorschaukarte mit Titel, Seite und Bild. Ein Link auf eine Datei in der Nextcloud zeigt die Datei, sofern du sie sehen darfst.",
+				"en": "A link in the description or in a comment shows up as a preview card with title, site and image. A link to a file in Nextcloud shows the file, as long as you are allowed to see it."
+			},
+			"icon": "star",
+			"where": {
+				"de": "Im Vorgang bei Beschreibung und Kommentaren",
+				"en": "In the ticket, in the description and comments"
+			},
+			"adminOnly": false,
+			"plus": false
+		},
+		{
+			"title": {
 				"de": "Arbeitsschritte gleich zuweisen",
 				"en": "Assign work steps right away"
 			},

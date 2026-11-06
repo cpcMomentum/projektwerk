@@ -264,6 +264,13 @@
 							</template>
 							{{ textOffen ? t('projektwerk', 'Weniger anzeigen') : t('projektwerk', 'Mehr anzeigen') }}
 						</NcButton>
+
+						<!-- Unter dem Deckel statt in NcRichText, sonst verschwaende die Karte unter „Mehr anzeigen". -->
+						<NcReferenceList
+							v-if="ticket.description"
+							class="pw-beschreibung__vorschau"
+							:text="ticket.description"
+							:interactive="false" />
 					</template>
 
 					<div v-else class="pw-beschreibung__edit">
@@ -570,7 +577,7 @@ import NcAvatar from '@nextcloud/vue/components/NcAvatar'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcDateTimePicker from '@nextcloud/vue/components/NcDateTimePicker'
 import NcModal from '@nextcloud/vue/components/NcModal'
-import NcRichText from '@nextcloud/vue/components/NcRichText'
+import NcRichText, { NcReferenceList } from '@nextcloud/vue/components/NcRichText'
 import NcSelectUsers from '@nextcloud/vue/components/NcSelectUsers'
 import NcTextArea from '@nextcloud/vue/components/NcTextArea'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
@@ -614,7 +621,7 @@ interface PersonOption {
 export default defineComponent({
 	name: 'TicketDetail',
 
-	components: { AttachmentList, CalendarIcon, CalendarAlertIcon, CancelIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, CommentList, DeleteOutlineIcon, FormatBoldIcon, FormatListBulletedIcon, FormatListNumberedIcon, GithubIcon, NcAvatar, NcButton, NcDateTimePicker, NcModal, NcRichText, NcSelectUsers, NcTextArea, NcTextField, PencilOutlineIcon, PlusIcon, RestoreIcon, StepList, VisibilityControl, WaitBadge },
+	components: { AttachmentList, CalendarIcon, CalendarAlertIcon, CancelIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, CommentList, DeleteOutlineIcon, FormatBoldIcon, FormatListBulletedIcon, FormatListNumberedIcon, GithubIcon, NcAvatar, NcButton, NcDateTimePicker, NcModal, NcReferenceList, NcRichText, NcSelectUsers, NcTextArea, NcTextField, PencilOutlineIcon, PlusIcon, RestoreIcon, StepList, VisibilityControl, WaitBadge },
 
 	props: {
 		ticket: { type: Object as PropType<Ticket | null>, default: null },
