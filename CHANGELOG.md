@@ -25,6 +25,8 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
   nicht neu an, sondern liefert das schon Angelegte. Migration 25 ergänzt dafür `pwerk_idem`, ein
   Hintergrundjob räumt nach 180 Tagen auf. Anfragen haben eine Zeitgrenze statt endlos zu hängen, und nach
   dem Speichern wird nur der betroffene Vorgang nachgeladen statt des ganzen Boards.
+- **Zuständigen und Beschreibung im Browser leeren** (#399): Ein abgewählter Zuständiger und eine geleerte
+  Beschreibung blieben gespeichert, weil der Server ein gesendetes `null` als „nicht geschickt“ verwarf.
 
 ## [0.4.22] - 2026-11-03
 

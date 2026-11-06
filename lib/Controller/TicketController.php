@@ -171,14 +171,18 @@ class TicketController extends Controller {
 		$changes = array_filter(
 			[
 				'title' => $title,
-				'description' => $description,
-				'responsibleUserId' => $responsibleUserId,
 				'dueDate' => $dueDate,
 				'closed' => $closed,
 				'outcome' => $outcome,
 			],
 			static fn ($value): bool => $value !== null,
 		);
+		// Hier heißt ein gesendetes `null` „leeren“; nur die rohen Parameter unterscheiden es von „nicht geschickt“.
+		foreach (['description' => $description, 'responsibleUserId' => $responsibleUserId] as $key => $value) {
+			if (array_key_exists($key, $this->request->getParams())) {
+				$changes[$key] = $value;
+			}
+		}
 
 		return $this->write($boardId, fn (ViewerContext $viewer): mixed
 			=> $this->service->update($viewer, $ticketId, $version, $changes));
