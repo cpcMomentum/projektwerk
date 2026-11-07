@@ -24,13 +24,10 @@
 					die Vorgabe; hier lässt sie sich ändern.
 				-->
 				<div v-show="activeSection === 'dateien'">
-					<h3 class="pw-settingspage__head">
-						{{ t('projektwerk', 'Dateien') }}
-					</h3>
-					<section class="pw-settingspage__block">
-						<h4 class="pw-settingspage__sub">
+					<section class="pw-form-section">
+						<h3>
 							{{ t('projektwerk', 'Ordner für private Anhänge') }}
-						</h4>
+						</h3>
 						<p class="pw-settings__hint">
 							{{ t('projektwerk', 'Dateien an „Nur ich"-Vorgängen liegen in diesem Ordner Ihrer eigenen Dateien. Ohne Wahl wird „ProjektWerk" verwendet und beim ersten Anhang angelegt.') }}
 						</p>
@@ -66,13 +63,10 @@
 					wird nie der Token selbst, nur ob einer hinterlegt ist.
 				-->
 				<div v-show="activeSection === 'github'">
-					<h3 class="pw-settingspage__head">
-						GitHub
-					</h3>
-					<section class="pw-settingspage__block">
-						<h4 class="pw-settingspage__sub">
+					<section class="pw-form-section">
+						<h3>
 							{{ t('projektwerk', 'GitHub-Token') }}
-						</h4>
+						</h3>
 						<p class="pw-settings__hint">
 							{{ t('projektwerk', 'Zum Überführen von Vorgängen nach GitHub. Empfohlen: ein fein abgestufter Token (fine-grained PAT) mit dem Recht „Issues: read and write“ auf die Ziel-Repositorys. Der Token wird verschlüsselt gespeichert und nie wieder angezeigt.') }}
 						</p>
@@ -120,13 +114,10 @@
 					zu geben, die niemand je anders setzt.
 				-->
 				<div v-show="activeSection === 'benachrichtigungen'">
-					<h3 class="pw-settingspage__head">
-						{{ t('projektwerk', 'Benachrichtigungen') }}
-					</h3>
-					<section class="pw-settingspage__block">
-						<h4 class="pw-settingspage__sub">
+					<section class="pw-form-section">
+						<h3>
 							{{ t('projektwerk', 'Wie möchten Sie benachrichtigt werden?') }}
-						</h4>
+						</h3>
 						<p class="pw-settings__hint">
 							{{ t('projektwerk', 'Gilt für alle Projekte.') }}
 						</p>
@@ -143,10 +134,10 @@
 						</div>
 					</section>
 
-					<section class="pw-settingspage__block">
-						<h4 class="pw-settingspage__sub">
+					<section class="pw-form-section">
+						<h3>
 							{{ t('projektwerk', 'Wovon möchten Sie benachrichtigt werden?') }}
-						</h4>
+						</h3>
 						<p class="pw-settings__hint">
 							{{ t('projektwerk', 'Die erste Zeile gilt für alle Projekte — auch für die, die später dazukommen. Darunter weichen einzelne Projekte davon ab.') }}
 						</p>

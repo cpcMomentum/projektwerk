@@ -16,10 +16,10 @@
 					übernehmen sie als „eigene Firma"; im Projekt bleibt sie änderbar.
 				-->
 				<div v-show="activeSection === 'firma'">
-					<h3 class="pw-settingspage__head">
-						{{ t('projektwerk', 'Eigene Firma') }}
-					</h3>
-					<section class="pw-settingspage__block">
+					<section class="pw-form-section">
+						<h3>
+							{{ t('projektwerk', 'Eigene Firma') }}
+						</h3>
 						<p class="pw-settings__hint">
 							{{ t('projektwerk', 'Der Name Ihrer Firma. Neue Projekte übernehmen ihn als „Eigene Firma"; im einzelnen Projekt lässt er sich ändern. Bestehende Projekte bleiben unverändert.') }}
 						</p>
@@ -43,10 +43,10 @@
 				</div>
 
 				<div v-show="activeSection === 'antworten'">
-					<h3 class="pw-settingspage__head">
-						{{ t('projektwerk', 'Antworten per E-Mail') }}
-					</h3>
-					<section class="pw-settingspage__block">
+					<section class="pw-form-section">
+						<h3>
+							{{ t('projektwerk', 'Antworten per E-Mail') }}
+						</h3>
 						<p class="pw-settings__hint">
 							{{ t('projektwerk', 'Antworten auf Benachrichtigungs-E-Mails werden als Kommentar am Vorgang eingetragen. Dazu liest ProjektWerk ein IMAP-Postfach, das Sie hier hinterlegen. Es verlässt nichts die Instanz — das Postfach gehört Ihnen.') }}
 						</p>
@@ -64,8 +64,8 @@
 						</p>
 					</section>
 
-					<section class="pw-settingspage__block">
-						<h3 class="pw-settingspage__head">
+					<section class="pw-form-section">
+						<h3>
 							{{ t('projektwerk', 'Antwortadresse') }}
 						</h3>
 						<p class="pw-settings__hint">
@@ -84,8 +84,8 @@
 						</div>
 					</section>
 
-					<section class="pw-settingspage__block">
-						<h3 class="pw-settingspage__head">
+					<section class="pw-form-section">
+						<h3>
 							{{ t('projektwerk', 'Posteingang (IMAP)') }}
 						</h3>
 

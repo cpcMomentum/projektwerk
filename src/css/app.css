@@ -3747,25 +3747,14 @@ body .app-projektwerk .v-select.select {
 }
 
 /* Abschnittsköpfe wie in VertragsWerk: klein, grau, Versalien (siehe `.pw-form-section`). */
-.app-projektwerk .pw-settingspage__head,
 .app-projektwerk .pw-settings__block > .pw-col__head {
-	margin: 0 0 4px;
+	margin: 0;
 	padding: 0;
 	font-size: 12px;
 	font-weight: 700;
 	color: var(--color-text-maxcontrast);
 	text-transform: uppercase;
 	letter-spacing: 0.5px;
-}
-
-.app-projektwerk .pw-settingspage__block {
-	margin-top: 20px;
-}
-
-.app-projektwerk .pw-settingspage__sub {
-	margin: 0 0 2px;
-	font-size: 15px;
-	font-weight: 600;
 }
 
 /*
