@@ -74,7 +74,7 @@
 
 			<!-- Schritt 3: Mitglieder -->
 			<section v-else-if="step === 2" class="pw-wizard__step">
-				<div class="pw-wizard__memberadd">
+				<div class="pw-settings__row">
 					<NcTextField
 						v-model="memberSearch"
 						:labelOutside="true"
@@ -171,10 +171,10 @@
 						v-model="chatUrl"
 						:labelOutside="true"
 						:label="t('projektwerk', 'Adresse des Projektchats')" />
+					<span class="pw-feld__hinweis">
+						{{ t('projektwerk', 'Leer lassen blendet den Knopf „Zum Projektchat“ aus.') }}
+					</span>
 				</div>
-				<span class="pw-settings__hint">
-					{{ t('projektwerk', 'Leer lassen blendet den Knopf „Zum Projektchat“ aus.') }}
-				</span>
 			</section>
 		</div>
 
@@ -603,13 +603,6 @@ export default defineComponent({
 
 .pw-wizard__step > .pw-field {
 	margin-bottom: 0;
-}
-
-.pw-wizard__memberadd {
-	display: flex;
-	gap: var(--pw-abstand-zeile, 12px);
-	align-items: center;
-	flex-wrap: wrap;
 }
 
 .pw-wizard__added {

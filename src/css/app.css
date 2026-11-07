@@ -900,6 +900,11 @@ body .app-projektwerk .v-select.select .vs__open-indicator svg {
 	margin-bottom: var(--pw-abstand-feld);
 }
 
+/* Die Spalte hält den Beschriftungsabstand schon per gap; der Hinweis darf ihn nicht verdoppeln. */
+.app-projektwerk .pw-field > .pw-feld__hinweis {
+	margin-top: 0;
+}
+
 .app-projektwerk .pw-field > label {
 	font-size: 13px;
 	font-weight: normal;
