@@ -52,7 +52,7 @@
 				angepinnt (Toggle in der Kachel) und angelegt.
 			-->
 			<div v-if="store.customerSuggestions.length >= 2" class="pw-tiles__filter">
-				<label class="pw-tiles__filterlabel" for="pw-customer-filter">{{ t('projektwerk', 'Kunde') }}</label>
+				<label class="hidden-visually" for="pw-customer-filter">{{ t('projektwerk', 'Kunde') }}</label>
 				<select id="pw-customer-filter" v-model="customerFilter" class="pw-tiles__filterselect">
 					<option value="">
 						{{ t('projektwerk', 'Alle Kunden') }}

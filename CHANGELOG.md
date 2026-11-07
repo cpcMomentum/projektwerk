@@ -30,6 +30,15 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
   als der angemeldete Nutzer: Eine Datei zeigt sich nur, wenn der Betrachter sie sehen darf, sonst bleibt
   es beim Link. Interaktive Widgets fremder Apps (Deck, Talk) sind bewusst aus.
 
+### Changed
+
+- **Formulare wie VertragsWerk** (#408): Jedes Feld der App hat denselben Rahmen (36 px, 1 px Rand, blauer
+  Fokus), auch die Nextcloud-Felder für Text, Personen, Datum und Kommentare. Beschriftungen stehen klein und
+  grau über dem Feld statt doppelt im Feld; Abschnittsköpfe der Einstellungen in Versalien. „Neuer Vorgang“,
+  die Projekteinstellungen und das Antwort-Postfach ordnen Felder in Zweierreihen (auf dem Handy einspaltig),
+  die Spalten- und Mitgliederzeilen stehen einzeilig. Der Sichtbarkeitsschalter im Anlegen-Dialog ist
+  einzeilig und so hoch wie die Felder.
+
 ### Fixed
 
 - **Doppelt angelegte Vorgänge bei langsamer Verbindung** (#400): Jede Anlage (Vorgang, Arbeitsschritt,

@@ -16,32 +16,37 @@
 					übernehmen sie als „eigene Firma"; im Projekt bleibt sie änderbar.
 				-->
 				<div v-show="activeSection === 'firma'">
-					<h3 class="pw-settingspage__head">
-						{{ t('projektwerk', 'Eigene Firma') }}
-					</h3>
-					<section class="pw-settingspage__block">
+					<section class="pw-form-section">
+						<h3>
+							{{ t('projektwerk', 'Eigene Firma') }}
+						</h3>
 						<p class="pw-settings__hint">
 							{{ t('projektwerk', 'Der Name Ihrer Firma. Neue Projekte übernehmen ihn als „Eigene Firma"; im einzelnen Projekt lässt er sich ändern. Bestehende Projekte bleiben unverändert.') }}
 						</p>
-						<div class="pw-settings__row">
-							<NcTextField
-								v-model="firmaEntwurf"
-								:label="t('projektwerk', 'Eigene Firma')"
-								:disabled="busy"
-								:maxlength="255"
-								@keydown.enter="firmaSpeichern" />
-							<NcButton variant="primary" :disabled="busy || firmaEntwurf.trim() === ownCompany" @click="firmaSpeichern">
-								{{ t('projektwerk', 'Speichern') }}
-							</NcButton>
+						<div class="pw-feld">
+							<label class="pw-feld__label" for="pw-my-company">{{ t('projektwerk', 'Eigene Firma') }}</label>
+							<div class="pw-settings__row">
+								<NcTextField
+									id="pw-my-company"
+									v-model="firmaEntwurf"
+									:labelOutside="true"
+									:label="t('projektwerk', 'Eigene Firma')"
+									:disabled="busy"
+									:maxlength="255"
+									@keydown.enter="firmaSpeichern" />
+								<NcButton variant="primary" :disabled="busy || firmaEntwurf.trim() === ownCompany" @click="firmaSpeichern">
+									{{ t('projektwerk', 'Speichern') }}
+								</NcButton>
+							</div>
 						</div>
 					</section>
 				</div>
 
 				<div v-show="activeSection === 'antworten'">
-					<h3 class="pw-settingspage__head">
-						{{ t('projektwerk', 'Antworten per E-Mail') }}
-					</h3>
-					<section class="pw-settingspage__block">
+					<section class="pw-form-section">
+						<h3>
+							{{ t('projektwerk', 'Antworten per E-Mail') }}
+						</h3>
 						<p class="pw-settings__hint">
 							{{ t('projektwerk', 'Antworten auf Benachrichtigungs-E-Mails werden als Kommentar am Vorgang eingetragen. Dazu liest ProjektWerk ein IMAP-Postfach, das Sie hier hinterlegen. Es verlässt nichts die Instanz — das Postfach gehört Ihnen.') }}
 						</p>
@@ -59,73 +64,110 @@
 						</p>
 					</section>
 
-					<section class="pw-settingspage__block">
-						<h3 class="pw-settingspage__head">
+					<section class="pw-form-section">
+						<h3>
 							{{ t('projektwerk', 'Antwortadresse') }}
 						</h3>
 						<p class="pw-settings__hint">
 							{{ t('projektwerk', 'Die Adresse, an die Kunden antworten (z. B. projekte@ihre-firma.de). Sie wird als Reply-To gesetzt und gehört zu dem Postfach unten.') }}
 						</p>
-						<div class="pw-settings__row">
+						<div class="pw-feld">
+							<label class="pw-feld__label" for="pw-reply-address">{{ t('projektwerk', 'Antwortadresse (Reply-To)') }}</label>
 							<NcTextField
+								id="pw-reply-address"
 								v-model="form.replyAddress"
 								:label="t('projektwerk', 'Antwortadresse (Reply-To)')"
+								:labelOutside="true"
 								:disabled="busy"
 								type="email"
 								autocomplete="off" />
 						</div>
 					</section>
 
-					<section class="pw-settingspage__block">
-						<h3 class="pw-settingspage__head">
+					<section class="pw-form-section">
+						<h3>
 							{{ t('projektwerk', 'Posteingang (IMAP)') }}
 						</h3>
 
-						<div class="pw-settings__row">
-							<NcTextField
-								v-model="form.imapHost"
-								:label="t('projektwerk', 'Server')"
-								placeholder="imap.ihre-firma.de"
-								:disabled="busy"
-								autocomplete="off" />
-							<NcTextField
-								v-model.number="form.imapPort"
-								:label="t('projektwerk', 'Port')"
-								type="number"
-								:disabled="busy"
-								class="pw-replymail__port" />
+						<div class="pw-feld-reihe pw-replymail__server">
+							<div class="pw-feld">
+								<label class="pw-feld__label" for="pw-imap-host">{{ t('projektwerk', 'Server') }}</label>
+								<NcTextField
+									id="pw-imap-host"
+									v-model="form.imapHost"
+									:label="t('projektwerk', 'Server')"
+									:labelOutside="true"
+									placeholder="imap.ihre-firma.de"
+									:disabled="busy"
+									autocomplete="off" />
+							</div>
+							<div class="pw-feld">
+								<label class="pw-feld__label" for="pw-imap-port">{{ t('projektwerk', 'Port') }}</label>
+								<NcTextField
+									id="pw-imap-port"
+									v-model.number="form.imapPort"
+									:label="t('projektwerk', 'Port')"
+									:labelOutside="true"
+									type="number"
+									:disabled="busy" />
+							</div>
 						</div>
 
-						<div class="pw-settings__row">
-							<label class="pw-replymail__field">
-								<span class="pw-replymail__label">{{ t('projektwerk', 'Verschlüsselung') }}</span>
-								<select v-model="form.imapSecurity" :disabled="busy" class="pw-replymail__select">
-									<option value="ssl">SSL/TLS</option>
-									<option value="starttls">STARTTLS</option>
-									<option value="tls">TLS</option>
+						<div class="pw-feld-reihe">
+							<div class="pw-feld">
+								<label class="pw-feld__label" for="pw-imap-security">{{ t('projektwerk', 'Verschlüsselung') }}</label>
+								<select
+									id="pw-imap-security"
+									v-model="form.imapSecurity"
+									:disabled="busy"
+									class="pw-input">
+									<option value="ssl">
+										SSL/TLS
+									</option>
+									<option value="starttls">
+										STARTTLS
+									</option>
+									<option value="tls">
+										TLS
+									</option>
 								</select>
-							</label>
-							<NcTextField
-								v-model="form.imapFolder"
-								:label="t('projektwerk', 'Ordner')"
-								placeholder="INBOX"
-								:disabled="busy"
-								autocomplete="off" />
+							</div>
+							<div class="pw-feld">
+								<label class="pw-feld__label" for="pw-imap-folder">{{ t('projektwerk', 'Ordner') }}</label>
+								<NcTextField
+									id="pw-imap-folder"
+									v-model="form.imapFolder"
+									:label="t('projektwerk', 'Ordner')"
+									:labelOutside="true"
+									placeholder="INBOX"
+									:disabled="busy"
+									autocomplete="off" />
+							</div>
 						</div>
 
-						<div class="pw-settings__row">
-							<NcTextField
-								v-model="form.imapUser"
-								:label="t('projektwerk', 'Benutzername')"
-								:disabled="busy"
-								autocomplete="off" />
-							<NcTextField
-								v-model="passwordDraft"
-								:label="t('projektwerk', 'Passwort')"
-								type="password"
-								:placeholder="form.imapPasswordSet ? t('projektwerk', 'Gespeichert — zum Ändern neu eingeben') : ''"
-								:disabled="busy || passwordClear"
-								autocomplete="off" />
+						<div class="pw-feld-reihe">
+							<div class="pw-feld">
+								<label class="pw-feld__label" for="pw-imap-user">{{ t('projektwerk', 'Benutzername') }}</label>
+								<NcTextField
+									id="pw-imap-user"
+									v-model="form.imapUser"
+									:label="t('projektwerk', 'Benutzername')"
+									:labelOutside="true"
+									:disabled="busy"
+									autocomplete="off" />
+							</div>
+							<div class="pw-feld">
+								<label class="pw-feld__label" for="pw-imap-password">{{ t('projektwerk', 'Passwort') }}</label>
+								<NcTextField
+									id="pw-imap-password"
+									v-model="passwordDraft"
+									:label="t('projektwerk', 'Passwort')"
+									:labelOutside="true"
+									type="password"
+									:placeholder="form.imapPasswordSet ? t('projektwerk', 'Gespeichert — zum Ändern neu eingeben') : ''"
+									:disabled="busy || passwordClear"
+									autocomplete="off" />
+							</div>
 						</div>
 
 						<label v-if="form.imapPasswordSet" class="pw-settings__check">
@@ -347,22 +389,9 @@ export default defineComponent({
 	gap: 8px;
 }
 
-.pw-replymail__port {
-	max-width: 8rem;
-}
-
-.pw-replymail__field {
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
-}
-
-.pw-replymail__label {
-	font-weight: 600;
-}
-
-.pw-replymail__select {
-	min-height: 44px;
+/* Der Port braucht wenig Platz: Server breit, Port schmal. */
+.pw-feld-reihe.pw-replymail__server {
+	grid-template-columns: 1fr 8rem;
 }
 
 .pw-replymail__ok {

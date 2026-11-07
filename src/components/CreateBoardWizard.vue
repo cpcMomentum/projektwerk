@@ -26,11 +26,16 @@
 					<NcTextField
 						id="pw-wiz-title"
 						v-model="title"
+						:labelOutside="true"
 						:label="t('projektwerk', 'Titel')" />
 				</div>
 				<div class="pw-field">
 					<label for="pw-wiz-desc">{{ t('projektwerk', 'Beschreibung') }}</label>
-					<textarea id="pw-wiz-desc" v-model="description" rows="3" />
+					<textarea
+						id="pw-wiz-desc"
+						v-model="description"
+						class="pw-input"
+						rows="3" />
 				</div>
 			</section>
 
@@ -50,6 +55,7 @@
 					<NcTextField
 						id="pw-wiz-orgi"
 						v-model="orgInternal"
+						:labelOutside="true"
 						:label="t('projektwerk', 'Eigene Firma')" />
 				</div>
 				<div class="pw-field">
@@ -71,7 +77,9 @@
 				<div class="pw-wizard__memberadd">
 					<NcTextField
 						v-model="memberSearch"
-						:label="t('projektwerk', 'Person suchen')"
+						:labelOutside="true"
+						:aria-label="t('projektwerk', 'Person suchen')"
+						:placeholder="t('projektwerk', 'Person suchen')"
 						@update:modelValue="searchPeople" />
 					<select v-model="newMemberRole" :aria-label="t('projektwerk', 'Rolle')">
 						<option value="internal">
@@ -161,6 +169,7 @@
 					<NcTextField
 						id="pw-wiz-chat"
 						v-model="chatUrl"
+						:labelOutside="true"
 						:label="t('projektwerk', 'Adresse des Projektchats')" />
 				</div>
 				<span class="pw-settings__hint">
@@ -589,13 +598,17 @@ export default defineComponent({
 .pw-wizard__step {
 	display: flex;
 	flex-direction: column;
-	gap: 8px;
+	gap: var(--pw-abstand-feld, 16px);
+}
+
+.pw-wizard__step > .pw-field {
+	margin-bottom: 0;
 }
 
 .pw-wizard__memberadd {
 	display: flex;
-	gap: 8px;
-	align-items: flex-end;
+	gap: var(--pw-abstand-zeile, 12px);
+	align-items: center;
 	flex-wrap: wrap;
 }
 

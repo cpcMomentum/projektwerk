@@ -85,7 +85,9 @@
 				<NcTextField
 					v-model="searchInput"
 					class="pw-board-search"
-					:label="t('projektwerk', 'Vorgänge durchsuchen')"
+					:labelOutside="true"
+					:aria-label="t('projektwerk', 'Vorgänge durchsuchen')"
+					:placeholder="t('projektwerk', 'Vorgänge durchsuchen')"
 					:showTrailingButton="searchInput !== ''"
 					trailingButtonIcon="close"
 					:trailingButtonLabel="t('projektwerk', 'Suche zurücksetzen')"
@@ -367,10 +369,15 @@
 				<p class="pw-detail__empty">
 					{{ t('projektwerk', 'Das neue Board gehört zu diesem Projekt und teilt sich Mitglieder, Ordner und Vorgangsnummern.') }}
 				</p>
-				<NcTextField
-					v-model="newBoardTitle"
-					:label="t('projektwerk', 'Titel des Boards')"
-					@keydown.enter="confirmAddBoard" />
+				<div class="pw-feld">
+					<label class="pw-feld__label" for="pw-new-board-title">{{ t('projektwerk', 'Titel des Boards') }}</label>
+					<NcTextField
+						id="pw-new-board-title"
+						v-model="newBoardTitle"
+						:labelOutside="true"
+						:label="t('projektwerk', 'Titel des Boards')"
+						@keydown.enter="confirmAddBoard" />
+				</div>
 			</div>
 			<template #actions>
 				<NcButton @click="closeAddBoard">
