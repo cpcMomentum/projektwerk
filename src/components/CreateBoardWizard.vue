@@ -31,7 +31,11 @@
 				</div>
 				<div class="pw-field">
 					<label for="pw-wiz-desc">{{ t('projektwerk', 'Beschreibung') }}</label>
-					<textarea id="pw-wiz-desc" v-model="description" class="pw-input" rows="3" />
+					<textarea
+						id="pw-wiz-desc"
+						v-model="description"
+						class="pw-input"
+						rows="3" />
 				</div>
 			</section>
 
