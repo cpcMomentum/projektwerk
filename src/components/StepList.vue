@@ -249,7 +249,9 @@
 			<NcTextField
 				v-model="newTitle"
 				class="pw-step__neu-titel"
-				:label="t('projektwerk', 'Neuer Arbeitsschritt')"
+				:labelOutside="true"
+				:aria-label="t('projektwerk', 'Neuer Arbeitsschritt')"
+				:placeholder="t('projektwerk', 'Neuer Arbeitsschritt')"
 				:disabled="busy"
 				@keydown.enter="add" />
 

@@ -239,9 +239,9 @@
 						{{ t('projektwerk', 'Anhänge an Vorgängen landen in diesen Ordnern. Ohne Ordner sind an den betreffenden Vorgängen keine Anhänge möglich.') }}
 					</p>
 
-					<div v-for="slot in folderSlots" :key="slot.key" class="pw-settings__row">
-						<div class="pw-field pw-field--grow">
-							<label :for="`pw-set-${slot.key}`">{{ slot.label }}</label>
+					<div v-for="slot in folderSlots" :key="slot.key" class="pw-feld">
+						<label class="pw-feld__label" :for="`pw-set-${slot.key}`">{{ slot.label }}</label>
+						<div class="pw-settings__row">
 							<NcTextField
 								:id="`pw-set-${slot.key}`"
 								v-model="folderDrafts[slot.key]"
@@ -250,29 +250,29 @@
 								:placeholder="slot.placeholder"
 								:disabled="busy || !mayManage"
 								@keydown.enter="saveFolder(slot.key)" />
-							<span class="pw-settings__hint">{{ slot.hint }}</span>
+
+							<!--
+							Der Wähler ist der eigentliche Weg (#139): auswählen oder
+							anlegen, ohne einen Pfad abzutippen. Das Textfeld bleibt
+							daneben stehen — es zeigt den gesetzten Ordner und dient
+							als Rückfallweg.
+						-->
+							<NcButton
+								:disabled="busy || !mayManage"
+								@click="openPicker(slot.key)">
+								<template #icon>
+									<FolderIcon :size="20" />
+								</template>
+								{{ t('projektwerk', 'Ordner wählen') }}
+							</NcButton>
+
+							<NcButton
+								:disabled="busy || !mayManage || folderDrafts[slot.key] === slot.path"
+								@click="saveFolder(slot.key)">
+								{{ t('projektwerk', 'Übernehmen') }}
+							</NcButton>
 						</div>
-
-						<!--
-						Der Wähler ist der eigentliche Weg (#139): auswählen oder
-						anlegen, ohne einen Pfad abzutippen. Das Textfeld bleibt
-						daneben stehen — es zeigt den gesetzten Ordner und dient
-						als Rückfallweg.
-					-->
-						<NcButton
-							:disabled="busy || !mayManage"
-							@click="openPicker(slot.key)">
-							<template #icon>
-								<FolderIcon :size="20" />
-							</template>
-							{{ t('projektwerk', 'Ordner wählen') }}
-						</NcButton>
-
-						<NcButton
-							:disabled="busy || !mayManage || folderDrafts[slot.key] === slot.path"
-							@click="saveFolder(slot.key)">
-							{{ t('projektwerk', 'Übernehmen') }}
-						</NcButton>
+						<span class="pw-feld__hinweis">{{ slot.hint }}</span>
 					</div>
 				</section>
 
@@ -292,7 +292,9 @@
 					-->
 						<NcTextField
 							:modelValue="draftFor(column)"
-							:label="t('projektwerk', 'Name der Spalte')"
+							:labelOutside="true"
+							:aria-label="t('projektwerk', 'Name der Spalte')"
+							:placeholder="t('projektwerk', 'Name der Spalte')"
 							@update:modelValue="columnDrafts[column.id] = $event"
 							@keydown.enter="commitColumn(column)"
 							@blur="commitColumn(column)" />
@@ -369,7 +371,9 @@
 					<div class="pw-settings__row">
 						<NcTextField
 							v-model="newColumn"
-							:label="t('projektwerk', 'Neue Spalte')"
+							:labelOutside="true"
+							:aria-label="t('projektwerk', 'Neue Spalte')"
+							:placeholder="t('projektwerk', 'Neue Spalte')"
 							@keydown.enter="addColumn" />
 						<NcButton :disabled="busy || newColumn.trim() === ''" @click="addColumn">
 							{{ t('projektwerk', 'Hinzufügen') }}
@@ -474,7 +478,9 @@
 					-->
 						<NcTextField
 							v-model="memberSearch"
-							:label="t('projektwerk', 'Person suchen')"
+							:labelOutside="true"
+							:aria-label="t('projektwerk', 'Person suchen')"
+							:placeholder="t('projektwerk', 'Person suchen')"
 							@update:modelValue="searchPeople" />
 						<select v-model="newMemberRole" :aria-label="t('projektwerk', 'Rolle')">
 							<option value="internal">

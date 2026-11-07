@@ -153,7 +153,9 @@
 					<div v-else class="pw-detail__title-edit">
 						<NcTextField
 							v-model="titleEntwurf"
-							:label="t('projektwerk', 'Titel')"
+							:labelOutside="true"
+							:aria-label="t('projektwerk', 'Titel')"
+							:placeholder="t('projektwerk', 'Titel')"
 							:disabled="busy"
 							@keydown.enter="saveTitle"
 							@keydown.esc.stop="cancelEditTitle" />
@@ -326,7 +328,9 @@
 						<NcTextArea
 							ref="texteditor"
 							v-model="textEntwurf"
-							:label="t('projektwerk', 'Beschreibung')"
+							:labelOutside="true"
+							:aria-label="t('projektwerk', 'Beschreibung')"
+							:placeholder="t('projektwerk', 'Beschreibung')"
 							:disabled="busy"
 							resize="none"
 							@keydown.esc.stop="cancelEditText"

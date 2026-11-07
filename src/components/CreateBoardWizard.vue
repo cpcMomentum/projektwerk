@@ -73,7 +73,9 @@
 				<div class="pw-wizard__memberadd">
 					<NcTextField
 						v-model="memberSearch"
-						:label="t('projektwerk', 'Person suchen')"
+						:labelOutside="true"
+						:aria-label="t('projektwerk', 'Person suchen')"
+						:placeholder="t('projektwerk', 'Person suchen')"
 						@update:modelValue="searchPeople" />
 					<select v-model="newMemberRole" :aria-label="t('projektwerk', 'Rolle')">
 						<option value="internal">

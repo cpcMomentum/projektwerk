@@ -23,16 +23,21 @@
 						<p class="pw-settings__hint">
 							{{ t('projektwerk', 'Der Name Ihrer Firma. Neue Projekte übernehmen ihn als „Eigene Firma"; im einzelnen Projekt lässt er sich ändern. Bestehende Projekte bleiben unverändert.') }}
 						</p>
-						<div class="pw-settings__row">
-							<NcTextField
-								v-model="firmaEntwurf"
-								:label="t('projektwerk', 'Eigene Firma')"
-								:disabled="busy"
-								:maxlength="255"
-								@keydown.enter="firmaSpeichern" />
-							<NcButton variant="primary" :disabled="busy || firmaEntwurf.trim() === ownCompany" @click="firmaSpeichern">
-								{{ t('projektwerk', 'Speichern') }}
-							</NcButton>
+						<div class="pw-feld">
+							<label class="pw-feld__label" for="pw-my-company">{{ t('projektwerk', 'Eigene Firma') }}</label>
+							<div class="pw-settings__row">
+								<NcTextField
+									id="pw-my-company"
+									v-model="firmaEntwurf"
+									:labelOutside="true"
+									:label="t('projektwerk', 'Eigene Firma')"
+									:disabled="busy"
+									:maxlength="255"
+									@keydown.enter="firmaSpeichern" />
+								<NcButton variant="primary" :disabled="busy || firmaEntwurf.trim() === ownCompany" @click="firmaSpeichern">
+									{{ t('projektwerk', 'Speichern') }}
+								</NcButton>
+							</div>
 						</div>
 					</section>
 				</div>

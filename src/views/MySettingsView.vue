@@ -35,21 +35,26 @@
 							{{ t('projektwerk', 'Dateien an „Nur ich"-Vorgängen liegen in diesem Ordner Ihrer eigenen Dateien. Ohne Wahl wird „ProjektWerk" verwendet und beim ersten Anhang angelegt.') }}
 						</p>
 
-						<div class="pw-settings__row">
-							<NcTextField
-								v-model="ordnerEntwurf"
-								:label="t('projektwerk', 'Ordnerpfad')"
-								:disabled="busy"
-								@keydown.enter="ordnerSpeichern" />
-							<NcButton :disabled="busy" @click="pickerOeffnen">
-								<template #icon>
-									<FolderIcon :size="20" />
-								</template>
-								{{ t('projektwerk', 'Ordner wählen') }}
-							</NcButton>
-							<NcButton :disabled="busy || ordnerEntwurf === ordnerAktuell" @click="ordnerSpeichern">
-								{{ t('projektwerk', 'Übernehmen') }}
-							</NcButton>
+						<div class="pw-feld">
+							<label class="pw-feld__label" for="pw-my-folder">{{ t('projektwerk', 'Ordnerpfad') }}</label>
+							<div class="pw-settings__row">
+								<NcTextField
+									id="pw-my-folder"
+									v-model="ordnerEntwurf"
+									:labelOutside="true"
+									:label="t('projektwerk', 'Ordnerpfad')"
+									:disabled="busy"
+									@keydown.enter="ordnerSpeichern" />
+								<NcButton :disabled="busy" @click="pickerOeffnen">
+									<template #icon>
+										<FolderIcon :size="20" />
+									</template>
+									{{ t('projektwerk', 'Ordner wählen') }}
+								</NcButton>
+								<NcButton :disabled="busy || ordnerEntwurf === ordnerAktuell" @click="ordnerSpeichern">
+									{{ t('projektwerk', 'Übernehmen') }}
+								</NcButton>
+							</div>
 						</div>
 					</section>
 				</div>
@@ -80,21 +85,26 @@
 								: t('projektwerk', 'Kein Token hinterlegt.') }}
 						</p>
 
-						<div class="pw-settings__row">
-							<NcTextField
-								v-model="githubTokenEntwurf"
-								type="password"
-								:label="t('projektwerk', 'GitHub-Token')"
-								:placeholder="githubTokenPresent ? t('projektwerk', 'Neuen Token eingeben, um den vorhandenen zu ersetzen') : ''"
-								:disabled="busy"
-								autocomplete="off"
-								@keydown.enter="githubTokenSpeichern" />
-							<NcButton :disabled="busy || githubTokenEntwurf.trim() === ''" @click="githubTokenSpeichern">
-								{{ t('projektwerk', 'Speichern') }}
-							</NcButton>
-							<NcButton :disabled="busy || !githubTokenPresent" @click="githubTokenEntfernen">
-								{{ t('projektwerk', 'Entfernen') }}
-							</NcButton>
+						<div class="pw-feld">
+							<label class="pw-feld__label" for="pw-my-ghtoken">{{ t('projektwerk', 'GitHub-Token') }}</label>
+							<div class="pw-settings__row">
+								<NcTextField
+									id="pw-my-ghtoken"
+									v-model="githubTokenEntwurf"
+									type="password"
+									:labelOutside="true"
+									:label="t('projektwerk', 'GitHub-Token')"
+									:placeholder="githubTokenPresent ? t('projektwerk', 'Neuen Token eingeben, um den vorhandenen zu ersetzen') : ''"
+									:disabled="busy"
+									autocomplete="off"
+									@keydown.enter="githubTokenSpeichern" />
+								<NcButton :disabled="busy || githubTokenEntwurf.trim() === ''" @click="githubTokenSpeichern">
+									{{ t('projektwerk', 'Speichern') }}
+								</NcButton>
+								<NcButton :disabled="busy || !githubTokenPresent" @click="githubTokenEntfernen">
+									{{ t('projektwerk', 'Entfernen') }}
+								</NcButton>
+							</div>
 						</div>
 					</section>
 				</div>
