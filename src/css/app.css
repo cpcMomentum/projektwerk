@@ -782,8 +782,8 @@ body .app-projektwerk .v-select:not(.vs--disabled):hover .vs__dropdown-toggle {
 }
 
 body .app-projektwerk :is(.pw-input, select, textarea, input:is(:not([type]), [type=text], [type=url], [type=email], [type=number], [type=password], [type=search]):not(.vs__search), .input-field__input, .rich-contenteditable__input):is(:focus, :focus-visible),
-body .app-projektwerk .v-select.vs--open .vs__dropdown-toggle,
-body .app-projektwerk .v-select:focus-within .vs__dropdown-toggle {
+body .app-projektwerk .v-select.select.vs--open .vs__dropdown-toggle,
+body .app-projektwerk .v-select.select:focus-within .vs__dropdown-toggle {
 	outline: none;
 	border-color: var(--color-primary-element);
 	/* `!important` nur hier: Der Kern setzt seinen Fokusring global mit `!important`. */
@@ -2744,19 +2744,6 @@ body .app-projektwerk .v-select.select {
 	gap: 8px;
 	margin: 2px 0 10px;
 	font-size: 13px;
-}
-
-.app-projektwerk .pw-tiles__filterlabel {
-	color: var(--color-text-maxcontrast);
-}
-
-.app-projektwerk .pw-tiles__filterselect {
-	min-height: 34px;
-	padding: 4px 8px;
-	border: 2px solid var(--color-border-maxcontrast);
-	border-radius: var(--border-radius-element, 8px);
-	background-color: var(--color-main-background);
-	color: var(--color-main-text);
 }
 
 .app-projektwerk .pw-tiles__leg {

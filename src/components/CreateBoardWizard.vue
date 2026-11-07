@@ -31,7 +31,7 @@
 				</div>
 				<div class="pw-field">
 					<label for="pw-wiz-desc">{{ t('projektwerk', 'Beschreibung') }}</label>
-					<textarea id="pw-wiz-desc" v-model="description" rows="3" />
+					<textarea id="pw-wiz-desc" v-model="description" class="pw-input" rows="3" />
 				</div>
 			</section>
 
@@ -594,13 +594,17 @@ export default defineComponent({
 .pw-wizard__step {
 	display: flex;
 	flex-direction: column;
-	gap: 8px;
+	gap: var(--pw-abstand-feld, 16px);
+}
+
+.pw-wizard__step > .pw-field {
+	margin-bottom: 0;
 }
 
 .pw-wizard__memberadd {
 	display: flex;
-	gap: 8px;
-	align-items: flex-end;
+	gap: var(--pw-abstand-zeile, 12px);
+	align-items: center;
 	flex-wrap: wrap;
 }
 
