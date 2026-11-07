@@ -13,6 +13,9 @@ use OCA\Projektwerk\Access\BoardAccess;
 use OCA\Projektwerk\Access\NotAMemberException;
 use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\AppInfo\Application;
+use OCA\Projektwerk\Service\IdempotencyInProgressException;
+use OCA\Projektwerk\Service\IdempotencyMismatchException;
+use OCA\Projektwerk\Service\IdempotencyService;
 use OCA\Projektwerk\Service\StepService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Db\DoesNotExistException;
@@ -39,6 +42,7 @@ class StepController extends Controller {
 		IRequest $request,
 		private StepService $service,
 		private BoardAccess $access,
+		private IdempotencyService $idem,
 		private ?string $userId,
 	) {
 		parent::__construct(Application::APP_ID, $request);
@@ -55,8 +59,12 @@ class StepController extends Controller {
 	): JSONResponse {
 		return $this->run(
 			$boardId,
-			fn (ViewerContext $viewer): mixed
-				=> $this->service->create($viewer, $ticketId, $title, $assignedUserId, $dueDate, $description),
+			fn (ViewerContext $viewer): mixed => $this->idem->once(
+				$viewer->userId,
+				$this->request->getHeader(IdempotencyService::HEADER),
+				['step', $boardId, $ticketId, $title, $assignedUserId, $dueDate, $description],
+				fn () => $this->service->create($viewer, $ticketId, $title, $assignedUserId, $dueDate, $description),
+			),
 			Http::STATUS_CREATED,
 		);
 	}
@@ -155,6 +163,10 @@ class StepController extends Controller {
 			// Dieselbe Antwort fuer Nichtmitglied, unbekanntes Board,
 			// verborgenes Ticket und unbekannten Schritt.
 			return new JSONResponse([], Http::STATUS_NOT_FOUND);
+		} catch (IdempotencyInProgressException $e) {
+			return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_CONFLICT);
+		} catch (IdempotencyMismatchException $e) {
+			return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_UNPROCESSABLE_ENTITY);
 		} catch (\InvalidArgumentException $e) {
 			return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
 		}

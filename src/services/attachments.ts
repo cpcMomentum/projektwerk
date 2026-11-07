@@ -10,6 +10,7 @@
  * Nextcloud, nicht bei uns.
  */
 
+import type { WriteOptions } from '@/services/api'
 import type { Attachment } from '@/types/ticket'
 
 import { apiDelete, apiUpload } from '@/services/api'
@@ -20,9 +21,10 @@ import { apiDelete, apiUpload } from '@/services/api'
  * @param boardId Kennung des Projekts.
  * @param ticketId Kennung des Vorgangs.
  * @param file Die gewählte Datei.
+ * @param options Kennung der Anlage für Wiederholungen.
  */
-export async function createAttachment(boardId: number, ticketId: number, file: File): Promise<Attachment> {
-	return apiUpload<Attachment>(`/boards/${boardId}/tickets/${ticketId}/attachments`, file)
+export async function createAttachment(boardId: number, ticketId: number, file: File, options?: WriteOptions): Promise<Attachment> {
+	return apiUpload<Attachment>(`/boards/${boardId}/tickets/${ticketId}/attachments`, file, options)
 }
 
 /**

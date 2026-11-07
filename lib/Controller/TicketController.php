@@ -17,8 +17,12 @@ use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Db\TicketReadMapper;
 use OCA\Projektwerk\Service\ConflictException;
 use OCA\Projektwerk\Service\GithubTransferException;
+use OCA\Projektwerk\Service\IdempotencyInProgressException;
+use OCA\Projektwerk\Service\IdempotencyMismatchException;
+use OCA\Projektwerk\Service\IdempotencyService;
 use OCA\Projektwerk\Service\NoFolderException;
 use OCA\Projektwerk\Service\NotOwningSideException;
+use OCA\Projektwerk\Service\TicketDependencyService;
 use OCA\Projektwerk\Service\TicketReadModel;
 use OCA\Projektwerk\Service\TicketService;
 use OCP\AppFramework\Controller;
@@ -50,6 +54,8 @@ class TicketController extends Controller {
 		private TicketService $service,
 		private TicketReadModel $readModel,
 		private BoardAccess $access,
+		private IdempotencyService $idem,
+		private TicketDependencyService $dependencies,
 		private ?string $userId,
 	) {
 		parent::__construct(Application::APP_ID, $request);
@@ -124,12 +130,21 @@ class TicketController extends Controller {
 		?string $responsibleUserId = null,
 		?string $dueDate = null,
 	): JSONResponse {
-		return $this->withViewer($boardId, function (ViewerContext $viewer) use ($title, $columnId, $visibility, $description, $responsibleUserId, $dueDate): JSONResponse {
+		return $this->withViewer($boardId, function (ViewerContext $viewer) use ($boardId, $title, $columnId, $visibility, $description, $responsibleUserId, $dueDate): JSONResponse {
 			try {
 				return new JSONResponse(
-					$this->service->create($viewer, $title, $description, $visibility, $columnId, $responsibleUserId, $dueDate),
+					$this->idem->once(
+						$viewer->userId,
+						$this->request->getHeader(IdempotencyService::HEADER),
+						['ticket', $boardId, $title, $columnId, $visibility, $description, $responsibleUserId, $dueDate],
+						fn () => $this->service->create($viewer, $title, $description, $visibility, $columnId, $responsibleUserId, $dueDate),
+					),
 					Http::STATUS_CREATED,
 				);
+			} catch (IdempotencyInProgressException $e) {
+				return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_CONFLICT);
+			} catch (IdempotencyMismatchException $e) {
+				return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_UNPROCESSABLE_ENTITY);
 			} catch (\InvalidArgumentException $e) {
 				return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
 			}
@@ -158,14 +173,18 @@ class TicketController extends Controller {
 		$changes = array_filter(
 			[
 				'title' => $title,
-				'description' => $description,
-				'responsibleUserId' => $responsibleUserId,
 				'dueDate' => $dueDate,
 				'closed' => $closed,
 				'outcome' => $outcome,
 			],
 			static fn ($value): bool => $value !== null,
 		);
+		// Hier heißt ein gesendetes `null` „leeren“; nur die rohen Parameter unterscheiden es von „nicht geschickt“.
+		foreach (['description' => $description, 'responsibleUserId' => $responsibleUserId] as $key => $value) {
+			if (array_key_exists($key, $this->request->getParams())) {
+				$changes[$key] = $value;
+			}
+		}
 
 		return $this->write($boardId, fn (ViewerContext $viewer): mixed
 			=> $this->service->update($viewer, $ticketId, $version, $changes));
@@ -246,6 +265,32 @@ class TicketController extends Controller {
 	public function restore(int $boardId, int $ticketId): JSONResponse {
 		return $this->write($boardId, fn (ViewerContext $viewer): mixed
 			=> $this->service->restore($viewer, $ticketId));
+	}
+
+	/**
+	 * `$ticketId` wartet künftig auf `$dependsOnId`; Antwort sind beide Listen des Vorgangs.
+	 */
+	#[NoAdminRequired]
+	public function addDependency(int $boardId, int $ticketId, int $dependsOnId): JSONResponse {
+		return $this->write($boardId, fn (ViewerContext $viewer): array
+			=> self::links($this->dependencies->add($viewer, $ticketId, $dependsOnId)));
+	}
+
+	#[NoAdminRequired]
+	public function removeDependency(int $boardId, int $ticketId, int $dependsOnId): JSONResponse {
+		return $this->write($boardId, fn (ViewerContext $viewer): array
+			=> self::links($this->dependencies->remove($viewer, $ticketId, $dependsOnId)));
+	}
+
+	/**
+	 * @param array{ticket: \OCA\Projektwerk\Db\Ticket, dependsOn: \OCA\Projektwerk\Db\Ticket[], neededBy: \OCA\Projektwerk\Db\Ticket[]} $links
+	 * @return array<string, mixed>
+	 */
+	private static function links(array $links): array {
+		return [
+			'dependsOn' => TicketReadModel::linkSummaries($links['dependsOn']),
+			'neededBy' => TicketReadModel::linkSummaries($links['neededBy']),
+		];
 	}
 
 	/**

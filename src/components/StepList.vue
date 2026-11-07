@@ -2,7 +2,7 @@
 	<section class="pw-abschnitt">
 		<div class="pw-abschnitt__kopf">
 			<h3>{{ t('projektwerk', 'Arbeitsschritte') }}</h3>
-			<span v-if="ordered.length > 0" class="pw-abschnitt__zaehler">{{ fortschritt }}</span>
+			<span v-if="ordered.length + pendingSteps.length > 0" class="pw-abschnitt__zaehler">{{ fortschritt }}</span>
 		</div>
 
 		<!--
@@ -18,7 +18,7 @@
 			<NcCheckboxRadioSwitch
 				type="checkbox"
 				class="pw-step__check"
-				:modelValue="step.done"
+				:modelValue="isDone(step)"
 				:disabled="busy"
 				@update:modelValue="toggle(step)">
 				<span class="hidden-visually">{{ t('projektwerk', 'Erledigt: {title}', { title: step.title }) }}</span>
@@ -29,7 +29,7 @@
 				v-if="editing !== step.id"
 				type="button"
 				class="pw-step__title"
-				:class="{ 'pw-step__title--done': step.done }"
+				:class="{ 'pw-step__title--done': isDone(step) }"
 				@click="beginEdit(step)">
 				{{ step.title }}
 			</button>
@@ -207,29 +207,88 @@
 			</div>
 		</div>
 
-		<p v-if="ordered.length === 0" class="pw-detail__empty">
+		<p v-if="ordered.length === 0 && pendingSteps.length === 0" class="pw-detail__empty">
 			{{ t('projektwerk', 'Noch keine Arbeitsschritte.') }}
 		</p>
 
-		<!--
-			Eingabezeile am Listenende: tippen, Enter, fertig. Ein Dialog fuer
-			einen einzeiligen Schritt waere drei Klicks fuer eine Zeile Text.
+		<div v-for="entry in pendingSteps" :key="entry.id" class="pw-step pw-step--pending">
+			<NcCheckboxRadioSwitch
+				type="checkbox"
+				class="pw-step__check"
+				:modelValue="false"
+				:disabled="true">
+				<span class="hidden-visually">{{ t('projektwerk', 'Erledigt: {title}', { title: entry.payload.title }) }}</span>
+			</NcCheckboxRadioSwitch>
+			<span class="pw-step__wartend">{{ entry.payload.title }}</span>
+			<div class="pw-step__rechts">
+				<NcAvatar
+					v-if="entry.payload.assignedUserId"
+					:user="entry.payload.assignedUserId"
+					:displayName="nameOf(entry.payload.assignedUserId)"
+					:size="24"
+					:disableMenu="true"
+					:hideStatus="true" />
+				<span class="pw-step__info" :class="{ 'pw-step__info--failed': entry.state === 'failed' }">
+					{{ entry.state === 'failed'
+						? t('projektwerk', 'Nicht gespeichert: {reason}', { reason: entry.error ?? '' })
+						: t('projektwerk', 'Wird gespeichert …') }}
+				</span>
+				<template v-if="entry.state === 'failed'">
+					<NcButton variant="tertiary" @click="outbox.retry(entry.id)">
+						{{ t('projektwerk', 'Erneut versuchen') }}
+					</NcButton>
+					<NcButton variant="tertiary" @click="outbox.discard(entry.id)">
+						{{ t('projektwerk', 'Verwerfen') }}
+					</NcButton>
+				</template>
+			</div>
+		</div>
 
-			**Nur ein Feld „Neuer Arbeitsschritt" + „+"** (#308). Zuvor standen
-			hier vier Felder — Titel, Beschreibung (#247), Zuständig und Frist
-			(#86); die Anlege-Form wurde als zu wuchtig empfunden. #308 nimmt das
-			bewusst zurück: Zuweisung, Frist, Beschreibung und Ergebnis werden
-			**nach** dem Anlegen über den Stift des Schritts nachgetragen. Das
-			Zuweisen wird damit wieder ein zweiter Schritt — gewollt, nicht
-			übersehen.
-		-->
+		<!-- Nur Titel und Person; Frist, Beschreibung und Ergebnis kommen über den Stift, die Zeile bleibt schlank. -->
 		<div class="pw-step pw-step--new">
 			<NcTextField
 				v-model="newTitle"
 				class="pw-step__neu-titel"
-				:label="t('projektwerk', 'Neuer Arbeitsschritt')"
+				:labelOutside="true"
+				:aria-label="t('projektwerk', 'Neuer Arbeitsschritt')"
+				:placeholder="t('projektwerk', 'Neuer Arbeitsschritt')"
 				:disabled="busy"
 				@keydown.enter="add" />
+
+			<NcActions
+				ref="personMenu"
+				class="pw-step__neu-person"
+				:forceMenu="true"
+				:ariaLabel="newAssigneeLabel"
+				:title="newAssigneeLabel">
+				<template #icon>
+					<NcAvatar
+						v-if="newAssignee !== null"
+						:user="newAssignee"
+						:displayName="nameOf(newAssignee)"
+						:size="24"
+						:disableMenu="true"
+						:hideStatus="true" />
+					<AccountPlusOutlineIcon v-else :size="20" />
+				</template>
+				<NcActionButton
+					type="radio"
+					:modelValue="newAssignee === null"
+					:closeAfterClick="true"
+					@click="newAssignee = null">
+					{{ t('projektwerk', 'Niemand') }}
+				</NcActionButton>
+				<NcActionButton
+					v-for="option in options"
+					:key="option.id"
+					type="radio"
+					:modelValue="newAssignee === option.id"
+					:description="option.subname"
+					:closeAfterClick="true"
+					@click="newAssignee = option.id">
+					{{ option.displayName }}
+				</NcActionButton>
+			</NcActions>
 
 			<!--
 				**Ein Plus statt eines breiten Knopfes** (#99).
@@ -258,11 +317,14 @@
 
 <script lang="ts">
 import type { PropType } from 'vue'
+import type { StepEntry } from '@/stores/outboxStore'
 import type { Member } from '@/types/board'
 import type { Step } from '@/types/ticket'
 
 import { t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
+import NcActionButton from '@nextcloud/vue/components/NcActionButton'
+import NcActions from '@nextcloud/vue/components/NcActions'
 import NcAvatar from '@nextcloud/vue/components/NcAvatar'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
@@ -270,12 +332,32 @@ import NcDateTimePicker from '@nextcloud/vue/components/NcDateTimePicker'
 import NcSelectUsers from '@nextcloud/vue/components/NcSelectUsers'
 import NcTextArea from '@nextcloud/vue/components/NcTextArea'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
+import AccountPlusOutlineIcon from 'vue-material-design-icons/AccountPlusOutline.vue'
 import CheckIcon from 'vue-material-design-icons/Check.vue'
 import DeleteOutlineIcon from 'vue-material-design-icons/DeleteOutline.vue'
 import PencilOutlineIcon from 'vue-material-design-icons/PencilOutline.vue'
 import PlusIcon from 'vue-material-design-icons/Plus.vue'
-import { createStep, deleteStep, fetchAssignable, updateStep } from '@/services/steps'
+import { deleteStep, fetchAssignable, fetchAssignableForNew, updateStep } from '@/services/steps'
 import { showError } from '@/services/toast'
+import { useOutboxStore } from '@/stores/outboxStore'
+
+const offeneListen = new Set<{ closePersonMenu: () => boolean }>()
+
+// Beim Laden angemeldet, also vor dem Escape des Vorgangsfensters: Sonst schlösse Escape das ganze Fenster statt nur das Menü.
+if (typeof window !== 'undefined') {
+	window.addEventListener('keydown', (event) => {
+		if (event.key !== 'Escape') {
+			return
+		}
+		for (const liste of offeneListen) {
+			if (liste.closePersonMenu()) {
+				event.stopImmediatePropagation()
+				event.preventDefault()
+				return
+			}
+		}
+	}, true)
+}
 
 interface PersonOption {
 	id: string
@@ -321,7 +403,7 @@ function alsIsoTag(date: Date | null): string | null {
 export default defineComponent({
 	name: 'StepList',
 
-	components: { CheckIcon, DeleteOutlineIcon, NcAvatar, NcButton, NcCheckboxRadioSwitch, NcDateTimePicker, NcSelectUsers, NcTextArea, NcTextField, PencilOutlineIcon, PlusIcon },
+	components: { AccountPlusOutlineIcon, CheckIcon, DeleteOutlineIcon, NcActionButton, NcActions, NcAvatar, NcButton, NcCheckboxRadioSwitch, NcDateTimePicker, NcSelectUsers, NcTextArea, NcTextField, PencilOutlineIcon, PlusIcon },
 
 	props: {
 		boardId: { type: Number, required: true },
@@ -333,15 +415,23 @@ export default defineComponent({
 		orgInternal: { type: String, default: '' },
 		/** Kunde des Projekts (#309) — Rückfall für externe Mitglieder ohne eigene Firma. */
 		customer: { type: String, default: '' },
+		/** Für die Personenauswahl an einem noch nicht gespeicherten Vorgang. */
+		visibility: { type: String, default: '' },
 	},
 
 	emits: ['changed'],
+
+	setup() {
+		return { outbox: useOutboxStore() }
+	},
 
 	data() {
 		return {
 			busy: false,
 			schreibkette: Promise.resolve() as Promise<void>,
 			newTitle: '',
+			/** Bleibt nach dem Anlegen stehen, damit mehrere Schritte für dieselbe Person schnell gehen. */
+			newAssignee: null as string | null,
 			assignable: [] as string[],
 			/**
 			 * Der Schritt, dessen Zuweisung und Frist gerade offenstehen.
@@ -388,9 +478,23 @@ export default defineComponent({
 			return [...this.steps].sort((a, b) => a.position - b.position)
 		},
 
+		pendingSteps(): StepEntry[] {
+			return this.outbox.stepsFor(this.ticketId)
+		},
+
+		doneOverrides(): Record<number, boolean> {
+			return this.outbox.doneOverrides(this.ticketId)
+		},
+
+		newAssigneeLabel(): string {
+			return this.newAssignee === null
+				? t('projektwerk', 'Zuständig für neue Arbeitsschritte: niemand')
+				: t('projektwerk', 'Zuständig für neue Arbeitsschritte: {name}', { name: this.nameOf(this.newAssignee) })
+		},
+
 		/** „2/5" — dieselbe Auskunft wie auf der Karte (§9). */
 		fortschritt(): string {
-			return `${this.steps.filter((s) => s.done).length}/${this.steps.length}`
+			return `${this.steps.filter((s) => this.isDone(s)).length}/${this.steps.length + this.pendingSteps.length}`
 		},
 
 		/**
@@ -418,12 +522,17 @@ export default defineComponent({
 	watch: {
 		ticketId: {
 			immediate: true,
-			handler() {
+			handler(neu: number, alt: number | undefined) {
 				this.loadAssignable()
+				// Derselbe Vorgang hat nur seine echte Nummer bekommen: Eingabe und gewählte Person bleiben stehen.
+				if (alt !== undefined && alt < 0 && this.outbox.realId(alt) === neu) {
+					return
+				}
 				// Angefangenes gehört zum vorigen Vorgang und darf nicht stehen
 				// bleiben — ein offener Schritt wird vorher gesichert (#367).
 				this.sichern()
 				this.newTitle = ''
+				this.newAssignee = null
 				this.editing = null
 				this.editingStep = null
 				this.removing = null
@@ -459,6 +568,14 @@ export default defineComponent({
 				}
 			})
 		},
+	},
+
+	mounted() {
+		offeneListen.add(this)
+	},
+
+	beforeUnmount() {
+		offeneListen.delete(this)
 	},
 
 	methods: {
@@ -540,9 +657,38 @@ export default defineComponent({
 			return teile.join(' · ')
 		},
 
+		/**
+		 * Das Personen-Menü schließen, falls es offen ist.
+		 *
+		 * @return Ob es offen war.
+		 */
+		closePersonMenu(): boolean {
+			if (!this.$el?.querySelector?.('.pw-step__neu-person [aria-expanded="true"]')) {
+				return false
+			}
+			const menu = this.$refs.personMenu as { closeMenu?: (returnFocus?: boolean) => Promise<void> } | undefined
+			menu?.closeMenu?.(true)
+
+			return true
+		},
+
+		/**
+		 * Der gewünschte Haken, auch wenn er noch nicht gespeichert ist.
+		 *
+		 * @param step Der Schritt.
+		 */
+		isDone(step: Step): boolean {
+			return this.doneOverrides[step.id] ?? step.done
+		},
+
 		async loadAssignable(): Promise<void> {
 			try {
-				this.assignable = await fetchAssignable(this.boardId, this.ticketId)
+				this.assignable = this.ticketId < 0
+					? (this.visibility === '' ? [] : await fetchAssignableForNew(this.boardId, this.visibility))
+					: await fetchAssignable(this.boardId, this.ticketId)
+				if (this.newAssignee !== null && !this.assignable.includes(this.newAssignee)) {
+					this.newAssignee = null
+				}
 			} catch {
 				// Ohne Liste bleibt die Auswahl leer; das Ändern eines Schritts
 				// bleibt trotzdem möglich. Eine Meldung wäre hier Lärm — die
@@ -605,22 +751,22 @@ export default defineComponent({
 			)
 		},
 
-		add() {
+		add(): void {
 			const title = this.newTitle.trim()
 			if (title === '') {
 				return
 			}
 
-			return this.write(
-				async () => {
-					// Nur der Titel (#308): Zuweisung, Frist, Beschreibung und
-					// Ergebnis werden nach dem Anlegen über den Stift nachgetragen.
-					await createStep(this.boardId, this.ticketId, { title })
-					this.newTitle = ''
-					this.fokusZiel = '.pw-step--new input[type="text"]'
-				},
-				t('projektwerk', 'Arbeitsschritt konnte nicht angelegt werden'),
-			)
+			// Sofort in die Warteschlange: Das Feld bleibt frei, der nächste Schritt lässt sich gleich tippen.
+			this.outbox.enqueueStep(this.boardId, this.ticketId, this.newAssignee === null ? { title } : { title, assignedUserId: this.newAssignee })
+			this.newTitle = ''
+			// Zurück ins Feld: Das Plus wird mit dem leeren Feld gesperrt und nähme den Fokus sonst mit auf den `body`.
+			this.$nextTick(() => {
+				const el = this.$el?.querySelector?.('.pw-step--new input[type="text"]')
+				if (el instanceof HTMLElement) {
+					el.focus()
+				}
+			})
 		},
 
 		/**
@@ -756,11 +902,8 @@ export default defineComponent({
 		/**
 		 * @param step Der Schritt.
 		 */
-		toggle(step: Step) {
-			return this.write(
-				() => updateStep(this.boardId, step.id, { done: !step.done }),
-				t('projektwerk', 'Ändern fehlgeschlagen'),
-			)
+		toggle(step: Step): void {
+			this.outbox.enqueueStepDone(this.boardId, this.ticketId, step.id, !this.isDone(step))
 		},
 
 		/**

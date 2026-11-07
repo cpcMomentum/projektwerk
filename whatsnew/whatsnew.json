@@ -1,4 +1,74 @@
 {
+	"0.4.23": [
+		{
+			"title": {
+				"de": "Abhängigkeiten zwischen Vorgängen",
+				"en": "Dependencies between tickets"
+			},
+			"text": {
+				"de": "Unter „Hängt ab von“ hältst du fest, auf welche anderen Vorgänge ein Vorgang wartet. Der andere Vorgang zeigt dann „Wird gebraucht für“, so sieht man auf beiden Seiten, was zusammenhängt.",
+				"en": "Under “Depends on” you note which other tickets a ticket waits for. The other ticket then shows “Needed for”, so both sides see what belongs together."
+			},
+			"icon": "star",
+			"where": {
+				"de": "Im Vorgang über den Arbeitsschritten",
+				"en": "In the ticket, above the work steps"
+			},
+			"adminOnly": false,
+			"plus": false
+		},
+		{
+			"title": {
+				"de": "Vorschau für Links",
+				"en": "Link previews"
+			},
+			"text": {
+				"de": "Ein Link in der Beschreibung oder in einem Kommentar erscheint als Vorschaukarte mit Titel, Seite und Bild. Ein Link auf eine Datei in der Nextcloud zeigt die Datei, sofern du sie sehen darfst.",
+				"en": "A link in the description or in a comment shows up as a preview card with title, site and image. A link to a file in Nextcloud shows the file, as long as you are allowed to see it."
+			},
+			"icon": "star",
+			"where": {
+				"de": "Im Vorgang bei Beschreibung und Kommentaren",
+				"en": "In the ticket, in the description and comments"
+			},
+			"adminOnly": false,
+			"plus": false
+		},
+		{
+			"title": {
+				"de": "Arbeitsschritte gleich zuweisen",
+				"en": "Assign work steps right away"
+			},
+			"text": {
+				"de": "Neben „Neuer Arbeitsschritt“ wählst du mit dem Personen-Knopf, wem die neuen Schritte gehören. Die Auswahl bleibt stehen, so legst du mehrere Schritte für dieselbe Person mit Enter nacheinander an.",
+				"en": "Next to “New work step”, the person button sets who gets the new steps. The choice stays, so you can add several steps for the same person one after another with Enter."
+			},
+			"icon": "account-group",
+			"where": {
+				"de": "Im Vorgang bei den Arbeitsschritten",
+				"en": "In the ticket, under work steps"
+			},
+			"adminOnly": false,
+			"plus": false
+		},
+		{
+			"title": {
+				"de": "Weiterarbeiten bei schlechter Verbindung",
+				"en": "Keep working on a poor connection"
+			},
+			"text": {
+				"de": "Neue Vorgänge, Arbeitsschritte, Kommentare und Haken erscheinen sofort und werden im Hintergrund gespeichert, auch nach einem Funkloch oder Neuladen der Seite. Ein Klick legt genau einmal an, auch wenn die Antwort lange dauert. Was noch nicht gespeichert ist, zeigt eine Leiste über dem Board.",
+				"en": "New tickets, work steps, comments and ticks appear right away and are saved in the background, even after a dead spot or a page reload. One click creates exactly one item, even if the answer takes long. A bar above the board shows what is not saved yet."
+			},
+			"icon": "star",
+			"where": {
+				"de": "Im Board und im Vorgang",
+				"en": "On the board and in the ticket"
+			},
+			"adminOnly": false,
+			"plus": false
+		}
+	],
 	"0.4.22": [
 		{
 			"title": {

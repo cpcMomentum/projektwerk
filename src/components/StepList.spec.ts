@@ -22,6 +22,7 @@ import type { Member } from '@/types/board'
 import type { Step } from '@/types/ticket'
 
 import { mount } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const createStep = vi.fn()
@@ -58,6 +59,12 @@ vi.mock('@nextcloud/vue/components/NcTextArea', () => ({
 		emits: ['update:modelValue'],
 		template: '<textarea :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)"></textarea>',
 	},
+}))
+vi.mock('@nextcloud/vue/components/NcActions', () => ({
+	default: { name: 'NcActions', template: '<div class="nc-actions"><slot name="icon" /><slot /></div>' },
+}))
+vi.mock('@nextcloud/vue/components/NcActionButton', () => ({
+	default: { name: 'NcActionButton', props: ['modelValue'], emits: ['click'], template: '<button type="button" class="nc-action" :aria-checked="String(modelValue)" @click="$emit(\'click\')"><slot /></button>' },
 }))
 vi.mock('@nextcloud/vue/components/NcAvatar', () => ({
 	default: { name: 'NcAvatar', template: '<span />' },
@@ -96,6 +103,7 @@ vi.mock('@nextcloud/vue/components/NcCheckboxRadioSwitch', () => ({
 }))
 
 const StepList = (await import('@/components/StepList.vue')).default
+const { useOutboxStore } = await import('@/stores/outboxStore')
 
 const MEMBERS: Member[] = [
 	{ id: 1, boardId: 7, userId: 'anna', role: 'internal', isManager: true, displayName: 'Anna Ahrens', resolvedName: 'Anna Ahrens', company: 'cpcMomentum', addedBy: 'anna', addedAt: null },
@@ -195,6 +203,9 @@ async function klickeHinzufuegen(wrapper: ReturnType<typeof mountList>) {
 
 beforeEach(() => {
 	vi.clearAllMocks()
+	window.localStorage?.clear?.()
+	setActivePinia(createPinia())
+	useOutboxStore().init('anna')
 	fetchAssignable.mockResolvedValue(['anna', 'carla'])
 	createStep.mockResolvedValue({})
 	updateStep.mockResolvedValue({})
@@ -212,7 +223,7 @@ describe('StepList', () => {
 		await fuelleZeile(wrapper, 'Nur ein Titel')
 		await klickeHinzufuegen(wrapper)
 
-		expect(createStep).toHaveBeenCalledWith(7, 42, { title: 'Nur ein Titel' })
+		expect(createStep).toHaveBeenCalledWith(7, 42, { title: 'Nur ein Titel' }, { idempotencyKey: expect.any(String) })
 	})
 
 	/**
@@ -467,5 +478,35 @@ describe('StepList', () => {
 		expect(wrapper.find('.pw-step__felder-text').exists()).toBe(false)
 		expect(await (wrapper.vm as unknown as { sichern: () => Promise<boolean> }).sichern()).toBe(true)
 		expect(updateStep).not.toHaveBeenCalled()
+	})
+
+	it('merkt sich die gewählte Person für mehrere neue Schritte', async () => {
+		const wrapper = mountList()
+		await new Promise((resolve) => setTimeout(resolve, 0))
+		const carla = wrapper.findAll('.pw-step--new .nc-action').find((b) => b.text() === 'Carla Cordes')
+		await carla!.trigger('click')
+
+		for (const titel of ['Eins', 'Zwei', 'Drei']) {
+			await fuelleZeile(wrapper, titel)
+			await klickeHinzufuegen(wrapper)
+		}
+
+		expect(createStep.mock.calls.map((call) => [call[2].title, call[2].assignedUserId])).toEqual([
+			['Eins', 'carla'], ['Zwei', 'carla'], ['Drei', 'carla'],
+		])
+		expect(wrapper.find('.pw-step__neu-person').attributes('title')).toBe('Zuständig für neue Arbeitsschritte: {name}')
+	})
+
+	it('legt nach „Niemand“ wieder ohne Zuweisung an', async () => {
+		const wrapper = mountList()
+		await new Promise((resolve) => setTimeout(resolve, 0))
+		const aktionen = () => wrapper.findAll('.pw-step--new .nc-action')
+		await aktionen().find((b) => b.text() === 'Anna Ahrens')!.trigger('click')
+		await aktionen().find((b) => b.text() === 'Niemand')!.trigger('click')
+
+		await fuelleZeile(wrapper, 'Ohne Person')
+		await klickeHinzufuegen(wrapper)
+
+		expect(createStep).toHaveBeenCalledWith(7, 42, { title: 'Ohne Person' }, expect.anything())
 	})
 })

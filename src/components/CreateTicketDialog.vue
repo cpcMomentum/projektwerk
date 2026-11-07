@@ -11,17 +11,22 @@
 			Klickflaechen fallen unter `--default-clickable-area`.
 		-->
 		<div class="app-projektwerk">
-			<div class="pw-field">
-				<label for="pw-new-title">{{ t('projektwerk', 'Titel') }}</label>
-				<NcTextField
+			<div class="pw-feld">
+				<label class="pw-feld__label" for="pw-new-title">{{ t('projektwerk', 'Titel') }}</label>
+				<input
 					id="pw-new-title"
 					v-model="title"
-					:label="t('projektwerk', 'Titel')" />
+					class="pw-input"
+					type="text">
 			</div>
 
-			<div class="pw-field">
-				<label for="pw-new-desc">{{ t('projektwerk', 'Beschreibung') }}</label>
-				<textarea id="pw-new-desc" v-model="description" rows="4" />
+			<div class="pw-feld">
+				<label class="pw-feld__label" for="pw-new-desc">{{ t('projektwerk', 'Beschreibung') }}</label>
+				<textarea
+					id="pw-new-desc"
+					v-model="description"
+					class="pw-input"
+					rows="4" />
 			</div>
 
 			<!--
@@ -29,8 +34,8 @@
 				eingeklappt und nie hinter einem Zahnrad (§9). Voreinstellung „Alle
 				Beteiligten", fuer alle Rollen gleich.
 			-->
-			<div class="pw-field">
-				<label>{{ t('projektwerk', 'Wer sieht diesen Vorgang?') }}</label>
+			<div class="pw-feld">
+				<span class="pw-feld__label">{{ t('projektwerk', 'Wer sieht diesen Vorgang?') }}</span>
 				<VisibilityChoice v-model="visibility" />
 			</div>
 
@@ -42,8 +47,8 @@
 				Sichtbarkeitswechsel neu geholt; im Browser zu filtern wäre eine
 				zweite Fassung der Sichtbarkeitsregel. Voreinstellung „Niemand".
 			-->
-			<div class="pw-field">
-				<label :for="responsibleInputId">{{ t('projektwerk', 'Zuständige Person') }}</label>
+			<div class="pw-feld">
+				<label class="pw-feld__label" :for="responsibleInputId">{{ t('projektwerk', 'Zuständige Person') }}</label>
 				<NcSelectUsers
 					:options="assignableOptions"
 					:modelValue="responsibleOption"
@@ -53,31 +58,33 @@
 					@update:modelValue="setResponsible" />
 			</div>
 
-			<div class="pw-field">
-				<label for="pw-new-col">{{ t('projektwerk', 'Spalte') }}</label>
-				<select id="pw-new-col" v-model="columnId">
-					<option v-for="column in columns" :key="column.id" :value="column.id">
-						{{ column.title }}
-					</option>
-				</select>
-			</div>
+			<div class="pw-feld-reihe">
+				<div class="pw-feld">
+					<label class="pw-feld__label" for="pw-new-col">{{ t('projektwerk', 'Spalte') }}</label>
+					<select id="pw-new-col" v-model="columnId" class="pw-input">
+						<option v-for="column in columns" :key="column.id" :value="column.id">
+							{{ column.title }}
+						</option>
+					</select>
+				</div>
 
-			<!--
+				<!--
 				Die Fälligkeit gleich beim Anlegen, nicht erst danach (#72) — wie
 				Bearbeiter und Frist am Schritt (#86). „Bis wann ist die Sache
 				fertig", die Zusage an die Gegenseite. Optional: leer heißt keine
 				Frist.
 			-->
-			<div class="pw-field">
-				<label for="pw-new-due">{{ t('projektwerk', 'Fällig bis') }}</label>
-				<NcDateTimePicker
-					id="pw-new-due"
-					v-model="dueDate"
-					type="date"
-					:clearable="true"
-					:appendToBody="true"
-					:ariaLabel="t('projektwerk', 'Fällig bis')"
-					:placeholder="t('projektwerk', 'Keine Frist')" />
+				<div class="pw-feld">
+					<label class="pw-feld__label" for="pw-new-due">{{ t('projektwerk', 'Fällig bis') }}</label>
+					<NcDateTimePicker
+						id="pw-new-due"
+						v-model="dueDate"
+						type="date"
+						:clearable="true"
+						:appendToBody="true"
+						:ariaLabel="t('projektwerk', 'Fällig bis')"
+						:placeholder="t('projektwerk', 'Keine Frist')" />
+				</div>
 			</div>
 		</div>
 
@@ -116,7 +123,6 @@ import NcButton from '@nextcloud/vue/components/NcButton'
 import NcDateTimePicker from '@nextcloud/vue/components/NcDateTimePicker'
 import NcDialog from '@nextcloud/vue/components/NcDialog'
 import NcSelectUsers from '@nextcloud/vue/components/NcSelectUsers'
-import NcTextField from '@nextcloud/vue/components/NcTextField'
 import VisibilityChoice from '@/components/VisibilityChoice.vue'
 import { fetchAssignableForNew } from '@/services/steps'
 import { toIsoDay } from '@/utils/date'
@@ -132,7 +138,7 @@ interface PersonOption {
 export default defineComponent({
 	name: 'CreateTicketDialog',
 
-	components: { NcButton, NcDateTimePicker, NcDialog, NcSelectUsers, NcTextField, VisibilityChoice },
+	components: { NcButton, NcDateTimePicker, NcDialog, NcSelectUsers, VisibilityChoice },
 
 	props: {
 		open: { type: Boolean, default: false },

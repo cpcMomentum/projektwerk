@@ -43,6 +43,9 @@ final class ReadPathRegistry {
 		'TicketMapper::findVisible',
 		// Dieselbe Einzelabfrage über die Vorgangsnummer (MCP `get_ticket`).
 		'TicketMapper::findVisibleByNumber',
+		// Abhaengigkeiten (#346): der Partner laeuft durch dieselbe Sichtbarkeitsregel, nicht das Paar.
+		'TicketMapper::findVisibleDependencies',
+		'TicketMapper::findVisibleDependents',
 		'TicketMapper::findVisibleAcrossBoards',
 		// Der Ueberblick (#76) — **alles Sichtbare** ueber alle Boards, nicht
 		// nur das eigene. Die breiteste Menge der Matrix: Jeder andere Pfad
@@ -166,6 +169,8 @@ final class ReadPathRegistry {
 		// Eine Person liest nur ihre eigenen Stände. Deshalb ebenfalls in
 		// VIEWERLESS_MAPPERS; die Erwartung ist `testReadStateIsScopedToItsOwner`.
 		'TicketReadMapper::findSeenForTickets',
+		// Die Kennung je Anlage (#400): Grenze ist die Benutzerkennung wie beim Lesestand.
+		'IdemKeyMapper::findForUser',
 	];
 
 	/**
@@ -184,6 +189,7 @@ final class ReadPathRegistry {
 		// einen ViewerContext — genau das ist die Grenze. `findSeenForTickets`
 		// liefert nur die eigenen Stände.
 		'TicketReadMapper',
+		'IdemKeyMapper',
 	];
 
 	/**

@@ -166,7 +166,22 @@ export interface TicketList {
 	stepTitles?: Record<number, string[]>
 }
 
-export interface TicketDetail {
+/** Ein verknüpfter Vorgang, nur so viel, wie die Liste im Vorgang braucht. */
+export interface TicketLink {
+	id: number
+	number: number
+	title: string
+	columnId: number
+	visibility: Visibility
+	closedOutcome: 'done' | 'discarded' | null
+}
+
+export interface TicketLinks {
+	dependsOn: TicketLink[]
+	neededBy: TicketLink[]
+}
+
+export interface TicketDetail extends TicketLinks {
 	ticket: Ticket
 	waiting: WaitState | null
 	comments: Comment[]

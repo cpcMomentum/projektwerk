@@ -48,7 +48,7 @@
 						Schliessen-Knopf absolut in die Karte.
 					-->
 					<div class="pw-meta">
-						<span class="pw-num">#{{ paddedNumber }}</span>
+						<span class="pw-num">{{ pending ? t('projektwerk', 'Wird gespeichert …') : '#' + paddedNumber }}</span>
 						<span class="pw-meta__sep" aria-hidden="true">·</span>
 						<span class="pw-meta__column">{{ columnTitle }}</span>
 						<span
@@ -67,6 +67,7 @@
 							eine Stelle.
 						-->
 						<VisibilityControl
+							v-if="!pending"
 							:ticket="ticket"
 							:viewer="viewer"
 							:showChip="showVisibility"
@@ -111,6 +112,22 @@
 						dastand. Stift oder Klick öffnen das Feld (#200); der Titel
 						ist Pflicht, ein leerer wird nicht gespeichert.
 					-->
+					<div v-if="pending" class="pw-detail__pending" :class="{ 'pw-detail__pending--failed': pendingEntry?.state === 'failed' }">
+						<p v-if="pendingEntry?.state === 'failed'">
+							{{ t('projektwerk', 'Nicht gespeichert: {reason}', { reason: pendingEntry.error ?? '' }) }}
+						</p>
+						<p v-else>
+							{{ t('projektwerk', 'Noch nicht gespeichert. Anhänge, Sichtbarkeit, Verschieben und Abschließen gehen, sobald der Vorgang gespeichert ist.') }}
+						</p>
+						<div v-if="pendingEntry?.state === 'failed'" class="pw-detail__pending-aktionen">
+							<NcButton variant="secondary" @click="outbox.retry(pendingEntry.id)">
+								{{ t('projektwerk', 'Erneut versuchen') }}
+							</NcButton>
+							<NcButton variant="tertiary" @click="verwerfen">
+								{{ t('projektwerk', 'Verwerfen') }}
+							</NcButton>
+						</div>
+					</div>
 					<template v-if="!editingTitle">
 						<div class="pw-detail__titelzeile">
 							<!--
@@ -136,7 +153,9 @@
 					<div v-else class="pw-detail__title-edit">
 						<NcTextField
 							v-model="titleEntwurf"
-							:label="t('projektwerk', 'Titel')"
+							:labelOutside="true"
+							:aria-label="t('projektwerk', 'Titel')"
+							:placeholder="t('projektwerk', 'Titel')"
 							:disabled="busy"
 							@keydown.enter="saveTitle"
 							@keydown.esc.stop="cancelEditTitle" />
@@ -247,6 +266,13 @@
 							</template>
 							{{ textOffen ? t('projektwerk', 'Weniger anzeigen') : t('projektwerk', 'Mehr anzeigen') }}
 						</NcButton>
+
+						<!-- Unter dem Deckel statt in NcRichText, sonst verschwaende die Karte unter „Mehr anzeigen". -->
+						<NcReferenceList
+							v-if="ticket.description"
+							class="pw-beschreibung__vorschau"
+							:text="ticket.description"
+							:interactive="false" />
 					</template>
 
 					<div v-else class="pw-beschreibung__edit">
@@ -302,7 +328,9 @@
 						<NcTextArea
 							ref="texteditor"
 							v-model="textEntwurf"
-							:label="t('projektwerk', 'Beschreibung')"
+							:labelOutside="true"
+							:aria-label="t('projektwerk', 'Beschreibung')"
+							:placeholder="t('projektwerk', 'Beschreibung')"
 							:disabled="busy"
 							resize="none"
 							@keydown.esc.stop="cancelEditText"
@@ -436,12 +464,24 @@
 					</div>
 				</div>
 
+				<DependencyList
+					v-if="!pending"
+					:boardId="ticket.boardId"
+					:ticketId="ticket.id"
+					:dependsOn="dependsOn"
+					:neededBy="neededBy"
+					:boardTickets="boardTickets"
+					:columns="columns"
+					@open="$emit('openTicket', $event)"
+					@changed="$emit('linksChanged', $event)" />
+
 				<StepList
 					ref="steps"
 					:boardId="ticket.boardId"
 					:ticketId="ticket.id"
 					:steps="steps"
 					:members="members"
+					:visibility="ticket.visibility"
 					:orgInternal="orgInternal"
 					:customer="customer"
 					@changed="$emit('stepsChanged')" />
@@ -453,6 +493,7 @@
 					darueber eine feste Position.
 				-->
 				<AttachmentList
+					v-if="!pending"
 					:boardId="ticket.boardId"
 					:ticketId="ticket.id"
 					:attachments="attachments"
@@ -480,7 +521,7 @@
 						<NcButton
 							class="pw-detail__loeschen"
 							variant="tertiary"
-							:disabled="busy"
+							:disabled="busy || pending"
 							:title="t('projektwerk', 'Endgültig löschen')"
 							:ariaLabel="t('projektwerk', 'Endgültig löschen')"
 							@click="$emit('delete', ticket)">
@@ -493,7 +534,7 @@
 						<template v-if="!ticket.closedAt">
 							<NcButton
 								variant="secondary"
-								:disabled="busy"
+								:disabled="busy || pending"
 								:title="t('projektwerk', 'Als verworfen abschließen')"
 								:ariaLabel="t('projektwerk', 'Als verworfen abschließen')"
 								@click="closeWith('discarded')">
@@ -504,7 +545,7 @@
 							</NcButton>
 							<NcButton
 								variant="success"
-								:disabled="busy"
+								:disabled="busy || pending"
 								:title="t('projektwerk', 'Als erledigt abschließen')"
 								:ariaLabel="t('projektwerk', 'Als erledigt abschließen')"
 								@click="closeWith('done')">
@@ -517,7 +558,7 @@
 						<NcButton
 							v-else
 							variant="secondary"
-							:disabled="busy"
+							:disabled="busy || pending"
 							@click="reopen">
 							<template #icon>
 								<RestoreIcon :size="20" />
@@ -541,8 +582,9 @@
 
 <script lang="ts">
 import type { PropType } from 'vue'
+import type { TicketEntry } from '@/stores/outboxStore'
 import type { Column, Member, ViewerInfo } from '@/types/board'
-import type { Attachment, Comment, Step, Ticket, WaitState } from '@/types/ticket'
+import type { Attachment, Comment, Step, Ticket, TicketLink, WaitState } from '@/types/ticket'
 
 import { t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
@@ -550,7 +592,7 @@ import NcAvatar from '@nextcloud/vue/components/NcAvatar'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcDateTimePicker from '@nextcloud/vue/components/NcDateTimePicker'
 import NcModal from '@nextcloud/vue/components/NcModal'
-import NcRichText from '@nextcloud/vue/components/NcRichText'
+import NcRichText, { NcReferenceList } from '@nextcloud/vue/components/NcRichText'
 import NcSelectUsers from '@nextcloud/vue/components/NcSelectUsers'
 import NcTextArea from '@nextcloud/vue/components/NcTextArea'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
@@ -570,13 +612,16 @@ import PlusIcon from 'vue-material-design-icons/Plus.vue'
 import RestoreIcon from 'vue-material-design-icons/Restore.vue'
 import AttachmentList from '@/components/AttachmentList.vue'
 import CommentList from '@/components/CommentList.vue'
+import DependencyList from '@/components/DependencyList.vue'
 import StepList from '@/components/StepList.vue'
 import VisibilityControl from '@/components/VisibilityControl.vue'
 import WaitBadge from '@/components/WaitBadge.vue'
+import { isApiError, isTransient } from '@/services/api'
 import { transferTicketToGithub } from '@/services/github'
-import { fetchAssignable } from '@/services/steps'
-import { updateTicket } from '@/services/tickets'
+import { fetchAssignable, fetchAssignableForNew } from '@/services/steps'
+import { fetchTicket, updateTicket } from '@/services/tickets'
 import { reportWriteError } from '@/services/writeError'
+import { useOutboxStore } from '@/stores/outboxStore'
 import { asDate, isOverdue, toIsoDay } from '@/utils/date'
 
 /** Ab welcher Hoehe die Beschreibung gedeckelt wird. Deckt sich mit der CSS. */
@@ -592,7 +637,7 @@ interface PersonOption {
 export default defineComponent({
 	name: 'TicketDetail',
 
-	components: { AttachmentList, CalendarIcon, CalendarAlertIcon, CancelIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, CommentList, DeleteOutlineIcon, FormatBoldIcon, FormatListBulletedIcon, FormatListNumberedIcon, GithubIcon, NcAvatar, NcButton, NcDateTimePicker, NcModal, NcRichText, NcSelectUsers, NcTextArea, NcTextField, PencilOutlineIcon, PlusIcon, RestoreIcon, StepList, VisibilityControl, WaitBadge },
+	components: { AttachmentList, CalendarIcon, CalendarAlertIcon, CancelIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, CommentList, DeleteOutlineIcon, DependencyList, FormatBoldIcon, FormatListBulletedIcon, FormatListNumberedIcon, GithubIcon, NcAvatar, NcButton, NcDateTimePicker, NcModal, NcReferenceList, NcRichText, NcSelectUsers, NcTextArea, NcTextField, PencilOutlineIcon, PlusIcon, RestoreIcon, StepList, VisibilityControl, WaitBadge },
 
 	props: {
 		ticket: { type: Object as PropType<Ticket | null>, default: null },
@@ -607,6 +652,9 @@ export default defineComponent({
 		steps: { type: Array as PropType<Step[]>, default: () => [] },
 		comments: { type: Array as PropType<Comment[]>, default: () => [] },
 		attachments: { type: Array as PropType<Attachment[]>, default: () => [] },
+		dependsOn: { type: Array as PropType<TicketLink[]>, default: () => [] },
+		neededBy: { type: Array as PropType<TicketLink[]>, default: () => [] },
+		boardTickets: { type: Array as PropType<Ticket[]>, default: () => [] },
 		waiting: { type: Object as PropType<WaitState | null>, default: null },
 		/** Aus Sicht der Kundenseite formuliert. */
 		fromClientSide: { type: Boolean, default: false },
@@ -616,7 +664,11 @@ export default defineComponent({
 		githubRepo: { type: String, default: '' },
 	},
 
-	emits: ['close', 'changed', 'delete', 'stepsChanged', 'commentsChanged', 'attachmentsChanged'],
+	emits: ['close', 'changed', 'delete', 'stepsChanged', 'commentsChanged', 'attachmentsChanged', 'openTicket', 'linksChanged'],
+
+	setup() {
+		return { outbox: useOutboxStore() }
+	},
 
 	data() {
 		return {
@@ -652,6 +704,14 @@ export default defineComponent({
 	},
 
 	computed: {
+		pending(): boolean {
+			return (this.ticket?.id ?? 0) < 0
+		},
+
+		pendingEntry(): TicketEntry | undefined {
+			return this.pending && this.ticket !== null ? this.outbox.ticketEntry(this.ticket.id) : undefined
+		},
+
 		paddedNumber(): string {
 			return String(this.ticket?.number ?? 0).padStart(4, '0')
 		},
@@ -665,6 +725,7 @@ export default defineComponent({
 		 */
 		canTransferToGithub(): boolean {
 			return this.viewer?.role === 'internal'
+				&& !this.pending
 				&& this.githubEnabled
 				&& this.githubRepo.trim() !== ''
 				&& this.ticket !== null
@@ -843,7 +904,9 @@ export default defineComponent({
 				return
 			}
 			try {
-				this.assignable = await fetchAssignable(this.ticket.boardId, this.ticket.id)
+				this.assignable = this.pending
+					? await fetchAssignableForNew(this.ticket.boardId, this.ticket.visibility)
+					: await fetchAssignable(this.ticket.boardId, this.ticket.id)
 			} catch {
 				// Ohne Liste bleibt die Auswahl leer; alles Uebrige am Vorgang
 				// funktioniert weiter. Eine Meldung waere hier Laerm.
@@ -978,7 +1041,7 @@ export default defineComponent({
 			if (Object.keys(changes).length > 0) {
 				this.busy = true
 				try {
-					const updated = await updateTicket(this.ticket.boardId, this.ticket.id, this.ticket.version, changes)
+					const updated = await this.writeFields(changes)
 					this.$emit('changed', updated)
 					this.cancelEditTitle()
 					this.cancelEditText()
@@ -1019,12 +1082,7 @@ export default defineComponent({
 			const titel = this.titleEntwurf.trim()
 			this.busy = true
 			try {
-				const updated = await updateTicket(
-					this.ticket.boardId,
-					this.ticket.id,
-					this.ticket.version,
-					{ title: titel },
-				)
+				const updated = await this.writeFields({ title: titel })
 				this.$emit('changed', updated)
 				this.editingTitle = false
 				this.titleEntwurf = ''
@@ -1168,12 +1226,7 @@ export default defineComponent({
 			const text = this.textEntwurf.trim()
 			this.busy = true
 			try {
-				const updated = await updateTicket(
-					this.ticket.boardId,
-					this.ticket.id,
-					this.ticket.version,
-					{ description: text === '' ? null : text },
-				)
+				const updated = await this.writeFields({ description: text === '' ? null : text })
 				this.$emit('changed', updated)
 				this.editingText = false
 				this.textEntwurf = ''
@@ -1209,12 +1262,7 @@ export default defineComponent({
 
 			this.busy = true
 			try {
-				const updated = await updateTicket(
-					this.ticket.boardId,
-					this.ticket.id,
-					this.ticket.version,
-					{ responsibleUserId: userId },
-				)
+				const updated = await this.writeFields({ responsibleUserId: userId })
 				this.$emit('changed', updated)
 			} catch (e) {
 				reportWriteError(e, t('projektwerk', 'Zuständigkeit konnte nicht gesetzt werden'))
@@ -1243,18 +1291,58 @@ export default defineComponent({
 
 			this.busy = true
 			try {
-				const updated = await updateTicket(
-					this.ticket.boardId,
-					this.ticket.id,
-					this.ticket.version,
-					{ dueDate: iso ?? '' },
-				)
+				const updated = await this.writeFields({ dueDate: iso ?? '' })
 				this.$emit('changed', updated)
 			} catch (e) {
 				reportWriteError(e, t('projektwerk', 'Fälligkeit konnte nicht gesetzt werden'))
 			} finally {
 				this.busy = false
 			}
+		},
+
+		/**
+		 * Titel, Beschreibung, Zuständigkeit, Frist schreiben; ein noch nicht gespeicherter Vorgang nimmt sie in sein Anlegen auf.
+		 *
+		 * @param changes Die neuen Werte; `dueDate: ''` löscht die Frist.
+		 * @param changes.title
+		 * @param changes.description
+		 * @param changes.responsibleUserId
+		 * @param changes.dueDate
+		 */
+		async writeFields(changes: { title?: string, description?: string | null, responsibleUserId?: string | null, dueDate?: string }): Promise<Ticket> {
+			const ticket = this.ticket as Ticket
+			if (this.pending) {
+				const lokal = { ...changes, dueDate: changes.dueDate === undefined ? undefined : (changes.dueDate === '' ? null : changes.dueDate) }
+				const ohneLuecken = Object.fromEntries(Object.entries(lokal).filter(([, v]) => v !== undefined))
+				if (!(await this.outbox.updatePendingTicket(ticket.id, ohneLuecken))) {
+					throw { status: 0, message: t('projektwerk', 'Der Vorgang wird gerade gesendet. Änderungen sind gleich danach möglich.'), notJson: false }
+				}
+
+				return { ...ticket, ...ohneLuecken } as Ticket
+			}
+
+			try {
+				return await updateTicket(ticket.boardId, ticket.id, ticket.version, changes)
+			} catch (e) {
+				if (!isApiError(e) || !isTransient(e)) {
+					throw e
+				}
+				// Die Änderung kann trotz fehlender Antwort angekommen sein; ein blinder zweiter Versuch endete im Versionskonflikt.
+				const aktuell = (await fetchTicket(ticket.boardId, ticket.id)).ticket
+				const ziel: Record<string, unknown> = { ...changes, dueDate: changes.dueDate === '' ? null : changes.dueDate }
+				const angekommen = Object.entries(ziel).every(([feld, wert]) => wert === undefined || (aktuell as unknown as Record<string, unknown>)[feld] === wert)
+
+				// Hat inzwischen jemand anderes geändert, soll der Konflikt sichtbar werden statt überschrieben.
+				return angekommen ? aktuell : await updateTicket(ticket.boardId, ticket.id, ticket.version, changes)
+			}
+		},
+
+		/** Einen nicht gespeicherten Vorgang samt seiner Schritte und Kommentare verwerfen. */
+		verwerfen(): void {
+			if (this.pendingEntry !== undefined) {
+				this.outbox.discard(this.pendingEntry.id)
+			}
+			this.$emit('close')
 		},
 
 		/**

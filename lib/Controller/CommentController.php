@@ -14,6 +14,9 @@ use OCA\Projektwerk\Access\NotAMemberException;
 use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\AppInfo\Application;
 use OCA\Projektwerk\Service\CommentService;
+use OCA\Projektwerk\Service\IdempotencyInProgressException;
+use OCA\Projektwerk\Service\IdempotencyMismatchException;
+use OCA\Projektwerk\Service\IdempotencyService;
 use OCA\Projektwerk\Service\NotAuthorException;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Db\DoesNotExistException;
@@ -43,6 +46,7 @@ class CommentController extends Controller {
 		IRequest $request,
 		private CommentService $service,
 		private BoardAccess $access,
+		private IdempotencyService $idem,
 		private ?string $userId,
 	) {
 		parent::__construct(Application::APP_ID, $request);
@@ -53,7 +57,12 @@ class CommentController extends Controller {
 	public function create(int $boardId, int $ticketId, string $body): JSONResponse {
 		return $this->run(
 			$boardId,
-			fn (ViewerContext $viewer): mixed => $this->service->create($viewer, $ticketId, $body),
+			fn (ViewerContext $viewer): mixed => $this->idem->once(
+				$viewer->userId,
+				$this->request->getHeader(IdempotencyService::HEADER),
+				['comment', $boardId, $ticketId, $body],
+				fn () => $this->service->create($viewer, $ticketId, $body),
+			),
 			Http::STATUS_CREATED,
 		);
 	}
@@ -90,6 +99,10 @@ class CommentController extends Controller {
 			// Dieselbe Antwort fuer Nichtmitglied, unbekanntes Board, verborgenes
 			// Ticket und unbekannten Kommentar.
 			return new JSONResponse([], Http::STATUS_NOT_FOUND);
+		} catch (IdempotencyInProgressException $e) {
+			return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_CONFLICT);
+		} catch (IdempotencyMismatchException $e) {
+			return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_UNPROCESSABLE_ENTITY);
 		} catch (\InvalidArgumentException $e) {
 			return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
 		}

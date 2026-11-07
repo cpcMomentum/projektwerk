@@ -85,7 +85,9 @@
 				<NcTextField
 					v-model="searchInput"
 					class="pw-board-search"
-					:label="t('projektwerk', 'Vorgänge durchsuchen')"
+					:labelOutside="true"
+					:aria-label="t('projektwerk', 'Vorgänge durchsuchen')"
+					:placeholder="t('projektwerk', 'Vorgänge durchsuchen')"
 					:showTrailingButton="searchInput !== ''"
 					trailingButtonIcon="close"
 					:trailingButtonLabel="t('projektwerk', 'Suche zurücksetzen')"
@@ -150,6 +152,26 @@
 		<!-- Leerzustand der Suche (#373): einmal über dem Board, die Spalten bleiben darunter stehen. -->
 		<!-- Die Live-Region steht immer da: Eine mit ihrem Text eingefügte sagen Screenreader oft nicht an. -->
 		<div role="status">
+			<div v-if="pendingCount > 0" class="pw-outbox">
+				<span>{{ n('projektwerk', '%n Änderung noch nicht gespeichert', '%n Änderungen noch nicht gespeichert', pendingCount) }}</span>
+				<NcButton variant="tertiary" @click="outbox.flush()">
+					{{ t('projektwerk', 'Jetzt senden') }}
+				</NcButton>
+			</div>
+			<div v-if="failed.length > 0" class="pw-outbox pw-outbox--failed">
+				<span>{{ n('projektwerk', '%n Änderung abgelehnt, bitte prüfen', '%n Änderungen abgelehnt, bitte prüfen', failed.length) }}</span>
+				<ul class="pw-outbox__liste">
+					<li v-for="entry in failed" :key="entry.id">
+						<span>{{ describe(entry) }}: {{ entry.error }}</span>
+						<NcButton variant="tertiary" @click="outbox.retry(entry.id)">
+							{{ t('projektwerk', 'Erneut versuchen') }}
+						</NcButton>
+						<NcButton variant="tertiary" @click="outbox.discard(entry.id)">
+							{{ t('projektwerk', 'Verwerfen') }}
+						</NcButton>
+					</li>
+				</ul>
+			</div>
 			<div v-if="noSearchHits" class="pw-search-empty">
 				<span>{{ t('projektwerk', 'Keine Vorgänge zu „{suche}“', { suche: store.search.trim() }, undefined, { escape: false }) }}</span>
 				<NcButton variant="tertiary" @click="clearSearch">
@@ -224,6 +246,12 @@
 						@toggleclosed="toggleClosed"
 						@delete="deleteTicket" />
 
+					<PendingTicketCard
+						v-for="entry in pendingIn(view.column.id)"
+						:key="entry.id"
+						:entry="entry"
+						@open="openPending" />
+
 					<!--
 						Ältere Erledigte (#59). Kein Archiv als Ablageort:
 						`closed_at` bleibt die einzige Wahrheit, das Aufklappen
@@ -254,7 +282,7 @@
 					</NcButton>
 
 					<!-- Leerzustaende sprechen (§9) — auch der gefilterte. -->
-					<div v-if="view.tickets.length === 0" class="pw-empty">
+					<div v-if="view.tickets.length === 0 && pendingIn(view.column.id).length === 0" class="pw-empty">
 						{{ store.searchTerms.length > 0
 							? t('projektwerk', 'Kein Treffer.')
 							: store.onlyWaiting
@@ -279,13 +307,18 @@
 			:steps="openSteps"
 			:comments="openComments"
 			:attachments="openAttachments"
+			:dependsOn="openLinks.dependsOn"
+			:neededBy="openLinks.neededBy"
+			:boardTickets="boardTicketList"
 			:waiting="openTicketData ? (store.waiting[openTicketData.id] ?? null) : null"
 			@close="openTicketData = null"
 			@changed="applyChanged"
 			@delete="deleteTicket"
 			@stepsChanged="reloadOpenTicket"
 			@commentsChanged="reloadOpenTicket"
-			@attachmentsChanged="reloadOpenTicket" />
+			@attachmentsChanged="reloadOpenTicket"
+			@openTicket="openById"
+			@linksChanged="openLinks = $event" />
 
 		<CreateTicketDialog
 			:open="creating"
@@ -311,7 +344,9 @@
 			size="normal"
 			@update:open="finalPrompt = null">
 			<div class="app-projektwerk">
-				<p class="pw-detail__empty">{{ finalPromptText }}</p>
+				<p class="pw-detail__empty">
+					{{ finalPromptText }}
+				</p>
 			</div>
 			<template #actions>
 				<NcButton @click="finalPrompt = null">
@@ -334,10 +369,15 @@
 				<p class="pw-detail__empty">
 					{{ t('projektwerk', 'Das neue Board gehört zu diesem Projekt und teilt sich Mitglieder, Ordner und Vorgangsnummern.') }}
 				</p>
-				<NcTextField
-					v-model="newBoardTitle"
-					:label="t('projektwerk', 'Titel des Boards')"
-					@keydown.enter="confirmAddBoard" />
+				<div class="pw-feld">
+					<label class="pw-feld__label" for="pw-new-board-title">{{ t('projektwerk', 'Titel des Boards') }}</label>
+					<NcTextField
+						id="pw-new-board-title"
+						v-model="newBoardTitle"
+						:labelOutside="true"
+						:label="t('projektwerk', 'Titel des Boards')"
+						@keydown.enter="confirmAddBoard" />
+				</div>
 			</div>
 			<template #actions>
 				<NcButton @click="closeAddBoard">
@@ -379,8 +419,9 @@
 </template>
 
 <script lang="ts">
+import type { OutboxEntry, SavedEvent, TicketEntry } from '@/stores/outboxStore'
 import type { Column, Visibility } from '@/types/board'
-import type { Attachment, Comment, Step, Ticket } from '@/types/ticket'
+import type { Attachment, Comment, Step, Ticket, TicketLinks } from '@/types/ticket'
 
 import { n, t } from '@nextcloud/l10n'
 import { generateUrl } from '@nextcloud/router'
@@ -403,11 +444,13 @@ import MagnifyIcon from 'vue-material-design-icons/Magnify.vue'
 import PlusIcon from 'vue-material-design-icons/Plus.vue'
 import BoardDragLayer from '@/components/board/BoardDragLayer.vue'
 import CreateTicketDialog from '@/components/CreateTicketDialog.vue'
+import PendingTicketCard from '@/components/PendingTicketCard.vue'
 import TicketDetail from '@/components/TicketDetail.vue'
-import { deleteTicket as apiDeleteTicket, restoreTicket as apiRestoreTicket, createTicket, fetchTicket, updateTicket } from '@/services/tickets'
+import { deleteTicket as apiDeleteTicket, restoreTicket as apiRestoreTicket, fetchTicket, updateTicket } from '@/services/tickets'
 import { showError, showUndo } from '@/services/toast'
 import { isConflict, reportWriteError } from '@/services/writeError'
 import { useBoardStore } from '@/stores/boardStore'
+import { useOutboxStore } from '@/stores/outboxStore'
 
 /** Was die Vorlage über eine Spalte wissen muss — einmal je Neuzeichnen. */
 interface ColumnView {
@@ -426,10 +469,10 @@ interface ColumnView {
 export default defineComponent({
 	name: 'BoardView',
 
-	components: { BoardDragLayer, ChevronLeftIcon, ClockAlertIcon, CogIcon, CreateTicketDialog, DeleteOutlineIcon, FolderMultipleIcon, FolderOpenIcon, MagnifyIcon, NcActionButton, NcActions, NcButton, NcDialog, NcEmptyContent, NcRadioGroup, NcRadioGroupButton, NcTextField, PlusIcon, TicketDetail },
+	components: { BoardDragLayer, ChevronLeftIcon, ClockAlertIcon, CogIcon, CreateTicketDialog, DeleteOutlineIcon, FolderMultipleIcon, FolderOpenIcon, MagnifyIcon, NcActionButton, NcActions, NcButton, NcDialog, NcEmptyContent, NcRadioGroup, NcRadioGroupButton, NcTextField, PendingTicketCard, PlusIcon, TicketDetail },
 
 	setup() {
-		return { store: useBoardStore() }
+		return { store: useBoardStore(), outbox: useOutboxStore() }
 	},
 
 	data() {
@@ -439,6 +482,7 @@ export default defineComponent({
 			openSteps: [] as Step[],
 			openComments: [] as Comment[],
 			openAttachments: [] as Attachment[],
+			openLinks: { dependsOn: [], neededBy: [] } as TicketLinks,
 			// Die frisch angelegte Karte, die gerade kurz hervorgehoben wird (#165),
 			// und ihr Ablauf-Timer — beides rein lokal und vergänglich.
 			highlightId: null as number | null,
@@ -455,10 +499,19 @@ export default defineComponent({
 			// Das Suchfeld (#373): sofort, was getippt wird; der Store bekommt es entprellt.
 			searchInput: '',
 			searchTimer: null as number | null,
+			unsubscribeOutbox: null as (() => void) | null,
+			unsubscribeExternal: null as (() => void) | null,
+			boardReloadTimer: null as number | null,
+			refreshTimers: {} as Record<number, number>,
 		}
 	},
 
 	computed: {
+		/** Die geladenen Vorgänge als Auswahl für Abhängigkeiten. */
+		boardTicketList(): Ticket[] {
+			return [...this.store.tickets.values()]
+		},
+
 		/** Link in die Dateien-App am Projektordner (#351), über die Datei-ID. */
 		projectFolderUrl(): string {
 			return this.store.projectFolder ? generateUrl('/f/{id}', { id: this.store.projectFolder.id }) : ''
@@ -509,6 +562,14 @@ export default defineComponent({
 			}))
 		},
 
+		pendingCount(): number {
+			return this.outbox.pendingCountFor(this.boardId)
+		},
+
+		failed(): OutboxEntry[] {
+			return this.outbox.failedFor(this.boardId)
+		},
+
 		/** Ob die Suche (#373) auf dem ganzen Board nichts findet. */
 		noSearchHits(): boolean {
 			return !this.store.loading
@@ -518,6 +579,18 @@ export default defineComponent({
 	},
 
 	watch: {
+		'outbox.entries': function() {
+			const offen = this.openTicketData
+			if (offen === null || offen.id >= 0 || this.outbox.ticketEntry(offen.id) !== undefined) {
+				return
+			}
+			const realId = this.outbox.realId(offen.id)
+			if (realId < 0) {
+				// Verworfen, hier oder in einem anderen Tab: Das Fenster zeigte sonst einen Vorgang, den es nicht mehr gibt.
+				this.openTicketData = null
+			}
+		},
+
 		boardId: {
 			immediate: true,
 			async handler(id: number) {
@@ -526,12 +599,28 @@ export default defineComponent({
 				// wo `open()` sie nicht leert. Feld und Store sonst auseinander.
 				this.clearSearch()
 				await this.store.open(id)
+				if (this.store.viewer !== null) {
+					this.outbox.init(this.store.viewer.userId)
+				}
 				await this.openFromQuery()
 			},
 		},
 	},
 
+	mounted() {
+		this.unsubscribeOutbox = this.outbox.subscribe((event) => this.onSaved(event))
+		this.unsubscribeExternal = this.outbox.onExternalChange(() => this.onExternalOutboxChange())
+	},
+
 	beforeUnmount() {
+		this.unsubscribeOutbox?.()
+		this.unsubscribeExternal?.()
+		if (this.boardReloadTimer !== null) {
+			window.clearTimeout(this.boardReloadTimer)
+		}
+		for (const timer of Object.values(this.refreshTimers)) {
+			window.clearTimeout(timer)
+		}
 		// Den Hervorhebungs-Timer nicht über das Verlassen der Ansicht hinaus
 		// weiterlaufen lassen (#165).
 		if (this.highlightTimer !== null) {
@@ -541,6 +630,7 @@ export default defineComponent({
 	},
 
 	methods: {
+		n,
 		t,
 
 		/**
@@ -710,12 +800,20 @@ export default defineComponent({
 
 		async openTicket(ticket: Ticket) {
 			this.openTicketData = ticket
+			if (ticket.id < 0) {
+				this.openSteps = []
+				this.openComments = []
+				this.openAttachments = []
+				this.openLinks = { dependsOn: [], neededBy: [] }
+				return
+			}
 			// Sofort leeren, nicht erst nach dem Laden: Sonst zeigt das Overlay
 			// kurz die Arbeitsschritte und Kommentare des vorigen Tickets unter
 			// dem neuen Titel.
 			this.openSteps = []
 			this.openComments = []
 			this.openAttachments = []
+			this.openLinks = { dependsOn: [], neededBy: [] }
 			// Öffnen heisst gelesen (#79): Der Punkt geht sofort aus. Ohne await
 			// — der Vermerk soll das Laden des Vorgangs nicht aufhalten.
 			this.store.markRead(ticket.id)
@@ -737,10 +835,12 @@ export default defineComponent({
 				this.openSteps = detail.steps
 				this.openComments = detail.comments
 				this.openAttachments = detail.attachments
+				this.openLinks = { dependsOn: detail.dependsOn ?? [], neededBy: detail.neededBy ?? [] }
 			} catch {
 				this.openSteps = []
 				this.openComments = []
 				this.openAttachments = []
+				this.openLinks = { dependsOn: [], neededBy: [] }
 			}
 		},
 
@@ -752,12 +852,10 @@ export default defineComponent({
 		 */
 		async reloadOpenTicket() {
 			const offen = this.openTicketData
-			if (offen === null) {
+			if (offen === null || offen.id < 0) {
 				return
 			}
-			await this.store.open(this.boardId)
-			await this.loadDetail(offen.id)
-			this.openTicketData = this.store.tickets.get(offen.id) ?? offen
+			await this.refreshTicket(offen.id)
 		},
 
 		/**
@@ -787,6 +885,15 @@ export default defineComponent({
 				return
 			}
 
+			await this.openById(wanted)
+		},
+
+		/**
+		 * Einen Vorgang über seine Kennung öffnen, auch wenn er nicht in der geladenen Menge steht.
+		 *
+		 * @param wanted Kennung des Vorgangs.
+		 */
+		async openById(wanted: number) {
 			const bekannt = this.store.tickets.get(wanted)
 			if (bekannt !== undefined) {
 				await this.openTicket(bekannt)
@@ -810,6 +917,7 @@ export default defineComponent({
 				this.openSteps = detail.steps
 				this.openComments = detail.comments
 				this.openAttachments = detail.attachments
+				this.openLinks = { dependsOn: detail.dependsOn ?? [], neededBy: detail.neededBy ?? [] }
 				this.store.markRead(wanted)
 			} catch {
 				// Verborgen oder nicht mehr vorhanden — bewusst still.
@@ -827,7 +935,9 @@ export default defineComponent({
 		 * @param ticket Der neue Stand vom Server.
 		 */
 		applyChanged(ticket: Ticket) {
-			this.store.replaceTicket(ticket)
+			if (ticket.id > 0) {
+				this.store.replaceTicket(ticket)
+			}
 			this.openTicketData = ticket
 		},
 
@@ -960,32 +1070,152 @@ export default defineComponent({
 			}
 		},
 
-		async create(data: { title: string, description: string | null, visibility: Visibility, columnId: number, dueDate: string | null, responsibleUserId: string | null, openAfter: boolean }) {
-			try {
-				// `openAfter` ist rein lokale UI-Wahl (#165) und kein Feld der
-				// Ticket-API — nicht mit ins Anfrage-Objekt nehmen.
-				const { openAfter, ...ticketData } = data
-				const angelegt = await createTicket(this.boardId, ticketData)
-				this.creating = false
-				await this.store.open(this.boardId)
-				// Den frischen Stand aus dem Speicher nehmen, damit `version` stimmt
-				// und der nächste Schreibweg nicht in einen 409 läuft.
-				const frisch = this.store.tickets.get(angelegt.id) ?? angelegt
+		create(data: { title: string, description: string | null, visibility: Visibility, columnId: number, dueDate: string | null, responsibleUserId: string | null, openAfter: boolean }): void {
+			// Sofort zu und in die Warteschlange: Bei schlechtem Netz klickte man sonst ein zweites Mal.
+			this.creating = false
+			const { openAfter, ...payload } = data
+			const localId = this.outbox.enqueueTicket(this.boardId, payload)
+			const entry = this.outbox.ticketEntry(localId)
+			if (openAfter && entry !== undefined) {
+				this.openPending(entry)
+			}
+		},
 
-				if (openAfter) {
-					// #146-Weg (Variante a), jetzt als bewusste Wahl (#165): direkt
-					// ins Detail, wo Anhänge und Arbeitsschritte „wie im Detail"
-					// möglich sind — ohne den schlanken Anlege-Dialog (#100) dafür
-					// aufzublähen.
-					await this.openTicket(frisch)
+		/**
+		 * Die Einträge der Warteschlange, die in dieser Spalte auf ihr Speichern warten.
+		 *
+		 * @param columnId Die Spalte.
+		 */
+		pendingIn(columnId: number): TicketEntry[] {
+			return this.outbox.pendingTickets(this.boardId).filter((entry) => entry.payload.columnId === columnId)
+		},
+
+		/**
+		 * Einen noch nicht gespeicherten Vorgang öffnen; Schritte und Kommentare reihen sich hinter ihm ein.
+		 *
+		 * @param entry Der Eintrag der Warteschlange.
+		 */
+		openPending(entry: TicketEntry): void {
+			this.openTicket({
+				id: entry.localId,
+				boardId: entry.boardId,
+				columnId: entry.payload.columnId,
+				number: 0,
+				title: entry.payload.title,
+				description: entry.payload.description,
+				visibility: entry.payload.visibility,
+				creatorUserId: this.store.viewer?.userId ?? '',
+				creatorRole: this.store.viewer?.role ?? 'internal',
+				responsibleUserId: entry.payload.responsibleUserId,
+				dueDate: entry.payload.dueDate,
+				closedAt: null,
+				closedOutcome: null,
+				version: 0,
+			} as unknown as Ticket)
+		},
+
+		/**
+		 * Nach einem gespeicherten Eintrag nur den betroffenen Vorgang nachziehen.
+		 *
+		 * @param event Was gespeichert wurde.
+		 */
+		onSaved(event: SavedEvent): void {
+			if (event.entry.boardId !== this.boardId) {
+				return
+			}
+			if (event.kind === 'ticket') {
+				this.store.addTicket(event.result)
+				if (this.openTicketData?.id === event.entry.localId) {
+					this.openTicketData = event.result
 				} else {
-					// „Anlegen" ohne Sprung (#165): auf dem Board bleiben und die neue
-					// Karte kurz hervorheben, damit „wo ist mein Vorgang" ohne ein
-					// zweites Modal beantwortet ist.
-					this.highlightNew(frisch.id)
+					this.highlightNew(event.result.id)
 				}
-			} catch (e) {
-				showError((e as { message?: string }).message ?? t('projektwerk', 'Anlegen fehlgeschlagen'))
+				this.scheduleRefresh(event.result.id)
+				return
+			}
+			if (this.openTicketData?.id === event.entry.ticketId) {
+				// Gleich einsetzen: Bis zum Nachladen verschwände der Eintrag sonst kurz aus der Liste.
+				if (event.kind === 'comment') {
+					this.openComments = [...this.openComments.filter((c) => c.id !== event.result.id), event.result]
+				} else {
+					this.openSteps = [...this.openSteps.filter((s) => s.id !== event.result.id), event.result]
+				}
+			}
+			this.scheduleRefresh(event.entry.ticketId)
+		},
+
+		/**
+		 * Ein anderer Tab hat gesendet: offene Ansicht und Board nachziehen, die Ereignisse kamen dort an.
+		 */
+		onExternalOutboxChange(): void {
+			const offen = this.openTicketData
+			if (offen !== null) {
+				const realId = offen.id < 0 ? this.outbox.realId(offen.id) : offen.id
+				if (realId > 0) {
+					this.scheduleRefresh(realId)
+				}
+			}
+			if (this.boardReloadTimer !== null) {
+				window.clearTimeout(this.boardReloadTimer)
+			}
+			this.boardReloadTimer = window.setTimeout(() => {
+				this.boardReloadTimer = null
+				this.store.open(this.boardId)
+			}, 500)
+		},
+
+		/**
+		 * Kurzbeschreibung eines abgelehnten Eintrags für die Leiste.
+		 *
+		 * @param entry Der Eintrag.
+		 */
+		describe(entry: OutboxEntry): string {
+			switch (entry.kind) {
+				case 'ticket':
+					return t('projektwerk', 'Vorgang „{title}“', { title: entry.payload.title })
+				case 'step':
+					return t('projektwerk', 'Arbeitsschritt „{title}“', { title: entry.payload.title })
+				case 'comment':
+					return t('projektwerk', 'Kommentar „{text}“', { text: entry.payload.body.length > 40 ? entry.payload.body.slice(0, 40) + '…' : entry.payload.body })
+				case 'stepDone':
+					return entry.payload.done ? t('projektwerk', 'Arbeitsschritt abhaken') : t('projektwerk', 'Haken entfernen')
+			}
+
+			return ''
+		},
+
+		/**
+		 * Mehrere gespeicherte Einträge desselben Vorgangs ergeben eine einzige Abfrage.
+		 *
+		 * @param ticketId Der Vorgang.
+		 */
+		scheduleRefresh(ticketId: number): void {
+			window.clearTimeout(this.refreshTimers[ticketId])
+			this.refreshTimers[ticketId] = window.setTimeout(() => {
+				delete this.refreshTimers[ticketId]
+				this.refreshTicket(ticketId)
+			}, 300)
+		},
+
+		/**
+		 * Einen Vorgang mit Schritten, Kommentaren und Zählern neu holen; eine Abfrage statt des ganzen Boards.
+		 *
+		 * @param ticketId Der Vorgang.
+		 */
+		async refreshTicket(ticketId: number): Promise<void> {
+			try {
+				const detail = await fetchTicket(this.boardId, ticketId)
+				this.store.applyDetail(detail)
+				const offen = this.openTicketData === null ? null : this.outbox.realId(this.openTicketData.id)
+				if (offen === ticketId) {
+					this.openTicketData = this.store.tickets.get(ticketId) ?? detail.ticket
+					this.openSteps = detail.steps
+					this.openComments = detail.comments
+					this.openAttachments = detail.attachments
+					this.openLinks = { dependsOn: detail.dependsOn ?? [], neededBy: detail.neededBy ?? [] }
+				}
+			} catch {
+				// Kein Netz: Beim nächsten Speichern oder Öffnen kommt der Stand nach.
 			}
 		},
 

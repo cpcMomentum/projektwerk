@@ -13,6 +13,7 @@ use OCA\Projektwerk\Access\BoardAccess;
 use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Controller\StepController;
 use OCA\Projektwerk\Db\Step;
+use OCA\Projektwerk\Service\IdempotencyService;
 use OCA\Projektwerk\Service\StepService;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
@@ -157,6 +158,7 @@ class StepWritePathTest extends IntegrationTestCase {
 			$request,
 			Server::get(StepService::class),
 			Server::get(BoardAccess::class),
+			Server::get(IdempotencyService::class),
 			LeakMatrixFixture::ANNA,
 		);
 

@@ -49,7 +49,8 @@
 				<div class="pw-folderpick__new">
 					<NcTextField
 						v-model="newName"
-						:label="t('projektwerk', 'Name des neuen Ordners')"
+						:labelOutside="true"
+						:aria-label="t('projektwerk', 'Name des neuen Ordners')"
 						:placeholder="t('projektwerk', 'Neuer Ordner')"
 						:disabled="loading || creating"
 						@keydown.enter="create" />

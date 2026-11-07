@@ -6,6 +6,53 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.4.23] - 2026-11-07
+
+### Added
+
+- **Arbeiten bei schlechter Verbindung** (#400): Neue Vorgänge, Arbeitsschritte, Kommentare und Haken
+  erscheinen sofort mit „Wird gespeichert …“ und gehen der Reihe nach im Hintergrund raus. Die
+  Warteschlange liegt je Konto im Browser und übersteht Funklöcher und das Neuladen der Seite. Ein noch
+  nicht gespeicherter Vorgang lässt sich gleich öffnen; Schritte und Kommentare reihen sich hinter ihm
+  ein. Vom Server Abgelehntes bleibt mit Grund, „Erneut versuchen“ und „Verwerfen“ stehen; eine Leiste
+  über dem Board zeigt, was noch aussteht.
+- **Person gleich beim Anlegen eines Arbeitsschritts** (#386): Neben „Neuer Arbeitsschritt“ wählt ein
+  Personen-Knopf, wem neue Schritte gehören. Die Auswahl bleibt stehen, so lassen sich mehrere Schritte
+  für dieselbe Person nacheinander mit Enter anlegen; „Niemand“ hebt sie auf.
+- **Abhängigkeiten zwischen Vorgängen** (#346): Im Vorgang hält „Hängt ab von“ fest, auf welche anderen
+  Vorgänge desselben Boards er wartet; die Gegenseite zeigt „Wird gebraucht für“. Erledigtes und Verworfenes
+  steht durchgestrichen mit Status, ein Klick öffnet den Vorgang. Ein Kunde sieht nur Verknüpfungen zu
+  Vorgängen, die er auch sonst sieht, weder Titel noch Anzahl der übrigen. Der KI-Zugang liest die
+  Abhängigkeiten in `get_ticket` und setzt sie mit `add_dependency`/`remove_dependency`, bei
+  kundensichtbaren Vorgängen erst nach Rückfrage. Migration 26 ergänzt `pwerk_ticket_deps`.
+- **Link-Vorschau in Beschreibung und Kommentaren** (#406): Ein Link erscheint wie in Deck als
+  Vorschaukarte (Titel, Seite, Bild). In der Beschreibung steht die Karte unter dem gekürzten Text und
+  bleibt so auch bei langen Beschreibungen sichtbar. Aufgelöst wird über Nextclouds Reference-Mechanismus
+  als der angemeldete Nutzer: Eine Datei zeigt sich nur, wenn der Betrachter sie sehen darf, sonst bleibt
+  es beim Link. Interaktive Widgets fremder Apps (Deck, Talk) sind bewusst aus.
+
+### Changed
+
+- **Formulare wie VertragsWerk** (#408): Jedes Feld der App hat denselben Rahmen (34 px wie Nextclouds Klickfläche, 1 px Rand, blauer
+  Fokus), auch die Nextcloud-Felder für Text, Personen, Datum und Kommentare. Beschriftungen stehen klein und
+  grau über dem Feld statt doppelt im Feld; Abschnittsköpfe der Einstellungen in Versalien. „Neuer Vorgang“,
+  die Projekteinstellungen und das Antwort-Postfach ordnen Felder in Zweierreihen (auf dem Handy einspaltig),
+  die Spalten- und Mitgliederzeilen stehen einzeilig. Der Sichtbarkeitsschalter im Anlegen-Dialog ist
+  einzeilig und so hoch wie die Felder.
+
+### Fixed
+
+- **Doppelt angelegte Vorgänge bei langsamer Verbindung** (#400): Jede Anlage (Vorgang, Arbeitsschritt,
+  Kommentar, Anhang) trägt eine Kennung (`Idempotency-Key`); eine Wiederholung mit derselben Kennung legt
+  nicht neu an, sondern liefert das schon Angelegte. Migration 25 ergänzt dafür `pwerk_idem`, ein
+  Hintergrundjob räumt nach 180 Tagen auf. Anfragen haben eine Zeitgrenze statt endlos zu hängen, und nach
+  dem Speichern wird nur der betroffene Vorgang nachgeladen statt des ganzen Boards.
+- **Zuständigen und Beschreibung im Browser leeren** (#399): Ein abgewählter Zuständiger und eine geleerte
+  Beschreibung blieben gespeichert, weil der Server ein gesendetes `null` als „nicht geschickt“ verwarf.
+- **Geleerte Felder der Projekteinstellungen** (#410): Leerte man Beschreibung, eigene Firma, Kunde,
+  Projektchat oder die Firma eines Mitglieds, blieb nach dem Speichern der alte Wert stehen. Jetzt wird
+  geleert; eine geleerte Projektchat-Adresse blendet den Knopf „Zum Projektchat“ aus.
+
 ## [0.4.22] - 2026-11-03
 
 ### Added
