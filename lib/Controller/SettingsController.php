@@ -117,9 +117,8 @@ class SettingsController extends Controller {
 		// **Die beiden Ordner kommen als Pfad, gespeichert wird die Datei-ID.**
 		// Der Pfad benennt den Ordner nur; was in der Datenbank landet, loest
 		// {@see BoardService::update()} daraus auf (§5.18). Der leere String
-		// entfernt die Zuordnung — `onlyGiven` unterscheidet „nicht
-		// mitgeschickt" allein am `null`, ein ausdrueckliches „auf nichts
-		// setzen" waere damit sonst nicht ausdrueckbar.
+		// entfernt die Zuordnung — die Ordner stehen nicht in der Liste der
+		// leerbaren Felder, ein gesendetes `null` heisst dort „nicht geschickt".
 		$changes = $this->onlyGiven([
 			'title' => $title,
 			'description' => $description,
@@ -139,7 +138,7 @@ class SettingsController extends Controller {
 			// nicht mitgeschickt; sonst true/false. Manager-only setzt der Service
 			// durch (projektweites Feld).
 			'memberBoardsAllowed' => $memberBoardsAllowed,
-		]);
+		], ['description', 'orgInternal', 'customer', 'chatUrl']);
 
 		return $this->write($boardId, fn (ViewerContext $viewer): mixed
 			=> $this->boardService->update($viewer, $changes));
@@ -237,7 +236,7 @@ class SettingsController extends Controller {
 			'isManager' => $isManager,
 			'displayName' => $displayName,
 			'company' => $company,
-		]);
+		], ['company']);
 
 		return $this->write($boardId, fn (ViewerContext $viewer): mixed
 			=> $this->memberService->update($viewer, $userId, $changes));
@@ -272,11 +271,22 @@ class SettingsController extends Controller {
 	 * Nur das übernehmen, was tatsächlich geschickt wurde — ein nicht genanntes
 	 * Feld darf nicht auf null zurückfallen.
 	 *
+	 * Bei den leerbaren Feldern heißt ein gesendetes `null` „leeren“; nur die
+	 * rohen Parameter unterscheiden es von „nicht geschickt“.
+	 *
 	 * @param array<string, mixed> $fields
+	 * @param list<string> $clearable
 	 * @return array<string, mixed>
 	 */
-	private function onlyGiven(array $fields): array {
-		return array_filter($fields, static fn ($value): bool => $value !== null);
+	private function onlyGiven(array $fields, array $clearable = []): array {
+		$sent = $this->request->getParams();
+
+		return array_filter(
+			$fields,
+			static fn ($value, string $key): bool => $value !== null
+				|| (in_array($key, $clearable, true) && array_key_exists($key, $sent)),
+			ARRAY_FILTER_USE_BOTH,
+		);
 	}
 
 	/**
