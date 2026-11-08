@@ -825,19 +825,6 @@ class TicketService {
 		}
 	}
 
-	/**
-	 * Ein Schreibvorgang: Version hoch, Zeitstempel neu, Urheber vermerkt.
-	 *
-	 * **`last_editor_user_id` benennt genau, wer den aktuellen `version`-Stand
-	 * verursacht hat** — nicht mehr und nicht weniger. Deshalb wird es an jedem
-	 * Schreibweg gesetzt, auch beim Verschieben und beim Sichtbarkeitswechsel:
-	 * Stünde `version` auf 3 und der Urheber noch bei dem von Version 2, wäre
-	 * das Paar eine Lüge, und jede Anzeige, die darauf baut, ebenfalls.
-	 *
-	 * Beim Anlegen wird es **nicht** gesetzt. `null` heißt „seit dem Anlegen
-	 * unverändert"; wer es angelegt hat, steht in `creator_user_id` und wird
-	 * hier nicht wiederholt.
-	 */
 	/** Speichern und Verlaufseintrag gemeinsam, damit keiner ohne den anderen bleibt. */
 	private function saveWithLog(ViewerContext $viewer, Ticket $ticket, string $action, ?string $oldValue = null, ?string $newValue = null): Ticket {
 		$this->db->beginTransaction();
@@ -886,6 +873,19 @@ class TicketService {
 		return null;
 	}
 
+	/**
+	 * Ein Schreibvorgang: Version hoch, Zeitstempel neu, Urheber vermerkt.
+	 *
+	 * **`last_editor_user_id` benennt genau, wer den aktuellen `version`-Stand
+	 * verursacht hat** — nicht mehr und nicht weniger. Deshalb wird es an jedem
+	 * Schreibweg gesetzt, auch beim Verschieben und beim Sichtbarkeitswechsel:
+	 * Stünde `version` auf 3 und der Urheber noch bei dem von Version 2, wäre
+	 * das Paar eine Lüge, und jede Anzeige, die darauf baut, ebenfalls.
+	 *
+	 * Beim Anlegen wird es **nicht** gesetzt. `null` heißt „seit dem Anlegen
+	 * unverändert"; wer es angelegt hat, steht in `creator_user_id` und wird
+	 * hier nicht wiederholt.
+	 */
 	private function touch(Ticket $ticket, ViewerContext $viewer): void {
 		$ticket->setVersion((int)$ticket->getVersion() + 1);
 		$ticket->setLastEditorUserId($viewer->userId);
