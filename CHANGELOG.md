@@ -12,6 +12,37 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
   (Zuständigkeit und Schritt-Zuweisungen fallen weg), erneuter Abschluss mit anderem Ergebnis und die
   Wiederherstellung per `occ` schreiben jetzt einen Eintrag. Ohne handelnde Person steht dort „System“.
   Ein Architekturtest stellt sicher, dass der Verlauf nur über den Eintragsfilter gelesen wird.
+- **„Löschen“ im Vorgang als Knopf erkennbar** (#428): Der Knopf hat jetzt eine rote Kontur wie seine
+  umrandeten Nachbarn „Verworfen“ und „Erledigt“; die Fläche erscheint erst beim Darüberfahren.
+
+### Added
+
+- **Plus im Spaltenkopf** (#387): Jede Spalte außer den Endspalten hat rechts im Kopf ein Plus. Es öffnet
+  „Neuer Vorgang“ mit dieser Spalte voreingestellt; der Knopf oben bleibt und startet wie bisher in der
+  ersten Spalte.
+- **Vorgang im neuen Tab öffnen** (#385): Mittelklick oder Strg-/Cmd-Klick auf eine Karte öffnet den
+  Vorgang in einem neuen Browser-Tab, über denselben Direktlink wie Mails und Benachrichtigungen.
+
+### Fixed
+
+- **Dialog „Neuer Vorgang“ auf dem Handy** (#424): Bei schmaler Breite waren alle drei Knöpfe
+  abgeschnitten („Abbrec…“). Die Knopfleiste bricht jetzt um, „Anlegen“ steht darunter über die volle
+  Breite.
+- **Aktiver Board-Reiter deutlich erkennbar** (#422): Die Reiter der Boards eines Projekts zeigen das
+  offene Board jetzt mit dunkler Schrift und Unterstrich in der Primärfarbe, wie der Umschalter
+  „Kommentare | Verlauf“. Vorher hob es sich nur als weiße Kachel auf blassgrauem Grund ab.
+
+### Changed
+
+- **Person bei neuen Arbeitsschritten gilt nur noch für einen Schritt** (#418): Nach dem Anlegen springt
+  der Personen-Knopf wieder auf „Niemand“. Eine stehengebliebene Auswahl war leicht zu übersehen und
+  landete unbemerkt auch am nächsten Schritt.
+
+### Added
+
+- **Link zum Vorgang kopieren** (#419): Ein Knopf im Kopf des Vorgangs legt den Direktlink in die
+  Zwischenablage, etwa zum Teilen in Talk. Der Link trägt die interne Kennung, nicht die angezeigte
+  Nummer, die nur je Projekt eindeutig ist; wer den Vorgang nicht sehen darf, landet auf dem Board.
 
 ## [0.4.23] - 2026-11-07
 

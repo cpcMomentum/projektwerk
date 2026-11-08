@@ -511,8 +511,6 @@ OC.L10N.register(
     "Kommentar „{text}“" : "Kommentar „{text}“",
     "Arbeitsschritt abhaken" : "Arbeitsschritt abhaken",
     "Haken entfernen" : "Haken entfernen",
-    "Zuständig für neue Arbeitsschritte: niemand" : "Zuständig für neue Arbeitsschritte: niemand",
-    "Zuständig für neue Arbeitsschritte: {name}" : "Zuständig für neue Arbeitsschritte: {name}",
     "Hängt ab von" : "Hängt ab von",
     "Abhängigkeit hinzufügen" : "Abhängigkeit hinzufügen",
     "Vorgang, auf den dieser wartet" : "Vorgang, auf den dieser wartet",
@@ -556,6 +554,12 @@ OC.L10N.register(
     "hat den Anhang „{file}“ entfernt" : "hat den Anhang „{file}“ entfernt",
     "hat den Vorgang geändert" : "hat den Vorgang geändert",
     "Verlauf wird geladen …" : "Verlauf wird geladen …",
+    "Link zum Vorgang kopieren" : "Link zum Vorgang kopieren",
+    "Link kopiert" : "Link kopiert",
+    "Link konnte nicht kopiert werden: {link}" : "Link konnte nicht kopiert werden: {link}",
+    "Zuständig für den neuen Arbeitsschritt: niemand" : "Zuständig für den neuen Arbeitsschritt: niemand",
+    "Zuständig für den neuen Arbeitsschritt: {name}" : "Zuständig für den neuen Arbeitsschritt: {name}",
+    "Neuer Vorgang in „{spalte}“" : "Neuer Vorgang in „{spalte}“",
     "System" : "System"
 },
 "nplurals=2; plural=(n != 1);");
