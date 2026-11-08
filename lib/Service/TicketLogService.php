@@ -14,6 +14,7 @@ use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Db\Ticket;
 use OCA\Projektwerk\Db\TicketLog;
 use OCA\Projektwerk\Db\TicketLogMapper;
+use OCP\Collaboration\Reference\IReferenceManager;
 
 class TicketLogService {
 
@@ -22,6 +23,7 @@ class TicketLogService {
 	public function __construct(
 		private TicketLogMapper $log,
 		private TicketScope $scope,
+		private IReferenceManager $references,
 	) {
 	}
 
@@ -46,6 +48,8 @@ class TicketLogService {
 		$entry->setNewValue($this->cut($newValue));
 		$entry->setVisibility((string)$ticket->getVisibility());
 		$entry->setCreatedAt(new \DateTime());
+		// Jede Änderung läuft hier durch; eine veraltete Vorschaukarte zeigte sonst bis zu einer Stunde den alten Stand.
+		$this->references->invalidateCache((string)$entry->getTicketId());
 
 		return $this->log->insert($entry);
 	}

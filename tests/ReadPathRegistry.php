@@ -60,6 +60,8 @@ final class ReadPathRegistry {
 		// Der Deep-Link kennt nur die Ticketnummer, kein Board — deshalb ohne
 		// Board-Einschraenkung, aber ueber dieselbe Regel.
 		'TicketMapper::findVisibleAnywhere',
+		// Suche und Smart Picker (#419): boardübergreifend wie der Deep-Link, über dieselbe Regel.
+		'TicketMapper::findVisibleMatching',
 		// Der Wiederherstell-Abruf (#167). Der **einzige** Ticket-Lesepfad, der
 		// bewusst am Sichtbarkeits-Scope vorbeigeht: Er joint nicht auf die
 		// Mitgliedschaft — sonst faende er das Geloeschte nie wieder — und filtert

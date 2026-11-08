@@ -605,7 +605,8 @@
 		"Link kopiert": "Link kopiert",
 		"Link konnte nicht kopiert werden: {link}": "Link konnte nicht kopiert werden: {link}",
 		"Zuständig für den neuen Arbeitsschritt: niemand": "Zuständig für den neuen Arbeitsschritt: niemand",
-		"Zuständig für den neuen Arbeitsschritt: {name}": "Zuständig für den neuen Arbeitsschritt: {name}"
+		"Zuständig für den neuen Arbeitsschritt: {name}": "Zuständig für den neuen Arbeitsschritt: {name}",
+		"ProjektWerk-Vorgänge": "ProjektWerk-Vorgänge"
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }

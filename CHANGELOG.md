@@ -6,6 +6,13 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Added
+
+- **Vorschaukarte in Talk und Text, Vorgänge im Smart Picker** (#419): Ein Link auf einen Vorgang erscheint
+  als Karte im Stil des Boards (Nummer, Projekt, Titel, Spalte bzw. Abschluss, Zuständige, Frist). Wer
+  den Vorgang nicht sehen darf, bekommt nur die URL. Im Smart Picker („/“ in Talk) und in der
+  Nextcloud-Suche lassen sich Vorgänge nach Titel oder Nummer finden, nur aus der sichtbaren Menge.
+
 ### Fixed
 
 - **Dialog „Neuer Vorgang“ auf dem Handy** (#424): Bei schmaler Breite waren alle drei Knöpfe

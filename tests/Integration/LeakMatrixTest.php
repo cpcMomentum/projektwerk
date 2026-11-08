@@ -265,6 +265,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'MemberMapper::findForUserBoards' => 'testMemberNamesCoverOnlyMyOwnBoards',
 		'TicketMapper::findVisibleWithMyOpenSteps' => 'testMyStepsNeverWidensBeyondTheVisibleSet',
 		'TicketMapper::findVisibleAnywhere' => 'testDeepLinkLookupMatchesTheVisibleSet',
+		'TicketMapper::findVisibleMatching' => 'testSearchNeverWidensBeyondTheVisibleSet',
 		'TicketMapper::findForRestore' => 'testRestoreLookupIsScopedToBoardAndOwningRole',
 		'TicketMapper::countVisibleInBoard' => 'testCountersNeverCountWhatIsHidden',
 		'TicketMapper::findLastPositionInColumn' => 'testLastPositionIsTheSameForEveryViewer',
@@ -1961,6 +1962,21 @@ class LeakMatrixTest extends IntegrationTestCase {
 						. 'Zustaendigen-Auswahl, die von der Sichtbarkeit abweicht.',
 				);
 			}
+		}
+	}
+
+	/**
+	 * Suche und Smart Picker (#419): Jeder Fixture-Titel enthält „/“, die Suche danach muss genau die sichtbare Menge liefern.
+	 */
+	public function testSearchNeverWidensBeyondTheVisibleSet(): void {
+		$tickets = Server::get(TicketMapper::class);
+
+		foreach (self::VISIBLE as $userId => $expected) {
+			// Die Suche geht über alle Boards: Bert ist auch extern in Board B.
+			if ($userId === self::BERT) {
+				$expected = [...$expected, 'b:public/erna', 'b:internal/bert'];
+			}
+			$this->assertTicketLabels($expected, $tickets->findVisibleMatching($userId, '/', 100), 'Suche ' . $userId);
 		}
 	}
 
