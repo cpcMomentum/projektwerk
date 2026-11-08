@@ -8,6 +8,9 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Added
 
+- **Plus im Spaltenkopf** (#387): Jede Spalte außer den Endspalten hat rechts im Kopf ein Plus. Es öffnet
+  „Neuer Vorgang“ mit dieser Spalte voreingestellt; der Knopf oben bleibt und startet wie bisher in der
+  ersten Spalte.
 - **Vorgang im neuen Tab öffnen** (#385): Mittelklick oder Strg-/Cmd-Klick auf eine Karte öffnet den
   Vorgang in einem neuen Browser-Tab, über denselben Direktlink wie Mails und Benachrichtigungen.
 
