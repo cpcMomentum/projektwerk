@@ -82,6 +82,17 @@
 							Lebenszyklus-Aktion — Icon mit der Issue-Nummer im Tooltip.
 						-->
 						<div class="pw-detail__kopfaktionen">
+							<!-- Ausstehende Vorgänge haben noch keine Kennung für den Link. -->
+							<NcButton
+								v-if="!pending"
+								variant="tertiary"
+								:ariaLabel="t('projektwerk', 'Link zum Vorgang kopieren')"
+								:title="t('projektwerk', 'Link zum Vorgang kopieren')"
+								@click="linkKopieren">
+								<template #icon>
+									<LinkVariantIcon :size="20" />
+								</template>
+							</NcButton>
 							<a
 								v-if="ticket.githubIssueNumber"
 								class="pw-github-link pw-github-link--icon"
@@ -640,6 +651,7 @@ import FormatBoldIcon from 'vue-material-design-icons/FormatBold.vue'
 import FormatListBulletedIcon from 'vue-material-design-icons/FormatListBulleted.vue'
 import FormatListNumberedIcon from 'vue-material-design-icons/FormatListNumbered.vue'
 import GithubIcon from 'vue-material-design-icons/Github.vue'
+import LinkVariantIcon from 'vue-material-design-icons/LinkVariant.vue'
 import PencilOutlineIcon from 'vue-material-design-icons/PencilOutline.vue'
 import PlusIcon from 'vue-material-design-icons/Plus.vue'
 import RestoreIcon from 'vue-material-design-icons/Restore.vue'
@@ -654,9 +666,11 @@ import { isApiError, isTransient } from '@/services/api'
 import { transferTicketToGithub } from '@/services/github'
 import { fetchAssignable, fetchAssignableForNew } from '@/services/steps'
 import { fetchTicket, updateTicket } from '@/services/tickets'
+import { showError, showSuccess } from '@/services/toast'
 import { reportWriteError } from '@/services/writeError'
 import { useOutboxStore } from '@/stores/outboxStore'
 import { asDate, isOverdue, toIsoDay } from '@/utils/date'
+import { ticketLink } from '@/utils/ticketLink'
 
 /** Ab welcher Hoehe die Beschreibung gedeckelt wird. Deckt sich mit der CSS. */
 const TEXT_DECKEL_PX = 150
@@ -671,7 +685,7 @@ interface PersonOption {
 export default defineComponent({
 	name: 'TicketDetail',
 
-	components: { AttachmentList, CalendarIcon, CalendarAlertIcon, CancelIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, CommentList, DeleteOutlineIcon, DependencyList, FormatBoldIcon, FormatListBulletedIcon, FormatListNumberedIcon, GithubIcon, NcAvatar, NcButton, NcDateTimePicker, NcModal, NcReferenceList, NcRichText, NcSelectUsers, NcTextArea, NcTextField, PencilOutlineIcon, PlusIcon, RestoreIcon, StepList, TicketHistory, VisibilityControl, WaitBadge },
+	components: { AttachmentList, CalendarIcon, CalendarAlertIcon, CancelIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, CommentList, DeleteOutlineIcon, DependencyList, FormatBoldIcon, FormatListBulletedIcon, FormatListNumberedIcon, GithubIcon, LinkVariantIcon, NcAvatar, NcButton, NcDateTimePicker, NcModal, NcReferenceList, NcRichText, NcSelectUsers, NcTextArea, NcTextField, PencilOutlineIcon, PlusIcon, RestoreIcon, StepList, TicketHistory, VisibilityControl, WaitBadge },
 
 	props: {
 		ticket: { type: Object as PropType<Ticket | null>, default: null },
@@ -1027,6 +1041,23 @@ export default defineComponent({
 				reportWriteError(e, t('projektwerk', 'Überführung nach GitHub fehlgeschlagen'))
 			} finally {
 				this.busy = false
+			}
+		},
+
+		/**
+		 * Den Direktlink über die Kennung kopieren, weil die angezeigte Nummer nur je Projekt eindeutig ist.
+		 */
+		async linkKopieren(): Promise<void> {
+			if (this.ticket === null || this.pending) {
+				return
+			}
+
+			const link = ticketLink(this.ticket.id)
+			try {
+				await navigator.clipboard.writeText(link)
+				showSuccess(t('projektwerk', 'Link kopiert'))
+			} catch {
+				showError(t('projektwerk', 'Link konnte nicht kopiert werden: {link}', { link }))
 			}
 		},
 
