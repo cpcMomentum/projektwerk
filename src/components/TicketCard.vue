@@ -1,6 +1,11 @@
 <template>
 	<article :class="cardClass">
-		<button type="button" class="pw-card__open" @click="$emit('open', ticket)">
+		<button
+			type="button"
+			class="pw-card__open"
+			@click="oeffnen"
+			@mousedown.middle.prevent
+			@auxclick="imNeuenTab">
 			<span class="pw-card__top">
 				<!--
 					**Hier stand ein blauer Punkt für „geändert".** Er erschien,
@@ -250,6 +255,7 @@ import PencilIcon from 'vue-material-design-icons/Pencil.vue'
 import RestoreIcon from 'vue-material-design-icons/Restore.vue'
 import WaitBadge from '@/components/WaitBadge.vue'
 import { germanDate, isOverdue } from '@/utils/date'
+import { ticketLink } from '@/utils/ticketLink'
 
 export default defineComponent({
 	name: 'TicketCard',
@@ -404,6 +410,42 @@ export default defineComponent({
 		},
 	},
 
-	methods: { t, germanDate },
+	methods: {
+		t,
+		germanDate,
+
+		/**
+		 * Strg- oder Cmd-Klick öffnet wie bei Links einen neuen Tab, sonst das Fenster.
+		 *
+		 * @param event Der Klick.
+		 */
+		oeffnen(event: MouseEvent): void {
+			if ((event.ctrlKey || event.metaKey) && this.neuerTab()) {
+				return
+			}
+			this.$emit('open', this.ticket)
+		},
+
+		/**
+		 * Mittelklick öffnet den Vorgang in einem neuen Tab.
+		 *
+		 * @param event Der Klick mit einer Nebentaste.
+		 */
+		imNeuenTab(event: MouseEvent): void {
+			if (event.button === 1) {
+				this.neuerTab()
+			}
+		},
+
+		/** Ein ausstehender Vorgang hat noch keine Kennung und damit keinen Link. */
+		neuerTab(): boolean {
+			if (this.ticket.id <= 0) {
+				return false
+			}
+			window.open(ticketLink(this.ticket.id), '_blank', 'noopener')
+
+			return true
+		},
+	},
 })
 </script>
