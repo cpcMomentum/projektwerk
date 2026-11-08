@@ -892,6 +892,18 @@ body .app-projektwerk .v-select.select .vs__open-indicator svg {
 	padding-bottom: var(--pw-abstand-zeile);
 }
 
+/* Drei Knöpfe passen bei Handybreite nicht in eine Zeile; ohne Umbruch kappt NcDialog die Beschriftungen. */
+.pw-dialog-neu .dialog__actions {
+	flex-wrap: wrap;
+	justify-content: flex-end;
+}
+
+@media (max-width: 512px) {
+	.pw-dialog-neu .dialog__actions .button-vue {
+		flex: 1 1 auto;
+	}
+}
+
 
 .app-projektwerk .pw-field {
 	display: flex;

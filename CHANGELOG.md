@@ -8,6 +8,9 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Fixed
 
+- **Dialog „Neuer Vorgang“ auf dem Handy** (#424): Bei schmaler Breite waren alle drei Knöpfe
+  abgeschnitten („Abbrec…“). Die Knopfleiste bricht jetzt um, „Anlegen“ steht darunter über die volle
+  Breite.
 - **Aktiver Board-Reiter deutlich erkennbar** (#422): Die Reiter der Boards eines Projekts zeigen das
   offene Board jetzt mit dunkler Schrift und Unterstrich in der Primärfarbe, wie der Umschalter
   „Kommentare | Verlauf“. Vorher hob es sich nur als weiße Kachel auf blassgrauem Grund ab.
