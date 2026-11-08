@@ -6,6 +6,11 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **„Löschen“ im Vorgang als Knopf erkennbar** (#428): Der Knopf hat jetzt eine rote Kontur wie seine
+  umrandeten Nachbarn „Verworfen“ und „Erledigt“; die Fläche erscheint erst beim Darüberfahren.
+
 ## [0.4.23] - 2026-11-07
 
 ### Added

@@ -1230,6 +1230,16 @@ body .modal-wrapper:has(.pw-detail) > .modal-container {
 	color: var(--color-error-text);
 }
 
+/* Ohne Kontur ging der Knopf neben den umrandeten Ausgängen unter; Fläche gibt es erst beim Darüberfahren. */
+.app-projektwerk .pw-detail__loeschen.button-vue {
+	border-color: color-mix(in srgb, var(--color-error-text) 40%, transparent);
+}
+
+.app-projektwerk .pw-detail__loeschen.button-vue:hover:not(:disabled) {
+	background-color: var(--color-error);
+	border-color: var(--color-error-text);
+}
+
 /*
  * Sichtbarkeit (und der GitHub-Bezug dahinter) rückt nach rechts, seit die
  * Lebenszyklus-Aktionen in die Fußzeile gewandert sind (#331). `margin-auto`
