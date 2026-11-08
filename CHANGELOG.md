@@ -11,6 +11,21 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 - **Dialog „Neuer Vorgang“ auf dem Handy** (#424): Bei schmaler Breite waren alle drei Knöpfe
   abgeschnitten („Abbrec…“). Die Knopfleiste bricht jetzt um, „Anlegen“ steht darunter über die volle
   Breite.
+- **Aktiver Board-Reiter deutlich erkennbar** (#422): Die Reiter der Boards eines Projekts zeigen das
+  offene Board jetzt mit dunkler Schrift und Unterstrich in der Primärfarbe, wie der Umschalter
+  „Kommentare | Verlauf“. Vorher hob es sich nur als weiße Kachel auf blassgrauem Grund ab.
+
+### Changed
+
+- **Person bei neuen Arbeitsschritten gilt nur noch für einen Schritt** (#418): Nach dem Anlegen springt
+  der Personen-Knopf wieder auf „Niemand“. Eine stehengebliebene Auswahl war leicht zu übersehen und
+  landete unbemerkt auch am nächsten Schritt.
+
+### Added
+
+- **Link zum Vorgang kopieren** (#419): Ein Knopf im Kopf des Vorgangs legt den Direktlink in die
+  Zwischenablage, etwa zum Teilen in Talk. Der Link trägt die interne Kennung, nicht die angezeigte
+  Nummer, die nur je Projekt eindeutig ist; wer den Vorgang nicht sehen darf, landet auf dem Board.
 
 ## [0.4.23] - 2026-11-07
 

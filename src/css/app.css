@@ -974,11 +974,7 @@ body .app-projektwerk .v-select.select .vs__open-indicator svg {
 	gap: 0;
 }
 
-/*
- * Die Boards eines Projekts als Reiter (#350): derselbe Umschalter wie die
- * Sichtbarkeit, links unter dem Projektkopf, „+" daneben. Viele Boards rollen
- * waagerecht statt umzubrechen.
- */
+/* Viele Boards rollen waagerecht statt umzubrechen. */
 .app-projektwerk .pw-boardtabs {
 	display: flex;
 	align-items: center;
@@ -1054,8 +1050,7 @@ body .app-projektwerk .v-select.select .vs__open-indicator svg {
  * Gilt für alle drei Einsatzorte (Detail, Anlege-Dialog, Wizard); die
  * Größen-Feinheiten oben bleiben auf `--knapp` beschränkt.
  */
-.app-projektwerk .pw-vischoice [class*='_ncFormBox_row'],
-.app-projektwerk .pw-boardtabs__group [class*='_ncFormBox_row'] {
+.app-projektwerk .pw-vischoice [class*='_ncFormBox_row'] {
 	background: var(--color-background-dark);
 	border-radius: var(--border-radius-element, 8px);
 	padding: 1px;
@@ -1074,8 +1069,7 @@ body .app-projektwerk .v-select.select .vs__open-indicator svg {
 	padding: 0;
 }
 
-.app-projektwerk .pw-vischoice [class*='_radioGroupButton_'],
-.app-projektwerk .pw-boardtabs__group [class*='_radioGroupButton_'] {
+.app-projektwerk .pw-vischoice [class*='_radioGroupButton_'] {
 	background: none;
 	border: none;
 	border-radius: var(--border-radius-element, 8px);
@@ -1083,8 +1077,7 @@ body .app-projektwerk .v-select.select .vs__open-indicator svg {
 	box-shadow: none;
 }
 
-.app-projektwerk .pw-vischoice [class*='_radioGroupButton_']:hover,
-.app-projektwerk .pw-boardtabs__group [class*='_radioGroupButton_']:hover {
+.app-projektwerk .pw-vischoice [class*='_radioGroupButton_']:hover {
 	background: var(--color-background-hover);
 }
 
@@ -1093,12 +1086,42 @@ body .app-projektwerk .v-select.select .vs__open-indicator svg {
  * gewinnt die Reihenfolge: weiße Kachel, blaue Schrift, zarter Schatten.
  */
 .app-projektwerk .pw-vischoice [class*='_radioGroupButton_active'],
-.app-projektwerk .pw-boardtabs__group [class*='_radioGroupButton_active'],
-.app-projektwerk .pw-vischoice [class*='_radioGroupButton_active']:hover,
-.app-projektwerk .pw-boardtabs__group [class*='_radioGroupButton_active']:hover {
+.app-projektwerk .pw-vischoice [class*='_radioGroupButton_active']:hover {
 	background: var(--color-main-background);
 	color: var(--color-primary-element);
 	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+/* Board-Reiter wie `.pw-umschalter`: Auf hellem Grund war die weiße Aktiv-Kachel kaum vom Grau zu unterscheiden. */
+.app-projektwerk .pw-boardtabs__group [class*='_ncFormBox_row'] {
+	gap: 4px;
+	padding: 0;
+	background: none;
+	border-bottom: 1px solid var(--color-border);
+	border-radius: 0;
+}
+
+.app-projektwerk .pw-boardtabs__group [class*='_radioGroupButton_'][class*='_ncFormBox__item'] {
+	margin-block-end: -1px;
+	padding-inline: 12px;
+	background: none;
+	border: none;
+	border-bottom: 3px solid transparent;
+	border-radius: 0;
+	box-shadow: none;
+	color: var(--color-text-maxcontrast);
+	font-weight: 600;
+}
+
+.app-projektwerk .pw-boardtabs__group [class*='_radioGroupButton_'][class*='_ncFormBox__item']:hover {
+	color: var(--color-main-text);
+	background: var(--color-background-hover);
+}
+
+.app-projektwerk .pw-boardtabs__group [class*='_radioGroupButton_active'][class*='_ncFormBox__item'],
+.app-projektwerk .pw-boardtabs__group [class*='_radioGroupButton_active'][class*='_ncFormBox__item']:hover {
+	color: var(--color-main-text);
+	border-bottom-color: var(--color-primary-element);
 }
 
 .app-projektwerk .pw-vishint {
