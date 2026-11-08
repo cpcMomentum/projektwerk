@@ -511,8 +511,6 @@ OC.L10N.register(
     "Kommentar „{text}“" : "Kommentar „{text}“",
     "Arbeitsschritt abhaken" : "Arbeitsschritt abhaken",
     "Haken entfernen" : "Haken entfernen",
-    "Zuständig für neue Arbeitsschritte: niemand" : "Zuständig für neue Arbeitsschritte: niemand",
-    "Zuständig für neue Arbeitsschritte: {name}" : "Zuständig für neue Arbeitsschritte: {name}",
     "Hängt ab von" : "Hängt ab von",
     "Abhängigkeit hinzufügen" : "Abhängigkeit hinzufügen",
     "Vorgang, auf den dieser wartet" : "Vorgang, auf den dieser wartet",
