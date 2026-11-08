@@ -14,10 +14,12 @@ use OCA\Projektwerk\Db\Attachment;
 use OCA\Projektwerk\Db\AttachmentMapper;
 use OCA\Projektwerk\Db\ProjectMapper;
 use OCA\Projektwerk\Db\Ticket;
+use OCA\Projektwerk\Db\TicketLog;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\Files\Folder;
 use OCP\Files\NotPermittedException;
+use OCP\IDBConnection;
 
 /**
  * Anhänge am Vorgang — als Datei im Projektordner, nicht als Kopie in der App.
@@ -65,6 +67,8 @@ class AttachmentService {
 		private TicketMapper $tickets,
 		private ProjectMapper $projects,
 		private ProjectFolderService $folders,
+		private TicketLogService $log,
+		private IDBConnection $db,
 	) {
 	}
 
@@ -97,7 +101,8 @@ class AttachmentService {
 		$attachment->setCreatedVia($viewer->via);
 		$attachment->setCreatedAt(new \DateTime());
 
-		return $this->attachments->insert($attachment);
+		return $this->withLog($viewer, $ticket, TicketLog::ATTACHMENT_ADDED, $file->getName(),
+			fn (): Attachment => $this->attachments->insert($attachment));
 	}
 
 	/**
@@ -235,7 +240,29 @@ class AttachmentService {
 	 * @throws DoesNotExistException Anhang nicht sichtbar
 	 */
 	public function delete(ViewerContext $viewer, int $attachmentId): Attachment {
-		return $this->attachments->delete($this->findVisibleAttachment($viewer, $attachmentId));
+		$attachment = $this->findVisibleAttachment($viewer, $attachmentId);
+		$ticket = $this->tickets->findVisible($viewer, (int)$attachment->getTicketId());
+
+		return $this->withLog($viewer, $ticket, TicketLog::ATTACHMENT_REMOVED, (string)$attachment->getFileName(),
+			fn (): Attachment => $this->attachments->delete($attachment));
+	}
+
+	/**
+	 * @param callable(): Attachment $write
+	 */
+	private function withLog(ViewerContext $viewer, Ticket $ticket, string $action, string $fileName, callable $write): Attachment {
+		$this->db->beginTransaction();
+		try {
+			$result = $write();
+			$this->log->record($viewer, $ticket, $action, $fileName);
+			$this->db->commit();
+
+			return $result;
+		} catch (\Throwable $e) {
+			$this->db->rollBack();
+
+			throw $e;
+		}
 	}
 
 	/**

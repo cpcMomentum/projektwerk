@@ -61,6 +61,19 @@ export interface Ticket {
  * `updatedAt` ist beim Anlegen gleich `createdAt`; ein späterer Wert heißt
  * genau „wurde nachträglich geändert".
  */
+export interface TicketLogEntry {
+	id: number
+	ticketId: number
+	actorUserId: string
+	/** `'tool'` = über ein KI-Werkzeug, sonst `null`. */
+	via: string | null
+	action: string
+	subject: string | null
+	oldValue: string | null
+	newValue: string | null
+	createdAt: string
+}
+
 export interface Comment {
 	id: number
 	ticketId: number

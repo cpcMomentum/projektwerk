@@ -228,7 +228,7 @@ class ReadPathCompletenessTest extends TestCase {
 	 * Registry die konkreten Klassen nennt.
 	 */
 	public function testChildMappersAreRegisteredIndividually(): void {
-		foreach (['CommentMapper', 'StepMapper', 'AttachmentMapper', 'TicketUserMapper'] as $mapper) {
+		foreach (['CommentMapper', 'StepMapper', 'AttachmentMapper', 'TicketUserMapper', 'TicketLogMapper'] as $mapper) {
 			foreach (['findForTickets', 'countForTickets'] as $method) {
 				$this->assertContains(
 					$mapper . '::' . $method,

@@ -15,6 +15,7 @@ use OCA\Projektwerk\Db\CommentMapper;
 use OCA\Projektwerk\Db\StepMapper;
 use OCA\Projektwerk\Db\TicketChildMapper;
 use OCA\Projektwerk\Db\TicketMapper;
+use OCA\Projektwerk\Db\TicketLogMapper;
 use OCA\Projektwerk\Db\TicketUserMapper;
 use OCP\AppFramework\Db\QBMapper;
 use PHPUnit\Framework\TestCase;
@@ -39,6 +40,7 @@ class MapperArchitectureTest extends TestCase {
 		StepMapper::class,
 		AttachmentMapper::class,
 		TicketUserMapper::class,
+		TicketLogMapper::class,
 	];
 
 	/**

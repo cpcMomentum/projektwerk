@@ -84,6 +84,17 @@ class TicketController extends Controller {
 		});
 	}
 
+	#[NoAdminRequired]
+	public function history(int $boardId, int $ticketId): JSONResponse {
+		return $this->withViewer($boardId, function (ViewerContext $viewer) use ($ticketId): JSONResponse {
+			try {
+				return new JSONResponse(['history' => $this->readModel->history($viewer, $ticketId)]);
+			} catch (DoesNotExistException) {
+				return new JSONResponse([], Http::STATUS_NOT_FOUND);
+			}
+		});
+	}
+
 	/**
 	 * Einen Vorgang als gelesen vermerken (#79).
 	 *

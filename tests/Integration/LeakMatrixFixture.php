@@ -27,6 +27,8 @@ use OCA\Projektwerk\Db\Step;
 use OCA\Projektwerk\Db\StepMapper;
 use OCA\Projektwerk\Db\Ticket;
 use OCA\Projektwerk\Db\TicketMapper;
+use OCA\Projektwerk\Db\TicketLog;
+use OCA\Projektwerk\Db\TicketLogMapper;
 use OCA\Projektwerk\Db\TicketUser;
 use OCA\Projektwerk\Db\TicketUserMapper;
 use OCP\Server;
@@ -196,6 +198,7 @@ final class LeakMatrixFixture {
 		$steps = Server::get(StepMapper::class);
 		$attachments = Server::get(AttachmentMapper::class);
 		$ticketUsers = Server::get(TicketUserMapper::class);
+		$log = Server::get(TicketLogMapper::class);
 		$projects = Server::get(ProjectMapper::class);
 
 		// #246 PR 2: Das Projekt-Dach. Die Fixture umgeht die Services, also legt
@@ -314,6 +317,14 @@ final class LeakMatrixFixture {
 			$ticketUser->setUserId(self::DIRK);
 			$ticketUser->setAddedAt($now);
 			$ticketUsers->insert($ticketUser);
+
+			$entry = new TicketLog();
+			$entry->setTicketId($ticketId);
+			$entry->setActorUserId($creator);
+			$entry->setAction(TicketLog::CREATED);
+			$entry->setVisibility($visibility);
+			$entry->setCreatedAt($now);
+			$log->insert($entry);
 		}
 
 		// Der Zaehler muss mitziehen, weil die Fixture die Nummern selbst

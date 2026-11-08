@@ -21,6 +21,7 @@ use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Db\TicketReadMapper;
 use OCA\Projektwerk\Db\TicketUserMapper;
 use OCA\Projektwerk\Service\AttachmentService;
+use OCA\Projektwerk\Service\TicketLogService;
 use OCA\Projektwerk\Service\TicketReadModel;
 use PHPUnit\Framework\TestCase;
 
@@ -73,6 +74,7 @@ class TicketReadModelTest extends TestCase {
 			$this->createStub(AttachmentService::class),
 			$this->createStub(WaitStateCalculator::class),
 			$highlighter,
+			$this->createStub(TicketLogService::class),
 		);
 
 		$data = $model->index(ViewerContext::forMember('u', 1, 9, ViewerContext::ROLE_INTERNAL, false, false));

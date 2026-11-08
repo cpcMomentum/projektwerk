@@ -1,6 +1,6 @@
 <template>
-	<section class="pw-abschnitt">
-		<div class="pw-abschnitt__kopf">
+	<section class="pw-abschnitt" :class="{ 'pw-abschnitt--eingebettet': embedded }">
+		<div v-if="!embedded" class="pw-abschnitt__kopf">
 			<h3>{{ t('projektwerk', 'Kommentare') }}</h3>
 			<span v-if="comments.length + pendingComments.length > 0" class="pw-abschnitt__zaehler">{{ comments.length + pendingComments.length }}</span>
 		</div>
@@ -270,6 +270,8 @@ export default defineComponent({
 		/** Für die Zweitzeile in der Erwähnungs-Auswahl. */
 		customer: { type: String, default: '' },
 		orgInternal: { type: String, default: '' },
+		/** Unter dem Umschalter der Vorgangsansicht: ohne eigenen Kopf und Trennlinie. */
+		embedded: { type: Boolean, default: false },
 	},
 
 	emits: ['changed'],
