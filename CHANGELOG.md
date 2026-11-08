@@ -6,6 +6,12 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Added
+
+- **Link zum Vorgang kopieren** (#419): Ein Knopf im Kopf des Vorgangs legt den Direktlink in die
+  Zwischenablage, etwa zum Teilen in Talk. Der Link trägt die interne Kennung, nicht die angezeigte
+  Nummer, die nur je Projekt eindeutig ist; wer den Vorgang nicht sehen darf, landet auf dem Board.
+
 ## [0.4.23] - 2026-11-07
 
 ### Added

@@ -555,6 +555,9 @@ OC.L10N.register(
     "hat den Anhang „{file}“ hinzugefügt" : "added the attachment “{file}”",
     "hat den Anhang „{file}“ entfernt" : "removed the attachment “{file}”",
     "hat den Vorgang geändert" : "changed the ticket",
-    "Verlauf wird geladen …" : "Loading history …"
+    "Verlauf wird geladen …" : "Loading history …",
+    "Link zum Vorgang kopieren" : "Copy link to ticket",
+    "Link kopiert" : "Link copied",
+    "Link konnte nicht kopiert werden: {link}" : "Could not copy link: {link}"
 },
 "nplurals=2; plural=(n != 1);");
