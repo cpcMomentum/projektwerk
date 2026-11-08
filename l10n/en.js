@@ -511,8 +511,6 @@ OC.L10N.register(
     "Kommentar „{text}“" : "Comment “{text}”",
     "Arbeitsschritt abhaken" : "Tick off work step",
     "Haken entfernen" : "Untick work step",
-    "Zuständig für neue Arbeitsschritte: niemand" : "Responsible for new work steps: nobody",
-    "Zuständig für neue Arbeitsschritte: {name}" : "Responsible for new work steps: {name}",
     "Hängt ab von" : "Depends on",
     "Abhängigkeit hinzufügen" : "Add dependency",
     "Vorgang, auf den dieser wartet" : "Ticket this one waits for",
@@ -558,6 +556,8 @@ OC.L10N.register(
     "Verlauf wird geladen …" : "Loading history …",
     "Link zum Vorgang kopieren" : "Copy link to ticket",
     "Link kopiert" : "Link copied",
-    "Link konnte nicht kopiert werden: {link}" : "Could not copy link: {link}"
+    "Link konnte nicht kopiert werden: {link}" : "Could not copy link: {link}",
+    "Zuständig für den neuen Arbeitsschritt: niemand" : "Responsible for the new work step: nobody",
+    "Zuständig für den neuen Arbeitsschritt: {name}" : "Responsible for the new work step: {name}"
 },
 "nplurals=2; plural=(n != 1);");

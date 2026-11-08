@@ -488,8 +488,8 @@ export default defineComponent({
 
 		newAssigneeLabel(): string {
 			return this.newAssignee === null
-				? t('projektwerk', 'Zuständig für neue Arbeitsschritte: niemand')
-				: t('projektwerk', 'Zuständig für neue Arbeitsschritte: {name}', { name: this.nameOf(this.newAssignee) })
+				? t('projektwerk', 'Zuständig für den neuen Arbeitsschritt: niemand')
+				: t('projektwerk', 'Zuständig für den neuen Arbeitsschritt: {name}', { name: this.nameOf(this.newAssignee) })
 		},
 
 		/** „2/5" — dieselbe Auskunft wie auf der Karte (§9). */
@@ -760,6 +760,8 @@ export default defineComponent({
 			// Sofort in die Warteschlange: Das Feld bleibt frei, der nächste Schritt lässt sich gleich tippen.
 			this.outbox.enqueueStep(this.boardId, this.ticketId, this.newAssignee === null ? { title } : { title, assignedUserId: this.newAssignee })
 			this.newTitle = ''
+			// Eine stehengebliebene Person landete sonst unbemerkt auch am nächsten Schritt.
+			this.newAssignee = null
 			// Zurück ins Feld: Das Plus wird mit dem leeren Feld gesperrt und nähme den Fokus sonst mit auf den `body`.
 			this.$nextTick(() => {
 				const el = this.$el?.querySelector?.('.pw-step--new input[type="text"]')
