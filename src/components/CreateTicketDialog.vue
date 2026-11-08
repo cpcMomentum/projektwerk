@@ -3,6 +3,7 @@
 		:open="open"
 		:name="t('projektwerk', 'Neuer Vorgang')"
 		size="normal"
+		dialogClasses="pw-dialog-neu"
 		@update:open="$emit('update:open', $event)">
 		<!--
 			Die App-Klasse MUSS hier drin stehen: NcDialog teleportiert seinen

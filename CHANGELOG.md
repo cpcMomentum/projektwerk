@@ -6,6 +6,12 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Dialog „Neuer Vorgang“ auf dem Handy** (#424): Bei schmaler Breite waren alle drei Knöpfe
+  abgeschnitten („Abbrec…“). Die Knopfleiste bricht jetzt um, „Anlegen“ steht darunter über die volle
+  Breite.
+
 ## [0.4.23] - 2026-11-07
 
 ### Added
