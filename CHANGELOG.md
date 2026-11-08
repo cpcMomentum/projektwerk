@@ -10,6 +10,7 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 - **Vorgang im neuen Tab öffnen** (#385): Mittelklick oder Strg-/Cmd-Klick auf eine Karte öffnet den
   Vorgang in einem neuen Browser-Tab, über denselben Direktlink wie Mails und Benachrichtigungen.
+
 ### Fixed
 
 - **Dialog „Neuer Vorgang“ auf dem Handy** (#424): Bei schmaler Breite waren alle drei Knöpfe
