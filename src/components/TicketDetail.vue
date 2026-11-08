@@ -500,15 +500,48 @@
 					:members="members"
 					@changed="$emit('attachmentsChanged')" />
 
-				<CommentList
-					:boardId="ticket.boardId"
-					:ticketId="ticket.id"
-					:comments="comments"
-					:members="members"
-					:viewer="viewer"
-					:orgInternal="orgInternal"
-					:customer="customer"
-					@changed="$emit('commentsChanged')" />
+				<section :class="{ 'pw-abschnitt': !pending }">
+					<div
+						v-if="!pending"
+						class="pw-umschalter"
+						role="group"
+						:aria-label="t('projektwerk', 'Kommentare oder Verlauf')">
+						<button
+							type="button"
+							class="pw-umschalter__knopf"
+							:aria-pressed="unterbereich === 'comments'"
+							@click="unterbereich = 'comments'">
+							{{ t('projektwerk', 'Kommentare') }}
+							<span v-if="comments.length > 0" class="pw-umschalter__zahl">{{ comments.length }}</span>
+						</button>
+						<button
+							type="button"
+							class="pw-umschalter__knopf"
+							:aria-pressed="unterbereich === 'history'"
+							@click="unterbereich = 'history'">
+							{{ t('projektwerk', 'Verlauf') }}
+						</button>
+					</div>
+
+					<TicketHistory
+						v-if="unterbereich === 'history' && !pending"
+						:boardId="ticket.boardId"
+						:ticketId="ticket.id"
+						:version="ticket.version"
+						:changeKey="historyKey"
+						:members="members" />
+					<CommentList
+						v-else
+						:boardId="ticket.boardId"
+						:ticketId="ticket.id"
+						:comments="comments"
+						:members="members"
+						:viewer="viewer"
+						:orgInternal="orgInternal"
+						:customer="customer"
+						:embedded="!pending"
+						@changed="$emit('commentsChanged')" />
+				</section>
 
 				<!--
 					Feststehende Fußzeile (#331, neu geordnet #368): links die
@@ -614,6 +647,7 @@ import AttachmentList from '@/components/AttachmentList.vue'
 import CommentList from '@/components/CommentList.vue'
 import DependencyList from '@/components/DependencyList.vue'
 import StepList from '@/components/StepList.vue'
+import TicketHistory from '@/components/TicketHistory.vue'
 import VisibilityControl from '@/components/VisibilityControl.vue'
 import WaitBadge from '@/components/WaitBadge.vue'
 import { isApiError, isTransient } from '@/services/api'
@@ -637,7 +671,7 @@ interface PersonOption {
 export default defineComponent({
 	name: 'TicketDetail',
 
-	components: { AttachmentList, CalendarIcon, CalendarAlertIcon, CancelIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, CommentList, DeleteOutlineIcon, DependencyList, FormatBoldIcon, FormatListBulletedIcon, FormatListNumberedIcon, GithubIcon, NcAvatar, NcButton, NcDateTimePicker, NcModal, NcReferenceList, NcRichText, NcSelectUsers, NcTextArea, NcTextField, PencilOutlineIcon, PlusIcon, RestoreIcon, StepList, VisibilityControl, WaitBadge },
+	components: { AttachmentList, CalendarIcon, CalendarAlertIcon, CancelIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, CommentList, DeleteOutlineIcon, DependencyList, FormatBoldIcon, FormatListBulletedIcon, FormatListNumberedIcon, GithubIcon, NcAvatar, NcButton, NcDateTimePicker, NcModal, NcReferenceList, NcRichText, NcSelectUsers, NcTextArea, NcTextField, PencilOutlineIcon, PlusIcon, RestoreIcon, StepList, TicketHistory, VisibilityControl, WaitBadge },
 
 	props: {
 		ticket: { type: Object as PropType<Ticket | null>, default: null },
@@ -673,6 +707,7 @@ export default defineComponent({
 	data() {
 		return {
 			busy: false,
+			unterbereich: 'comments' as 'comments' | 'history',
 			/** Das Schließen läuft gerade (Entwürfe werden gesichert, #367). */
 			schliesst: false,
 			/** Der Titel wird gerade bearbeitet (#169). */
@@ -710,6 +745,13 @@ export default defineComponent({
 
 		pendingEntry(): TicketEntry | undefined {
 			return this.pending && this.ticket !== null ? this.outbox.ticketEntry(this.ticket.id) : undefined
+		},
+
+		/** Schritte und Anhänge ändern die Version des Vorgangs nicht; dieser Schlüssel lädt den Verlauf trotzdem neu. */
+		historyKey(): string {
+			const steps = this.steps.map((s) => `${s.id}:${s.done ? 1 : 0}:${s.assignedUserId ?? ''}`).join(',')
+			const attachments = this.attachments.map((a) => a.id).join(',')
+			return `${steps}|${attachments}`
 		},
 
 		paddedNumber(): string {
@@ -852,6 +894,7 @@ export default defineComponent({
 		'ticket.id': {
 			immediate: true,
 			handler() {
+				this.unterbereich = 'comments'
 				this.editingTitle = false
 				this.titleEntwurf = ''
 				this.editingText = false

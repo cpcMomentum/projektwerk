@@ -16,8 +16,10 @@ use OCA\Projektwerk\Db\MemberMapper;
 use OCA\Projektwerk\Db\Step;
 use OCA\Projektwerk\Db\StepMapper;
 use OCA\Projektwerk\Db\Ticket;
+use OCA\Projektwerk\Db\TicketLog;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCP\AppFramework\Db\DoesNotExistException;
+use OCP\IDBConnection;
 
 /**
  * Arbeitsschritte anlegen, zuweisen, erledigen.
@@ -50,6 +52,8 @@ class StepService {
 		private MemberMapper $members,
 		private TicketScope $scope,
 		private NotificationService $notifications,
+		private TicketLogService $log,
+		private IDBConnection $db,
 	) {
 	}
 
@@ -87,7 +91,15 @@ class StepService {
 		$step->setCreatedVia($viewer->via);
 
 		$neu = $this->applyAssignment($step, $ticket, $viewer, $assignedUserId);
-		$gespeichert = $this->steps->insert($step);
+		$gespeichert = $this->inTransaction(function () use ($viewer, $ticket, $step): Step {
+			$gespeichert = $this->steps->insert($step);
+			$this->log->record($viewer, $ticket, TicketLog::STEP_ADDED, $step->getTitle());
+			if ($step->getAssignedUserId() !== null) {
+				$this->log->record($viewer, $ticket, TicketLog::STEP_ASSIGNED, $step->getTitle(), null, $step->getAssignedUserId());
+			}
+
+			return $gespeichert;
+		});
 
 		$this->ankuendigen($ticket, $neu, $viewer, $step->getTitle());
 
@@ -104,6 +116,8 @@ class StepService {
 	public function update(ViewerContext $viewer, int $stepId, array $changes): Step {
 		$step = $this->findVisibleStep($viewer, $stepId);
 		$ticket = $this->tickets->findVisible($viewer, (int)$step->getTicketId());
+		$doneBefore = (int)$step->getDone();
+		$assignedBefore = $step->getAssignedUserId();
 
 		if (array_key_exists('title', $changes)) {
 			$title = trim($changes['title']);
@@ -137,7 +151,17 @@ class StepService {
 			$neu = $this->applyAssignment($step, $ticket, $viewer, $changes['assignedUserId']);
 		}
 
-		$gespeichert = $this->steps->update($step);
+		$gespeichert = $this->inTransaction(function () use ($viewer, $ticket, $step, $doneBefore, $assignedBefore): Step {
+			$gespeichert = $this->steps->update($step);
+			if ((int)$step->getDone() !== $doneBefore) {
+				$this->log->record($viewer, $ticket, $step->getDone() ? TicketLog::STEP_DONE : TicketLog::STEP_REOPENED, $step->getTitle());
+			}
+			if ($step->getAssignedUserId() !== $assignedBefore) {
+				$this->log->record($viewer, $ticket, TicketLog::STEP_ASSIGNED, $step->getTitle(), $assignedBefore, $step->getAssignedUserId());
+			}
+
+			return $gespeichert;
+		});
 		$this->ankuendigen($ticket, $neu, $viewer, $step->getTitle());
 
 		return $gespeichert;
@@ -156,8 +180,31 @@ class StepService {
 	 */
 	public function delete(ViewerContext $viewer, int $stepId): Step {
 		$step = $this->findVisibleStep($viewer, $stepId);
+		$ticket = $this->tickets->findVisible($viewer, (int)$step->getTicketId());
 
-		return $this->steps->delete($step);
+		return $this->inTransaction(function () use ($viewer, $ticket, $step): Step {
+			$geloescht = $this->steps->delete($step);
+			$this->log->record($viewer, $ticket, TicketLog::STEP_DELETED, $step->getTitle());
+
+			return $geloescht;
+		});
+	}
+
+	/**
+	 * @param callable(): Step $write
+	 */
+	private function inTransaction(callable $write): Step {
+		$this->db->beginTransaction();
+		try {
+			$result = $write();
+			$this->db->commit();
+
+			return $result;
+		} catch (\Throwable $e) {
+			$this->db->rollBack();
+
+			throw $e;
+		}
 	}
 
 	/**

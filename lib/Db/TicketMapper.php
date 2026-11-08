@@ -867,7 +867,7 @@ class TicketMapper extends QBMapper {
 				throw new \LogicException('Board ' . $boardId . ': ein Vorgang wurde während des Löschens wiederhergestellt.');
 			}
 
-			foreach (['pwerk_steps', 'pwerk_comments', 'pwerk_attachments', 'pwerk_reads', 'pwerk_ticket_users', 'pwerk_mail_outbox'] as $table) {
+			foreach (['pwerk_steps', 'pwerk_comments', 'pwerk_attachments', 'pwerk_reads', 'pwerk_ticket_users', 'pwerk_mail_outbox', 'pwerk_ticket_log'] as $table) {
 				$delete = $this->db->getQueryBuilder();
 				$delete->delete($table)
 					->where($delete->expr()->in('ticket_id', $delete->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)));

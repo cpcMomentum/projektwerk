@@ -217,7 +217,7 @@ class MemberLifecycleService {
 			return 0;
 		}
 
-		foreach (['pwerk_comments', 'pwerk_steps', 'pwerk_attachments', 'pwerk_ticket_users', 'pwerk_reads'] as $tabelle) {
+		foreach (['pwerk_comments', 'pwerk_steps', 'pwerk_attachments', 'pwerk_ticket_users', 'pwerk_reads', 'pwerk_ticket_log'] as $tabelle) {
 			$qb = $this->db->getQueryBuilder();
 			$qb->delete($tabelle)
 				->where($qb->expr()->in('ticket_id', $qb->createNamedParameter($ids, IQueryBuilder::PARAM_INT_ARRAY)));
@@ -315,7 +315,7 @@ class MemberLifecycleService {
 			return 0;
 		}
 
-		foreach (['pwerk_comments', 'pwerk_steps', 'pwerk_attachments', 'pwerk_ticket_users'] as $tabelle) {
+		foreach (['pwerk_comments', 'pwerk_steps', 'pwerk_attachments', 'pwerk_ticket_users', 'pwerk_ticket_log'] as $tabelle) {
 			$qb = $this->db->getQueryBuilder();
 			$qb->delete($tabelle)
 				->where($qb->expr()->in('ticket_id', $qb->createNamedParameter($ids, IQueryBuilder::PARAM_INT_ARRAY)));

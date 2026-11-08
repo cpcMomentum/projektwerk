@@ -18,6 +18,7 @@ use OCA\Projektwerk\Db\MailOutbox;
 use OCA\Projektwerk\Db\MemberMapper;
 use OCA\Projektwerk\Db\ProjectMapper;
 use OCA\Projektwerk\Db\Ticket;
+use OCA\Projektwerk\Db\TicketLog;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Db\TicketReadMapper;
 use OCP\AppFramework\Db\DoesNotExistException;
@@ -58,6 +59,7 @@ class TicketService {
 		private NotificationService $notifications,
 		private GithubService $github,
 		private IURLGenerator $urls,
+		private TicketLogService $log,
 	) {
 	}
 
@@ -145,11 +147,22 @@ class TicketService {
 				$after = $this->neighbourPosition($viewer, $afterId, $targetColumnId);
 			}
 
+			$fromColumnId = (int)$ticket->getColumnId();
 			$ticket->setColumnId($targetColumnId);
 			$ticket->setPosition($this->positions->between($before, $after));
 			$this->touch($ticket, $viewer);
 
 			$saved = $this->tickets->update($ticket);
+			if ($fromColumnId !== $targetColumnId) {
+				$this->log->record(
+					$viewer,
+					$saved,
+					TicketLog::MOVED,
+					null,
+					$this->columnTitle($viewer, $fromColumnId),
+					$this->columnTitle($viewer, $targetColumnId),
+				);
+			}
 			$this->db->commit();
 
 			return $saved;
@@ -206,6 +219,7 @@ class TicketService {
 	public function update(ViewerContext $viewer, int $ticketId, int $version, array $changes): Ticket {
 		$ticket = $this->tickets->findVisible($viewer, $ticketId);
 		$this->assertVersion($ticket, $version);
+		$before = clone $ticket;
 
 		if (array_key_exists('title', $changes)) {
 			$ticket->setTitle($changes['title']);
@@ -289,6 +303,7 @@ class TicketService {
 				$this->moveToFinalColumn($viewer, $ticket);
 			}
 			$gespeichert = $this->tickets->update($ticket);
+			$this->recordUpdate($viewer, $before, $gespeichert);
 			$this->db->commit();
 		} catch (\Throwable $e) {
 			$this->db->rollBack();
@@ -496,7 +511,7 @@ class TicketService {
 		if ($this->opennessRank($visibility) > $this->opennessRank($current)) {
 			$ticket->setVisibility($visibility);
 			$this->touch($ticket, $viewer);
-			$saved = $this->tickets->update($ticket);
+			$saved = $this->saveWithLog($viewer, $ticket, TicketLog::VISIBILITY, $current, $visibility);
 			$this->attachmentService->relocate($viewer, $saved, $visibility);
 
 			return $saved;
@@ -506,7 +521,7 @@ class TicketService {
 		$ticket->setVisibility($visibility);
 		$this->touch($ticket, $viewer);
 
-		return $this->tickets->update($ticket);
+		return $this->saveWithLog($viewer, $ticket, TicketLog::VISIBILITY, $current, $visibility);
 	}
 
 	/**
@@ -574,7 +589,7 @@ class TicketService {
 		$ticket->setGithubIssueUrl($created['url']);
 		$this->touch($ticket, $viewer);
 
-		return $this->tickets->update($ticket);
+		return $this->saveWithLog($viewer, $ticket, TicketLog::GITHUB, null, (string)$created['url']);
 	}
 
 	/**
@@ -661,7 +676,7 @@ class TicketService {
 
 		$ticket->setDeletedAt(new \DateTime());
 		$this->touch($ticket, $viewer);
-		$saved = $this->tickets->update($ticket);
+		$saved = $this->saveWithLog($viewer, $ticket, TicketLog::DELETED);
 
 		// Die Lesestände zu diesem Vorgang wegräumen (#79): ohne ihren Vorgang
 		// sind sie Karteileichen, die niemand mehr liest. Nach dem Schreiben,
@@ -695,7 +710,7 @@ class TicketService {
 		$ticket->setDeletedAt(null);
 		$this->touch($ticket, $viewer);
 
-		return $this->tickets->update($ticket);
+		return $this->saveWithLog($viewer, $ticket, TicketLog::RESTORED);
 	}
 
 	private function insertWithNumber(
@@ -763,6 +778,7 @@ class TicketService {
 			$ticket->setUpdatedAt($now);
 
 			$saved = $this->tickets->insert($ticket);
+			$this->log->record($viewer, $saved, TicketLog::CREATED);
 			$this->db->commit();
 
 			return $saved;
@@ -822,6 +838,54 @@ class TicketService {
 	 * unverändert"; wer es angelegt hat, steht in `creator_user_id` und wird
 	 * hier nicht wiederholt.
 	 */
+	/** Speichern und Verlaufseintrag gemeinsam, damit keiner ohne den anderen bleibt. */
+	private function saveWithLog(ViewerContext $viewer, Ticket $ticket, string $action, ?string $oldValue = null, ?string $newValue = null): Ticket {
+		$this->db->beginTransaction();
+		try {
+			$saved = $this->tickets->update($ticket);
+			$this->log->record($viewer, $saved, $action, null, $oldValue, $newValue);
+			$this->db->commit();
+
+			return $saved;
+		} catch (\Throwable $e) {
+			$this->db->rollBack();
+
+			throw $e;
+		}
+	}
+
+	private function recordUpdate(ViewerContext $viewer, Ticket $before, Ticket $after): void {
+		if ($before->getTitle() !== $after->getTitle()) {
+			$this->log->record($viewer, $after, TicketLog::TITLE, null, $before->getTitle(), $after->getTitle());
+		}
+		if (($before->getDescription() ?? '') !== ($after->getDescription() ?? '')) {
+			$this->log->record($viewer, $after, TicketLog::DESCRIPTION);
+		}
+		if ($before->getResponsibleUserId() !== $after->getResponsibleUserId()) {
+			$this->log->record($viewer, $after, TicketLog::RESPONSIBLE, null, $before->getResponsibleUserId(), $after->getResponsibleUserId());
+		}
+		$dueBefore = $before->getDueDate()?->format('Y-m-d');
+		$dueAfter = $after->getDueDate()?->format('Y-m-d');
+		if ($dueBefore !== $dueAfter) {
+			$this->log->record($viewer, $after, TicketLog::DUE_DATE, null, $dueBefore, $dueAfter);
+		}
+		if ($before->getClosedAt() === null && $after->getClosedAt() !== null) {
+			$this->log->record($viewer, $after, TicketLog::CLOSED, null, null, $after->getClosedOutcome());
+		} elseif ($before->getClosedAt() !== null && $after->getClosedAt() === null) {
+			$this->log->record($viewer, $after, TicketLog::REOPENED);
+		}
+	}
+
+	private function columnTitle(ViewerContext $viewer, int $columnId): ?string {
+		foreach ($this->columns->findForBoard($viewer) as $column) {
+			if ((int)$column->getId() === $columnId) {
+				return (string)$column->getTitle();
+			}
+		}
+
+		return null;
+	}
+
 	private function touch(Ticket $ticket, ViewerContext $viewer): void {
 		$ticket->setVersion((int)$ticket->getVersion() + 1);
 		$ticket->setLastEditorUserId($viewer->userId);

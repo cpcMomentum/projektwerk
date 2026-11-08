@@ -137,6 +137,8 @@ final class ReadPathRegistry {
 		'AttachmentMapper::countForTickets',
 		'TicketUserMapper::findForTickets',
 		'TicketUserMapper::countForTickets',
+		'TicketLogMapper::findForTickets',
+		'TicketLogMapper::countForTickets',
 
 		// **Zwei Lesepfade ohne Betrachter — und das ist die Erwartung.**
 		//
@@ -221,6 +223,7 @@ final class ReadPathRegistry {
 		'overview#index',
 		'ticket#index',
 		'ticket#show',
+		'ticket#history',
 		// Liefert zwar nur die Vue-Huelle, aber der Initial State darin
 		// beantwortet die Frage „darfst du diesen Vorgang sehen" — und damit
 		// gehoert die Route in die Matrix und nicht unter ROUTES_WITHOUT_DATA.

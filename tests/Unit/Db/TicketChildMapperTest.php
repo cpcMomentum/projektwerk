@@ -16,6 +16,8 @@ use OCA\Projektwerk\Db\CommentMapper;
 use OCA\Projektwerk\Db\Step;
 use OCA\Projektwerk\Db\StepMapper;
 use OCA\Projektwerk\Db\TicketChildMapper;
+use OCA\Projektwerk\Db\TicketLog;
+use OCA\Projektwerk\Db\TicketLogMapper;
 use OCA\Projektwerk\Db\TicketUser;
 use OCA\Projektwerk\Db\TicketUserMapper;
 use OCP\IDBConnection;
@@ -138,6 +140,7 @@ class TicketChildMapperTest extends TestCase {
 		yield 'Arbeitsschritte' => [StepMapper::class, Step::class];
 		yield 'Anhaenge' => [AttachmentMapper::class, Attachment::class];
 		yield 'Mitarbeitende' => [TicketUserMapper::class, TicketUser::class];
+		yield 'Verlauf' => [TicketLogMapper::class, TicketLog::class];
 	}
 
 	private function step(int $id, int $ticketId, int $position): Step {

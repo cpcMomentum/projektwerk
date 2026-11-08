@@ -39,6 +39,7 @@ class TicketReadModel {
 		private AttachmentService $attachmentService,
 		private WaitStateCalculator $waitState,
 		private ChangeHighlighter $highlighter,
+		private TicketLogService $log,
 	) {
 	}
 
@@ -87,6 +88,14 @@ class TicketReadModel {
 	 */
 	public function showByNumber(ViewerContext $viewer, int $number): array {
 		return $this->detailFor($viewer, $this->tickets->findVisibleByNumber($viewer, $number));
+	}
+
+	/**
+	 * @throws DoesNotExistException
+	 * @return \OCA\Projektwerk\Db\TicketLog[]
+	 */
+	public function history(ViewerContext $viewer, int $ticketId): array {
+		return $this->log->listFor($viewer, $this->tickets->findVisible($viewer, $ticketId));
 	}
 
 	/**

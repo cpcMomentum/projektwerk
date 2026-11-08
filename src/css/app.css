@@ -1668,6 +1668,92 @@ body .modal-wrapper:has(.pw-detail) > .modal-container {
 	margin-inline-start: auto;
 }
 
+/* ---- Umschalter Kommentare / Verlauf ------------------------------------ */
+
+/* Der aktive Knopf trägt Textfarbe, Gewicht und Unterstrich in der Hausfarbe, nicht bloß einen Grauton. */
+.app-projektwerk .pw-umschalter {
+	display: flex;
+	gap: 4px;
+	margin-block-end: 12px;
+	border-bottom: 1px solid var(--color-border);
+}
+
+.app-projektwerk .pw-umschalter__knopf {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	min-height: var(--default-clickable-area);
+	margin: 0 0 -1px;
+	padding: 0 12px;
+	border: none;
+	border-bottom: 3px solid transparent;
+	border-radius: 0;
+	background: none;
+	color: var(--color-text-maxcontrast);
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.app-projektwerk .pw-umschalter__knopf:hover {
+	color: var(--color-main-text);
+	background: var(--color-background-hover);
+}
+
+.app-projektwerk .pw-umschalter__knopf:focus-visible {
+	outline: 2px solid var(--color-primary-element);
+	outline-offset: -2px;
+}
+
+.app-projektwerk .pw-umschalter__knopf[aria-pressed='true'] {
+	color: var(--color-main-text);
+	border-bottom-color: var(--color-primary-element);
+}
+
+.app-projektwerk .pw-umschalter__zahl {
+	font-weight: normal;
+	font-variant-numeric: tabular-nums;
+}
+
+.app-projektwerk .pw-abschnitt--eingebettet {
+	padding-block-start: 0;
+	border-top: none;
+}
+
+/* ---- Verlauf ------------------------------------------------------------ */
+
+.app-projektwerk .pw-verlauf__liste {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.app-projektwerk .pw-verlauf__eintrag {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+	padding-block: 6px;
+}
+
+.app-projektwerk .pw-verlauf__text {
+	min-width: 0;
+	overflow-wrap: anywhere;
+	line-height: 1.4;
+}
+
+.app-projektwerk .pw-verlauf__name {
+	font-weight: 600;
+}
+
+.app-projektwerk .pw-verlauf__meta,
+.app-projektwerk .pw-verlauf__leer {
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-verlauf__meta {
+	display: block;
+	font-size: 13px;
+}
+
 /* ---- Abhängigkeiten ----------------------------------------------------- */
 
 .app-projektwerk .pw-deps__auswahl {
