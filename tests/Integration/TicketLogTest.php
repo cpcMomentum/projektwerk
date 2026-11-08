@@ -13,10 +13,15 @@ use OCA\Projektwerk\Access\TicketScope;
 use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Db\Ticket;
 use OCA\Projektwerk\Db\TicketLog;
+use OCA\Projektwerk\Command\TicketRestore;
+use OCA\Projektwerk\Service\ColumnService;
+use OCA\Projektwerk\Service\MemberService;
 use OCA\Projektwerk\Service\StepService;
 use OCA\Projektwerk\Service\TicketReadModel;
 use OCA\Projektwerk\Service\TicketService;
 use OCP\Server;
+use Symfony\Component\Console\Input\ArrayInput;
+use Symfony\Component\Console\Output\BufferedOutput;
 
 class TicketLogTest extends IntegrationTestCase {
 
@@ -120,6 +125,59 @@ class TicketLogTest extends IntegrationTestCase {
 		$this->assertSame([TicketLog::VISIBILITY], $this->actions($bert, $ticket));
 		$this->assertNull($this->history($bert, $ticket)[0]->getOldValue());
 		$this->assertSame([TicketLog::CREATED, TicketLog::TITLE, TicketLog::VISIBILITY], $this->actions($anna, $ticket));
+	}
+
+	public function testClosingAgainWithAnotherOutcomeIsRecorded(): void {
+		$anna = $this->fixture->contextFor(LeakMatrixFixture::ANNA);
+		$ticket = $this->create($anna, TicketScope::VISIBILITY_PUBLIC);
+		$ticket = $this->tickets->update($anna, $this->id($ticket), (int)$ticket->getVersion(), ['closed' => true, 'outcome' => Ticket::OUTCOME_DONE]);
+		$this->tickets->update($anna, $this->id($ticket), (int)$ticket->getVersion(), ['closed' => true, 'outcome' => Ticket::OUTCOME_DISCARDED]);
+
+		$history = $this->history($anna, $ticket);
+		$this->assertSame([TicketLog::CREATED, TicketLog::CLOSED, TicketLog::CLOSED], array_map(static fn (TicketLog $entry): string => $entry->getAction(), $history));
+		$this->assertSame([Ticket::OUTCOME_DONE, Ticket::OUTCOME_DISCARDED], [$history[2]->getOldValue(), $history[2]->getNewValue()]);
+	}
+
+	public function testRemovingAColumnRecordsTheMoveOfItsTickets(): void {
+		$anna = $this->fixture->contextFor(LeakMatrixFixture::ANNA);
+		$ticket = $this->create($anna, TicketScope::VISIBILITY_PUBLIC);
+
+		Server::get(ColumnService::class)->delete($anna, $this->fixture->columnIds[LeakMatrixFixture::COLUMN_A], $this->fixture->columnIds[LeakMatrixFixture::COLUMN_B]);
+
+		$history = $this->history($anna, $ticket);
+		$last = end($history);
+		$this->assertSame(TicketLog::MOVED, $last->getAction());
+		$this->assertSame([LeakMatrixFixture::COLUMN_A, LeakMatrixFixture::COLUMN_B], [$last->getOldValue(), $last->getNewValue()]);
+		$this->assertSame(LeakMatrixFixture::ANNA, $last->getActorUserId());
+	}
+
+	public function testRemovingAMemberRecordsTheLiftedAssignments(): void {
+		$anna = $this->fixture->contextFor(LeakMatrixFixture::ANNA);
+		$ticket = $this->create($anna, TicketScope::VISIBILITY_PUBLIC);
+		$ticket = $this->tickets->update($anna, $this->id($ticket), (int)$ticket->getVersion(), ['responsibleUserId' => LeakMatrixFixture::CARLA]);
+		Server::get(StepService::class)->create($anna, $this->id($ticket), 'Abnahme', LeakMatrixFixture::CARLA);
+
+		Server::get(MemberService::class)->remove($anna, LeakMatrixFixture::CARLA);
+
+		$history = $this->history($anna, $ticket);
+		$lifted = array_values(array_filter($history, static fn (TicketLog $entry): bool => $entry->getNewValue() === null && $entry->getOldValue() === LeakMatrixFixture::CARLA));
+		$this->assertSame([TicketLog::RESPONSIBLE, TicketLog::STEP_ASSIGNED], array_map(static fn (TicketLog $entry): string => $entry->getAction(), $lifted));
+		$this->assertSame('Abnahme', $lifted[1]->getSubject());
+		$this->assertSame(LeakMatrixFixture::ANNA, $lifted[0]->getActorUserId());
+	}
+
+	public function testRestoringPerOccIsRecordedAsSystem(): void {
+		$anna = $this->fixture->contextFor(LeakMatrixFixture::ANNA);
+		$ticket = $this->create($anna, TicketScope::VISIBILITY_PUBLIC);
+		$this->tickets->delete($anna, $this->id($ticket), (int)$ticket->getVersion());
+
+		$command = Server::get(TicketRestore::class);
+		$this->assertSame(0, $command->run(new ArrayInput(['ticketId' => (string)$this->id($ticket)]), new BufferedOutput()));
+
+		$history = $this->history($anna, $ticket);
+		$last = end($history);
+		$this->assertSame(TicketLog::RESTORED, $last->getAction());
+		$this->assertSame(TicketLog::ACTOR_SYSTEM, $last->getActorUserId());
 	}
 
 	private function create(ViewerContext $viewer, string $visibility): Ticket {

@@ -559,6 +559,8 @@ OC.L10N.register(
     "Link konnte nicht kopiert werden: {link}" : "Link konnte nicht kopiert werden: {link}",
     "Zuständig für den neuen Arbeitsschritt: niemand" : "Zuständig für den neuen Arbeitsschritt: niemand",
     "Zuständig für den neuen Arbeitsschritt: {name}" : "Zuständig für den neuen Arbeitsschritt: {name}",
+    "Neuer Vorgang in „{spalte}“" : "Neuer Vorgang in „{spalte}“",
+    "System" : "System",
     "ProjektWerk-Vorgänge" : "ProjektWerk-Vorgänge"
 },
 "nplurals=2; plural=(n != 1);");

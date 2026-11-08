@@ -40,7 +40,8 @@ class ArchitectureTest extends TestCase {
 			// muss genau das finden, was die Sichtbarkeitsregel verbirgt —
 			// sonst waere er kein Papierkorb. Er laeuft ausschliesslich auf der
 			// Kommandozeile, hat keinen Betrachterkontext und beschraenkt sich
-			// auf zwei Anweisungen: auflisten und `deleted_at` leeren.
+			// aufs Auflisten und `deleted_at` leeren; die Sichtbarkeit liest sie
+			// nur fuer den Verlaufseintrag (#416).
 			'Command/TicketRestore.php',
 			// **Zweite namentliche Ausnahme, gleiche Form.** Beim Loeschen eines
 			// Kontos muessen dessen private Vorgaenge weg (§29) — und genau die
@@ -83,6 +84,46 @@ class ArchitectureTest extends TestCase {
 			'Jede Ticket-Abfrage laeuft ueber TicketMapper, und der filtert ueber',
 			'TicketScope. Eine eigene Abfrage waere ein zweiter Ort, an dem die',
 			'Sichtbarkeitsregel stimmen muesste.',
+		]));
+	}
+
+	/**
+	 * Der Verlauf hat neben dem Vorgangsfilter einen zweiten je Eintrag (Sichtbarkeit zur Zeit der Änderung).
+	 *
+	 * Den setzt nur TicketLogService::listFor(). Wer den Mapper direkt liest, etwa für einen Zähler auf der Karte,
+	 * zeigt dem Kunden den internen Vorlauf eines inzwischen öffentlichen Vorgangs.
+	 */
+	public function testTicketLogIsReadOnlyThroughTicketLogService(): void {
+		$allowed = [
+			'Db/TicketLogMapper.php',
+			'Service/TicketLogService.php',
+		];
+		// Diese Stellen nennen die Tabelle nur in Lösch-Listen beim Purge.
+		$purgeOnly = [
+			'Db/TicketMapper.php',
+			'Service/MemberLifecycleService.php',
+		];
+
+		$offenders = [];
+		foreach ($this->phpFilesIn(self::LIB) as $relative => $path) {
+			if (str_starts_with($relative, 'Migration/') || in_array($relative, $allowed, true)) {
+				continue;
+			}
+			$source = (string)file_get_contents($path);
+			if (str_contains($source, 'TicketLogMapper')) {
+				$offenders[] = $relative . ' (TicketLogMapper)';
+			}
+			if (!in_array($relative, $purgeOnly, true) && str_contains($source, 'pwerk_ticket_log')) {
+				$offenders[] = $relative . ' (pwerk_ticket_log)';
+			}
+		}
+
+		$this->assertSame([], $offenders, implode("\n", [
+			'Der Verlauf wird ausserhalb von TicketLogService gelesen:',
+			'  ' . implode(', ', $offenders),
+			'',
+			'Nur TicketLogService::listFor() filtert je Eintrag nach der Sichtbarkeit',
+			'zur Zeit der Aenderung. Ein direkter Leser zeigte dem Kunden internen Vorlauf.',
 		]));
 	}
 

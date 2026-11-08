@@ -267,7 +267,7 @@ class MemberService {
 		$this->findInBoard($viewer, $userId);
 		$this->assertNotOwner($viewer, $userId);
 
-		$this->lifecycle->removeFromBoard($userId, $viewer->boardId);
+		$this->lifecycle->removeFromBoard($userId, $viewer->boardId, $viewer->userId);
 	}
 
 	/**

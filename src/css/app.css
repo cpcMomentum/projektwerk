@@ -165,6 +165,11 @@
 	color: var(--color-text-maxcontrast);
 }
 
+.app-projektwerk .pw-col__head .pw-col__neu {
+	align-self: center;
+	margin: -8px 0 -8px auto;
+}
+
 .app-projektwerk .pw-col__head .pw-n {
 	font-variant-numeric: tabular-nums;
 	font-weight: 600;
@@ -1263,6 +1268,16 @@ body .modal-wrapper:has(.pw-detail) > .modal-container {
 	 * unlesbar.
 	 */
 	color: var(--color-error-text);
+}
+
+/* Ohne Kontur ging der Knopf neben den umrandeten Ausgängen unter; Fläche gibt es erst beim Darüberfahren. */
+.app-projektwerk .pw-detail__loeschen.button-vue {
+	border-color: color-mix(in srgb, var(--color-error-text) 40%, transparent);
+}
+
+.app-projektwerk .pw-detail__loeschen.button-vue:hover:not(:disabled) {
+	background-color: var(--color-error);
+	border-color: var(--color-error-text);
 }
 
 /*

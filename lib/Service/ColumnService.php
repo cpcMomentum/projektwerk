@@ -14,6 +14,7 @@ use OCA\Projektwerk\Db\BoardMapper;
 use OCA\Projektwerk\Db\Column;
 use OCA\Projektwerk\Db\Ticket;
 use OCA\Projektwerk\Db\ColumnMapper;
+use OCA\Projektwerk\Db\TicketLog;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\IDBConnection;
@@ -39,6 +40,7 @@ class ColumnService {
 		private ColumnMapper $columns,
 		private BoardMapper $boards,
 		private TicketMapper $tickets,
+		private TicketLogService $log,
 	) {
 	}
 
@@ -200,9 +202,12 @@ class ColumnService {
 			// einem Zug, dass die Spalte existiert **und** zu diesem Board
 			// gehört.
 			$column = $this->inList($existing, $columnId);
-			$this->inList($existing, $targetColumnId);
+			$target = $this->inList($existing, $targetColumnId);
 
-			$this->tickets->moveColumnContents($viewer, $columnId, $targetColumnId);
+			$moved = $this->tickets->moveColumnContents($viewer, $columnId, $targetColumnId);
+			foreach ($moved as $ticket) {
+				$this->log->recordFor($viewer->userId, $ticket['id'], $ticket['visibility'], TicketLog::MOVED, null, (string)$column->getTitle(), (string)$target->getTitle(), $viewer->via);
+			}
 			$this->columns->delete($column);
 			$this->renumber($existing, $columnId);
 

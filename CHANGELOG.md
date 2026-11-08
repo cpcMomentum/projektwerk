@@ -15,6 +15,23 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Fixed
 
+- **Verlauf lückenlos** (#416): Auch Spalte entfernen (Vorgänge wandern mit), Mitglied entfernen
+  (Zuständigkeit und Schritt-Zuweisungen fallen weg), erneuter Abschluss mit anderem Ergebnis und die
+  Wiederherstellung per `occ` schreiben jetzt einen Eintrag. Ohne handelnde Person steht dort „System“.
+  Ein Architekturtest stellt sicher, dass der Verlauf nur über den Eintragsfilter gelesen wird.
+- **„Löschen“ im Vorgang als Knopf erkennbar** (#428): Der Knopf hat jetzt eine rote Kontur wie seine
+  umrandeten Nachbarn „Verworfen“ und „Erledigt“; die Fläche erscheint erst beim Darüberfahren.
+
+### Added
+
+- **Plus im Spaltenkopf** (#387): Jede Spalte außer den Endspalten hat rechts im Kopf ein Plus. Es öffnet
+  „Neuer Vorgang“ mit dieser Spalte voreingestellt; der Knopf oben bleibt und startet wie bisher in der
+  ersten Spalte.
+- **Vorgang im neuen Tab öffnen** (#385): Mittelklick oder Strg-/Cmd-Klick auf eine Karte öffnet den
+  Vorgang in einem neuen Browser-Tab, über denselben Direktlink wie Mails und Benachrichtigungen.
+
+### Fixed
+
 - **Dialog „Neuer Vorgang“ auf dem Handy** (#424): Bei schmaler Breite waren alle drei Knöpfe
   abgeschnitten („Abbrec…“). Die Knopfleiste bricht jetzt um, „Anlegen“ steht darunter über die volle
   Breite.
