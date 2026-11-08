@@ -19,6 +19,7 @@
 				<NcAvatar
 					:user="entry.actorUserId"
 					:displayName="nameOf(entry.actorUserId)"
+					:isNoUser="entry.actorUserId === ACTOR_SYSTEM"
 					:size="24"
 					:disableMenu="true"
 					:hideStatus="true" />
@@ -52,6 +53,9 @@ import { asDate } from '@/utils/date'
 // Die Werte landen per Mustache im Text, Vue escaped selbst.
 const RAW = { escape: false }
 
+/** Akteur für Änderungen ohne handelnde Person, etwa per `occ`; gleicher Wert wie `TicketLog::ACTOR_SYSTEM`. */
+const ACTOR_SYSTEM = 'system'
+
 export default defineComponent({
 	name: 'TicketHistory',
 
@@ -74,6 +78,7 @@ export default defineComponent({
 			failed: false,
 			/** Nur die jüngste Anfrage darf schreiben; eine langsamere ältere überschriebe sonst den neueren Stand. */
 			request: 0,
+			ACTOR_SYSTEM,
 		}
 	},
 
@@ -128,6 +133,9 @@ export default defineComponent({
 		nameOf(userId: string | null): string {
 			if (userId === null) {
 				return ''
+			}
+			if (userId === ACTOR_SYSTEM) {
+				return t('projektwerk', 'System')
 			}
 			return this.members.find((m) => m.userId === userId)?.resolvedName ?? userId
 		},

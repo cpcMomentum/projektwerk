@@ -8,6 +8,10 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Fixed
 
+- **Verlauf lückenlos** (#416): Auch Spalte entfernen (Vorgänge wandern mit), Mitglied entfernen
+  (Zuständigkeit und Schritt-Zuweisungen fallen weg), erneuter Abschluss mit anderem Ergebnis und die
+  Wiederherstellung per `occ` schreiben jetzt einen Eintrag. Ohne handelnde Person steht dort „System“.
+  Ein Architekturtest stellt sicher, dass der Verlauf nur über den Eintragsfilter gelesen wird.
 - **„Löschen“ im Vorgang als Knopf erkennbar** (#428): Der Knopf hat jetzt eine rote Kontur wie seine
   umrandeten Nachbarn „Verworfen“ und „Erledigt“; die Fläche erscheint erst beim Darüberfahren.
 
