@@ -6,6 +6,12 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Person bei neuen Arbeitsschritten gilt nur noch für einen Schritt** (#418): Nach dem Anlegen springt
+  der Personen-Knopf wieder auf „Niemand“. Eine stehengebliebene Auswahl war leicht zu übersehen und
+  landete unbemerkt auch am nächsten Schritt.
+
 ## [0.4.23] - 2026-11-07
 
 ### Added
