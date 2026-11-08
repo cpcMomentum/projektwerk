@@ -602,7 +602,8 @@
 		"hat den Anhang „{file}“ hinzugefügt": "hat den Anhang „{file}“ hinzugefügt",
 		"hat den Anhang „{file}“ entfernt": "hat den Anhang „{file}“ entfernt",
 		"hat den Vorgang geändert": "hat den Vorgang geändert",
-		"Verlauf wird geladen …": "Verlauf wird geladen …"
+		"Verlauf wird geladen …": "Verlauf wird geladen …",
+		"System": "System"
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }

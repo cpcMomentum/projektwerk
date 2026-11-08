@@ -38,6 +38,9 @@ use OCP\DB\Types;
  */
 class TicketLog extends Entity implements JsonSerializable {
 
+	/** Akteur für Änderungen ohne handelnde Person, etwa per `occ`. */
+	public const ACTOR_SYSTEM = 'system';
+
 	public const CREATED = 'created';
 	public const MOVED = 'moved';
 	public const TITLE = 'title';

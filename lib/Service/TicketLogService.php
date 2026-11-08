@@ -36,15 +36,31 @@ class TicketLogService {
 		?string $oldValue = null,
 		?string $newValue = null,
 	): TicketLog {
+		return $this->recordFor($viewer->userId, (int)$ticket->getId(), (string)$ticket->getVisibility(), $action, $subject, $oldValue, $newValue, $viewer->via);
+	}
+
+	/**
+	 * Für Wege ohne Betrachter oder geladenen Vorgang: Spalte entfernen, Mitglied entfernen, `occ`.
+	 */
+	public function recordFor(
+		string $actorUserId,
+		int $ticketId,
+		string $visibility,
+		string $action,
+		?string $subject = null,
+		?string $oldValue = null,
+		?string $newValue = null,
+		?string $via = null,
+	): TicketLog {
 		$entry = new TicketLog();
-		$entry->setTicketId((int)$ticket->getId());
-		$entry->setActorUserId($viewer->userId);
-		$entry->setVia($viewer->via);
+		$entry->setTicketId($ticketId);
+		$entry->setActorUserId($actorUserId);
+		$entry->setVia($via);
 		$entry->setAction($action);
 		$entry->setSubject($this->cut($subject));
 		$entry->setOldValue($this->cut($oldValue));
 		$entry->setNewValue($this->cut($newValue));
-		$entry->setVisibility((string)$ticket->getVisibility());
+		$entry->setVisibility($visibility);
 		$entry->setCreatedAt(new \DateTime());
 
 		return $this->log->insert($entry);

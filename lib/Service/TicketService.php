@@ -860,6 +860,8 @@ class TicketService {
 			$this->log->record($viewer, $after, TicketLog::CLOSED, null, null, $after->getClosedOutcome());
 		} elseif ($before->getClosedAt() !== null && $after->getClosedAt() === null) {
 			$this->log->record($viewer, $after, TicketLog::REOPENED);
+		} elseif ($after->getClosedAt() !== null && $before->getClosedOutcome() !== $after->getClosedOutcome()) {
+			$this->log->record($viewer, $after, TicketLog::CLOSED, null, $before->getClosedOutcome(), $after->getClosedOutcome());
 		}
 	}
 
