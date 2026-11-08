@@ -6,6 +6,12 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Aktiver Board-Reiter deutlich erkennbar** (#422): Die Reiter der Boards eines Projekts zeigen das
+  offene Board jetzt mit dunkler Schrift und Unterstrich in der Primärfarbe, wie der Umschalter
+  „Kommentare | Verlauf“. Vorher hob es sich nur als weiße Kachel auf blassgrauem Grund ab.
+
 ### Changed
 
 - **Person bei neuen Arbeitsschritten gilt nur noch für einen Schritt** (#418): Nach dem Anlegen springt

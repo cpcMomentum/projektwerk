@@ -101,12 +101,7 @@
 			</div>
 		</div>
 
-		<!--
-			Die Boards des Projekts als Reiter (#350, vorher ein Menü „Boards"):
-			Zustand und Wechsel in einem Element. Derselbe Umschalter wie die
-			Sichtbarkeit im Vorgang, kein zweites Muster. Erscheint ab zwei Boards;
-			wer ein Board anlegen darf, sieht ihn auch bei einem, mit „+" dahinter.
-		-->
+		<!-- Wer ein Board anlegen darf, sieht die Reiter schon bei einem Board, damit das „+" erreichbar bleibt. -->
 		<div v-if="store.siblingBoards.length > 1 || store.canAddBoard" class="pw-boardtabs">
 			<div class="pw-boardtabs__group">
 				<NcRadioGroup
