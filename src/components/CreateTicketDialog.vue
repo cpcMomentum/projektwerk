@@ -148,6 +148,8 @@ export default defineComponent({
 		orgInternal: { type: String, default: '' },
 		/** Kunde des Projekts (#309) — Rückfall für externe Mitglieder ohne eigene Firma. */
 		customer: { type: String, default: '' },
+		/** Voreingestellte Spalte, etwa vom Plus im Spaltenkopf; sonst die erste. */
+		initialColumnId: { type: Number as PropType<number | null>, default: null },
 	},
 
 	emits: ['update:open', 'create'],
@@ -203,7 +205,7 @@ export default defineComponent({
 				this.title = ''
 				this.description = ''
 				this.visibility = 'public'
-				this.columnId = this.columns[0]?.id ?? null
+				this.columnId = this.columns.find((c) => c.id === this.initialColumnId)?.id ?? this.columns[0]?.id ?? null
 				this.dueDate = null
 				this.responsibleUserId = null
 				this.loadAssignable()

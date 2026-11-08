@@ -6,6 +6,12 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Added
+
+- **Plus im Spaltenkopf** (#387): Jede Spalte außer den Endspalten hat rechts im Kopf ein Plus. Es öffnet
+  „Neuer Vorgang“ mit dieser Spalte voreingestellt; der Knopf oben bleibt und startet wie bisher in der
+  ersten Spalte.
+
 ## [0.4.23] - 2026-11-07
 
 ### Added

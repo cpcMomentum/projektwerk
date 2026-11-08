@@ -555,6 +555,7 @@ OC.L10N.register(
     "hat den Anhang „{file}“ hinzugefügt" : "hat den Anhang „{file}“ hinzugefügt",
     "hat den Anhang „{file}“ entfernt" : "hat den Anhang „{file}“ entfernt",
     "hat den Vorgang geändert" : "hat den Vorgang geändert",
-    "Verlauf wird geladen …" : "Verlauf wird geladen …"
+    "Verlauf wird geladen …" : "Verlauf wird geladen …",
+    "Neuer Vorgang in „{spalte}“" : "Neuer Vorgang in „{spalte}“"
 },
 "nplurals=2; plural=(n != 1);");
