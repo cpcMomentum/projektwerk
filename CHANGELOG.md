@@ -6,7 +6,22 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Added
+
+- **Projekt archivieren** (#379): Unter Einstellungen › Projekt › Archiv lässt sich das ganze Projekt
+  mit allen Boards archivieren und zurückholen; vorher einzeln archivierte Boards bleiben dabei
+  archiviert. Beide Archiv-Aktionen fragen mit dem Namen nach. Ein archiviertes Kundenprojekt zählt
+  weiter gegen den freien Umfang.
+
 ### Changed
+
+- **Einstellungen in zwei Gruppen „Projekt“ und „Board“** (#379): Projektname und -beschreibung sind
+  jetzt änderbar und stehen im Board-Kopf. Ab zwei Boards gibt es eine Board-Auswahl (archivierte mit
+  Zusatz „(archiviert)“, darüber zurückholbar), einen eigenen Boardnamen und ein Board-Archiv. Ein
+  Board-Ersteller ohne Verwaltungsrecht sieht nur die Gruppe „Board“. Das Zahnrad führt aus dem Board
+  zu den Spalten, aus der Übersicht zum Projekt.
+- **Bestandsdaten abgeglichen** (#379): Beim Update übernehmen Projekte mit einem Board dessen Namen,
+  Beschreibung und Archiv-Stand; Projekte mit mehreren Boards sind nicht archiviert.
 
 - **Projekt öffnet direkt im Board** (#388): Ein Klick auf die Projektkachel führt ohne Zwischenseite
   ins Board. Der Umschalter „Board | Übersicht“ zeigt an derselben Stelle die Kennzahlen, den

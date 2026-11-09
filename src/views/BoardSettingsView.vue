@@ -1,10 +1,16 @@
 <template>
 	<div class="pw-view">
+		<router-link class="pw-crumb" :to="{ name: ausUebersicht ? 'board-overview' : 'board', params: { boardId: String(boardId) } }">
+			<ChevronLeftIcon :size="16" />{{ crumbLabel }}
+		</router-link>
+
 		<div class="pw-view__head">
-			<h2>{{ t('projektwerk', 'Projekteinstellungen') }}</h2>
-			<NcButton @click="back">
-				{{ t('projektwerk', 'Zurück zum Projekt') }}
-			</NcButton>
+			<div class="pw-view__ident">
+				<h2>{{ t('projektwerk', 'Einstellungen') }}</h2>
+				<div v-if="projectLine" class="pw-view__org">
+					{{ projectLine }}
+				</div>
+			</div>
 		</div>
 
 		<!--
@@ -22,36 +28,48 @@
 			</template>
 		</NcEmptyContent>
 
-		<div v-else-if="mayConfigureBoard" class="pw-settingspage__body">
+		<div v-else-if="mayConfigureBoard && projectBoardsLoaded" class="pw-settingspage__body">
 			<!--
 				Linke Bereichs-Navigation wie in „Meine Einstellungen" (#196
 				Teil 2): dieselben `pw-subnav`/`pw-settingspage`-Klassen, damit
 				beide Einstellungsseiten gleich aussehen.
 			-->
 			<PwSettingsNav
-				:sections="sections"
+				:groups="navGroups"
 				:modelValue="activeSection"
-				@update:modelValue="activeSection = $event" />
+				@update:modelValue="selectSection">
+				<template #group-board>
+					<div v-if="showBoardPicker" class="pw-subnav__picker">
+						<NcSelect
+							inputId="pw-set-boardpick"
+							:ariaLabelCombobox="t('projektwerk', 'Board wählen')"
+							:options="boardOptions"
+							:modelValue="selectedBoardOption"
+							:clearable="false"
+							@update:modelValue="switchSettingsBoard" />
+					</div>
+				</template>
+			</PwSettingsNav>
 
 			<div class="pw-settingspage__content pw-settings">
-				<section v-show="activeSection === 'projekt'" class="pw-settings__block">
+				<section v-if="mayManage" v-show="activeSection === 'projekt'" class="pw-settings__block">
 					<div class="pw-form-section">
 						<h3>{{ t('projektwerk', 'Projekt') }}</h3>
 
 						<div class="pw-feld">
-							<label class="pw-feld__label" for="pw-set-title">{{ t('projektwerk', 'Titel') }}</label>
+							<label class="pw-feld__label" for="pw-set-ptitle">{{ t('projektwerk', 'Projektname') }}</label>
 							<input
-								id="pw-set-title"
-								v-model="board.title"
+								id="pw-set-ptitle"
+								v-model="board.projectTitle"
 								class="pw-input"
 								type="text">
 						</div>
 
 						<div class="pw-feld">
-							<label class="pw-feld__label" for="pw-set-desc">{{ t('projektwerk', 'Beschreibung') }}</label>
+							<label class="pw-feld__label" for="pw-set-pdesc">{{ t('projektwerk', 'Beschreibung') }}</label>
 							<textarea
-								id="pw-set-desc"
-								v-model="board.description"
+								id="pw-set-pdesc"
+								v-model="board.projectDescription"
 								class="pw-input"
 								rows="3" />
 						</div>
@@ -62,11 +80,6 @@
 					Truege nur die Kundenseite eine Firma, waere die interne
 					stumm „der Normalfall" (§8).
 				-->
-					<!--
-						Org, Projektchat und der Anlage-Schalter sind projektweit
-						(#281) — nur der Manager sieht sie. Ein reiner Board-Ersteller
-						bearbeitet hier nur Titel und Beschreibung seines Boards.
-					-->
 					<template v-if="mayManage">
 						<div class="pw-form-section">
 							<h3>{{ t('projektwerk', 'Beteiligte Firmen') }}</h3>
@@ -134,7 +147,37 @@
 					</template>
 
 					<div class="pw-viscontrol__actions">
-						<NcButton variant="primary" :disabled="busy || board.title.trim() === ''" @click="saveBoard">
+						<NcButton variant="primary" :disabled="busy || board.projectTitle.trim() === ''" @click="saveProject">
+							{{ t('projektwerk', 'Speichern') }}
+						</NcButton>
+					</div>
+				</section>
+
+				<section v-if="!singleBoard" v-show="activeSection === 'board'" class="pw-settings__block">
+					<div class="pw-form-section">
+						<h3>{{ t('projektwerk', 'Board') }}</h3>
+
+						<div class="pw-feld">
+							<label class="pw-feld__label" for="pw-set-title">{{ t('projektwerk', 'Boardname') }}</label>
+							<input
+								id="pw-set-title"
+								v-model="board.title"
+								class="pw-input"
+								type="text">
+						</div>
+
+						<div class="pw-feld">
+							<label class="pw-feld__label" for="pw-set-desc">{{ t('projektwerk', 'Beschreibung') }}</label>
+							<textarea
+								id="pw-set-desc"
+								v-model="board.description"
+								class="pw-input"
+								rows="3" />
+						</div>
+					</div>
+
+					<div class="pw-viscontrol__actions">
+						<NcButton variant="primary" :disabled="busy || board.title.trim() === ''" @click="saveBoardGeneral">
 							{{ t('projektwerk', 'Speichern') }}
 						</NcButton>
 					</div>
@@ -159,7 +202,7 @@
 								:checked="board.githubEnabled"
 								:disabled="busy"
 								@change="board.githubEnabled = ($event.target as HTMLInputElement).checked">
-							{{ t('projektwerk', 'GitHub-Anbindung für dieses Projekt') }}
+							{{ t('projektwerk', 'GitHub-Anbindung für dieses Board') }}
 						</label>
 					</div>
 
@@ -211,7 +254,7 @@
 					</div>
 
 					<div class="pw-viscontrol__actions">
-						<NcButton variant="primary" :disabled="busy || board.title.trim() === ''" @click="saveBoard">
+						<NcButton variant="primary" :disabled="busy" @click="saveGithub">
 							{{ t('projektwerk', 'Speichern') }}
 						</NcButton>
 					</div>
@@ -535,16 +578,42 @@
 					</span>
 				</section>
 
-				<section v-show="activeSection === 'archiv'" class="pw-settings__block">
+				<section v-if="mayManage" v-show="activeSection === 'projekt-archiv'" class="pw-settings__block">
 					<h3 class="pw-col__head">
-						{{ t('projektwerk', 'Archiv') }}
+						{{ t('projektwerk', 'Projekt archivieren') }}
 					</h3>
-					<span class="pw-settings__hint">
-						{{ t('projektwerk', 'Ein archiviertes Projekt bleibt lesbar und verschwindet aus der Projektliste.') }}
-					</span>
+					<p v-if="store.projectArchived" class="pw-settings__hint pw-settings__hint--warn">
+						{{ t('projektwerk', 'Dieses Projekt ist archiviert.') }}
+					</p>
+					<p class="pw-settings__hint">
+						{{ t('projektwerk', 'Ein archiviertes Projekt bleibt mit allen Boards lesbar und verschwindet aus der Projektliste und dem Überblick.') }}
+					</p>
 					<div class="pw-viscontrol__actions">
-						<NcButton :disabled="busy" @click="toggleArchived">
-							{{ store.board?.archived ? t('projektwerk', 'Aus dem Archiv holen') : t('projektwerk', 'Archivieren') }}
+						<NcButton v-if="store.projectArchived" :disabled="busy" @click="restoreProject">
+							{{ t('projektwerk', 'Projekt aus dem Archiv holen') }}
+						</NcButton>
+						<NcButton v-else :disabled="busy" @click="archiveDialog = 'project'">
+							{{ t('projektwerk', 'Projekt archivieren') }}
+						</NcButton>
+					</div>
+				</section>
+
+				<section v-if="showBoardArchive" v-show="activeSection === 'board-archiv'" class="pw-settings__block">
+					<h3 class="pw-col__head">
+						{{ t('projektwerk', 'Board archivieren') }}
+					</h3>
+					<p v-if="store.board?.archived" class="pw-settings__hint pw-settings__hint--warn">
+						{{ t('projektwerk', 'Dieses Board ist archiviert.') }}
+					</p>
+					<p class="pw-settings__hint">
+						{{ t('projektwerk', 'Ein archiviertes Board bleibt lesbar und verschwindet aus den Reitern des Projekts.') }}
+					</p>
+					<div class="pw-viscontrol__actions">
+						<NcButton v-if="store.board?.archived" :disabled="busy" @click="restoreBoard">
+							{{ t('projektwerk', 'Board aus dem Archiv holen') }}
+						</NcButton>
+						<NcButton v-else :disabled="busy" @click="archiveDialog = 'board'">
+							{{ t('projektwerk', 'Board archivieren') }}
 						</NcButton>
 					</div>
 				</section>
@@ -646,6 +715,27 @@
 			</template>
 		</NcDialog>
 
+		<NcDialog
+			:open="archiveDialog !== null"
+			:name="archiveDialog === 'project' ? t('projektwerk', 'Projekt archivieren') : t('projektwerk', 'Board archivieren')"
+			size="normal"
+			@update:open="onArchiveDialogToggle">
+			<div v-if="archiveDialog !== null" class="app-projektwerk">
+				<p class="pw-settings__hint">
+					{{ archiveText }}
+				</p>
+			</div>
+
+			<template #actions>
+				<NcButton @click="archiveDialog = null">
+					{{ t('projektwerk', 'Abbrechen') }}
+				</NcButton>
+				<NcButton variant="primary" :disabled="busy" @click="confirmArchive">
+					{{ t('projektwerk', 'Archivieren') }}
+				</NcButton>
+			</template>
+		</NcDialog>
+
 		<FolderPicker
 			:open="picker.open"
 			:startPath="picker.start"
@@ -655,8 +745,9 @@
 </template>
 
 <script lang="ts">
+import type { SettingsGroup } from '@/components/PwSettingsNav.vue'
 import type { Candidate } from '@/services/settings'
-import type { Column, Member, MemberRole } from '@/types/board'
+import type { Board, Column, Member, MemberRole } from '@/types/board'
 
 import { n, t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
@@ -665,14 +756,17 @@ import NcButton from '@nextcloud/vue/components/NcButton'
 import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
 import NcDialog from '@nextcloud/vue/components/NcDialog'
 import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
+import NcSelect from '@nextcloud/vue/components/NcSelect'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
 import ArrowDownIcon from 'vue-material-design-icons/ArrowDown.vue'
 import ArrowUpIcon from 'vue-material-design-icons/ArrowUp.vue'
+import ChevronLeftIcon from 'vue-material-design-icons/ChevronLeft.vue'
 import DeleteIcon from 'vue-material-design-icons/DeleteOutline.vue'
 import FolderIcon from 'vue-material-design-icons/Folder.vue'
 import LockIcon from 'vue-material-design-icons/Lock.vue'
 import FolderPicker from '@/components/FolderPicker.vue'
 import PwSettingsNav from '@/components/PwSettingsNav.vue'
+import { fetchBoards } from '@/services/boards'
 import { searchGithubRepos } from '@/services/github'
 import {
 	addMember,
@@ -685,6 +779,7 @@ import {
 	searchCandidates,
 	setBoardArchived,
 	setColumnFinalOutcome,
+	setProjectArchived,
 	updateBoard,
 	updateMember,
 } from '@/services/settings'
@@ -717,7 +812,7 @@ function parentPath(path: string): string {
 export default defineComponent({
 	name: 'BoardSettingsView',
 
-	components: { ArrowDownIcon, ArrowUpIcon, DeleteIcon, FolderIcon, FolderPicker, LockIcon, NcAvatar, NcButton, NcCheckboxRadioSwitch, NcDialog, NcEmptyContent, NcTextField, PwSettingsNav },
+	components: { ArrowDownIcon, ArrowUpIcon, ChevronLeftIcon, DeleteIcon, FolderIcon, FolderPicker, LockIcon, NcAvatar, NcButton, NcCheckboxRadioSwitch, NcDialog, NcEmptyContent, NcSelect, NcTextField, PwSettingsNav },
 
 	setup() {
 		return { store: useBoardStore() }
@@ -755,15 +850,18 @@ export default defineComponent({
 			// Ein eigener Entwurf statt direkter Bindung an den Speicher: Sonst
 			// stuenden Tippfehler sofort in der Kopfzeile des Boards, und ein
 			// Abbruch waere nicht mehr moeglich.
-			board: { title: '', description: '', orgInternal: '', customer: '', chatUrl: '', githubEnabled: false, githubRepo: '', memberBoardsAllowed: false },
+			board: { projectTitle: '', projectDescription: '', title: '', description: '', orgInternal: '', customer: '', chatUrl: '', githubEnabled: false, githubRepo: '', memberBoardsAllowed: false },
 			// Eigene Entwuerfe wie beim Board oben, aus demselben Grund: Der
 			// Pfad muss erst geprueft werden, und bis dahin darf er nirgends
 			// als der gespeicherte gelten.
 			folderDrafts: { root: '', public: '', internal: '' } as Record<FolderSlot, string>,
 			// Der Ordner-Wähler (#139) und für welchen der beiden Slots er offen ist.
 			picker: { open: false, slot: 'public' as FolderSlot, start: '' },
-			// Der aktive Bereich der linken Navigation (#196 Teil 2).
-			activeSection: 'projekt',
+			activeSection: '',
+			/** Alle Boards des Projekts, archivierte eingeschlossen. */
+			projectBoards: [] as Board[],
+			projectBoardsLoaded: false,
+			archiveDialog: null as 'board' | 'project' | null,
 		}
 	},
 
@@ -786,29 +884,98 @@ export default defineComponent({
 			return this.mayManage || this.store.viewer?.isBoardCreator === true
 		},
 
-		/**
-		 * Die Bereiche der linken Navigation (#196 Teil 2) — wie in „Meine
-		 * Einstellungen". „GitHub" ist ein Eigenname und bleibt unübersetzt.
-		 *
-		 * Ein reiner Board-Ersteller (kein Manager, #281) sieht nur die
-		 * board-scopeden Bereiche: Projekt (dort nur Titel/Beschreibung), Spalten,
-		 * Archiv. Org, Dateiablage, GitHub und Mitglieder sind projektweit und
-		 * bleiben dem Manager vorbehalten.
-		 */
-		sections(): { key: string, label: string }[] {
-			const alle = [
-				{ key: 'projekt', label: t('projektwerk', 'Projekt') },
-				{ key: 'github', label: 'GitHub' },
-				{ key: 'dateiablage', label: t('projektwerk', 'Dateiablage') },
-				{ key: 'spalten', label: t('projektwerk', 'Spalten') },
-				{ key: 'mitglieder', label: t('projektwerk', 'Mitglieder') },
-				{ key: 'archiv', label: t('projektwerk', 'Archiv') },
+		/** Bei nur einem Board heißen Projekt und Board gleich; dann entfallen Auswahl, Boardname und Board-Archiv. */
+		singleBoard(): boolean {
+			return this.projectBoards.length <= 1
+		},
+
+		activeProjectBoards(): Board[] {
+			return this.projectBoards.filter((b) => !b.archived)
+		},
+
+		archivedProjectBoards(): Board[] {
+			return this.projectBoards.filter((b) => b.archived)
+		},
+
+		/** Archivierte stehen hinten und tragen den Zusatz, damit man sie zurückholen kann. */
+		boardOptions(): { id: number, label: string }[] {
+			return [
+				...this.activeProjectBoards.map((b) => ({ id: b.id, label: b.title })),
+				...this.archivedProjectBoards.map((b) => ({ id: b.id, label: t('projektwerk', '{title} (archiviert)', { title: b.title }, undefined, { escape: false }) })),
 			]
-			if (this.mayManage) {
-				return alle
+		},
+
+		selectedBoardOption(): { id: number, label: string } | null {
+			return this.boardOptions.find((o) => o.id === this.boardId) ?? null
+		},
+
+		showBoardPicker(): boolean {
+			return this.mayManage && !this.singleBoard
+		},
+
+		/** Ein einzeln archiviertes Einzelboard (Altbestand) muss zurückholbar bleiben. */
+		showBoardArchive(): boolean {
+			return !this.singleBoard || this.store.board?.archived === true
+		},
+
+		navGroups(): SettingsGroup[] {
+			const boardItems = [
+				...(this.singleBoard ? [] : [{ key: 'board', label: t('projektwerk', 'Allgemein') }]),
+				{ key: 'spalten', label: t('projektwerk', 'Spalten') },
+				...(this.mayManage ? [{ key: 'github', label: 'GitHub' }] : []),
+				...(this.showBoardArchive ? [{ key: 'board-archiv', label: t('projektwerk', 'Archiv') }] : []),
+			]
+			const board = { key: 'board', label: t('projektwerk', 'Board'), items: boardItems }
+			if (!this.mayManage) {
+				return [board]
 			}
-			const nurErsteller = ['projekt', 'spalten', 'archiv']
-			return alle.filter((s) => nurErsteller.includes(s.key))
+
+			return [
+				{
+					key: 'projekt',
+					label: t('projektwerk', 'Projekt'),
+					items: [
+						{ key: 'projekt', label: t('projektwerk', 'Allgemein') },
+						{ key: 'mitglieder', label: t('projektwerk', 'Mitglieder') },
+						{ key: 'dateiablage', label: t('projektwerk', 'Dateiablage') },
+						{ key: 'projekt-archiv', label: t('projektwerk', 'Archiv') },
+					],
+				},
+				board,
+			]
+		},
+
+		visibleSections(): string[] {
+			return this.navGroups.flatMap((g) => g.items.map((i) => i.key))
+		},
+
+		ausUebersicht(): boolean {
+			return this.$route.query.zurueck === 'uebersicht'
+		},
+
+		crumbLabel(): string {
+			if (this.ausUebersicht) {
+				return t('projektwerk', 'Übersicht')
+			}
+			return t('projektwerk', 'Board „{title}“', { title: this.store.board?.title ?? '' }, undefined, { escape: false })
+		},
+
+		projectLine(): string {
+			if (this.store.projectTitle === '') {
+				return ''
+			}
+			const projekt = t('projektwerk', 'Projekt „{title}“', { title: this.store.projectTitle }, undefined, { escape: false })
+			const kunde = this.store.board?.customer
+
+			return kunde ? `${projekt} · ${kunde}` : projekt
+		},
+
+		archiveText(): string {
+			if (this.archiveDialog === 'project') {
+				return t('projektwerk', 'Das Projekt „{title}“ wird mit allen Boards archiviert. Es verschwindet aus der Projektliste und dem Überblick. Nichts wird gelöscht; zurückholen über Projekt › Archiv.', { title: this.store.projectTitle }, undefined, { escape: false })
+			}
+
+			return t('projektwerk', 'Nur das Board „{title}“ wird archiviert. Die anderen Boards des Projekts bleiben unverändert. Nichts wird gelöscht; zurückholen über die Board-Auswahl.', { title: this.store.board?.title ?? '' }, undefined, { escape: false })
 		},
 
 		/**
@@ -935,19 +1102,40 @@ export default defineComponent({
 			async handler(id: number) {
 				await this.store.open(id)
 				this.fillDraft()
+				await this.loadProjectBoards()
+				this.projectBoardsLoaded = true
+				this.pickSection()
 			},
+		},
+
+		'$route.query.bereich': function() {
+			if (this.projectBoardsLoaded) {
+				this.pickSection()
+			}
+		},
+
+		visibleSections() {
+			// Vor dem Laden der Boards sähe jedes Projekt wie eines mit nur einem Board aus.
+			if (this.projectBoardsLoaded) {
+				this.pickSection()
+			}
 		},
 	},
 
 	methods: {
 		t,
 
-		fillDraft() {
+		/**
+		 * @param nur Nur diese Felder neu füllen, damit ungespeicherte Eingaben anderer Bereiche bleiben; `ordner` steht für die Dateiablage.
+		 */
+		fillDraft(nur?: string[]) {
 			const board = this.store.board
 			if (board === null) {
 				return
 			}
-			this.board = {
+			const frisch = {
+				projectTitle: this.store.projectTitle,
+				projectDescription: this.store.projectDescription ?? '',
 				title: board.title,
 				description: board.description ?? '',
 				orgInternal: board.orgInternal ?? '',
@@ -958,15 +1146,78 @@ export default defineComponent({
 				// #281: projektweiter Schalter, kommt aus dem Store (nicht am Board).
 				memberBoardsAllowed: this.store.memberBoardsAllowed,
 			}
-			this.folderDrafts = {
+			const ordner = {
 				root: this.store.projectFolder?.path ?? '',
 				public: board.folderPublicPath ?? '',
 				internal: board.folderInternalPath ?? '',
 			}
+			if (nur === undefined) {
+				this.board = frisch
+				this.folderDrafts = ordner
+				return
+			}
+			for (const feld of nur) {
+				if (feld === 'ordner') {
+					this.folderDrafts = ordner
+				} else if (feld in frisch) {
+					(this.board as Record<string, unknown>)[feld] = (frisch as Record<string, unknown>)[feld]
+				}
+			}
 		},
 
-		back() {
-			this.$router.push({ name: 'board', params: { boardId: String(this.boardId) } })
+		async loadProjectBoards(): Promise<void> {
+			const projectId = this.store.board?.projectId
+			if (projectId === null || projectId === undefined) {
+				this.projectBoards = this.store.board ? [this.store.board] : []
+				return
+			}
+			const fuer = this.boardId
+			try {
+				const alle = await fetchBoards(true)
+				if (fuer !== this.boardId) {
+					return
+				}
+				this.projectBoards = alle.filter((b) => b.projectId === projectId)
+			} catch (e) {
+				// Ohne Liste wenigstens die bekannten Reiter, sonst gälte das Projekt fälschlich als Ein-Board-Projekt.
+				const bekannt = this.store.siblingBoards
+				const aktuell = this.store.board
+				this.projectBoards = aktuell === null || bekannt.some((b) => b.id === aktuell.id) ? bekannt : [...bekannt, aktuell]
+				showError((e as { message?: string }).message ?? t('projektwerk', 'Die Boards des Projekts konnten nicht geladen werden'))
+			}
+		},
+
+		/** Den Bereich aus der Adresse übernehmen, sonst den ersten, den der Betrachter sehen darf. */
+		pickSection(): void {
+			const gewuenscht = String(this.$route.query.bereich ?? this.activeSection)
+			if (this.visibleSections.includes(gewuenscht)) {
+				this.activeSection = gewuenscht
+			} else if (!this.visibleSections.includes(this.activeSection)) {
+				this.activeSection = this.visibleSections[0] ?? ''
+			}
+		},
+
+		/**
+		 * @param key Der gewählte Bereich.
+		 */
+		selectSection(key: string): void {
+			this.activeSection = key
+			this.$router.replace({ query: { ...this.$route.query, bereich: key } })
+		},
+
+		/**
+		 * @param option Die gewählte Option der Board-Auswahl.
+		 */
+		switchSettingsBoard(option: { id: number } | null): void {
+			if (option === null || option.id === this.boardId) {
+				return
+			}
+			this.$router.replace({ name: 'board-settings', params: { boardId: String(option.id) }, query: { ...this.$route.query, bereich: this.activeSection } })
+		},
+
+		/** Boardliste und Reiter nachziehen, wenn sich Namen oder Archiv geändert haben. */
+		async refreshLists(): Promise<void> {
+			await Promise.all([this.loadProjectBoards(), this.store.loadBoards()])
 		},
 
 		/**
@@ -1001,16 +1252,21 @@ export default defineComponent({
 		 *
 		 * @param run Der Aufruf.
 		 * @param fallback Meldung, wenn der Server keine eigene mitgibt.
+		 * @param lists Danach auch Boardliste und Reiter neu laden.
+		 * @param felder Die Entwurfsfelder, die der Aufruf gespeichert hat; nur sie kommen frisch vom Server.
 		 */
-		async write(run: () => Promise<unknown>, fallback: string): Promise<void> {
+		async write(run: () => Promise<unknown>, fallback: string, lists = false, felder: string[] = []): Promise<void> {
 			if (this.busy) {
 				return
 			}
 			this.busy = true
 			try {
 				await run()
+				if (lists) {
+					await this.refreshLists()
+				}
 				await this.store.open(this.boardId)
-				this.fillDraft()
+				this.fillDraft(felder)
 				// Die Entwuerfe sind mit dem Neuladen ueberholt; blieben sie
 				// stehen, ueberdeckten sie den Stand vom Server.
 				this.columnDrafts = {}
@@ -1021,31 +1277,44 @@ export default defineComponent({
 			}
 		},
 
-		saveBoard() {
-			// #281: Titel/Beschreibung sind board-scoped (auch der Ersteller darf
-			// sie); die projektweiten Felder sendet nur der Manager. Der Server
-			// erzwingt dasselbe feld-genau — würde der Ersteller ein Projektfeld
-			// mitschicken, käme 403.
-			const managerFields = this.mayManage
-				? {
-						orgInternal: this.blankToNull(this.board.orgInternal),
-						customer: this.blankToNull(this.board.customer),
-						chatUrl: this.blankToNull(this.board.chatUrl),
-						githubEnabled: this.board.githubEnabled,
-						// **Roher String, nicht blankToNull:** Ein leeres Repo soll das
-						// Ziel entfernen; onlyGiven wirft nur `null` heraus.
-						githubRepo: this.board.githubRepo.trim(),
-						memberBoardsAllowed: this.board.memberBoardsAllowed,
-					}
-				: {}
+		saveProject() {
+			return this.write(
+				() => updateBoard(this.boardId, {
+					projectTitle: this.board.projectTitle.trim(),
+					projectDescription: this.blankToNull(this.board.projectDescription),
+					orgInternal: this.blankToNull(this.board.orgInternal),
+					customer: this.blankToNull(this.board.customer),
+					chatUrl: this.blankToNull(this.board.chatUrl),
+					memberBoardsAllowed: this.board.memberBoardsAllowed,
+				}),
+				t('projektwerk', 'Speichern fehlgeschlagen'),
+				true,
+				['projectTitle', 'projectDescription', 'orgInternal', 'customer', 'chatUrl', 'memberBoardsAllowed', ...(this.singleBoard ? ['title', 'description'] : [])],
+			)
+		},
 
+		saveBoardGeneral() {
 			return this.write(
 				() => updateBoard(this.boardId, {
 					title: this.board.title.trim(),
 					description: this.blankToNull(this.board.description),
-					...managerFields,
 				}),
 				t('projektwerk', 'Speichern fehlgeschlagen'),
+				true,
+				['title', 'description'],
+			)
+		},
+
+		saveGithub() {
+			return this.write(
+				() => updateBoard(this.boardId, {
+					githubEnabled: this.board.githubEnabled,
+					// Roher String: Ein leeres Repo entfernt das Ziel, null hieße „nicht geschickt“.
+					githubRepo: this.board.githubRepo.trim(),
+				}),
+				t('projektwerk', 'Speichern fehlgeschlagen'),
+				false,
+				['githubEnabled', 'githubRepo'],
 			)
 		},
 
@@ -1071,6 +1340,8 @@ export default defineComponent({
 			return this.write(
 				() => updateBoard(this.boardId, { [field]: path }),
 				t('projektwerk', 'Ordner konnte nicht gespeichert werden'),
+				false,
+				['ordner'],
 			)
 		},
 
@@ -1495,12 +1766,41 @@ export default defineComponent({
 			)
 		},
 
-		toggleArchived() {
-			const archived = this.store.board?.archived !== true
+		/**
+		 * @param open Der neue Zustand des Dialogs.
+		 */
+		onArchiveDialogToggle(open: boolean) {
+			if (!open) {
+				this.archiveDialog = null
+			}
+		},
+
+		confirmArchive() {
+			const project = this.archiveDialog === 'project'
 
 			return this.write(
-				() => setBoardArchived(this.boardId, archived),
+				async () => {
+					await (project ? setProjectArchived(this.boardId, true) : setBoardArchived(this.boardId, true))
+					this.archiveDialog = null
+				},
 				t('projektwerk', 'Archivieren fehlgeschlagen'),
+				true,
+			)
+		},
+
+		restoreBoard() {
+			return this.write(
+				() => setBoardArchived(this.boardId, false),
+				t('projektwerk', 'Zurückholen fehlgeschlagen'),
+				true,
+			)
+		},
+
+		restoreProject() {
+			return this.write(
+				() => setProjectArchived(this.boardId, false),
+				t('projektwerk', 'Zurückholen fehlgeschlagen'),
+				true,
 			)
 		},
 

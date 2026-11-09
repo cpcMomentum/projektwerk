@@ -45,6 +45,8 @@ interface State {
 	memberBoardsAllowed: boolean
 	/** Der Name des Projekts des geöffneten Boards (#350). */
 	projectTitle: string
+	projectDescription: string | null
+	projectArchived: boolean
 	/** Der Projektordner des geöffneten Boards (#351), oder null. */
 	projectFolder: { id: number, path: string } | null
 	/** Ob der Betrachter das geöffnete Board jetzt löschen dürfte. */
@@ -87,6 +89,8 @@ export const useBoardStore = defineStore('board', {
 		viewer: null,
 		memberBoardsAllowed: false,
 		projectTitle: '',
+		projectDescription: null,
+		projectArchived: false,
 		projectFolder: null,
 		deletable: false,
 		tickets: new Map(),
@@ -424,6 +428,8 @@ export const useBoardStore = defineStore('board', {
 				this.viewer = detail.viewer
 				this.memberBoardsAllowed = detail.memberBoardsAllowed ?? false
 				this.projectTitle = detail.projectTitle ?? ''
+				this.projectDescription = detail.projectDescription ?? null
+				this.projectArchived = detail.projectArchived ?? false
 				this.projectFolder = detail.projectFolder ?? null
 				this.deletable = detail.deletable ?? false
 

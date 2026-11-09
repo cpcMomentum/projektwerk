@@ -3915,6 +3915,25 @@ body .app-projektwerk .v-select.select {
 	color: var(--color-text-maxcontrast);
 }
 
+.app-projektwerk .pw-subnav__block {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.app-projektwerk .pw-subnav__block + .pw-subnav__block {
+	margin-top: 12px;
+}
+
+.app-projektwerk .pw-subnav__picker {
+	margin-bottom: 4px;
+}
+
+.app-projektwerk .pw-subnav__picker .v-select.select {
+	width: 100%;
+	min-width: 0;
+}
+
 .app-projektwerk .pw-subnav__item {
 	display: flex;
 	align-items: center;
