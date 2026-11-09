@@ -70,6 +70,8 @@ import type { MeasureRow } from '@/types/task'
 
 import { t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
+import { overviewProjectTiles } from '@/services/projectTiles'
+import { useBoardStore } from '@/stores/boardStore'
 import { useOverviewStore } from '@/stores/overviewStore'
 import { useTaskStore } from '@/stores/taskStore'
 import { sparklinePoints } from '@/utils/sparkline'
@@ -99,7 +101,7 @@ export default defineComponent({
 	name: 'KennzahlenCard',
 
 	setup() {
-		return { store: useOverviewStore(), taskStore: useTaskStore(), sparkW: SPARK_W, sparkH: SPARK_H }
+		return { store: useOverviewStore(), boardStore: useBoardStore(), taskStore: useTaskStore(), sparkW: SPARK_W, sparkH: SPARK_H }
 	},
 
 	computed: {
@@ -110,7 +112,8 @@ export default defineComponent({
 			const overdue = (this.taskStore.measureRows as MeasureRow[]).filter((row) => row.overdue).length
 			const waitingLong = (this.store.waitingRows as WaitingRow[]).filter((row) => row.days >= LANGE_WARTEZEIT).length
 			const nobody = this.store.nobodyRows.length
-			const stalled = (this.store.projectStatusRows as ProjectStatusRow[]).filter((row) => row.zustand === 'grau').length
+			const stalled = overviewProjectTiles(this.store.projectStatusRows as ProjectStatusRow[], this.boardStore.boards, this.boardStore.lastBoards)
+				.filter((tile) => tile.zustand === 'grau').length
 
 			return [
 				{ key: 'overdue', label: t('projektwerk', 'Überfällig'), count: overdue, cls: 'pw-mini--rot' },

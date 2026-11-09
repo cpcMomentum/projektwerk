@@ -329,4 +329,18 @@ describe('Eine Kachel je Projekt (#380)', () => {
 
 		expect(ansicht.showArchived).toBe(false)
 	})
+
+	it('findet ein Projekt beim Kundenfilter über jedes seiner Boards', async () => {
+		boardStore.boards = [
+			board(1, 'A', { projectId: 7, projectTitle: 'P', customer: 'X' }),
+			board(2, 'B', { projectId: 7, projectTitle: 'P', customer: null }),
+		]
+		boardStore.lastBoards = { 7: 2 }
+		const w = mountView()
+
+		;(w.vm as unknown as { customerFilter: string }).customerFilter = 'X'
+		await w.vm.$nextTick()
+
+		expect(w.findAllComponents(tileStub).map((t) => t.props('title'))).toEqual(['P'])
+	})
 })

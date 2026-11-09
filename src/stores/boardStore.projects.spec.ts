@@ -79,4 +79,25 @@ describe('Projekt-Sicht im Store', () => {
 		await offen
 		expect(store.siblings.map((b) => b.id)).toEqual([6, 99])
 	})
+
+	it('öffnet ohne gemerktes Board das angepinnte Board, nicht das erste', () => {
+		const store = useBoardStore()
+		store.boards = [
+			{ id: 1, projectId: 7, title: 'A', projectTitle: 'P', pinned: false, archived: false },
+			{ id: 2, projectId: 7, title: 'B', projectTitle: 'P', pinned: true, archived: false },
+		] as never
+
+		expect(store.pinnedProjects).toEqual([{ boardId: 2, projectId: 7, title: 'P' }])
+	})
+
+	it('öffnet bei veraltetem Gedächtnis das angepinnte Board', () => {
+		const store = useBoardStore()
+		store.boards = [
+			{ id: 1, projectId: 7, title: 'A', projectTitle: 'P', pinned: false, archived: false },
+			{ id: 2, projectId: 7, title: 'B', projectTitle: 'P', pinned: true, archived: false },
+		] as never
+		store.lastBoards = { 7: 99 }
+
+		expect(store.pinnedProjects[0].boardId).toBe(2)
+	})
 })

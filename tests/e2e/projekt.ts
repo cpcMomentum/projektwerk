@@ -87,20 +87,13 @@ export async function projektAufbauen(browser: Browser, geheimwort: string): Pro
 	}
 }
 
-/**
- * Archiviert das Testboard.
- *
- * Ohne das sammeln sich auf der Dev-Instanz mit jedem Lauf Boards an, bis die
- * Projektliste unbrauchbar ist — und dann laesst man die Tests nicht mehr
- * laufen. Geloescht wird nicht: Die App loescht nie (§5.18), und ein Test darf
- * sich dafuer keine Ausnahme bauen.
- */
+// Archiviert das Testprojekt mit allen Boards; die App löscht nie, auch nicht für Tests.
 export async function projektAufraeumen(browser: Browser, boardId: number): Promise<void> {
 	const kontext = await browser.newContext({ storageState: INTERN.sitzung })
 
 	try {
 		const api = await Api.fuer(kontext.request)
-		await api.boardArchivieren(boardId)
+		await api.projektArchivieren(boardId)
 	} finally {
 		await kontext.close()
 	}
