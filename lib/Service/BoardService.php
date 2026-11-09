@@ -610,6 +610,14 @@ class BoardService {
 		return $archiviert;
 	}
 
+	/** @return list<array{id: int, title: string, archived: bool}> */
+	public function siblingBoards(ViewerContext $viewer): array {
+		return array_map(
+			static fn (Board $b): array => ['id' => (int)$b->getId(), 'title' => (string)$b->getTitle(), 'archived' => $b->isArchived()],
+			$this->projectBoards($viewer),
+		);
+	}
+
 	/** @return list<Board> auch die archivierten */
 	private function projectBoards(ViewerContext $viewer): array {
 		return array_values(array_filter(

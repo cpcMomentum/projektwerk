@@ -15,6 +15,11 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Changed
 
+- **Eine Kachel je Projekt** (#380): Die Projektliste zeigt jedes Projekt genau einmal mit dem
+  Projektnamen und den über alle Boards summierten Zahlen. Ein Klick öffnet das zuletzt genutzte Board
+  (im Browser gemerkt), sonst das erste. Der Schalter „Archivierte zeigen“ blendet archivierte Projekte
+  markiert ein; in einem archivierten Projekt bleiben die Board-Reiter erhalten. Angepinnte Projekte
+  stehen in der Seitenleiste einmal mit dem Projektnamen.
 - **Einstellungen in zwei Gruppen „Projekt“ und „Board“** (#379): Projektname und -beschreibung sind
   jetzt änderbar und stehen im Board-Kopf. Ab zwei Boards gibt es eine Board-Auswahl (archivierte mit
   Zusatz „(archiviert)“, darüber zurückholbar), einen eigenen Boardnamen und ein Board-Archiv. Ein

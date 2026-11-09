@@ -747,7 +747,7 @@
 <script lang="ts">
 import type { SettingsGroup } from '@/components/PwSettingsNav.vue'
 import type { Candidate } from '@/services/settings'
-import type { Board, Column, Member, MemberRole } from '@/types/board'
+import type { Column, Member, MemberRole, SiblingBoard } from '@/types/board'
 
 import { n, t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
@@ -766,7 +766,6 @@ import FolderIcon from 'vue-material-design-icons/Folder.vue'
 import LockIcon from 'vue-material-design-icons/Lock.vue'
 import FolderPicker from '@/components/FolderPicker.vue'
 import PwSettingsNav from '@/components/PwSettingsNav.vue'
-import { fetchBoards } from '@/services/boards'
 import { searchGithubRepos } from '@/services/github'
 import {
 	addMember,
@@ -859,9 +858,9 @@ export default defineComponent({
 			picker: { open: false, slot: 'public' as FolderSlot, start: '' },
 			activeSection: '',
 			/** Alle Boards des Projekts, archivierte eingeschlossen. */
-			projectBoards: [] as Board[],
-			projectBoardsLoaded: false,
 			archiveDialog: null as 'board' | 'project' | null,
+			/** Vor dem ersten Laden sähe jedes Projekt wie eines mit nur einem Board aus; beim Board-Wechsel bleibt die Seite stehen. */
+			projectBoardsLoaded: false,
 		}
 	},
 
@@ -884,16 +883,20 @@ export default defineComponent({
 			return this.mayManage || this.store.viewer?.isBoardCreator === true
 		},
 
+		projectBoards(): SiblingBoard[] {
+			return this.store.siblings
+		},
+
 		/** Bei nur einem Board heißen Projekt und Board gleich; dann entfallen Auswahl, Boardname und Board-Archiv. */
 		singleBoard(): boolean {
 			return this.projectBoards.length <= 1
 		},
 
-		activeProjectBoards(): Board[] {
+		activeProjectBoards(): SiblingBoard[] {
 			return this.projectBoards.filter((b) => !b.archived)
 		},
 
-		archivedProjectBoards(): Board[] {
+		archivedProjectBoards(): SiblingBoard[] {
 			return this.projectBoards.filter((b) => b.archived)
 		},
 
@@ -1102,7 +1105,6 @@ export default defineComponent({
 			async handler(id: number) {
 				await this.store.open(id)
 				this.fillDraft()
-				await this.loadProjectBoards()
 				this.projectBoardsLoaded = true
 				this.pickSection()
 			},
@@ -1115,7 +1117,6 @@ export default defineComponent({
 		},
 
 		visibleSections() {
-			// Vor dem Laden der Boards sähe jedes Projekt wie eines mit nur einem Board aus.
 			if (this.projectBoardsLoaded) {
 				this.pickSection()
 			}
@@ -1165,28 +1166,6 @@ export default defineComponent({
 			}
 		},
 
-		async loadProjectBoards(): Promise<void> {
-			const projectId = this.store.board?.projectId
-			if (projectId === null || projectId === undefined) {
-				this.projectBoards = this.store.board ? [this.store.board] : []
-				return
-			}
-			const fuer = this.boardId
-			try {
-				const alle = await fetchBoards(true)
-				if (fuer !== this.boardId) {
-					return
-				}
-				this.projectBoards = alle.filter((b) => b.projectId === projectId)
-			} catch (e) {
-				// Ohne Liste wenigstens die bekannten Reiter, sonst gälte das Projekt fälschlich als Ein-Board-Projekt.
-				const bekannt = this.store.siblingBoards
-				const aktuell = this.store.board
-				this.projectBoards = aktuell === null || bekannt.some((b) => b.id === aktuell.id) ? bekannt : [...bekannt, aktuell]
-				showError((e as { message?: string }).message ?? t('projektwerk', 'Die Boards des Projekts konnten nicht geladen werden'))
-			}
-		},
-
 		/** Den Bereich aus der Adresse übernehmen, sonst den ersten, den der Betrachter sehen darf. */
 		pickSection(): void {
 			const gewuenscht = String(this.$route.query.bereich ?? this.activeSection)
@@ -1217,7 +1196,7 @@ export default defineComponent({
 
 		/** Boardliste und Reiter nachziehen, wenn sich Namen oder Archiv geändert haben. */
 		async refreshLists(): Promise<void> {
-			await Promise.all([this.loadProjectBoards(), this.store.loadBoards()])
+			await this.store.loadBoards()
 		},
 
 		/**

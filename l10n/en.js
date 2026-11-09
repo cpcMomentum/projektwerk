@@ -583,8 +583,10 @@ OC.L10N.register(
     "Projekt „{title}“" : "Project “{title}”",
     "Das Projekt „{title}“ wird mit allen Boards archiviert. Es verschwindet aus der Projektliste und dem Überblick. Nichts wird gelöscht; zurückholen über Projekt › Archiv." : "The project “{title}” will be archived with all its boards. It disappears from the project list and the overview. Nothing is deleted; restore it via Project › Archive.",
     "Nur das Board „{title}“ wird archiviert. Die anderen Boards des Projekts bleiben unverändert. Nichts wird gelöscht; zurückholen über die Board-Auswahl." : "Only the board “{title}” will be archived. The project's other boards stay unchanged. Nothing is deleted; restore it via the board selection.",
-    "Die Boards des Projekts konnten nicht geladen werden" : "The project's boards could not be loaded",
     "Zurückholen fehlgeschlagen" : "Restoring failed",
-    "{title} (archiviert)" : "{title} (archived)"
+    "{title} (archiviert)" : "{title} (archived)",
+    "Archiviert" : "Archived",
+    "Archivierte zeigen" : "Show archived",
+    "Archivierte Projekte konnten nicht geladen werden" : "Archived projects could not be loaded"
 },
 "nplurals=2; plural=(n != 1);");

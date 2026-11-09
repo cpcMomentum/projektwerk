@@ -277,6 +277,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 		// zusaetzlich gefahren von testBothCompanyNamesReachEveryViewer
 		'BoardMapper::findForViewer' => 'testBoardMetadataPathsTrustTheContextAlone',
 		'ProjectMapper::findForViewer' => 'testBoardMetadataPathsTrustTheContextAlone',
+		'ProjectMapper::findAllForUser' => 'testProjectListFollowsMembership',
 		'BoardMapper::findAllForUser' => 'testBoardListFollowsMembership',
 		'MemberMapper::findForBoard' => 'testBoardMetadataPathsTrustTheContextAlone',
 		'ColumnMapper::findForBoard' => 'testBoardMetadataPathsTrustTheContextAlone',
@@ -1486,6 +1487,18 @@ class LeakMatrixTest extends IntegrationTestCase {
 			$boards->findAllForUser(self::FREMD),
 			'Das Nichtmitglied bekommt eine Boardliste.',
 		);
+	}
+
+	public function testProjectListFollowsMembership(): void {
+		$projects = Server::get(ProjectMapper::class);
+
+		foreach ([self::ANNA, self::BERT, self::CARLA, self::DIRK] as $userId) {
+			$titles = array_map(static fn ($p): string => (string)$p->getTitle(), $projects->findAllForUser($userId));
+			$this->assertContains('Leak-Matrix', $titles, $userId . ' findet sein Projekt nicht.');
+			$this->assertSame(count($titles), count(array_unique($titles)), $userId . ' bekommt ein Projekt doppelt.');
+		}
+
+		$this->assertSame([], $projects->findAllForUser(self::FREMD), 'Das Nichtmitglied bekommt eine Projektliste.');
 	}
 
 	/**

@@ -148,7 +148,7 @@ describe('Board löschen', () => {
 		await flushPromises()
 		const store = useBoardStore()
 		store.board = { id: 5, projectId: 1, title: 'Versehen' } as never
-		store.boards = Array.from({ length: boards }, (_, i) => ({ id: 5 + i, projectId: 1, title: 'B' + i })) as never
+		store.siblings = Array.from({ length: boards }, (_, i) => ({ id: 5 + i, title: 'B' + i, archived: false }))
 		store.viewer = { isManager, isBoardCreator: false } as never
 		store.deletable = deletable
 		await flushPromises()
