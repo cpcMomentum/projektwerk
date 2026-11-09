@@ -147,17 +147,13 @@ class EntitlementService {
 		}
 	}
 
-	/**
-	 * Kundenprojekte instanzweit: nicht archivierte Projekte mit ≥1 externem
-	 * Mitglied.
-	 */
+	/** Archivierte zählen mit: Sie bleiben über Direktlinks beschreibbar, sonst gäbe Archivieren einen Platz frei. */
 	private function countCustomerProjects(): int {
 		$qb = $this->db->getQueryBuilder();
 		$qb->select($qb->createFunction('COUNT(DISTINCT p.id)'))
 			->from('pwerk_projects', 'p')
 			->innerJoin('p', 'pwerk_members', 'm', $qb->expr()->eq('m.project_id', 'p.id'))
-			->where($qb->expr()->eq('p.archived', $qb->createNamedParameter(0, IQueryBuilder::PARAM_INT)))
-			->andWhere($qb->expr()->eq('m.role', $qb->createNamedParameter(ViewerContext::ROLE_EXTERNAL)));
+			->where($qb->expr()->eq('m.role', $qb->createNamedParameter(ViewerContext::ROLE_EXTERNAL)));
 
 		return $this->fetchCount($qb);
 	}

@@ -72,6 +72,8 @@ class BoardReadModel {
 	 * @return array<string, mixed>
 	 */
 	public function show(ViewerContext $viewer): array {
+		$project = $this->boardService->projectFields($viewer);
+
 		return [
 			'board' => $this->boardService->forViewerWithProjectFields($viewer),
 			'members' => $this->members->listForBoard($viewer),
@@ -85,7 +87,9 @@ class BoardReadModel {
 			'deletable' => $this->boardService->isDeletable($viewer),
 			'memberBoardsAllowed' => $this->boardService->projectAllowsMemberBoards($viewer),
 			// #350: Der Kopf zeigt das Projekt, die Boards stehen als Reiter darunter.
-			'projectTitle' => $this->boardService->projectTitle($viewer),
+			'projectTitle' => $project['title'],
+			'projectDescription' => $project['description'],
+			'projectArchived' => $project['archived'],
 			// #351: Der Projektordner für den Knopf im Kopf und den Start des Ordner-Dialogs.
 			'projectFolder' => $this->boardService->projectFolder($viewer),
 		];
