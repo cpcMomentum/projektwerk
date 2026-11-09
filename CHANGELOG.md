@@ -13,6 +13,11 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
   Fortschritt, die Phasen und die offenen und zuletzt bearbeiteten Vorgänge; Kopf, „Neuer Vorgang“
   und Board-Reiter bleiben stehen. Gespeicherte Links auf das frühere Projekt-Dashboard landen auf
   der Übersicht.
+- **Arbeitsschritte klarer gegliedert** (#436): Jeder Schritt steht als eigener Block mit Trennlinie;
+  Beschreibung und Ergebnis beginnen bündig am Titel, die Avatare von Zuständigen und Fristen stehen
+  untereinander. Bearbeiten und Löschen erscheinen bei Maus und Tastatur erst am Schritt selbst, auf
+  Touch-Geräten und schmalen Breiten bleiben sie sichtbar.
+- **„Löschen“ im Vorgang wie „Verworfen“ und „Erledigt“** (#435): helle rote Fläche statt Kontur.
 
 ## [0.4.24] - 2026-11-09
 
