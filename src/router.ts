@@ -12,7 +12,6 @@ import BoardsView from '@/views/BoardsView.vue'
 import BoardView from '@/views/BoardView.vue'
 import MySettingsView from '@/views/MySettingsView.vue'
 import OverviewView from '@/views/OverviewView.vue'
-import ProjectDashboardView from '@/views/ProjectDashboardView.vue'
 import ReplyMailboxSettingsView from '@/views/ReplyMailboxSettingsView.vue'
 import TasksView from '@/views/TasksView.vue'
 import { useBoardStore } from '@/stores/boardStore'
@@ -25,12 +24,11 @@ const routes: RouteRecordRaw[] = [
 	// Die Projektliste hat damit einen eigenen Pfad bekommen. Deep-Links auf
 	// `/boards/:boardId` sind davon **nicht** beruehrt: Sie waren nie `/`.
 	{ path: '/boards', name: 'boards', component: BoardsView },
-	// Das Projekt-Dashboard (#227, Ebene 2): der Landepunkt nach Klick auf eine
-	// Projekt-Kachel im Überblick — Zustand *dieses* Projekts, von hier ein
-	// Klick weiter aufs Board. Eigener Pfad, damit „Board öffnen" und die
-	// Brotkrume „‹ Überblick" echte Ziele sind und der Zurück-Knopf stimmt.
-	{ path: '/project/:boardId', name: 'project-dashboard', component: ProjectDashboardView },
+	// Gleiche Komponente für beide Ansichten, damit Kopf und geladene Daten beim Umschalten stehen bleiben.
 	{ path: '/boards/:boardId', name: 'board', component: BoardView },
+	{ path: '/boards/:boardId/overview', name: 'board-overview', component: BoardView },
+	// Gespeicherte Links auf das frühere Projekt-Dashboard landen auf dessen Nachfolger.
+	{ path: '/project/:boardId', redirect: (to) => ({ name: 'board-overview', params: { boardId: to.params.boardId } }) },
 	{ path: '/boards/:boardId/settings', name: 'board-settings', component: BoardSettingsView },
 	{ path: '/tasks', name: 'tasks', component: TasksView },
 	// Wie in WorkTime: eine eigene Seite, erreichbar unten im Seitenmenue.

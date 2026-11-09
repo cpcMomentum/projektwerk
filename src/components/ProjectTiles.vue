@@ -134,13 +134,10 @@ export default defineComponent({
 		},
 
 		/**
-		 * Ins **Projekt-Dashboard** des Projekts (#227, Ebene 2) — nicht mehr
-		 * direkt aufs Board. Von dort führt „Board öffnen" weiter aufs Kanban.
-		 *
 		 * @param boardId Kennung des Projekts.
 		 */
 		open(boardId: number): void {
-			this.$router.push({ name: 'project-dashboard', params: { boardId: String(boardId) } })
+			this.$router.push({ name: 'board', params: { boardId: String(boardId) } })
 		},
 	},
 })

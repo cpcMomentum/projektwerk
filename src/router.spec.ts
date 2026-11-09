@@ -15,7 +15,7 @@
 import type { Board, MemberRole } from '@/types/board'
 
 import { describe, expect, it } from 'vitest'
-import { gateTarget } from '@/router'
+import { gateTarget, router } from '@/router'
 
 /**
  * Ein Board mit genau dem Feld, das die Regel liest.
@@ -62,5 +62,14 @@ describe('gateTarget', () => {
 			name: 'board',
 			params: { boardId: '7' },
 		})
+	})
+})
+
+describe('frühere Projekt-Dashboard-Adresse (#388)', () => {
+	it('leitet auf die Übersicht desselben Boards um', async () => {
+		await router.push('/project/7')
+
+		expect(router.currentRoute.value.name).toBe('board-overview')
+		expect(router.currentRoute.value.params.boardId).toBe('7')
 	})
 })

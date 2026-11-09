@@ -36,7 +36,7 @@ vi.mock('@/components/TicketDetail.vue', () => ({ default: { name: 'TicketDetail
 vi.mock('@/components/CreateTicketDialog.vue', () => ({ default: { name: 'CreateTicketDialog', template: '<div />' } }))
 vi.mock('@/components/board/BoardDragLayer.vue', () => ({ default: { name: 'BoardDragLayer', template: '<div />' } }))
 
-const route = reactive({ params: { boardId: '5' }, query: {} as Record<string, string> })
+const route = reactive({ name: 'board', params: { boardId: '5' }, query: {} as Record<string, string> })
 
 async function mountView() {
 	const wrapper = shallowMount(BoardView, {
@@ -51,6 +51,7 @@ const field = (wrapper: Awaited<ReturnType<typeof mountView>>) => wrapper.findCo
 describe('Suchfeld im Board (#373)', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia())
+		route.name = 'board'
 		route.params.boardId = '5'
 		vi.useFakeTimers()
 	})
@@ -129,6 +130,7 @@ describe('Suchfeld im Board (#373)', () => {
 describe('Board löschen', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia())
+		route.name = 'board'
 		route.params.boardId = '5'
 	})
 
@@ -199,5 +201,77 @@ describe('Board löschen', () => {
 		expect(open).toHaveBeenCalledWith(5)
 		expect(push).not.toHaveBeenCalled()
 		expect(wrapper.findAllComponents({ name: 'NcButton' }).some((b) => b.props('variant') === 'error')).toBe(false)
+	})
+})
+
+describe('Board | Übersicht (#388)', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia())
+		route.name = 'board'
+		route.params.boardId = '5'
+	})
+
+	async function mountWithPush() {
+		const push = vi.fn()
+		const wrapper = shallowMount(BoardView, {
+			global: { mocks: { $route: route, $router: { push } } },
+		})
+		await flushPromises()
+		return { wrapper, push }
+	}
+
+	const knoepfe = (wrapper: Awaited<ReturnType<typeof mountWithPush>>['wrapper']) => wrapper.findAll('.pw-ansicht .pw-umschalter__knopf')
+
+	it('zeigt den Umschalter auch ohne Board-Reiter, das Board ist aktiv', async () => {
+		const { wrapper } = await mountWithPush()
+
+		expect(wrapper.findComponent({ name: 'NcRadioGroup' }).exists()).toBe(false)
+		expect(knoepfe(wrapper).map((k) => k.attributes('aria-pressed'))).toEqual(['true', 'false'])
+		expect(wrapper.findComponent({ name: 'ProjectOverview' }).exists()).toBe(false)
+	})
+
+	it('wechselt per Adresse in die Übersicht und leert dabei die Suche', async () => {
+		const { wrapper, push } = await mountWithPush()
+		const store = useBoardStore()
+		store.search = 'logo'
+
+		await knoepfe(wrapper)[1].trigger('click')
+
+		expect(push).toHaveBeenCalledWith({ name: 'board-overview', params: { boardId: '5' } })
+		expect(store.search).toBe('')
+	})
+
+	it('zeigt in der Übersicht deren Inhalt ohne Suche und lädt das Board nicht neu', async () => {
+		const { wrapper } = await mountWithPush()
+		const open = vi.spyOn(useBoardStore(), 'open')
+
+		route.name = 'board-overview'
+		await flushPromises()
+
+		expect(wrapper.findComponent({ name: 'ProjectOverview' }).exists()).toBe(true)
+		expect(field(wrapper as never).exists()).toBe(false)
+		expect(knoepfe(wrapper).map((k) => k.attributes('aria-pressed'))).toEqual(['false', 'true'])
+		expect(open).not.toHaveBeenCalled()
+	})
+
+	it('zeigt in der Übersicht keinen Suchhinweis, auch wenn noch ein Suchbegriff steht', async () => {
+		const { wrapper } = await mountWithPush()
+		useBoardStore().search = 'zzz'
+		await flushPromises()
+		expect(wrapper.find('.pw-search-empty').exists()).toBe(true)
+
+		route.name = 'board-overview'
+		await flushPromises()
+
+		expect(wrapper.find('.pw-search-empty').exists()).toBe(false)
+	})
+
+	it('behält die Übersicht beim Wechsel auf ein anderes Board', async () => {
+		route.name = 'board-overview'
+		const { wrapper, push } = await mountWithPush()
+
+		;(wrapper.vm as unknown as { switchBoard: (id: number) => void }).switchBoard(6)
+
+		expect(push).toHaveBeenCalledWith({ name: 'board-overview', params: { boardId: '6' } })
 	})
 })
