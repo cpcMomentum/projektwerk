@@ -39,6 +39,7 @@ use OCA\Projektwerk\Db\TicketDepMapper;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Db\TicketReadMapper;
 use OCA\Projektwerk\Service\IdempotencyService;
+use OCA\Projektwerk\Db\TicketLogMapper;
 use OCA\Projektwerk\Db\TicketUserMapper;
 use OCA\Projektwerk\Service\BoardPinService;
 use OCA\Projektwerk\Service\BoardService;
@@ -264,6 +265,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'MemberMapper::findForUserBoards' => 'testMemberNamesCoverOnlyMyOwnBoards',
 		'TicketMapper::findVisibleWithMyOpenSteps' => 'testMyStepsNeverWidensBeyondTheVisibleSet',
 		'TicketMapper::findVisibleAnywhere' => 'testDeepLinkLookupMatchesTheVisibleSet',
+		'TicketMapper::findVisibleMatching' => 'testSearchNeverWidensBeyondTheVisibleSet',
 		'TicketMapper::findForRestore' => 'testRestoreLookupIsScopedToBoardAndOwningRole',
 		'TicketMapper::countVisibleInBoard' => 'testCountersNeverCountWhatIsHidden',
 		'TicketMapper::findLastPositionInColumn' => 'testLastPositionIsTheSameForEveryViewer',
@@ -288,6 +290,8 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'AttachmentMapper::countForTickets' => 'testChildCountersFollowTheFilteredTicketSet',
 		'TicketUserMapper::findForTickets' => 'testChildrenFollowTheFilteredTicketSet',
 		'TicketUserMapper::countForTickets' => 'testChildCountersFollowTheFilteredTicketSet',
+		'TicketLogMapper::findForTickets' => 'testChildrenFollowTheFilteredTicketSet',
+		'TicketLogMapper::countForTickets' => 'testChildCountersFollowTheFilteredTicketSet',
 		// **Zwei Pfade ohne Betrachter.** Ihre Erwartung ist eine andere Art von
 		// Zusage — die Begruendung steht bei den Eintraegen in der Registry und
 		// bei den beiden Tests selbst.
@@ -310,6 +314,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'board#show' => 'testBoardShowEndpointRefusesNonMembers',
 		'ticket#index' => 'testTicketIndexEndpointMatchesTheVisibleSet',
 		'ticket#show' => 'testTicketShowEndpointMatchesTheVisibleSet',
+		'ticket#history' => 'testTicketHistoryEndpointMatchesTheVisibleSet',
 		'deepLink#ticket' => 'testDeepLinkTellsOnlyWhatTheViewerMaySee',
 		'step#assignable' => 'testAssignableNeverOffersSomeoneWhoCannotSeeTheTicket',
 		'step#assignableForNew' => 'testAssignableForNewFollowsTheChosenVisibility',
@@ -1727,6 +1732,23 @@ class LeakMatrixTest extends IntegrationTestCase {
 		}
 	}
 
+	public function testTicketHistoryEndpointMatchesTheVisibleSet(): void {
+		foreach (self::VISIBLE as $userId => $expected) {
+			$controller = $this->ticketController($userId);
+
+			foreach (LeakMatrixFixture::TICKETS as $label => $_) {
+				$response = $controller->history($this->fixture->boardId, $this->fixture->ticketIds[$label]);
+
+				if ($userId !== self::FREMD && in_array($label, $expected, true)) {
+					$this->assertSame(Http::STATUS_OK, $response->getStatus(), $userId . ' / ' . $label);
+					$this->assertCount(1, $response->getData()['history'], $userId . ' / ' . $label);
+				} else {
+					$this->assertSame(Http::STATUS_NOT_FOUND, $response->getStatus(), $userId . ' bekommt den Verlauf von ' . $label . '.');
+				}
+			}
+		}
+	}
+
 	/**
 	 * **Ein geloeschter Vorgang verschwindet aus JEDEM Lesepfad.**
 	 *
@@ -1940,6 +1962,21 @@ class LeakMatrixTest extends IntegrationTestCase {
 						. 'Zustaendigen-Auswahl, die von der Sichtbarkeit abweicht.',
 				);
 			}
+		}
+	}
+
+	/**
+	 * Suche und Smart Picker (#419): Jeder Fixture-Titel enthält „/“, die Suche danach muss genau die sichtbare Menge liefern.
+	 */
+	public function testSearchNeverWidensBeyondTheVisibleSet(): void {
+		$tickets = Server::get(TicketMapper::class);
+
+		foreach (self::VISIBLE as $userId => $expected) {
+			// Die Suche geht über alle Boards: Bert ist auch extern in Board B.
+			if ($userId === self::BERT) {
+				$expected = [...$expected, 'b:public/erna', 'b:internal/bert'];
+			}
+			$this->assertTicketLabels($expected, $tickets->findVisibleMatching($userId, '/', 100), 'Suche ' . $userId);
 		}
 	}
 
@@ -2159,6 +2196,12 @@ class LeakMatrixTest extends IntegrationTestCase {
 				if (in_array($label, $expected, true)) {
 					$this->assertSame($label, $byId->structured()['ticket']['title'], $userId . ' / ' . $label);
 					$this->assertSame($label, $byNumber->structured()['ticket']['title'], $userId . ' / ' . $label . ' (Nummer)');
+					$restHistory = $this->ticketController($userId)->history($boardId, $this->fixture->ticketIds[$label])->getData()['history'];
+					$this->assertSame(
+						array_map(static fn ($entry): int => (int)$entry->getId(), $restHistory),
+						array_column($byId->structured()['history'], 'id'),
+						$userId . ' / ' . $label . ' (Verlauf)',
+					);
 				} else {
 					$this->assertSame($notFound, ToolResult::encode($byId->toArray()), $userId . ' / ' . $label);
 					$this->assertSame($notFound, ToolResult::encode($byNumber->toArray()), $userId . ' / ' . $label . ' (Nummer)');
@@ -2333,6 +2376,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 			'Arbeitsschritte' => Server::get(StepMapper::class),
 			'Anhaenge' => Server::get(AttachmentMapper::class),
 			'Mitarbeitende' => Server::get(TicketUserMapper::class),
+			'Verlauf' => Server::get(TicketLogMapper::class),
 		];
 	}
 

@@ -24,4 +24,5 @@ package-lock.json   export-ignore
 playwright.config.ts export-ignore
 tsconfig.json       export-ignore
 vite.config.ts      export-ignore
+vite.reference.config.ts export-ignore
 vitest.config.ts    export-ignore

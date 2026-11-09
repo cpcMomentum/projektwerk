@@ -9,10 +9,13 @@ declare(strict_types=1);
 
 namespace OCA\Projektwerk\AppInfo;
 
+use OCA\Projektwerk\Listener\LoadReferenceWidgetListener;
 use OCA\Projektwerk\Listener\UserDeletedListener;
 use OCA\Projektwerk\Mcp\OidcTokenValidator;
 use OCA\Projektwerk\Mcp\TokenValidator;
 use OCA\Projektwerk\Notification\Notifier;
+use OCA\Projektwerk\Reference\TicketReferenceProvider;
+use OCA\Projektwerk\Search\TicketSearchProvider;
 use OCA\Projektwerk\SetupCheck\GuestsWhitelistCheck;
 use OCA\Projektwerk\SetupCheck\InstanceConfigCheck;
 use OCA\Projektwerk\SetupCheck\McpSetupCheck;
@@ -20,6 +23,7 @@ use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
 use OCP\AppFramework\Bootstrap\IRegistrationContext;
+use OCP\Collaboration\Reference\RenderReferenceEvent;
 use OCP\User\Events\UserDeletedEvent;
 
 class Application extends App implements IBootstrap {
@@ -63,6 +67,10 @@ class Application extends App implements IBootstrap {
 		// das blieben unsichtbare private Vorgaenge und ein ewiges „wartet auf
 		// Kunde" stehen — mangels Admin-Ausnahme fuer immer.
 		$context->registerEventListener(UserDeletedEvent::class, UserDeletedListener::class);
+
+		$context->registerReferenceProvider(TicketReferenceProvider::class);
+		$context->registerSearchProvider(TicketSearchProvider::class);
+		$context->registerEventListener(RenderReferenceEvent::class, LoadReferenceWidgetListener::class);
 	}
 
 	public function boot(IBootContext $context): void {

@@ -1,0 +1,104 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * SPDX-FileCopyrightText: 2026 cpcMomentum
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
+namespace OCA\Projektwerk\Service;
+
+use OCA\Projektwerk\Access\TicketScope;
+use OCA\Projektwerk\Access\ViewerContext;
+use OCA\Projektwerk\Db\Ticket;
+use OCA\Projektwerk\Db\TicketLog;
+use OCA\Projektwerk\Db\TicketLogMapper;
+use OCP\Collaboration\Reference\IReferenceManager;
+
+class TicketLogService {
+
+	private const MAX_LENGTH = 255;
+
+	public function __construct(
+		private TicketLogMapper $log,
+		private TicketScope $scope,
+		private IReferenceManager $references,
+	) {
+	}
+
+	/**
+	 * Im selben Schreibvorgang aufrufen wie die Änderung, mit dem Vorgang im neuen Stand.
+	 */
+	public function record(
+		ViewerContext $viewer,
+		Ticket $ticket,
+		string $action,
+		?string $subject = null,
+		?string $oldValue = null,
+		?string $newValue = null,
+	): TicketLog {
+		return $this->recordFor($viewer->userId, (int)$ticket->getId(), (string)$ticket->getVisibility(), $action, $subject, $oldValue, $newValue, $viewer->via);
+	}
+
+	/**
+	 * Für Wege ohne Betrachter oder geladenen Vorgang: Spalte entfernen, Mitglied entfernen, `occ`.
+	 */
+	public function recordFor(
+		string $actorUserId,
+		int $ticketId,
+		string $visibility,
+		string $action,
+		?string $subject = null,
+		?string $oldValue = null,
+		?string $newValue = null,
+		?string $via = null,
+	): TicketLog {
+		$entry = new TicketLog();
+		$entry->setTicketId($ticketId);
+		$entry->setActorUserId($actorUserId);
+		$entry->setVia($via);
+		$entry->setAction($action);
+		$entry->setSubject($this->cut($subject));
+		$entry->setOldValue($this->cut($oldValue));
+		$entry->setNewValue($this->cut($newValue));
+		$entry->setVisibility($visibility);
+		$entry->setCreatedAt(new \DateTime());
+		// Jede Änderung läuft hier durch; eine veraltete Vorschaukarte zeigte sonst bis zu einer Stunde den alten Stand.
+		$this->references->invalidateCache((string)$entry->getTicketId());
+
+		return $this->log->insert($entry);
+	}
+
+	/** @return TicketLog[] älteste zuerst; `$ticket` stammt aus findVisible() */
+	public function listFor(ViewerContext $viewer, Ticket $ticket): array {
+		$visible = [];
+		foreach ($this->log->findForTickets([(int)$ticket->getId()]) as $entry) {
+			if (!$this->wouldSee($viewer, $ticket, $entry->getVisibility())) {
+				continue;
+			}
+			// Der alte Stand eines Sichtbarkeitswechsels verriete den Vorlauf.
+			if ($entry->getAction() === TicketLog::VISIBILITY
+				&& !$this->wouldSee($viewer, $ticket, (string)$entry->getOldValue())) {
+				$entry->setOldValue(null);
+			}
+			$visible[] = $entry;
+		}
+
+		return $visible;
+	}
+
+	private function wouldSee(ViewerContext $viewer, Ticket $ticket, string $visibility): bool {
+		return $this->scope->wouldSee(
+			$visibility,
+			(string)$ticket->getCreatorUserId(),
+			(string)$ticket->getCreatorRole(),
+			$viewer->userId,
+			$viewer->role,
+		);
+	}
+
+	private function cut(?string $value): ?string {
+		return $value === null ? null : mb_substr($value, 0, self::MAX_LENGTH);
+	}
+}

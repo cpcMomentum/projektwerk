@@ -8,7 +8,7 @@
 
 import type { WriteOptions } from '@/services/api'
 import type { Visibility } from '@/types/board'
-import type { Ticket, TicketDetail, TicketLinks, TicketList } from '@/types/ticket'
+import type { Ticket, TicketDetail, TicketLinks, TicketList, TicketLogEntry } from '@/types/ticket'
 
 import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from '@/services/api'
 
@@ -31,6 +31,16 @@ export async function fetchTickets(boardId: number, columnId?: number): Promise<
  */
 export async function fetchTicket(boardId: number, ticketId: number): Promise<TicketDetail> {
 	return apiGet<TicketDetail>(`/boards/${boardId}/tickets/${ticketId}`)
+}
+
+/**
+ * Der Verlauf eines Vorgangs, älteste Einträge zuerst.
+ *
+ * @param boardId Kennung des Projekts.
+ * @param ticketId Kennung des Vorgangs.
+ */
+export async function fetchTicketHistory(boardId: number, ticketId: number): Promise<TicketLogEntry[]> {
+	return (await apiGet<{ history: TicketLogEntry[] }>(`/boards/${boardId}/tickets/${ticketId}/history`)).history
 }
 
 /**

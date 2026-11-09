@@ -60,6 +60,8 @@ final class ReadPathRegistry {
 		// Der Deep-Link kennt nur die Ticketnummer, kein Board — deshalb ohne
 		// Board-Einschraenkung, aber ueber dieselbe Regel.
 		'TicketMapper::findVisibleAnywhere',
+		// Suche und Smart Picker (#419): boardübergreifend wie der Deep-Link, über dieselbe Regel.
+		'TicketMapper::findVisibleMatching',
 		// Der Wiederherstell-Abruf (#167). Der **einzige** Ticket-Lesepfad, der
 		// bewusst am Sichtbarkeits-Scope vorbeigeht: Er joint nicht auf die
 		// Mitgliedschaft — sonst faende er das Geloeschte nie wieder — und filtert
@@ -137,6 +139,8 @@ final class ReadPathRegistry {
 		'AttachmentMapper::countForTickets',
 		'TicketUserMapper::findForTickets',
 		'TicketUserMapper::countForTickets',
+		'TicketLogMapper::findForTickets',
+		'TicketLogMapper::countForTickets',
 
 		// **Zwei Lesepfade ohne Betrachter — und das ist die Erwartung.**
 		//
@@ -221,6 +225,7 @@ final class ReadPathRegistry {
 		'overview#index',
 		'ticket#index',
 		'ticket#show',
+		'ticket#history',
 		// Liefert zwar nur die Vue-Huelle, aber der Initial State darin
 		// beantwortet die Frage „darfst du diesen Vorgang sehen" — und damit
 		// gehoert die Route in die Matrix und nicht unter ROUTES_WITHOUT_DATA.

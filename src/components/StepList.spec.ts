@@ -480,21 +480,23 @@ describe('StepList', () => {
 		expect(updateStep).not.toHaveBeenCalled()
 	})
 
-	it('merkt sich die gewählte Person für mehrere neue Schritte', async () => {
+	it('setzt die gewählte Person nach jedem neuen Schritt zurück', async () => {
 		const wrapper = mountList()
 		await new Promise((resolve) => setTimeout(resolve, 0))
 		const carla = wrapper.findAll('.pw-step--new .nc-action').find((b) => b.text() === 'Carla Cordes')
 		await carla!.trigger('click')
+		expect(wrapper.find('.pw-step__neu-person').attributes('title')).toBe('Zuständig für den neuen Arbeitsschritt: {name}')
 
-		for (const titel of ['Eins', 'Zwei', 'Drei']) {
+		for (const titel of ['Eins', 'Zwei']) {
 			await fuelleZeile(wrapper, titel)
 			await klickeHinzufuegen(wrapper)
 		}
 
 		expect(createStep.mock.calls.map((call) => [call[2].title, call[2].assignedUserId])).toEqual([
-			['Eins', 'carla'], ['Zwei', 'carla'], ['Drei', 'carla'],
+			['Eins', 'carla'],
+			['Zwei', undefined],
 		])
-		expect(wrapper.find('.pw-step__neu-person').attributes('title')).toBe('Zuständig für neue Arbeitsschritte: {name}')
+		expect(wrapper.find('.pw-step__neu-person').attributes('title')).toBe('Zuständig für den neuen Arbeitsschritt: niemand')
 	})
 
 	it('legt nach „Niemand“ wieder ohne Zuweisung an', async () => {

@@ -15,6 +15,7 @@ use OCA\Projektwerk\Db\Column;
 use OCA\Projektwerk\Db\ColumnMapper;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Service\ColumnService;
+use OCA\Projektwerk\Service\TicketLogService;
 use OCA\Projektwerk\Service\NotManagerException;
 use OCP\IDBConnection;
 use PHPUnit\Framework\TestCase;
@@ -33,6 +34,7 @@ class ColumnServiceTest extends TestCase {
 			$columns ?? $this->createStub(ColumnMapper::class),
 			$this->createStub(BoardMapper::class),
 			$this->createStub(TicketMapper::class),
+			$this->createStub(TicketLogService::class),
 		);
 	}
 

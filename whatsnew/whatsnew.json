@@ -1,4 +1,57 @@
 {
+	"0.4.24": [
+		{
+			"title": {
+				"de": "Verlauf im Vorgang",
+				"en": "History in the ticket"
+			},
+			"text": {
+				"de": "Über „Kommentare | Verlauf“ siehst du, wer wann was am Vorgang geändert hat: Spalte, Zuständigkeit, Frist, Abschluss, Arbeitsschritte und mehr, auch Änderungen über Claude. Kunden sehen nur, was sie auch sonst sehen dürfen.",
+				"en": "Via “Comments | History” you see who changed what and when: column, assignee, due date, completion, work steps and more, including changes made through Claude. Customers only see what they may see anyway."
+			},
+			"icon": "file-document",
+			"where": {
+				"de": "Im Vorgang unter den Arbeitsschritten",
+				"en": "In the ticket, below the work steps"
+			},
+			"adminOnly": false,
+			"plus": false
+		},
+		{
+			"title": {
+				"de": "Vorgänge in Talk teilen",
+				"en": "Share tickets in Talk"
+			},
+			"text": {
+				"de": "„Link zum Vorgang kopieren“ legt den Direktlink in die Zwischenablage. In Talk erscheint er als Karte mit Nummer, Titel, Status, Zuständigen und Frist. Über „/“ in Talk suchst du Vorgänge direkt. Wer den Vorgang nicht sehen darf, sieht nur den Link.",
+				"en": "“Copy link to ticket” puts the direct link on the clipboard. In Talk it shows up as a card with number, title, status, assignee and due date. Type “/” in Talk to search tickets directly. Anyone not allowed to see the ticket only sees the link."
+			},
+			"icon": "star",
+			"where": {
+				"de": "Im Vorgangskopf und in Talk",
+				"en": "In the ticket header and in Talk"
+			},
+			"adminOnly": false,
+			"plus": false
+		},
+		{
+			"title": {
+				"de": "Schneller im Board",
+				"en": "Faster in the board"
+			},
+			"text": {
+				"de": "Das Plus im Spaltenkopf legt einen Vorgang direkt in dieser Spalte an. Mittelklick oder Strg-/Cmd-Klick auf eine Karte öffnet den Vorgang in einem neuen Tab.",
+				"en": "The plus in a column header creates a ticket right in that column. Middle-click or Ctrl/Cmd-click on a card opens the ticket in a new tab."
+			},
+			"icon": "chart-bar",
+			"where": {
+				"de": "Im Board",
+				"en": "In the board"
+			},
+			"adminOnly": false,
+			"plus": false
+		}
+	],
 	"0.4.23": [
 		{
 			"title": {

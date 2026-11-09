@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace OCA\Projektwerk\Command;
 
+use OCA\Projektwerk\Db\TicketLog;
+use OCA\Projektwerk\Service\TicketLogService;
 use OCP\IDBConnection;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -34,7 +36,10 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 class TicketRestore extends Command {
 
-	public function __construct(private IDBConnection $db) {
+	public function __construct(
+		private IDBConnection $db,
+		private TicketLogService $log,
+	) {
 		parent::__construct();
 	}
 
@@ -89,15 +94,16 @@ class TicketRestore extends Command {
 	}
 
 	private function restore(int $ticketId, OutputInterface $output): int {
-		$qb = $this->db->getQueryBuilder();
-		$qb->update('pwerk_tickets')
-			->set('deleted_at', $qb->createNamedParameter(null))
-			->where($qb->expr()->eq('id', $qb->createNamedParameter($ticketId)))
-			->andWhere($qb->expr()->isNotNull('deleted_at'));
+		$this->db->beginTransaction();
+		try {
+			$restored = $this->restoreWithLog($ticketId);
+			$this->db->commit();
+		} catch (\Throwable $e) {
+			$this->db->rollBack();
+			throw $e;
+		}
 
-		$betroffen = $qb->executeStatement();
-
-		if ($betroffen === 0) {
+		if (!$restored) {
 			// Ein Vorgang, der nicht geloescht ist, ist kein Fehler — aber auch
 			// keine Wiederherstellung. Der Unterschied gehoert gesagt.
 			$output->writeln('<comment>Nichts wiederhergestellt: unbekannte Kennung oder nicht geloescht.</comment>');
@@ -108,5 +114,28 @@ class TicketRestore extends Command {
 		$output->writeln('<info>Vorgang ' . $ticketId . ' wiederhergestellt.</info>');
 
 		return 0;
+	}
+
+	/** Wiederherstellen und Verlaufseintrag gemeinsam, damit keiner ohne den anderen bleibt. */
+	private function restoreWithLog(int $ticketId): bool {
+		$read = $this->db->getQueryBuilder();
+		$read->select('visibility')
+			->from('pwerk_tickets')
+			->where($read->expr()->eq('id', $read->createNamedParameter($ticketId)));
+		$visibility = $read->executeQuery()->fetchOne();
+
+		$qb = $this->db->getQueryBuilder();
+		$qb->update('pwerk_tickets')
+			->set('deleted_at', $qb->createNamedParameter(null))
+			->where($qb->expr()->eq('id', $qb->createNamedParameter($ticketId)))
+			->andWhere($qb->expr()->isNotNull('deleted_at'));
+
+		if ($qb->executeStatement() === 0) {
+			return false;
+		}
+
+		$this->log->recordFor(TicketLog::ACTOR_SYSTEM, $ticketId, (string)$visibility, TicketLog::RESTORED);
+
+		return true;
 	}
 }

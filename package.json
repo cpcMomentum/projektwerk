@@ -13,7 +13,7 @@
   "author": "cpcMomentum",
   "type": "module",
   "scripts": {
-    "build": "vite build && mkdir -p js css && cp -r dist/js/* js/ && cp -r dist/css/* css/",
+    "build": "vite build && vite build -c vite.reference.config.ts && mkdir -p js css && cp -r dist/js/* js/ && cp -r dist/css/* css/",
     "dev": "vite",
     "l10n:check": "nc-l10n-check",
     "l10n:fix": "nc-l10n-check --fix",

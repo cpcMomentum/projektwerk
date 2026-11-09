@@ -20,7 +20,7 @@
 			</div>
 
 			<div class="pw-view__actions">
-				<NcButton variant="primary" :disabled="store.columns.length === 0" @click="creating = true">
+				<NcButton variant="primary" :disabled="store.columns.length === 0" @click="neuerVorgang(null)">
 					<template #icon>
 						<PlusIcon :size="20" />
 					</template>
@@ -101,12 +101,7 @@
 			</div>
 		</div>
 
-		<!--
-			Die Boards des Projekts als Reiter (#350, vorher ein Menü „Boards"):
-			Zustand und Wechsel in einem Element. Derselbe Umschalter wie die
-			Sichtbarkeit im Vorgang, kein zweites Muster. Erscheint ab zwei Boards;
-			wer ein Board anlegen darf, sieht ihn auch bei einem, mit „+" dahinter.
-		-->
+		<!-- Wer ein Board anlegen darf, sieht die Reiter schon bei einem Board, damit das „+" erreichbar bleibt. -->
 		<div v-if="store.siblingBoards.length > 1 || store.canAddBoard" class="pw-boardtabs">
 			<div class="pw-boardtabs__group">
 				<NcRadioGroup
@@ -225,6 +220,18 @@
 						Rueckfrage beim Entfernen derselben Spalte nennt.
 					-->
 					<span class="pw-n">{{ view.total }}</span>
+					<!-- Endspalten bekommen keins: Dort landet ein Vorgang durch Abschließen, nicht durch Anlegen. -->
+					<NcButton
+						v-if="!view.column.finalOutcome"
+						class="pw-col__neu"
+						variant="tertiary"
+						:ariaLabel="t('projektwerk', 'Neuer Vorgang in „{spalte}“', { spalte: view.column.title }, undefined, { escape: false })"
+						:title="t('projektwerk', 'Neuer Vorgang in „{spalte}“', { spalte: view.column.title }, undefined, { escape: false })"
+						@click="neuerVorgang(view.column.id)">
+						<template #icon>
+							<PlusIcon :size="20" />
+						</template>
+					</NcButton>
 				</div>
 				<div class="pw-stack">
 					<!--
@@ -327,6 +334,7 @@
 			:members="store.members"
 			:orgInternal="store.board?.orgInternal ?? ''"
 			:customer="store.board?.customer ?? ''"
+			:initialColumnId="createColumnId"
 			@update:open="creating = $event"
 			@create="create" />
 
@@ -478,6 +486,7 @@ export default defineComponent({
 	data() {
 		return {
 			creating: false,
+			createColumnId: null as number | null,
 			openTicketData: null as Ticket | null,
 			openSteps: [] as Step[],
 			openComments: [] as Comment[],
@@ -1053,6 +1062,16 @@ export default defineComponent({
 				}
 				reportWriteError(e, t('projektwerk', 'Löschen fehlgeschlagen'), isConflict(e))
 			}
+		},
+
+		/**
+		 * Den Anlege-Dialog öffnen.
+		 *
+		 * @param columnId Voreingestellte Spalte, oder null für die erste.
+		 */
+		neuerVorgang(columnId: number | null): void {
+			this.createColumnId = columnId
+			this.creating = true
 		},
 
 		/**

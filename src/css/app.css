@@ -165,6 +165,11 @@
 	color: var(--color-text-maxcontrast);
 }
 
+.app-projektwerk .pw-col__head .pw-col__neu {
+	align-self: center;
+	margin: -8px 0 -8px auto;
+}
+
 .app-projektwerk .pw-col__head .pw-n {
 	font-variant-numeric: tabular-nums;
 	font-weight: 600;
@@ -892,6 +897,18 @@ body .app-projektwerk .v-select.select .vs__open-indicator svg {
 	padding-bottom: var(--pw-abstand-zeile);
 }
 
+/* Drei Knöpfe passen bei Handybreite nicht in eine Zeile; ohne Umbruch kappt NcDialog die Beschriftungen. */
+.pw-dialog-neu .dialog__actions {
+	flex-wrap: wrap;
+	justify-content: flex-end;
+}
+
+@media (max-width: 512px) {
+	.pw-dialog-neu .dialog__actions .button-vue {
+		flex: 1 1 auto;
+	}
+}
+
 
 .app-projektwerk .pw-field {
 	display: flex;
@@ -962,11 +979,7 @@ body .app-projektwerk .v-select.select .vs__open-indicator svg {
 	gap: 0;
 }
 
-/*
- * Die Boards eines Projekts als Reiter (#350): derselbe Umschalter wie die
- * Sichtbarkeit, links unter dem Projektkopf, „+" daneben. Viele Boards rollen
- * waagerecht statt umzubrechen.
- */
+/* Viele Boards rollen waagerecht statt umzubrechen. */
 .app-projektwerk .pw-boardtabs {
 	display: flex;
 	align-items: center;
@@ -1042,8 +1055,7 @@ body .app-projektwerk .v-select.select .vs__open-indicator svg {
  * Gilt für alle drei Einsatzorte (Detail, Anlege-Dialog, Wizard); die
  * Größen-Feinheiten oben bleiben auf `--knapp` beschränkt.
  */
-.app-projektwerk .pw-vischoice [class*='_ncFormBox_row'],
-.app-projektwerk .pw-boardtabs__group [class*='_ncFormBox_row'] {
+.app-projektwerk .pw-vischoice [class*='_ncFormBox_row'] {
 	background: var(--color-background-dark);
 	border-radius: var(--border-radius-element, 8px);
 	padding: 1px;
@@ -1062,8 +1074,7 @@ body .app-projektwerk .v-select.select .vs__open-indicator svg {
 	padding: 0;
 }
 
-.app-projektwerk .pw-vischoice [class*='_radioGroupButton_'],
-.app-projektwerk .pw-boardtabs__group [class*='_radioGroupButton_'] {
+.app-projektwerk .pw-vischoice [class*='_radioGroupButton_'] {
 	background: none;
 	border: none;
 	border-radius: var(--border-radius-element, 8px);
@@ -1071,8 +1082,7 @@ body .app-projektwerk .v-select.select .vs__open-indicator svg {
 	box-shadow: none;
 }
 
-.app-projektwerk .pw-vischoice [class*='_radioGroupButton_']:hover,
-.app-projektwerk .pw-boardtabs__group [class*='_radioGroupButton_']:hover {
+.app-projektwerk .pw-vischoice [class*='_radioGroupButton_']:hover {
 	background: var(--color-background-hover);
 }
 
@@ -1081,12 +1091,42 @@ body .app-projektwerk .v-select.select .vs__open-indicator svg {
  * gewinnt die Reihenfolge: weiße Kachel, blaue Schrift, zarter Schatten.
  */
 .app-projektwerk .pw-vischoice [class*='_radioGroupButton_active'],
-.app-projektwerk .pw-boardtabs__group [class*='_radioGroupButton_active'],
-.app-projektwerk .pw-vischoice [class*='_radioGroupButton_active']:hover,
-.app-projektwerk .pw-boardtabs__group [class*='_radioGroupButton_active']:hover {
+.app-projektwerk .pw-vischoice [class*='_radioGroupButton_active']:hover {
 	background: var(--color-main-background);
 	color: var(--color-primary-element);
 	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+/* Board-Reiter wie `.pw-umschalter`: Auf hellem Grund war die weiße Aktiv-Kachel kaum vom Grau zu unterscheiden. */
+.app-projektwerk .pw-boardtabs__group [class*='_ncFormBox_row'] {
+	gap: 4px;
+	padding: 0;
+	background: none;
+	border-bottom: 1px solid var(--color-border);
+	border-radius: 0;
+}
+
+.app-projektwerk .pw-boardtabs__group [class*='_radioGroupButton_'][class*='_ncFormBox__item'] {
+	margin-block-end: -1px;
+	padding-inline: 12px;
+	background: none;
+	border: none;
+	border-bottom: 3px solid transparent;
+	border-radius: 0;
+	box-shadow: none;
+	color: var(--color-text-maxcontrast);
+	font-weight: 600;
+}
+
+.app-projektwerk .pw-boardtabs__group [class*='_radioGroupButton_'][class*='_ncFormBox__item']:hover {
+	color: var(--color-main-text);
+	background: var(--color-background-hover);
+}
+
+.app-projektwerk .pw-boardtabs__group [class*='_radioGroupButton_active'][class*='_ncFormBox__item'],
+.app-projektwerk .pw-boardtabs__group [class*='_radioGroupButton_active'][class*='_ncFormBox__item']:hover {
+	color: var(--color-main-text);
+	border-bottom-color: var(--color-primary-element);
 }
 
 .app-projektwerk .pw-vishint {
@@ -1228,6 +1268,16 @@ body .modal-wrapper:has(.pw-detail) > .modal-container {
 	 * unlesbar.
 	 */
 	color: var(--color-error-text);
+}
+
+/* Ohne Kontur ging der Knopf neben den umrandeten Ausgängen unter; Fläche gibt es erst beim Darüberfahren. */
+.app-projektwerk .pw-detail__loeschen.button-vue {
+	border-color: color-mix(in srgb, var(--color-error-text) 40%, transparent);
+}
+
+.app-projektwerk .pw-detail__loeschen.button-vue:hover:not(:disabled) {
+	background-color: var(--color-error);
+	border-color: var(--color-error-text);
 }
 
 /*
@@ -1666,6 +1716,92 @@ body .modal-wrapper:has(.pw-detail) > .modal-container {
 
 .app-projektwerk .pw-abschnitt__aktion {
 	margin-inline-start: auto;
+}
+
+/* ---- Umschalter Kommentare / Verlauf ------------------------------------ */
+
+/* Der aktive Knopf trägt Textfarbe, Gewicht und Unterstrich in der Hausfarbe, nicht bloß einen Grauton. */
+.app-projektwerk .pw-umschalter {
+	display: flex;
+	gap: 4px;
+	margin-block-end: 12px;
+	border-bottom: 1px solid var(--color-border);
+}
+
+.app-projektwerk .pw-umschalter__knopf {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	min-height: var(--default-clickable-area);
+	margin: 0 0 -1px;
+	padding: 0 12px;
+	border: none;
+	border-bottom: 3px solid transparent;
+	border-radius: 0;
+	background: none;
+	color: var(--color-text-maxcontrast);
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.app-projektwerk .pw-umschalter__knopf:hover {
+	color: var(--color-main-text);
+	background: var(--color-background-hover);
+}
+
+.app-projektwerk .pw-umschalter__knopf:focus-visible {
+	outline: 2px solid var(--color-primary-element);
+	outline-offset: -2px;
+}
+
+.app-projektwerk .pw-umschalter__knopf[aria-pressed='true'] {
+	color: var(--color-main-text);
+	border-bottom-color: var(--color-primary-element);
+}
+
+.app-projektwerk .pw-umschalter__zahl {
+	font-weight: normal;
+	font-variant-numeric: tabular-nums;
+}
+
+.app-projektwerk .pw-abschnitt--eingebettet {
+	padding-block-start: 0;
+	border-top: none;
+}
+
+/* ---- Verlauf ------------------------------------------------------------ */
+
+.app-projektwerk .pw-verlauf__liste {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.app-projektwerk .pw-verlauf__eintrag {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+	padding-block: 6px;
+}
+
+.app-projektwerk .pw-verlauf__text {
+	min-width: 0;
+	overflow-wrap: anywhere;
+	line-height: 1.4;
+}
+
+.app-projektwerk .pw-verlauf__name {
+	font-weight: 600;
+}
+
+.app-projektwerk .pw-verlauf__meta,
+.app-projektwerk .pw-verlauf__leer {
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-verlauf__meta {
+	display: block;
+	font-size: 13px;
 }
 
 /* ---- Abhängigkeiten ----------------------------------------------------- */

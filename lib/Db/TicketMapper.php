@@ -205,6 +205,30 @@ class TicketMapper extends QBMapper {
 	}
 
 	/**
+	 * Suche nach Titel oder Nummer über alle Boards, die der Betrachter sehen darf; Grundlage für Suche und Smart Picker.
+	 *
+	 * @return Ticket[]
+	 */
+	public function findVisibleMatching(string $userId, string $term, int $limit): array {
+		$qb = $this->scopedQuery($userId, null);
+		$like = $qb->createNamedParameter('%' . $this->db->escapeLikeParameter($term) . '%');
+		$match = $qb->expr()->orX($qb->expr()->iLike(self::T . '.title', $like));
+
+		$number = ltrim($term, '#');
+		if ($number !== '' && ctype_digit($number)) {
+			$match->add($qb->expr()->eq(self::T . '.number', $qb->createNamedParameter((int)$number, IQueryBuilder::PARAM_INT)));
+		}
+
+		$qb->select(self::T . '.*')
+			->andWhere($match)
+			->orderBy(self::T . '.updated_at', 'DESC')
+			->addOrderBy(self::T . '.id', 'DESC')
+			->setMaxResults($limit);
+
+		return $this->findEntities($qb);
+	}
+
+	/**
 	 * Ein **geloeschtes** Ticket zum Wiederherstellen finden (#167).
 	 *
 	 * **Bewusst am Sichtbarkeits-Scope vorbei**, denn der nimmt Geloeschtes aus
@@ -695,13 +719,13 @@ class TicketMapper extends QBMapper {
 	 * Abstaenden uebernommen: Sie haengen hinten an, ihre Reihenfolge bleibt,
 	 * und die Luecken sind danach wieder voll (§3.8).
 	 *
-	 * Der Rueckgabewert ist bewusst `void`. Eine Anzahl waere eine Auskunft
-	 * ueber die ungefilterte Menge und damit genau das, was die Rueckfrage in
-	 * der Oberflaeche nicht nennen darf.
+	 * Die Rueckgabe ist die ungefilterte Menge und darf nur in den Verlauf, nie in eine Antwort.
+	 *
+	 * @return list<array{id: int, visibility: string}>
 	 */
-	public function moveColumnContents(ViewerContext $viewer, int $fromColumnId, int $toColumnId): void {
+	public function moveColumnContents(ViewerContext $viewer, int $fromColumnId, int $toColumnId): array {
 		$qb = $this->db->getQueryBuilder();
-		$qb->select('id')
+		$qb->select('id', 'visibility')
 			->from($this->tableName)
 			->where($qb->expr()->eq(
 				'board_id',
@@ -715,14 +739,17 @@ class TicketMapper extends QBMapper {
 			->addOrderBy('id', 'ASC');
 
 		$result = $qb->executeQuery();
-		$ids = array_map('intval', $result->fetchFirstColumn());
+		$moved = array_map(
+			static fn (array $row): array => ['id' => (int)$row['id'], 'visibility' => (string)$row['visibility']],
+			$result->fetchAll(),
+		);
 		$result->closeCursor();
 
 		// Hinter das letzte Ticket der Zielspalte. Leer heisst 0, damit die
 		// erste Position dort STEP wird — dieselbe Vergabe wie beim Anlegen.
 		$next = ($this->findLastPositionInColumn($viewer, $toColumnId) ?? 0) + PositionService::STEP;
 
-		foreach ($ids as $ticketId) {
+		foreach (array_column($moved, 'id') as $ticketId) {
 			$update = $this->db->getQueryBuilder();
 			$update->update($this->tableName)
 				->set('column_id', $update->createNamedParameter($toColumnId, IQueryBuilder::PARAM_INT))
@@ -771,6 +798,8 @@ class TicketMapper extends QBMapper {
 				$sweep->createNamedParameter($fromColumnId, IQueryBuilder::PARAM_INT),
 			));
 		$sweep->executeStatement();
+
+		return $moved;
 	}
 
 	/**
@@ -867,7 +896,7 @@ class TicketMapper extends QBMapper {
 				throw new \LogicException('Board ' . $boardId . ': ein Vorgang wurde während des Löschens wiederhergestellt.');
 			}
 
-			foreach (['pwerk_steps', 'pwerk_comments', 'pwerk_attachments', 'pwerk_reads', 'pwerk_ticket_users', 'pwerk_mail_outbox'] as $table) {
+			foreach (['pwerk_steps', 'pwerk_comments', 'pwerk_attachments', 'pwerk_reads', 'pwerk_ticket_users', 'pwerk_mail_outbox', 'pwerk_ticket_log'] as $table) {
 				$delete = $this->db->getQueryBuilder();
 				$delete->delete($table)
 					->where($delete->expr()->in('ticket_id', $delete->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)));

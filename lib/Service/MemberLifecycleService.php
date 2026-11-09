@@ -11,6 +11,7 @@ namespace OCA\Projektwerk\Service;
 
 use OCA\Projektwerk\Access\TicketScope;
 use OCP\DB\QueryBuilder\IQueryBuilder;
+use OCA\Projektwerk\Db\TicketLog;
 use OCP\IDBConnection;
 use Psr\Log\LoggerInterface;
 
@@ -41,6 +42,7 @@ class MemberLifecycleService {
 	public function __construct(
 		private IDBConnection $db,
 		private LoggerInterface $logger,
+		private TicketLogService $log,
 	) {
 	}
 
@@ -125,10 +127,11 @@ class MemberLifecycleService {
 	 * @param string $userId Kennung der Person.
 	 * @param int $boardId Kennung des Projekts.
 	 */
-	public function removeFromBoard(string $userId, int $boardId): void {
+	public function removeFromBoard(string $userId, int $boardId, string $actorUserId = TicketLog::ACTOR_SYSTEM): void {
 		$this->db->beginTransaction();
 
 		try {
+			$this->protokolliereZuweisungen($userId, $boardId, $actorUserId);
 			$geloest = $this->loeseZuweisungenAufBoard($userId, $boardId);
 			$geloescht = $this->loeschePrivateTicketsAufBoard($userId, $boardId);
 			$this->entferneMitgliedschaftAufBoard($userId, $boardId);
@@ -163,6 +166,38 @@ class MemberLifecycleService {
 			->where($sub->expr()->eq('board_id', $outer->createNamedParameter($boardId, IQueryBuilder::PARAM_INT)));
 
 		return $sub;
+	}
+
+	/**
+	 * Verlaufseinträge für die Zuweisungen, die gleich aufgehoben werden; die der eigenen privaten Vorgänge räumt der Purge mit ab.
+	 *
+	 * @param string $userId Kennung der Person.
+	 * @param int $boardId Kennung des Projekts.
+	 * @param string $actorUserId Wer entfernt.
+	 */
+	private function protokolliereZuweisungen(string $userId, int $boardId, string $actorUserId): void {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('id', 'visibility')
+			->from('pwerk_tickets')
+			->where($qb->expr()->eq('board_id', $qb->createNamedParameter($boardId, IQueryBuilder::PARAM_INT)))
+			->andWhere($qb->expr()->eq('responsible_user_id', $qb->createNamedParameter($userId)));
+		$result = $qb->executeQuery();
+		foreach ($result->fetchAll() as $row) {
+			$this->log->recordFor($actorUserId, (int)$row['id'], (string)$row['visibility'], TicketLog::RESPONSIBLE, null, $userId, null);
+		}
+		$result->closeCursor();
+
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('s.title', 't.id', 't.visibility')
+			->from('pwerk_steps', 's')
+			->innerJoin('s', 'pwerk_tickets', 't', $qb->expr()->eq('t.id', 's.ticket_id'))
+			->where($qb->expr()->eq('t.board_id', $qb->createNamedParameter($boardId, IQueryBuilder::PARAM_INT)))
+			->andWhere($qb->expr()->eq('s.assigned_user_id', $qb->createNamedParameter($userId)));
+		$result = $qb->executeQuery();
+		foreach ($result->fetchAll() as $row) {
+			$this->log->recordFor($actorUserId, (int)$row['id'], (string)$row['visibility'], TicketLog::STEP_ASSIGNED, (string)$row['title'], $userId, null);
+		}
+		$result->closeCursor();
 	}
 
 	/**
@@ -217,7 +252,7 @@ class MemberLifecycleService {
 			return 0;
 		}
 
-		foreach (['pwerk_comments', 'pwerk_steps', 'pwerk_attachments', 'pwerk_ticket_users', 'pwerk_reads'] as $tabelle) {
+		foreach (['pwerk_comments', 'pwerk_steps', 'pwerk_attachments', 'pwerk_ticket_users', 'pwerk_reads', 'pwerk_ticket_log'] as $tabelle) {
 			$qb = $this->db->getQueryBuilder();
 			$qb->delete($tabelle)
 				->where($qb->expr()->in('ticket_id', $qb->createNamedParameter($ids, IQueryBuilder::PARAM_INT_ARRAY)));
@@ -315,7 +350,7 @@ class MemberLifecycleService {
 			return 0;
 		}
 
-		foreach (['pwerk_comments', 'pwerk_steps', 'pwerk_attachments', 'pwerk_ticket_users'] as $tabelle) {
+		foreach (['pwerk_comments', 'pwerk_steps', 'pwerk_attachments', 'pwerk_ticket_users', 'pwerk_ticket_log'] as $tabelle) {
 			$qb = $this->db->getQueryBuilder();
 			$qb->delete($tabelle)
 				->where($qb->expr()->in('ticket_id', $qb->createNamedParameter($ids, IQueryBuilder::PARAM_INT_ARRAY)));

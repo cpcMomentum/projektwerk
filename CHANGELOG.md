@@ -6,6 +6,50 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.4.24] - 2026-11-09
+
+### Added
+
+- **Verlauf je Vorgang** (#397): Im Vorgang schaltet „Kommentare | Verlauf“ auf die Liste der
+  Änderungen um: wer wann angelegt, verschoben, umbenannt, die Beschreibung geändert, Zuständigkeit,
+  Fälligkeit, Sichtbarkeit oder Abschluss gesetzt, Arbeitsschritte und Anhänge bearbeitet, gelöscht oder
+  wiederhergestellt hat, jeweils mit Herkunft Browser oder KI-Werkzeug. Jeder Eintrag trägt die
+  Sichtbarkeit des Vorgangs zum Zeitpunkt der Änderung; ein Kunde sieht den internen Vorlauf nicht. Der
+  KI-Zugang liefert den Verlauf in `get_ticket` mit. Migration 27 ergänzt `pwerk_ticket_log`.
+- **Link zum Vorgang kopieren** (#419): Ein Knopf im Kopf des Vorgangs legt den Direktlink in die
+  Zwischenablage, etwa zum Teilen in Talk. Der Link trägt die interne Kennung, nicht die angezeigte
+  Nummer, die nur je Projekt eindeutig ist; wer den Vorgang nicht sehen darf, landet auf dem Board.
+- **Vorschaukarte in Talk und Text, Vorgänge im Smart Picker** (#419): Ein Link auf einen Vorgang erscheint
+  als Karte im Stil des Boards (Nummer, Projekt, Titel, Spalte bzw. Abschluss, Zuständige, Frist). Wer
+  den Vorgang nicht sehen darf, bekommt nur die URL. Im Smart Picker („/“ in Talk) und in der
+  Nextcloud-Suche lassen sich Vorgänge nach Titel oder Nummer finden, nur aus der sichtbaren Menge.
+- **Plus im Spaltenkopf** (#387): Jede Spalte außer den Endspalten hat rechts im Kopf ein Plus. Es öffnet
+  „Neuer Vorgang“ mit dieser Spalte voreingestellt; der Knopf oben bleibt und startet wie bisher in der
+  ersten Spalte.
+- **Vorgang im neuen Tab öffnen** (#385): Mittelklick oder Strg-/Cmd-Klick auf eine Karte öffnet den
+  Vorgang in einem neuen Browser-Tab, über denselben Direktlink wie Mails und Benachrichtigungen.
+
+### Changed
+
+- **Person bei neuen Arbeitsschritten gilt nur noch für einen Schritt** (#418): Nach dem Anlegen springt
+  der Personen-Knopf wieder auf „Niemand“. Eine stehengebliebene Auswahl war leicht zu übersehen und
+  landete unbemerkt auch am nächsten Schritt.
+
+### Fixed
+
+- **Verlauf lückenlos** (#416): Auch Spalte entfernen (Vorgänge wandern mit), Mitglied entfernen
+  (Zuständigkeit und Schritt-Zuweisungen fallen weg), erneuter Abschluss mit anderem Ergebnis und die
+  Wiederherstellung per `occ` schreiben jetzt einen Eintrag. Ohne handelnde Person steht dort „System“.
+  Ein Architekturtest stellt sicher, dass der Verlauf nur über den Eintragsfilter gelesen wird.
+- **„Löschen“ im Vorgang als Knopf erkennbar** (#428): Der Knopf hat jetzt eine rote Kontur wie seine
+  umrandeten Nachbarn „Verworfen“ und „Erledigt“; die Fläche erscheint erst beim Darüberfahren.
+- **Dialog „Neuer Vorgang“ auf dem Handy** (#424): Bei schmaler Breite waren alle drei Knöpfe
+  abgeschnitten („Abbrec…“). Die Knopfleiste bricht jetzt um, „Anlegen“ steht darunter über die volle
+  Breite.
+- **Aktiver Board-Reiter deutlich erkennbar** (#422): Die Reiter der Boards eines Projekts zeigen das
+  offene Board jetzt mit dunkler Schrift und Unterstrich in der Primärfarbe, wie der Umschalter
+  „Kommentare | Verlauf“. Vorher hob es sich nur als weiße Kachel auf blassgrauem Grund ab.
+
 ## [0.4.23] - 2026-11-07
 
 ### Added
