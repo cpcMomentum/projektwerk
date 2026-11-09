@@ -561,6 +561,9 @@ OC.L10N.register(
     "Zuständig für den neuen Arbeitsschritt: {name}" : "Zuständig für den neuen Arbeitsschritt: {name}",
     "Neuer Vorgang in „{spalte}“" : "Neuer Vorgang in „{spalte}“",
     "System" : "System",
-    "ProjektWerk-Vorgänge" : "ProjektWerk-Vorgänge"
+    "ProjektWerk-Vorgänge" : "ProjektWerk-Vorgänge",
+    "Ansicht" : "Ansicht",
+    "Board" : "Board",
+    "Übersicht" : "Übersicht"
 },
 "nplurals=2; plural=(n != 1);");

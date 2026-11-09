@@ -6,6 +6,14 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Projekt öffnet direkt im Board** (#388): Ein Klick auf die Projektkachel führt ohne Zwischenseite
+  ins Board. Der Umschalter „Board | Übersicht“ zeigt an derselben Stelle die Kennzahlen, den
+  Fortschritt, die Phasen und die offenen und zuletzt bearbeiteten Vorgänge; Kopf, „Neuer Vorgang“
+  und Board-Reiter bleiben stehen. Gespeicherte Links auf das frühere Projekt-Dashboard landen auf
+  der Übersicht.
+
 ## [0.4.24] - 2026-11-09
 
 ### Added

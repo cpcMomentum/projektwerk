@@ -67,6 +67,7 @@
 					:key="board.id"
 					:name="board.title"
 					:to="{ name: 'board', params: { boardId: board.id } }"
+					:active="$route.name === 'board-overview' && $route.params.boardId === String(board.id)"
 					@click="closeNavigationOnMobile">
 					<template #icon>
 						<StarIcon :size="20" />

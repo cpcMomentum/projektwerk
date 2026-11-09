@@ -207,11 +207,11 @@ describe('BoardsView', () => {
 		expect(tiles[0].props('title')).toBe('Alpha')
 	})
 
-	it('führt beim Kachel-Klick ins Projekt-Dashboard', () => {
+	it('führt beim Kachel-Klick direkt ins Board', () => {
 		const w = mountView()
-		;(w.vm as unknown as { openDashboard: (id: number) => void }).openDashboard(5)
+		;(w.vm as unknown as { openBoard: (id: number) => void }).openBoard(5)
 
-		expect(push).toHaveBeenCalledWith({ name: 'project-dashboard', params: { boardId: '5' } })
+		expect(push).toHaveBeenCalledWith({ name: 'board', params: { boardId: '5' } })
 	})
 
 	it('führt nach dem Anlegen direkt ins Board', () => {

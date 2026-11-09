@@ -88,7 +88,7 @@
 					:zustand="tile.zustand"
 					:pinned="tile.pinned"
 					pinnable
-					@open="openDashboard"
+					@open="openBoard"
 					@togglePin="store.togglePin" />
 			</div>
 		</template>
@@ -222,13 +222,10 @@ export default defineComponent({
 		t,
 
 		/**
-		 * Kachel-Klick → **Projekt-Dashboard** (#276), einheitlich mit dem
-		 * Überblick. Von dort führt „Board öffnen" weiter aufs Kanban.
-		 *
 		 * @param boardId Kennung des Projekts.
 		 */
-		openDashboard(boardId: number) {
-			this.$router.push({ name: 'project-dashboard', params: { boardId: String(boardId) } })
+		openBoard(boardId: number) {
+			this.$router.push({ name: 'board', params: { boardId: String(boardId) } })
 		},
 
 		/**

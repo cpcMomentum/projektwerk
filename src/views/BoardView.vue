@@ -1,13 +1,7 @@
 <template>
 	<div class="pw-view" :style="{ '--pw-columns': store.columns.length || 1 }">
-		<!--
-			Brotkrume zurück zur Projektübersicht (#245) — dieselbe Form wie im
-			Projekt-Dashboard, ein echtes Ziel statt eines Zurück-Rätsels.
-		-->
-		<router-link
-			class="pw-crumb"
-			:to="{ name: 'project-dashboard', params: { boardId: String(boardId) } }">
-			<ChevronLeftIcon :size="16" />{{ t('projektwerk', 'Projektübersicht') }}
+		<router-link class="pw-crumb" :to="{ name: 'boards' }">
+			<ChevronLeftIcon :size="16" />{{ t('projektwerk', 'Alle Projekte') }}
 		</router-link>
 
 		<div class="pw-view__head pw-view__head--split">
@@ -72,7 +66,7 @@
 					Zusammenhang, in dem er entsteht.
 				-->
 				<NcButton
-					v-if="store.waitingCount > 0 || store.onlyWaiting"
+					v-if="!isOverview && (store.waitingCount > 0 || store.onlyWaiting)"
 					:variant="store.onlyWaiting ? 'primary' : 'secondary'"
 					@click="store.onlyWaiting = !store.onlyWaiting">
 					<template #icon>
@@ -83,6 +77,7 @@
 
 				<!-- Suche im Board (#373): grenzt die Karten im Browser ein, die Spalten bleiben stehen. -->
 				<NcTextField
+					v-if="!isOverview"
 					v-model="searchInput"
 					class="pw-board-search"
 					:labelOutside="true"
@@ -101,9 +96,9 @@
 			</div>
 		</div>
 
-		<!-- Wer ein Board anlegen darf, sieht die Reiter schon bei einem Board, damit das „+" erreichbar bleibt. -->
-		<div v-if="store.siblingBoards.length > 1 || store.canAddBoard" class="pw-boardtabs">
-			<div class="pw-boardtabs__group">
+		<div class="pw-boardtabs">
+			<!-- Wer ein Board anlegen darf, sieht die Reiter schon bei einem Board, damit das „+" erreichbar bleibt. -->
+			<div v-if="showBoardTabs" class="pw-boardtabs__group">
 				<NcRadioGroup
 					:modelValue="String(boardId)"
 					:label="t('projektwerk', 'Boards')"
@@ -117,7 +112,7 @@
 				</NcRadioGroup>
 			</div>
 			<NcButton
-				v-if="store.canAddBoard"
+				v-if="showBoardTabs && store.canAddBoard"
 				class="pw-add-board"
 				variant="tertiary"
 				:aria-label="t('projektwerk', 'Board hinzufügen')"
@@ -142,6 +137,26 @@
 					{{ t('projektwerk', 'Board „{title}“ löschen', { title: store.board?.title ?? '' }, undefined, { escape: false }) }}
 				</NcActionButton>
 			</NcActions>
+
+			<div
+				class="pw-umschalter pw-ansicht"
+				role="group"
+				:aria-label="t('projektwerk', 'Ansicht')">
+				<button
+					type="button"
+					class="pw-umschalter__knopf"
+					:aria-pressed="!isOverview"
+					@click="showView('board')">
+					<ViewColumnIcon :size="18" />{{ t('projektwerk', 'Board') }}
+				</button>
+				<button
+					type="button"
+					class="pw-umschalter__knopf"
+					:aria-pressed="isOverview"
+					@click="showView('board-overview')">
+					<ChartDonutIcon :size="18" />{{ t('projektwerk', 'Übersicht') }}
+				</button>
+			</div>
 		</div>
 
 		<!-- Leerzustand der Suche (#373): einmal über dem Board, die Spalten bleiben darunter stehen. -->
@@ -190,6 +205,8 @@
 				</div>
 			</div>
 		</div>
+
+		<ProjectOverview v-else-if="isOverview" @open="openById" />
 
 		<NcEmptyContent
 			v-else-if="store.columns.length === 0"
@@ -442,6 +459,7 @@ import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
 import NcRadioGroup from '@nextcloud/vue/components/NcRadioGroup'
 import NcRadioGroupButton from '@nextcloud/vue/components/NcRadioGroupButton'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
+import ChartDonutIcon from 'vue-material-design-icons/ChartDonut.vue'
 import ChevronLeftIcon from 'vue-material-design-icons/ChevronLeft.vue'
 import ClockAlertIcon from 'vue-material-design-icons/ClockAlertOutline.vue'
 import CogIcon from 'vue-material-design-icons/Cog.vue'
@@ -450,9 +468,11 @@ import FolderMultipleIcon from 'vue-material-design-icons/FolderMultiple.vue'
 import FolderOpenIcon from 'vue-material-design-icons/FolderOpenOutline.vue'
 import MagnifyIcon from 'vue-material-design-icons/Magnify.vue'
 import PlusIcon from 'vue-material-design-icons/Plus.vue'
+import ViewColumnIcon from 'vue-material-design-icons/ViewColumn.vue'
 import BoardDragLayer from '@/components/board/BoardDragLayer.vue'
 import CreateTicketDialog from '@/components/CreateTicketDialog.vue'
 import PendingTicketCard from '@/components/PendingTicketCard.vue'
+import ProjectOverview from '@/components/ProjectOverview.vue'
 import TicketDetail from '@/components/TicketDetail.vue'
 import { deleteTicket as apiDeleteTicket, restoreTicket as apiRestoreTicket, fetchTicket, updateTicket } from '@/services/tickets'
 import { showError, showUndo } from '@/services/toast'
@@ -477,7 +497,7 @@ interface ColumnView {
 export default defineComponent({
 	name: 'BoardView',
 
-	components: { BoardDragLayer, ChevronLeftIcon, ClockAlertIcon, CogIcon, CreateTicketDialog, DeleteOutlineIcon, FolderMultipleIcon, FolderOpenIcon, MagnifyIcon, NcActionButton, NcActions, NcButton, NcDialog, NcEmptyContent, NcRadioGroup, NcRadioGroupButton, NcTextField, PendingTicketCard, PlusIcon, TicketDetail },
+	components: { BoardDragLayer, ChartDonutIcon, ChevronLeftIcon, ClockAlertIcon, CogIcon, CreateTicketDialog, DeleteOutlineIcon, FolderMultipleIcon, FolderOpenIcon, MagnifyIcon, NcActionButton, NcActions, NcButton, NcDialog, NcEmptyContent, NcRadioGroup, NcRadioGroupButton, NcTextField, PendingTicketCard, PlusIcon, ProjectOverview, TicketDetail, ViewColumnIcon },
 
 	setup() {
 		return { store: useBoardStore(), outbox: useOutboxStore() }
@@ -528,6 +548,16 @@ export default defineComponent({
 
 		boardId(): number {
 			return Number(this.$route.params.boardId)
+		},
+
+		/** Die Adresse entscheidet die Ansicht, damit Zurück-Knopf und Links stimmen. */
+		isOverview(): boolean {
+			return this.$route.name === 'board-overview'
+		},
+
+		/** Auch bei einem Board, damit das „+" für Berechtigte erreichbar bleibt. */
+		showBoardTabs(): boolean {
+			return this.store.siblingBoards.length > 1 || this.store.canAddBoard
 		},
 
 		/** Der Text des „Auch abschließen?"-Prompts (#172) — nach dem Ergebnis der Endspalte. */
@@ -679,7 +709,22 @@ export default defineComponent({
 			if (id === this.boardId) {
 				return
 			}
-			this.$router.push({ name: 'board', params: { boardId: String(id) } })
+			this.$router.push({ name: this.isOverview ? 'board-overview' : 'board', params: { boardId: String(id) } })
+		},
+
+		/**
+		 * Die Suche gilt nur dem Board und wird beim Verlassen geleert.
+		 *
+		 * @param name Die Zielroute.
+		 */
+		showView(name: 'board' | 'board-overview'): void {
+			if (this.$route.name === name) {
+				return
+			}
+			if (name === 'board-overview') {
+				this.clearSearch()
+			}
+			this.$router.push({ name, params: { boardId: String(this.boardId) } })
 		},
 
 		/** Den „Board hinzufügen"-Dialog schließen und das Feld leeren (#246). */

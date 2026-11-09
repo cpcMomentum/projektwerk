@@ -989,6 +989,20 @@ body .app-projektwerk .v-select.select .vs__open-indicator svg {
 	margin-bottom: 12px;
 }
 
+/* Steht rechts in der Reiterzeile, auch wenn es keine Board-Reiter gibt. */
+.app-projektwerk .pw-boardtabs .pw-ansicht {
+	flex-shrink: 0;
+	margin-block-end: 0;
+	margin-inline-start: auto;
+}
+
+@media (max-width: 600px) {
+	.app-projektwerk .pw-boardtabs {
+		flex-wrap: wrap;
+		row-gap: 8px;
+	}
+}
+
 /*
  * Im Vorgang sitzt der Schalter auf **34 px**, nicht auf 48.
  *
