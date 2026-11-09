@@ -142,6 +142,26 @@ final class BoardDeleteTest extends IntegrationTestCase {
 		$this->assertSame((int)$aktiv->getId(), $result['nextBoardId']);
 	}
 
+	public function testTheRemainingSingleBoardTakesTheProjectNameAgain(): void {
+		$this->service->update($this->viewer(self::ANNA, (int)$this->boardA->getId()), ['title' => 'Eigener Boardname']);
+		$this->service->update($this->viewer(self::ANNA, (int)$this->boardA->getId()), ['projectTitle' => 'Projekt Neu', 'projectDescription' => 'Worum']);
+
+		$this->service->delete($this->viewer(self::ANNA, (int)$this->boardB->getId()));
+
+		$rest = Server::get(BoardMapper::class)->findForViewer($this->viewer(self::ANNA, (int)$this->boardA->getId()));
+		$this->assertSame('Projekt Neu', $rest->getTitle());
+		$this->assertSame('Worum', $rest->getDescription());
+	}
+
+	public function testWithoutProjectDescriptionTheRemainingBoardKeepsItsOwn(): void {
+		$this->service->update($this->viewer(self::ANNA, (int)$this->boardA->getId()), ['description' => 'Eigene Beschreibung']);
+
+		$this->service->delete($this->viewer(self::ANNA, (int)$this->boardB->getId()));
+
+		$rest = Server::get(BoardMapper::class)->findForViewer($this->viewer(self::ANNA, (int)$this->boardA->getId()));
+		$this->assertSame('Eigene Beschreibung', $rest->getDescription());
+	}
+
 	private function viewer(string $userId, int $boardId): ViewerContext {
 		return Server::get(BoardAccess::class)->contextFor($userId, $boardId);
 	}

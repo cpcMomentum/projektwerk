@@ -113,6 +113,8 @@ class SettingsController extends Controller {
 		?bool $githubEnabled = null,
 		?string $githubRepo = null,
 		?bool $memberBoardsAllowed = null,
+		?string $projectTitle = null,
+		?string $projectDescription = null,
 	): JSONResponse {
 		// **Die beiden Ordner kommen als Pfad, gespeichert wird die Datei-ID.**
 		// Der Pfad benennt den Ordner nur; was in der Datenbank landet, loest
@@ -138,7 +140,9 @@ class SettingsController extends Controller {
 			// nicht mitgeschickt; sonst true/false. Manager-only setzt der Service
 			// durch (projektweites Feld).
 			'memberBoardsAllowed' => $memberBoardsAllowed,
-		], ['description', 'orgInternal', 'customer', 'chatUrl']);
+			'projectTitle' => $projectTitle,
+			'projectDescription' => $projectDescription,
+		], ['description', 'orgInternal', 'customer', 'chatUrl', 'projectDescription']);
 
 		return $this->write($boardId, fn (ViewerContext $viewer): mixed
 			=> $this->boardService->update($viewer, $changes));
@@ -148,6 +152,12 @@ class SettingsController extends Controller {
 	public function archiveBoard(int $boardId, bool $archived): JSONResponse {
 		return $this->write($boardId, fn (ViewerContext $viewer): mixed
 			=> $this->boardService->setArchived($viewer, $archived));
+	}
+
+	#[NoAdminRequired]
+	public function archiveProject(int $boardId, bool $archived): JSONResponse {
+		return $this->write($boardId, fn (ViewerContext $viewer): mixed
+			=> $this->boardService->setProjectArchived($viewer, $archived));
 	}
 
 	#[NoAdminRequired]

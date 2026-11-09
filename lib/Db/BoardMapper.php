@@ -60,8 +60,8 @@ class BoardMapper extends QBMapper {
 	 * dem INNER JOIN, es gibt keine Liste „alle Boards" und damit auch keine
 	 * Stelle, an der man sie versehentlich ausliefert.
 	 *
-	 * @param bool $includeArchived archivierte Projekte erscheinen nur, wo man
-	 *                              sie ausdruecklich sehen will
+	 * @param bool $includeArchived archivierte Boards und Projekte erscheinen
+	 *                              nur, wo man sie ausdruecklich sehen will
 	 * @return Board[]
 	 */
 	public function findAllForUser(string $userId, bool $includeArchived = false): array {
@@ -82,6 +82,8 @@ class BoardMapper extends QBMapper {
 					$qb->expr()->eq('m.user_id', $qb->createNamedParameter($userId)),
 				),
 			)
+			// Left Join, damit ein Board ohne Projektzeile (Altbestand) nicht still verschwindet.
+			->leftJoin('b', 'pwerk_projects', 'p', $qb->expr()->eq('p.id', 'b.project_id'))
 			->orderBy('b.title', 'ASC')
 			->addOrderBy('b.id', 'ASC');
 
@@ -89,6 +91,10 @@ class BoardMapper extends QBMapper {
 			$qb->andWhere($qb->expr()->eq(
 				'b.archived',
 				$qb->createNamedParameter(0, IQueryBuilder::PARAM_INT),
+			));
+			$qb->andWhere($qb->expr()->orX(
+				$qb->expr()->isNull('p.id'),
+				$qb->expr()->eq('p.archived', $qb->createNamedParameter(0, IQueryBuilder::PARAM_INT)),
 			));
 		}
 

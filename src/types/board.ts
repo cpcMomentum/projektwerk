@@ -145,6 +145,8 @@ export interface BoardDetail {
 	memberBoardsAllowed: boolean
 	/** Der Name des Projekts, zu dem das Board gehört (#350). */
 	projectTitle?: string
+	projectDescription?: string | null
+	projectArchived?: boolean
 	/** Der Projektordner (#351): Datei-ID zum Öffnen, Pfad zur Anzeige. */
 	projectFolder?: { id: number, path: string } | null
 	/** Ob der Betrachter dieses Board jetzt löschen dürfte. */

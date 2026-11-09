@@ -255,4 +255,16 @@ export class Api {
 	boardArchivieren(boardId: number): Promise<any> {
 		return this.schreiben('put', `/api/v1/boards/${boardId}/archived`, { archived: true })
 	}
+
+	boardAendern(boardId: number, aenderungen: object): Promise<any> {
+		return this.schreiben('patch', `/api/v1/boards/${boardId}`, aenderungen)
+	}
+
+	weiteresBoardAnlegen(boardId: number, titel: string): Promise<any> {
+		return this.schreiben('post', `/api/v1/boards/${boardId}/boards`, { title: titel })
+	}
+
+	projektArchivieren(boardId: number, archived = true): Promise<any> {
+		return this.schreiben('put', `/api/v1/boards/${boardId}/project-archived`, { archived })
+	}
 }

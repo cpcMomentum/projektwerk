@@ -19,13 +19,16 @@ use OCA\Projektwerk\Db\ProjectMapper;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Service\BoardService;
 use OCA\Projektwerk\Service\ColumnService;
+use OCA\Projektwerk\Service\EntitlementService;
 use OCA\Projektwerk\Service\MemberService;
 use OCA\Projektwerk\Service\NotManagerException;
 use OCA\Projektwerk\Service\NotOwnerException;
 use OCA\Projektwerk\Service\TicketService;
+use OCA\Projektwerk\Service\WerkPlusLimitException;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
 use OCP\DB\QueryBuilder\IQueryBuilder;
+use OCP\IAppConfig;
 use OCP\IRequest;
 use OCP\Server;
 
@@ -207,6 +210,8 @@ class SettingsWritePathTest extends IntegrationTestCase {
 			fn () => $this->boardService->update($bert, ['folderInternalPath' => '']),
 			// Der Projektordner (#351) ist projektweit wie die beiden anderen.
 			fn () => $this->boardService->update($bert, ['folderRootPath' => '']),
+			fn () => $this->boardService->update($bert, ['projectTitle' => 'Fremd']),
+			fn () => $this->boardService->setProjectArchived($bert, true),
 		] as $attempt) {
 			try {
 				$attempt();
@@ -216,7 +221,74 @@ class SettingsWritePathTest extends IntegrationTestCase {
 			}
 		}
 
-		$this->assertSame(12, $refused);
+		$this->assertSame(14, $refused);
+	}
+
+	public function testAnArchivedCustomerProjectStillCountsAgainstTheFreeLimit(): void {
+		$config = Server::get(IAppConfig::class);
+		$this->boardService->setProjectArchived($this->manager(), true);
+
+		$qb = $this->db->getQueryBuilder();
+		$qb->select($qb->createFunction('COUNT(DISTINCT m.project_id)'))
+			->from('pwerk_members', 'm')
+			->where($qb->expr()->eq('m.role', $qb->createNamedParameter(ViewerContext::ROLE_EXTERNAL)));
+		$alle = (int)$qb->executeQuery()->fetchOne();
+
+		$config->setValueInt('projektwerk', 'plus_max_customer_projects', $alle);
+		try {
+			$neu = $this->boardService->create(LeakMatrixFixture::ANNA, 'Zweites Kundenprojekt');
+			$this->expectException(WerkPlusLimitException::class);
+			Server::get(EntitlementService::class)->assertMayAddExternalMember((int)$neu->getProjectId());
+		} finally {
+			$config->deleteKey('projektwerk', 'plus_max_customer_projects');
+		}
+	}
+
+	public function testRenamingTheProjectRenamesTheOnlyBoard(): void {
+		$board = $this->boardService->update($this->manager(), ['projectTitle' => 'Neuer Projektname', 'projectDescription' => 'Worum es geht']);
+
+		$this->assertSame('Neuer Projektname', $board->getTitle());
+		$this->assertSame('Worum es geht', $board->getDescription());
+		$this->assertSame('Neuer Projektname', $this->boardService->projectFields($this->manager())['title']);
+		$this->assertSame('Worum es geht', $this->boardService->projectFields($this->manager())['description']);
+	}
+
+	public function testWithSeveralBoardsTheProjectNameLeavesTheBoardNames(): void {
+		$this->boardService->update($this->manager(), ['title' => 'Alter Boardname']);
+		$zweites = $this->boardService->createInProject($this->manager(), 'Arbeitsgruppe');
+
+		$erstes = Server::get(BoardMapper::class)->findForViewer($this->manager());
+		$this->assertSame('Leak-Matrix', $erstes->getTitle(), 'Das erste Board übernimmt beim zweiten den Projektnamen.');
+
+		$this->boardService->update($this->manager(), ['projectTitle' => 'Projekt neu']);
+
+		$titel = [];
+		foreach (Server::get(BoardMapper::class)->findAllForUser(LeakMatrixFixture::ANNA, true) as $b) {
+			$titel[(int)$b->getId()] = $b->getTitle();
+		}
+		$this->assertSame('Leak-Matrix', $titel[(int)$erstes->getId()]);
+		$this->assertSame('Arbeitsgruppe', $titel[(int)$zweites->getId()]);
+		$this->assertSame('Projekt neu', $this->boardService->projectFields($this->manager())['title']);
+	}
+
+	public function testArchivingTheProjectHidesEveryBoardAndKeepsSingleBoardArchives(): void {
+		$zweites = $this->boardService->createInProject($this->manager(), 'Arbeitsgruppe');
+		$this->boardService->setArchived($this->fixture->contextFor(LeakMatrixFixture::ANNA, (int)$zweites->getId()), true);
+
+		$this->assertSame(['archived' => true], $this->boardService->setProjectArchived($this->manager(), true));
+
+		$ids = fn (bool $mitArchiv): array => array_map(
+			static fn ($b): int => (int)$b->getId(),
+			Server::get(BoardMapper::class)->findAllForUser(LeakMatrixFixture::CARLA, $mitArchiv),
+		);
+		$this->assertSame([], $ids(false), 'Ein archiviertes Projekt zeigt kein Board mehr.');
+		$this->assertContains((int)$zweites->getId(), $ids(true));
+		$this->assertTrue($this->boardService->projectFields($this->manager())['archived']);
+
+		$this->boardService->setProjectArchived($this->manager(), false);
+
+		$this->assertContains($this->fixture->contextFor(LeakMatrixFixture::ANNA)->boardId, $ids(false));
+		$this->assertNotContains((int)$zweites->getId(), $ids(false), 'Das einzeln archivierte Board bleibt archiviert.');
 	}
 
 	/**

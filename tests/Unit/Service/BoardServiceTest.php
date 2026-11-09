@@ -25,6 +25,7 @@ use OCA\Projektwerk\Service\GuestNotAllowedException;
 use OCA\Projektwerk\Service\NotManagerException;
 use OCA\Projektwerk\Service\OwnCompanySettings;
 use OCA\Projektwerk\Service\ProjectFolderService;
+use OCA\Projektwerk\Service\WerkPlusLimitException;
 use OCP\IDBConnection;
 use OCP\IL10N;
 use PHPUnit\Framework\TestCase;
@@ -219,5 +220,60 @@ class BoardServiceTest extends TestCase {
 
 		$this->expectException(NotManagerException::class);
 		$service->update($viewer, ['orgInternal' => 'Fremd']);
+	}
+
+	public function testTheCreatorCannotRenameTheProject(): void {
+		$boards = $this->createMock(BoardMapper::class);
+		$boards->expects($this->never())->method('update');
+
+		$viewer = ViewerContext::forMember('carla', 1, 9, ViewerContext::ROLE_EXTERNAL, false, true);
+
+		$this->expectException(NotManagerException::class);
+		$this->service($boards, $this->createStub(ProjectMapper::class), $this->createStub(EntitlementService::class))
+			->update($viewer, ['projectTitle' => 'Fremd']);
+	}
+
+	public function testRestoringABoardCountsAgainstTheBoardLimit(): void {
+		$board = new Board();
+		$board->setArchived(1);
+		$boards = $this->createMock(BoardMapper::class);
+		$boards->method('findForViewer')->willReturn($board);
+		$boards->expects($this->never())->method('update');
+
+		$entitlement = $this->createStub(EntitlementService::class);
+		$entitlement->method('assertMayCreateBoardInProject')->willThrowException(new WerkPlusLimitException('Grenze'));
+
+		$this->expectException(WerkPlusLimitException::class);
+		$this->service($boards, $this->createStub(ProjectMapper::class), $entitlement)
+			->setArchived(ViewerContext::forMember('anna', 1, 9, ViewerContext::ROLE_INTERNAL, true), false);
+	}
+
+	public function testOnlyAManagerArchivesTheProject(): void {
+		$projects = $this->createMock(ProjectMapper::class);
+		$projects->expects($this->never())->method('update');
+
+		$this->expectException(NotManagerException::class);
+		$this->service($this->createStub(BoardMapper::class), $projects, $this->createStub(EntitlementService::class))
+			->setProjectArchived(ViewerContext::forMember('carla', 1, 9, ViewerContext::ROLE_EXTERNAL, false, true), true);
+	}
+
+	private function service(BoardMapper $boards, ProjectMapper $projects, EntitlementService $entitlement): BoardService {
+		$l10n = $this->createStub(IL10N::class);
+		$l10n->method('t')->willReturnArgument(0);
+
+		return new BoardService(
+			$this->createStub(IDBConnection::class),
+			$boards,
+			$projects,
+			$this->createStub(MemberMapper::class),
+			$this->createStub(ColumnMapper::class),
+			$this->createStub(BoardAccess::class),
+			$l10n,
+			$this->createStub(ProjectFolderService::class),
+			$this->createStub(AccountType::class),
+			$entitlement,
+			$this->createStub(OwnCompanySettings::class),
+			$this->createStub(TicketMapper::class),
+		);
 	}
 }

@@ -21,15 +21,12 @@
 					{{ t('projektwerk', 'Neuer Vorgang') }}
 				</NcButton>
 
-				<!--
-					Der Weg in die Einstellungen steht Managern offen — und seit
-					#281 auch dem Ersteller eines Boards, der dort nur seinen
-					board-scopeden Teil (Titel, Spalten, Archiv) sieht.
-				-->
+				<!-- Aus der Übersicht in die Projekt-Einstellungen, aus dem Board in dessen Spalten. -->
 				<NcButton
 					v-if="store.canConfigureBoard"
-					:aria-label="t('projektwerk', 'Projekteinstellungen')"
-					@click="$router.push({ name: 'board-settings', params: { boardId: String(boardId) } })">
+					:aria-label="t('projektwerk', 'Einstellungen')"
+					:title="t('projektwerk', 'Einstellungen')"
+					@click="$router.push({ name: 'board-settings', params: { boardId: String(boardId) }, query: isOverview ? { bereich: 'projekt', zurueck: 'uebersicht' } : { bereich: 'spalten' } })">
 					<template #icon>
 						<CogIcon :size="20" />
 					</template>
