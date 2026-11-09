@@ -339,6 +339,50 @@ describe('StepList', () => {
 		expect(wrapper.find('.pw-step__confirm').exists()).toBe(false)
 	})
 
+	it('stellt die Lösch-Rückfrage in eine eigene Zeile', async () => {
+		const wrapper = mountList([mitFrist('2026-08-11')])
+		const rechts = wrapper.find('.pw-step__rechts')
+		expect(rechts.classes()).not.toContain('pw-step__rechts--zeile')
+
+		await rechts.findAll('.pw-step__aktionen button').at(-1)!.trigger('click')
+
+		expect(wrapper.find('.pw-step__rechts').classes()).toContain('pw-step__rechts--zeile')
+		expect(wrapper.find('.pw-step__aktionen').exists()).toBe(false)
+	})
+
+	it('stellt die Fehlermeldung eines wartenden Schritts in eine eigene Zeile', async () => {
+		const wartend = (id: string, state: 'queued' | 'failed') => ({
+			kind: 'step' as const,
+			id,
+			boardId: 7,
+			ticketId: 42,
+			state,
+			error: state === 'failed' ? 'kaputt' : null,
+			attempts: 1,
+			sent: true,
+			nextAttemptAt: 0,
+			createdAt: 0,
+			seq: 0,
+			updatedAt: 0,
+			payload: { title: id },
+		})
+		useOutboxStore().entries.push(wartend('Gescheitert', 'failed') as never, wartend('Unterwegs', 'queued') as never)
+		const wrapper = mountList([])
+		await wrapper.vm.$nextTick()
+
+		const zeilen = wrapper.findAll('.pw-step-liste > .pw-step--pending')
+		expect(zeilen).toHaveLength(2)
+		expect(zeilen[0].find('.pw-step__rechts').classes()).toContain('pw-step__rechts--zeile')
+		expect(zeilen[1].find('.pw-step__rechts').classes()).not.toContain('pw-step__rechts--zeile')
+	})
+
+	it('führt die Schritte in der Liste, die Neuanlage außerhalb', () => {
+		const wrapper = mountList([mitFrist('2026-08-11')])
+
+		expect(wrapper.findAll('.pw-step-liste > .pw-step')).toHaveLength(1)
+		expect(wrapper.find('.pw-step-liste .pw-step--new').exists()).toBe(false)
+	})
+
 	it('speichert eine Frist, die während des Zuweisens gewählt wird', async () => {
 		let zuweisungFertig!: () => void
 		updateStep.mockImplementationOnce(() => new Promise<void>((resolve) => {

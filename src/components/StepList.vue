@@ -13,196 +13,233 @@
 			ohne bei fuenf Schritten fuenf Comboboxen und fuenf Datumsfelder
 			untereinanderzustellen. Genau das war die Kritik am alten Stand.
 		-->
-		<div v-for="step in ordered" :key="step.id" class="pw-step">
-			<!-- Titel steht nicht im Label, sonst hakt ein Klick zum Öffnen ab. -->
-			<NcCheckboxRadioSwitch
-				type="checkbox"
-				class="pw-step__check"
-				:modelValue="isDone(step)"
-				:disabled="busy"
-				@update:modelValue="toggle(step)">
-				<span class="hidden-visually">{{ t('projektwerk', 'Erledigt: {title}', { title: step.title }) }}</span>
-			</NcCheckboxRadioSwitch>
+		<div class="pw-step-liste">
+			<div v-for="step in ordered" :key="step.id" class="pw-step">
+				<!-- Titel steht nicht im Label, sonst hakt ein Klick zum Öffnen ab. -->
+				<NcCheckboxRadioSwitch
+					type="checkbox"
+					class="pw-step__check"
+					:modelValue="isDone(step)"
+					:disabled="busy"
+					@update:modelValue="toggle(step)">
+					<span class="hidden-visually">{{ t('projektwerk', 'Erledigt: {title}', { title: step.title }) }}</span>
+				</NcCheckboxRadioSwitch>
 
-			<!-- Beim Bearbeiten nur im Feld, sonst stünde der alte Titel darüber. -->
-			<button
-				v-if="editing !== step.id"
-				type="button"
-				class="pw-step__title"
-				:class="{ 'pw-step__title--done': isDone(step) }"
-				@click="beginEdit(step)">
-				{{ step.title }}
-			</button>
+				<!-- Beim Bearbeiten nur im Feld, sonst stünde der alte Titel darüber. -->
+				<button
+					v-if="editing !== step.id"
+					type="button"
+					class="pw-step__title"
+					:class="{ 'pw-step__title--done': isDone(step) }"
+					@click="beginEdit(step)">
+					{{ step.title }}
+				</button>
 
-			<div class="pw-step__rechts">
-				<!--
-					**Löschen: leichte Rückfrage in der Zeile** (#203), wie beim
-					Kommentar. Hart gelöscht, keinen Papierkorb — deshalb kurz
-					nachgefragt, statt einen schweren Dialog aufzuziehen.
-				-->
-				<template v-if="removing === step.id">
-					<span class="pw-step__confirm">{{ t('projektwerk', 'Arbeitsschritt entfernen?') }}</span>
-					<NcButton :disabled="busy" @click="removeStep(step)">
-						{{ t('projektwerk', 'Löschen') }}
-					</NcButton>
-					<NcButton :disabled="busy" @click="removing = null">
-						{{ t('projektwerk', 'Abbrechen') }}
-					</NcButton>
-				</template>
-
-				<template v-else-if="editing !== step.id">
+				<div class="pw-step__rechts" :class="{ 'pw-step__rechts--zeile': removing === step.id }">
 					<!--
-						**Variante B** (#345): lesen, Stift je Schritt. Zuweisung und
-						Frist stehen als Text; ob gesetzt oder nicht, der Weg zum
-						Ändern ist derselbe Stift.
+						**Löschen: leichte Rückfrage in der Zeile** (#203), wie beim
+						Kommentar. Hart gelöscht, keinen Papierkorb — deshalb kurz
+						nachgefragt, statt einen schweren Dialog aufzuziehen.
 					-->
-					<span v-if="step.assignedUserId || step.dueDate" class="pw-step__info">
-						<NcAvatar
-							v-if="step.assignedUserId"
-							:user="step.assignedUserId"
-							:displayName="nameOf(step.assignedUserId)"
-							:size="24"
-							:disableMenu="true"
-							:hideStatus="true" />
-						{{ infoFor(step) }}
-					</span>
-					<span v-if="step.createdVia === 'tool'" class="pw-step__info">
-						{{ t('projektwerk', 'über KI-Werkzeug') }}
-					</span>
-					<NcButton
-						variant="tertiary"
-						:ariaLabel="t('projektwerk', 'Arbeitsschritt bearbeiten: {title}', { title: step.title })"
-						:title="t('projektwerk', 'Bearbeiten')"
-						@click="beginEdit(step)">
-						<template #icon>
-							<PencilOutlineIcon :size="20" />
-						</template>
-					</NcButton>
+					<template v-if="removing === step.id">
+						<span class="pw-step__confirm">{{ t('projektwerk', 'Arbeitsschritt entfernen?') }}</span>
+						<NcButton :disabled="busy" @click="removeStep(step)">
+							{{ t('projektwerk', 'Löschen') }}
+						</NcButton>
+						<NcButton :disabled="busy" @click="removing = null">
+							{{ t('projektwerk', 'Abbrechen') }}
+						</NcButton>
+					</template>
 
-					<NcButton
-						variant="tertiary"
-						:ariaLabel="t('projektwerk', 'Arbeitsschritt löschen: {title}', { title: step.title })"
-						@click="removing = step.id">
-						<template #icon>
-							<DeleteOutlineIcon :size="20" />
-						</template>
-					</NcButton>
-				</template>
-			</div>
+					<template v-else-if="editing !== step.id">
+						<!--
+							**Variante B** (#345): lesen, Stift je Schritt. Zuweisung und
+							Frist stehen als Text; ob gesetzt oder nicht, der Weg zum
+							Ändern ist derselbe Stift.
+						-->
+						<span v-if="step.assignedUserId || step.dueDate" class="pw-step__info">
+							<NcAvatar
+								v-if="step.assignedUserId"
+								:user="step.assignedUserId"
+								:displayName="nameOf(step.assignedUserId)"
+								:size="24"
+								:disableMenu="true"
+								:hideStatus="true" />
+							{{ infoFor(step) }}
+						</span>
+						<span v-if="step.createdVia === 'tool'" class="pw-step__info">
+							{{ t('projektwerk', 'über KI-Werkzeug') }}
+						</span>
+						<span class="pw-step__aktionen">
+							<NcButton
+								variant="tertiary"
+								:ariaLabel="t('projektwerk', 'Arbeitsschritt bearbeiten: {title}', { title: step.title })"
+								:title="t('projektwerk', 'Bearbeiten')"
+								@click="beginEdit(step)">
+								<template #icon>
+									<PencilOutlineIcon :size="20" />
+								</template>
+							</NcButton>
 
-			<!--
-				Beschreibung und Ergebnis stehen als volle Zeilen unter der
-				Kopfzeile — `.pw-step` bricht um. Angezeigt außerhalb des
-				Bearbeitens; beim Bearbeiten treten die Felder an ihre Stelle.
-				Das Ergebnis wird mehrzeilig gezeigt (CSS `pre-wrap`).
-			-->
-			<!-- Text im `span`: Leerraum direkt im `p` zeigte `pre-wrap` als Leerzeile an. -->
-			<p v-if="editing !== step.id && step.description" class="pw-step__beschreibung">
-				<span>{{ step.description }}</span>
-			</p>
-
-			<div v-if="editing !== step.id && step.result" class="pw-step__ergebnis">
-				<span class="pw-step__ergebnis-marke">{{ t('projektwerk', 'Ergebnis') }}</span>
-				<span class="pw-step__ergebnis-text">{{ step.result }}</span>
-			</div>
-
-			<!--
-				Der geöffnete Schritt (#345): Beschriftung **über** dem Feld wie im
-				übrigen App-Formular (`pw-field`), Zuständig und Frist in einer Zeile
-				und gleich hoch, „Fertig" unten statt eines Häkchens am Rand.
-				Zuweisung und Frist speichern sofort; Titel, Beschreibung und
-				Ergebnis mit „Fertig" (oder Enter bzw. Strg/Cmd+Enter) — und
-				automatisch, sobald man den Schritt verlässt (#367). Esc im Feld
-				nimmt die Änderung zurück.
-			-->
-			<div v-if="editing === step.id" class="pw-step__felder-text">
-				<div class="pw-field">
-					<label :for="'pw-step-title-' + step.id">{{ t('projektwerk', 'Titel') }}</label>
-					<NcTextField
-						:id="'pw-step-title-' + step.id"
-						class="pw-step__feld"
-						:modelValue="editTitle"
-						:label="t('projektwerk', 'Titel')"
-						:labelOutside="true"
-						:disabled="busy"
-						@update:modelValue="editTitle = $event"
-						@keydown.esc.stop="cancelEdit"
-						@keydown.enter="saveDetails(step)" />
+							<NcButton
+								variant="tertiary"
+								:ariaLabel="t('projektwerk', 'Arbeitsschritt löschen: {title}', { title: step.title })"
+								@click="removing = step.id">
+								<template #icon>
+									<DeleteOutlineIcon :size="20" />
+								</template>
+							</NcButton>
+						</span>
+					</template>
 				</div>
 
-				<div class="pw-step__felder-zeile">
-					<div class="pw-field pw-step__picker-feld">
-						<label :for="'pw-step-user-' + step.id">{{ t('projektwerk', 'Zuständig') }}</label>
-						<NcSelectUsers
-							class="pw-step__picker"
-							:options="options"
-							:modelValue="optionFor(step.assignedUserId)"
-							:inputId="'pw-step-user-' + step.id"
+				<!--
+					Beschreibung und Ergebnis stehen als volle Zeilen unter der
+					Kopfzeile — `.pw-step` bricht um. Angezeigt außerhalb des
+					Bearbeitens; beim Bearbeiten treten die Felder an ihre Stelle.
+					Das Ergebnis wird mehrzeilig gezeigt (CSS `pre-wrap`).
+				-->
+				<!-- Text im `span`: Leerraum direkt im `p` zeigte `pre-wrap` als Leerzeile an. -->
+				<p v-if="editing !== step.id && step.description" class="pw-step__beschreibung">
+					<span>{{ step.description }}</span>
+				</p>
+
+				<div v-if="editing !== step.id && step.result" class="pw-step__ergebnis">
+					<span class="pw-step__ergebnis-marke">{{ t('projektwerk', 'Ergebnis') }}</span>
+					<span class="pw-step__ergebnis-text">{{ step.result }}</span>
+				</div>
+
+				<!--
+					Der geöffnete Schritt (#345): Beschriftung **über** dem Feld wie im
+					übrigen App-Formular (`pw-field`), Zuständig und Frist in einer Zeile
+					und gleich hoch, „Fertig" unten statt eines Häkchens am Rand.
+					Zuweisung und Frist speichern sofort; Titel, Beschreibung und
+					Ergebnis mit „Fertig" (oder Enter bzw. Strg/Cmd+Enter) — und
+					automatisch, sobald man den Schritt verlässt (#367). Esc im Feld
+					nimmt die Änderung zurück.
+				-->
+				<div v-if="editing === step.id" class="pw-step__felder-text">
+					<div class="pw-field">
+						<label :for="'pw-step-title-' + step.id">{{ t('projektwerk', 'Titel') }}</label>
+						<NcTextField
+							:id="'pw-step-title-' + step.id"
+							class="pw-step__feld"
+							:modelValue="editTitle"
+							:label="t('projektwerk', 'Titel')"
 							:labelOutside="true"
 							:disabled="busy"
-							:placeholder="t('projektwerk', 'Niemand')"
-							@update:modelValue="assign(step, $event)" />
+							@update:modelValue="editTitle = $event"
+							@keydown.esc.stop="cancelEdit"
+							@keydown.enter="saveDetails(step)" />
 					</div>
-					<div class="pw-field pw-step__datum-feld">
-						<label>{{ t('projektwerk', 'Fällig bis') }}</label>
-						<NcDateTimePicker
-							type="date"
-							class="pw-step__datum"
-							:modelValue="asDate(step.dueDate)"
-							:clearable="true"
-							:appendToBody="true"
-							:ariaLabel="t('projektwerk', 'Fälligkeit')"
-							:placeholder="t('projektwerk', 'Keine Frist')"
+
+					<div class="pw-step__felder-zeile">
+						<div class="pw-field pw-step__picker-feld">
+							<label :for="'pw-step-user-' + step.id">{{ t('projektwerk', 'Zuständig') }}</label>
+							<NcSelectUsers
+								class="pw-step__picker"
+								:options="options"
+								:modelValue="optionFor(step.assignedUserId)"
+								:inputId="'pw-step-user-' + step.id"
+								:labelOutside="true"
+								:disabled="busy"
+								:placeholder="t('projektwerk', 'Niemand')"
+								@update:modelValue="assign(step, $event)" />
+						</div>
+						<div class="pw-field pw-step__datum-feld">
+							<label>{{ t('projektwerk', 'Fällig bis') }}</label>
+							<NcDateTimePicker
+								type="date"
+								class="pw-step__datum"
+								:modelValue="asDate(step.dueDate)"
+								:clearable="true"
+								:appendToBody="true"
+								:ariaLabel="t('projektwerk', 'Fälligkeit')"
+								:placeholder="t('projektwerk', 'Keine Frist')"
+								:disabled="busy"
+								@update:modelValue="setDue(step, $event)" />
+						</div>
+					</div>
+
+					<div class="pw-field">
+						<label :for="'pw-step-desc-' + step.id">{{ t('projektwerk', 'Beschreibung') }}</label>
+						<NcTextArea
+							:id="'pw-step-desc-' + step.id"
+							class="pw-step__feld"
+							:modelValue="editDescription"
+							:label="t('projektwerk', 'Beschreibung')"
+							:labelOutside="true"
+							:rows="1"
+							resize="none"
 							:disabled="busy"
-							@update:modelValue="setDue(step, $event)" />
+							@update:modelValue="editDescription = $event"
+							@keydown.esc.stop="cancelEdit"
+							@keydown.enter.ctrl.exact="saveDetails(step)"
+							@keydown.enter.meta.exact="saveDetails(step)" />
+					</div>
+
+					<div class="pw-field">
+						<label :for="'pw-step-result-' + step.id">{{ t('projektwerk', 'Ergebnis') }}</label>
+						<NcTextArea
+							:id="'pw-step-result-' + step.id"
+							class="pw-step__feld"
+							:modelValue="editResult"
+							:label="t('projektwerk', 'Ergebnis')"
+							:labelOutside="true"
+							:rows="1"
+							resize="none"
+							:disabled="busy"
+							@update:modelValue="editResult = $event"
+							@keydown.esc.stop="cancelEdit"
+							@keydown.enter.ctrl.exact="saveDetails(step)"
+							@keydown.enter.meta.exact="saveDetails(step)" />
+					</div>
+
+					<div class="pw-step__felder-aktionen">
+						<NcButton
+							variant="primary"
+							:ariaLabel="t('projektwerk', 'Fertig')"
+							:disabled="busy"
+							@click="saveDetails(step)">
+							<template #icon>
+								<CheckIcon :size="20" />
+							</template>
+							{{ t('projektwerk', 'Fertig') }}
+						</NcButton>
 					</div>
 				</div>
+			</div>
 
-				<div class="pw-field">
-					<label :for="'pw-step-desc-' + step.id">{{ t('projektwerk', 'Beschreibung') }}</label>
-					<NcTextArea
-						:id="'pw-step-desc-' + step.id"
-						class="pw-step__feld"
-						:modelValue="editDescription"
-						:label="t('projektwerk', 'Beschreibung')"
-						:labelOutside="true"
-						:rows="1"
-						resize="none"
-						:disabled="busy"
-						@update:modelValue="editDescription = $event"
-						@keydown.esc.stop="cancelEdit"
-						@keydown.enter.ctrl.exact="saveDetails(step)"
-						@keydown.enter.meta.exact="saveDetails(step)" />
-				</div>
-
-				<div class="pw-field">
-					<label :for="'pw-step-result-' + step.id">{{ t('projektwerk', 'Ergebnis') }}</label>
-					<NcTextArea
-						:id="'pw-step-result-' + step.id"
-						class="pw-step__feld"
-						:modelValue="editResult"
-						:label="t('projektwerk', 'Ergebnis')"
-						:labelOutside="true"
-						:rows="1"
-						resize="none"
-						:disabled="busy"
-						@update:modelValue="editResult = $event"
-						@keydown.esc.stop="cancelEdit"
-						@keydown.enter.ctrl.exact="saveDetails(step)"
-						@keydown.enter.meta.exact="saveDetails(step)" />
-				</div>
-
-				<div class="pw-step__felder-aktionen">
-					<NcButton
-						variant="primary"
-						:ariaLabel="t('projektwerk', 'Fertig')"
-						:disabled="busy"
-						@click="saveDetails(step)">
-						<template #icon>
-							<CheckIcon :size="20" />
-						</template>
-						{{ t('projektwerk', 'Fertig') }}
-					</NcButton>
+			<div v-for="entry in pendingSteps" :key="entry.id" class="pw-step pw-step--pending">
+				<NcCheckboxRadioSwitch
+					type="checkbox"
+					class="pw-step__check"
+					:modelValue="false"
+					:disabled="true">
+					<span class="hidden-visually">{{ t('projektwerk', 'Erledigt: {title}', { title: entry.payload.title }) }}</span>
+				</NcCheckboxRadioSwitch>
+				<span class="pw-step__wartend">{{ entry.payload.title }}</span>
+				<div class="pw-step__rechts" :class="{ 'pw-step__rechts--zeile': entry.state === 'failed' }">
+					<NcAvatar
+						v-if="entry.payload.assignedUserId"
+						:user="entry.payload.assignedUserId"
+						:displayName="nameOf(entry.payload.assignedUserId)"
+						:size="24"
+						:disableMenu="true"
+						:hideStatus="true" />
+					<span class="pw-step__info" :class="{ 'pw-step__info--failed': entry.state === 'failed' }">
+						{{ entry.state === 'failed'
+							? t('projektwerk', 'Nicht gespeichert: {reason}', { reason: entry.error ?? '' })
+							: t('projektwerk', 'Wird gespeichert …') }}
+					</span>
+					<template v-if="entry.state === 'failed'">
+						<NcButton variant="tertiary" @click="outbox.retry(entry.id)">
+							{{ t('projektwerk', 'Erneut versuchen') }}
+						</NcButton>
+						<NcButton variant="tertiary" @click="outbox.discard(entry.id)">
+							{{ t('projektwerk', 'Verwerfen') }}
+						</NcButton>
+					</template>
 				</div>
 			</div>
 		</div>
@@ -210,39 +247,6 @@
 		<p v-if="ordered.length === 0 && pendingSteps.length === 0" class="pw-detail__empty">
 			{{ t('projektwerk', 'Noch keine Arbeitsschritte.') }}
 		</p>
-
-		<div v-for="entry in pendingSteps" :key="entry.id" class="pw-step pw-step--pending">
-			<NcCheckboxRadioSwitch
-				type="checkbox"
-				class="pw-step__check"
-				:modelValue="false"
-				:disabled="true">
-				<span class="hidden-visually">{{ t('projektwerk', 'Erledigt: {title}', { title: entry.payload.title }) }}</span>
-			</NcCheckboxRadioSwitch>
-			<span class="pw-step__wartend">{{ entry.payload.title }}</span>
-			<div class="pw-step__rechts">
-				<NcAvatar
-					v-if="entry.payload.assignedUserId"
-					:user="entry.payload.assignedUserId"
-					:displayName="nameOf(entry.payload.assignedUserId)"
-					:size="24"
-					:disableMenu="true"
-					:hideStatus="true" />
-				<span class="pw-step__info" :class="{ 'pw-step__info--failed': entry.state === 'failed' }">
-					{{ entry.state === 'failed'
-						? t('projektwerk', 'Nicht gespeichert: {reason}', { reason: entry.error ?? '' })
-						: t('projektwerk', 'Wird gespeichert …') }}
-				</span>
-				<template v-if="entry.state === 'failed'">
-					<NcButton variant="tertiary" @click="outbox.retry(entry.id)">
-						{{ t('projektwerk', 'Erneut versuchen') }}
-					</NcButton>
-					<NcButton variant="tertiary" @click="outbox.discard(entry.id)">
-						{{ t('projektwerk', 'Verwerfen') }}
-					</NcButton>
-				</template>
-			</div>
-		</div>
 
 		<!-- Nur Titel und Person; Frist, Beschreibung und Ergebnis kommen über den Stift, die Zeile bleibt schlank. -->
 		<div class="pw-step pw-step--new">

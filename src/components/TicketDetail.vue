@@ -564,7 +564,7 @@
 					<div class="pw-detail__fuss-aktionen">
 						<NcButton
 							class="pw-detail__loeschen"
-							variant="tertiary"
+							variant="error"
 							:disabled="busy || pending"
 							:title="t('projektwerk', 'Endgültig löschen')"
 							:ariaLabel="t('projektwerk', 'Endgültig löschen')"
