@@ -83,10 +83,8 @@ test.describe('Dienstleisterseite', () => {
 		// nicht nur Farbe).
 		await expect(kachel).toHaveAttribute('aria-label', /1 wartet/)
 
-		// Der Klick führt seit Stufe 2 (#227) ins **Projekt-Dashboard**, nicht
-		// mehr direkt aufs Board.
 		await kachel.click()
-		await expect(page).toHaveURL(/#\/project\/\d+/)
+		await expect(page).toHaveURL(/#\/boards\/\d+$/)
 	})
 })
 
@@ -146,7 +144,8 @@ test.describe('Kundenseite', () => {
 		await page.goto(APP_PFAD)
 
 		// Warten, bis der Rahmen steht: Den „Projekte"-Eintrag hat jede Rolle.
-		await expect(page.getByRole('link', { name: 'Projekte' })).toBeVisible({ timeout: 30_000 })
+		// exact, weil im Board zusätzlich die Brotkrume „Alle Projekte“ steht.
+		await expect(page.getByRole('link', { name: 'Projekte', exact: true })).toBeVisible({ timeout: 30_000 })
 
 		// Der Überblick ist weg: kein Menüeintrag, keine Kennzahlen-Karte, und
 		// die Adresse steht nicht mehr auf dem bloßen Einstieg.
