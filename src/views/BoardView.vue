@@ -612,6 +612,7 @@ export default defineComponent({
 		/** Ob die Suche (#373) auf dem ganzen Board nichts findet. */
 		noSearchHits(): boolean {
 			return !this.store.loading
+				&& !this.isOverview
 				&& this.store.searchTerms.length > 0
 				&& this.columnViews.every((view) => view.tickets.length === 0)
 		},

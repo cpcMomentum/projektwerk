@@ -254,6 +254,18 @@ describe('Board | Übersicht (#388)', () => {
 		expect(open).not.toHaveBeenCalled()
 	})
 
+	it('zeigt in der Übersicht keinen Suchhinweis, auch wenn noch ein Suchbegriff steht', async () => {
+		const { wrapper } = await mountWithPush()
+		useBoardStore().search = 'zzz'
+		await flushPromises()
+		expect(wrapper.find('.pw-search-empty').exists()).toBe(true)
+
+		route.name = 'board-overview'
+		await flushPromises()
+
+		expect(wrapper.find('.pw-search-empty').exists()).toBe(false)
+	})
+
 	it('behält die Übersicht beim Wechsel auf ein anderes Board', async () => {
 		route.name = 'board-overview'
 		const { wrapper, push } = await mountWithPush()
