@@ -205,6 +205,30 @@ class TicketMapper extends QBMapper {
 	}
 
 	/**
+	 * Suche nach Titel oder Nummer über alle Boards, die der Betrachter sehen darf; Grundlage für Suche und Smart Picker.
+	 *
+	 * @return Ticket[]
+	 */
+	public function findVisibleMatching(string $userId, string $term, int $limit): array {
+		$qb = $this->scopedQuery($userId, null);
+		$like = $qb->createNamedParameter('%' . $this->db->escapeLikeParameter($term) . '%');
+		$match = $qb->expr()->orX($qb->expr()->iLike(self::T . '.title', $like));
+
+		$number = ltrim($term, '#');
+		if ($number !== '' && ctype_digit($number)) {
+			$match->add($qb->expr()->eq(self::T . '.number', $qb->createNamedParameter((int)$number, IQueryBuilder::PARAM_INT)));
+		}
+
+		$qb->select(self::T . '.*')
+			->andWhere($match)
+			->orderBy(self::T . '.updated_at', 'DESC')
+			->addOrderBy(self::T . '.id', 'DESC')
+			->setMaxResults($limit);
+
+		return $this->findEntities($qb);
+	}
+
+	/**
 	 * Ein **geloeschtes** Ticket zum Wiederherstellen finden (#167).
 	 *
 	 * **Bewusst am Sichtbarkeits-Scope vorbei**, denn der nimmt Geloeschtes aus

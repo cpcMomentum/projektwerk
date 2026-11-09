@@ -560,6 +560,7 @@ OC.L10N.register(
     "Zuständig für den neuen Arbeitsschritt: niemand" : "Responsible for the new work step: nobody",
     "Zuständig für den neuen Arbeitsschritt: {name}" : "Responsible for the new work step: {name}",
     "Neuer Vorgang in „{spalte}“" : "New item in “{spalte}”",
-    "System" : "System"
+    "System" : "System",
+    "ProjektWerk-Vorgänge" : "ProjektWerk items"
 },
 "nplurals=2; plural=(n != 1);");
