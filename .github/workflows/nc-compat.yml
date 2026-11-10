@@ -76,6 +76,8 @@ jobs:
         env:
           OCP: ${{ steps.detect.outputs.constraint }}
         run: |
+          # Ohne Pin, sonst hielte 8.3 eine angehobene PHP-Untergrenze des neuen Majors für eine API-Änderung.
+          composer config --unset platform.php
           composer require --dev --no-update "nextcloud/ocp:$OCP" \
             && composer update --no-interaction --no-progress --prefer-dist \
             && composer test
