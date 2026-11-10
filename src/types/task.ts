@@ -23,6 +23,9 @@ export interface TaskBoard {
 	title: string
 	orgInternal: string | null
 	customer: string | null
+	/** Nur vom Überblick geliefert. */
+	projectId?: number | null
+	projectTitle?: string | null
 }
 
 export interface TaskList {
