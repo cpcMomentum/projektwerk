@@ -116,8 +116,12 @@ class TicketScope {
 	 * `$boardId` einschraenken heisst Einzelboard-Sicht; `null` heisst
 	 * boarduebergreifend — dann gilt die Regel je Board mit der dort
 	 * geltenden Rolle, ohne dass der Aufrufer etwas dafuer tun muss.
+	 *
+	 * `$includeDeleted` ist allein fuer das Wiederherstellen da: Es hebt nur
+	 * den Loeschfilter auf, die Sichtbarkeitsregel bleibt dieselbe. So gilt
+	 * auch fuer Geloeschtes, dass ein privater Vorgang nur seiner Person gehoert.
 	 */
-	public function apply(IQueryBuilder $qb, string $ticketAlias, string $userId, ?int $boardId): void {
+	public function apply(IQueryBuilder $qb, string $ticketAlias, string $userId, ?int $boardId, bool $includeDeleted = false): void {
 		$m = self::MEMBER_ALIAS;
 		$uidParam = $qb->createNamedParameter($userId);
 
@@ -142,7 +146,9 @@ class TicketScope {
 		// dem Tickets leben, sondern eine Zeile in der einen Bedingung, durch
 		// die ohnehin jeder Lesepfad geht. Wer einen neuen Lesepfad baut,
 		// bekommt sie geschenkt — und kann sie nicht vergessen.
-		$qb->andWhere($qb->expr()->isNull($ticketAlias . '.deleted_at'));
+		if (!$includeDeleted) {
+			$qb->andWhere($qb->expr()->isNull($ticketAlias . '.deleted_at'));
+		}
 
 		$qb->andWhere($qb->expr()->orX(
 			$qb->expr()->eq(
