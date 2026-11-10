@@ -54,6 +54,11 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
   Touch-Geräten und schmalen Breiten bleiben sie sichtbar.
 - **„Löschen“ im Vorgang wie „Verworfen“ und „Erledigt“** (#435): helle rote Fläche statt Kontur.
 
+### Security
+
+- **Abhängigkeiten aktualisiert** (#438): Bekannte kritische und hohe Schwachstellen in den
+  npm-Paketen (u. a. `dompurify`, `axios`, `vue`, `vite`) sind behoben.
+
 ## [0.4.24] - 2026-11-09
 
 ### Added
