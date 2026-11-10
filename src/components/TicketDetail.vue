@@ -609,6 +609,17 @@
 							</template>
 							{{ t('projektwerk', 'Wieder öffnen') }}
 						</NcButton>
+						<NcButton
+							v-if="ticket.closedAt !== null"
+							variant="secondary"
+							:disabled="busy || pending"
+							@click="setArchived(!ticket.archivedAt)">
+							<template #icon>
+								<ArchiveArrowUpIcon v-if="ticket.archivedAt" :size="20" />
+								<ArchiveArrowDownIcon v-else :size="20" />
+							</template>
+							{{ ticket.archivedAt ? t('projektwerk', 'Aus dem Archiv holen') : t('projektwerk', 'Archivieren') }}
+						</NcButton>
 					</div>
 
 					<NcButton
@@ -640,6 +651,8 @@ import NcRichText, { NcReferenceList } from '@nextcloud/vue/components/NcRichTex
 import NcSelectUsers from '@nextcloud/vue/components/NcSelectUsers'
 import NcTextArea from '@nextcloud/vue/components/NcTextArea'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
+import ArchiveArrowDownIcon from 'vue-material-design-icons/ArchiveArrowDownOutline.vue'
+import ArchiveArrowUpIcon from 'vue-material-design-icons/ArchiveArrowUpOutline.vue'
 import CalendarAlertIcon from 'vue-material-design-icons/CalendarAlert.vue'
 import CalendarIcon from 'vue-material-design-icons/CalendarOutline.vue'
 import CancelIcon from 'vue-material-design-icons/Cancel.vue'
@@ -685,7 +698,7 @@ interface PersonOption {
 export default defineComponent({
 	name: 'TicketDetail',
 
-	components: { AttachmentList, CalendarIcon, CalendarAlertIcon, CancelIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, CommentList, DeleteOutlineIcon, DependencyList, FormatBoldIcon, FormatListBulletedIcon, FormatListNumberedIcon, GithubIcon, LinkVariantIcon, NcAvatar, NcButton, NcDateTimePicker, NcModal, NcReferenceList, NcRichText, NcSelectUsers, NcTextArea, NcTextField, PencilOutlineIcon, PlusIcon, RestoreIcon, StepList, TicketHistory, VisibilityControl, WaitBadge },
+	components: { ArchiveArrowDownIcon, ArchiveArrowUpIcon, AttachmentList, CalendarIcon, CalendarAlertIcon, CancelIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, CommentList, DeleteOutlineIcon, DependencyList, FormatBoldIcon, FormatListBulletedIcon, FormatListNumberedIcon, GithubIcon, LinkVariantIcon, NcAvatar, NcButton, NcDateTimePicker, NcModal, NcReferenceList, NcRichText, NcSelectUsers, NcTextArea, NcTextField, PencilOutlineIcon, PlusIcon, RestoreIcon, StepList, TicketHistory, VisibilityControl, WaitBadge },
 
 	props: {
 		ticket: { type: Object as PropType<Ticket | null>, default: null },
@@ -988,6 +1001,21 @@ export default defineComponent({
 
 		reopen(): Promise<void> {
 			return this.setClosed(false)
+		},
+
+		async setArchived(archived: boolean): Promise<void> {
+			if (this.ticket === null || this.busy) {
+				return
+			}
+			this.busy = true
+			try {
+				const updated = await updateTicket(this.ticket.boardId, this.ticket.id, this.ticket.version, { archived })
+				this.$emit('changed', updated)
+			} catch (e) {
+				reportWriteError(e, t('projektwerk', 'Archivieren fehlgeschlagen'))
+			} finally {
+				this.busy = false
+			}
 		},
 
 		/**

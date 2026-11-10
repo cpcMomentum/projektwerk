@@ -67,6 +67,8 @@ interface State {
 	changed: Record<number, boolean>
 	/** Filterschalter „Nur wartend"; liegt quer zu den Spalten. */
 	onlyWaiting: boolean
+	/** Ob archivierte Vorgänge mitgeladen werden. */
+	showArchived: boolean
 	/** Suchtext im Board-Kopf (#373), bereits entprellt. Leer heißt: keine Suche. */
 	search: string
 	/** Schritt-Titel je Vorgang, nur für die Suche (#373). */
@@ -107,6 +109,7 @@ export const useBoardStore = defineStore('board', {
 		waiting: {},
 		changed: {},
 		onlyWaiting: false,
+		showArchived: false,
 		search: '',
 		stepTitles: {},
 		expandedColumns: [],
@@ -423,6 +426,7 @@ export const useBoardStore = defineStore('board', {
 				this.expandedColumns = []
 				// Eine Suche gilt dem Board, auf dem sie getippt wurde (#373).
 				this.search = ''
+				this.showArchived = false
 			}
 			try {
 				const detail: BoardDetail = await fetchBoard(boardId)
@@ -439,7 +443,7 @@ export const useBoardStore = defineStore('board', {
 				this.projectFolder = detail.projectFolder ?? null
 				this.deletable = detail.deletable ?? false
 
-				this.applyTickets(await fetchTickets(boardId))
+				this.applyTickets(await fetchTickets(boardId, undefined, this.showArchived))
 			} catch (e) {
 				// Reiter eines anderen Projekts dürfen nicht unter einer fremden Adresse stehen bleiben.
 				if (this.board?.id !== boardId) {
@@ -480,7 +484,7 @@ export const useBoardStore = defineStore('board', {
 			// Nach dem Verschieben neu laden statt lokal umzusortieren: Die
 			// Reihenfolge entsteht serverseitig aus der ungefilterten Liste, und
 			// eine lokale Vorwegnahme könnte davon abweichen.
-			this.applyTickets(await fetchTickets(this.board.id))
+			this.applyTickets(await fetchTickets(this.board.id, undefined, this.showArchived))
 		},
 
 		/**
@@ -514,6 +518,28 @@ export const useBoardStore = defineStore('board', {
 			}
 		},
 
+		// Nur die Vorgänge neu, nicht das ganze Board; eine überholte Antwort wird verworfen.
+		async setShowArchived(an: boolean): Promise<void> {
+			const board = this.board
+			if (board === null) {
+				this.showArchived = an
+				return
+			}
+			const vorher = this.showArchived
+			this.showArchived = an
+			try {
+				const liste = await fetchTickets(board.id, undefined, an)
+				if (this.showArchived === an && this.board?.id === board.id) {
+					this.applyTickets(liste)
+				}
+			} catch (e) {
+				if (this.showArchived === an) {
+					this.showArchived = vorher
+				}
+				showError((e as { message?: string }).message ?? t('projektwerk', 'Archivierte Vorgänge konnten nicht geladen werden'))
+			}
+		},
+
 		/**
 		 * Ein einzelnes Ticket durch den Stand vom Server ersetzen.
 		 *
@@ -529,15 +555,29 @@ export const useBoardStore = defineStore('board', {
 		 */
 		replaceTicket(ticket: Ticket): void {
 			const previous = this.tickets.get(ticket.id)
+			// Ohne Schalter verlässt ein archivierter Vorgang das Board; in der Liste bleibt er für ein offenes Detail.
+			if (!this.showArchived && ticket.archivedAt) {
+				const order = new Map(this.columnOrder)
+				order.set(ticket.columnId, (order.get(ticket.columnId) ?? []).filter((id) => id !== ticket.id))
+				if (previous !== undefined && previous.columnId !== ticket.columnId) {
+					order.set(previous.columnId, (order.get(previous.columnId) ?? []).filter((id) => id !== ticket.id))
+				}
+				this.columnOrder = order
+			}
 			// Neue Map statt Mutation: Pinia verfolgt bei einer Map die Identität,
 			// nicht die Einträge — ein `set()` allein löste kein Neuzeichnen aus.
 			const next = new Map(this.tickets)
 			next.set(ticket.id, ticket)
 			this.tickets = next
 
-			if (previous !== undefined && previous.columnId !== ticket.columnId) {
+			if (previous !== undefined && previous.columnId !== ticket.columnId && (this.showArchived || !ticket.archivedAt)) {
 				const order = new Map(this.columnOrder)
 				order.set(previous.columnId, (order.get(previous.columnId) ?? []).filter((id) => id !== ticket.id))
+				order.set(ticket.columnId, [...(order.get(ticket.columnId) ?? []), ticket.id])
+				this.columnOrder = order
+			} else if ((this.showArchived || !ticket.archivedAt) && !(this.columnOrder.get(ticket.columnId) ?? []).includes(ticket.id)) {
+				// Zurückgeholt oder wieder geöffnet: Der Vorgang kehrt auf das Board zurück.
+				const order = new Map(this.columnOrder)
 				order.set(ticket.columnId, [...(order.get(ticket.columnId) ?? []), ticket.id])
 				this.columnOrder = order
 			}
@@ -556,6 +596,9 @@ export const useBoardStore = defineStore('board', {
 			const next = new Map(this.tickets)
 			next.set(ticket.id, ticket)
 			this.tickets = next
+			if (ticket.archivedAt && !this.showArchived) {
+				return
+			}
 			const order = new Map(this.columnOrder)
 			order.set(ticket.columnId, [...(order.get(ticket.columnId) ?? []), ticket.id])
 			this.columnOrder = order
@@ -715,7 +758,8 @@ export const useBoardStore = defineStore('board', {
 		 * @param inColumn Die sichtbaren Vorgänge der Spalte, in Serverreihenfolge.
 		 */
 		withoutOlderClosed(inColumn: Ticket[]): Ticket[] {
-			const closed = inColumn.filter((ticket) => ticket.closedAt !== null)
+			// Wer Archivierte einblendet, will sie sehen; sie zählen nicht gegen die zuletzt geschlossenen.
+			const closed = inColumn.filter((ticket) => ticket.closedAt !== null && !ticket.archivedAt)
 			if (closed.length <= CLOSED_TAIL) {
 				return inColumn
 			}
@@ -744,7 +788,7 @@ export const useBoardStore = defineStore('board', {
 
 			// Die Reihenfolge bleibt die der Spalte, nicht die des Schliessens:
 			// Ausgewählt wird nach Datum, angezeigt wird nach Position.
-			return inColumn.filter((ticket) => ticket.closedAt === null || keep.has(ticket.id))
+			return inColumn.filter((ticket) => ticket.closedAt === null || Boolean(ticket.archivedAt) || keep.has(ticket.id))
 		},
 
 		/**

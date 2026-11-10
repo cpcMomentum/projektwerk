@@ -65,9 +65,9 @@ class TicketController extends Controller {
 	 * Die sichtbaren Tickets eines Boards, mit den Zählern ihrer Kinder.
 	 */
 	#[NoAdminRequired]
-	public function index(int $boardId, ?int $columnId = null): JSONResponse {
+	public function index(int $boardId, ?int $columnId = null, bool $includeArchived = false): JSONResponse {
 		return $this->withViewer($boardId, fn (ViewerContext $viewer): JSONResponse
-			=> new JSONResponse($this->readModel->index($viewer, $columnId)));
+			=> new JSONResponse($this->readModel->index($viewer, $columnId, $includeArchived)));
 	}
 
 	/**
@@ -173,6 +173,7 @@ class TicketController extends Controller {
 		?string $dueDate = null,
 		?bool $closed = null,
 		?string $outcome = null,
+		?bool $archived = null,
 	): JSONResponse {
 		// Nur das übernehmen, was tatsächlich geschickt wurde: Ein
 		// nicht genanntes Feld darf nicht auf null zurückfallen. Das Loeschen
@@ -187,6 +188,7 @@ class TicketController extends Controller {
 				'dueDate' => $dueDate,
 				'closed' => $closed,
 				'outcome' => $outcome,
+				'archived' => $archived,
 			],
 			static fn ($value): bool => $value !== null,
 		);

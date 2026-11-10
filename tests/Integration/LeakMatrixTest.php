@@ -65,6 +65,7 @@ use OCA\Projektwerk\AppInfo\Application;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
 use OCP\Config\IUserConfig;
+use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IConfig;
 use OCP\IRequest;
 use OCP\IUserManager;
@@ -669,6 +670,20 @@ class LeakMatrixTest extends IntegrationTestCase {
 				$tickets->findVisibleInBoard($this->contextFor($userId)),
 				$userId . ' im Board',
 			);
+		}
+	}
+
+	public function testTheArchiveSwitchShowsOnlyWhatTheViewerMaySeeAnyway(): void {
+		$tickets = Server::get(TicketMapper::class);
+		$qb = $this->db->getQueryBuilder();
+		$qb->update('pwerk_tickets')
+			->set('archived_at', $qb->createNamedParameter(new \DateTime(), IQueryBuilder::PARAM_DATETIME_MUTABLE))
+			->where($qb->expr()->in('id', $qb->createNamedParameter(array_values($this->fixture->ticketIds), IQueryBuilder::PARAM_INT_ARRAY)));
+		$qb->executeStatement();
+
+		foreach (self::VISIBLE as $userId => $expected) {
+			$this->assertSame([], $tickets->findVisibleInBoard($this->contextFor($userId), null, true), $userId . ' sieht Archiviertes ohne Schalter.');
+			$this->assertTicketLabels($expected, $tickets->findVisibleInBoard($this->contextFor($userId)), $userId . ' mit Schalter');
 		}
 	}
 

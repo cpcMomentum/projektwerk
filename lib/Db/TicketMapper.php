@@ -89,9 +89,14 @@ class TicketMapper extends QBMapper {
 	 *
 	 * @return Ticket[]
 	 */
-	public function findVisibleInBoard(ViewerContext $viewer, ?int $columnId = null): array {
+	public function findVisibleInBoard(ViewerContext $viewer, ?int $columnId = null, bool $hideArchived = false): array {
 		$qb = $this->scopedQuery($viewer->userId, $viewer->boardId);
 		$qb->select(self::T . '.*');
+
+		// Nur die Board-Liste blendet aus; Zugriffsprüfungen (Schritte, Kommentare, Anhänge) sehen archivierte Vorgänge weiter.
+		if ($hideArchived) {
+			$qb->andWhere($qb->expr()->isNull(self::T . '.archived_at'));
+		}
 
 		if ($columnId !== null) {
 			$qb->andWhere($qb->expr()->eq(

@@ -8,10 +8,21 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Added
 
+- **Abgeschlossene Vorgänge archivieren** (#376): Erledigte und verworfene Vorgänge lassen sich über das
+  ⋯-Menü der Karte oder im Vorgang archivieren und verschwinden vom Board. Der Schalter „Archivierte
+  zeigen“ blendet sie gedämpft ein; darüber holt man sie zurück. Wieder öffnen hebt das Archiv auf.
+  Schritte, Kommentare und Anhänge archivierter Vorgänge bleiben bedienbar; Überblick und Kennzahlen
+  zählen sie weiter mit.
+
 - **Projekt archivieren** (#379): Unter Einstellungen › Projekt › Archiv lässt sich das ganze Projekt
   mit allen Boards archivieren und zurückholen; vorher einzeln archivierte Boards bleiben dabei
   archiviert. Beide Archiv-Aktionen fragen mit dem Namen nach. Ein archiviertes Kundenprojekt zählt
   weiter gegen den freien Umfang.
+
+### Fixed
+
+- **„Als verworfen abschließen“ im Karten-Menü** schloss den Vorgang als erledigt ab, weil das gewählte
+  Ergebnis auf dem Weg zum Board verloren ging.
 
 ### Changed
 

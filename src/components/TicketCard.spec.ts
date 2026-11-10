@@ -82,4 +82,37 @@ describe('TicketCard', () => {
 		expect(open).not.toHaveBeenCalled()
 		expect(w.emitted('open')).toHaveLength(1)
 	})
+
+	describe('Archiv', () => {
+		const stubs = {
+			NcActions: { template: '<div><slot /></div>' },
+			NcActionButton: { name: 'NcActionButton', template: '<button class="aktion" @click="$emit(\'click\')"><slot /></button>' },
+		}
+		const aktionen = (w: ReturnType<typeof mount>) => w.findAll('.aktion').map((b) => b.text())
+
+		it('bietet Archivieren nur bei abgeschlossenen Vorgängen an', () => {
+			expect(aktionen(mount(TicketCard, { props: { ticket: vorgang(1) }, global: { stubs } }))).not.toContain('Archivieren')
+
+			const zu = { ...vorgang(1), closedAt: '2026-11-01T10:00:00+00:00', closedOutcome: 'done' as const }
+			expect(aktionen(mount(TicketCard, { props: { ticket: zu }, global: { stubs } }))).toContain('Archivieren')
+		})
+
+		it('holt einen archivierten Vorgang zurück und markiert ihn auf der Karte', async () => {
+			const archiviert = { ...vorgang(1), closedAt: '2026-11-01T10:00:00+00:00', closedOutcome: 'done' as const, archivedAt: '2026-11-02T10:00:00+00:00' }
+			const w = mount(TicketCard, { props: { ticket: archiviert }, global: { stubs } })
+
+			expect(w.classes()).toContain('pw-card--archived')
+			expect(w.find('.pw-card__archived').text()).toBe('Archiviert')
+			const knopf = w.findAll('.aktion').find((b) => b.text() === 'Aus dem Archiv holen')
+			await knopf?.trigger('click')
+			expect(w.emitted('togglearchived')?.[0]).toEqual([archiviert])
+		})
+
+		it('reicht beim Abschließen das gewählte Ergebnis mit', async () => {
+			const w = mount(TicketCard, { props: { ticket: vorgang(1) }, global: { stubs } })
+			await w.findAll('.aktion').find((b) => b.text() === 'Als verworfen abschließen')?.trigger('click')
+
+			expect(w.emitted('toggleclosed')?.[0]).toEqual([vorgang(1), 'discarded'])
+		})
+	})
 })
