@@ -20,6 +20,7 @@ use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\IConfig;
+use OCP\IL10N;
 use OCP\IRequest;
 use OCP\IUser;
 use OCP\IUserManager;
@@ -53,6 +54,7 @@ class MemberSearchController extends Controller {
 		private MemberMapper $members,
 		private BoardAccess $access,
 		private ?string $userId,
+		private IL10N $l10n,
 	) {
 		parent::__construct(Application::APP_ID, $request);
 	}
@@ -81,7 +83,7 @@ class MemberSearchController extends Controller {
 		if (!$viewer->isManager) {
 			return new JSONResponse(
 				['error' => (new NotManagerException(
-					'Mitglieder dürfen nur interne Mitglieder mit Verwaltungsrecht pflegen.',
+					$this->l10n->t('Mitglieder dürfen nur interne Mitglieder mit Verwaltungsrecht pflegen.'),
 				))->getMessage()],
 				Http::STATUS_FORBIDDEN,
 			);

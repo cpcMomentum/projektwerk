@@ -16,6 +16,7 @@ use OCA\Projektwerk\Db\Member;
 use OCA\Projektwerk\Db\MemberMapper;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\DB\Exception as DbException;
+use OCP\IL10N;
 use OCP\IUserManager;
 
 /**
@@ -47,6 +48,7 @@ class MemberService {
 		private IUserManager $users,
 		private MemberLifecycleService $lifecycle,
 		private EntitlementService $entitlement,
+		private IL10N $l10n,
 	) {
 	}
 
@@ -100,7 +102,7 @@ class MemberService {
 			return $this->members->insert($member);
 		} catch (DbException $e) {
 			if ($e->getReason() === DbException::REASON_UNIQUE_CONSTRAINT_VIOLATION) {
-				throw new \InvalidArgumentException('Diese Person ist bereits Mitglied.');
+				throw new \InvalidArgumentException($this->l10n->t('Diese Person ist bereits Mitglied.'));
 			}
 
 			throw $e;
@@ -275,7 +277,7 @@ class MemberService {
 	 */
 	private function assertNotOwner(ViewerContext $viewer, string $userId): void {
 		if ($this->isOwner($viewer, $userId)) {
-			throw new \InvalidArgumentException('Der Eigentümer des Projekts kann nicht entfernt werden.');
+			throw new \InvalidArgumentException($this->l10n->t('Der Eigentümer des Projekts kann nicht entfernt werden.'));
 		}
 	}
 
@@ -319,7 +321,7 @@ class MemberService {
 		}
 
 		throw new \InvalidArgumentException(
-			'Dem Eigentümer des Projekts lässt sich das Verwaltungsrecht nicht entziehen.',
+			$this->l10n->t('Dem Eigentümer des Projekts lässt sich das Verwaltungsrecht nicht entziehen.'),
 		);
 	}
 
@@ -335,7 +337,7 @@ class MemberService {
 		}
 
 		throw new \InvalidArgumentException(
-			'Der Eigentümer des Projekts bleibt intern; sonst verlöre er das Verwaltungsrecht.',
+			$this->l10n->t('Der Eigentümer des Projekts bleibt intern; sonst verlöre er das Verwaltungsrecht.'),
 		);
 	}
 
@@ -369,7 +371,7 @@ class MemberService {
 	private function assertManager(ViewerContext $viewer): void {
 		if (!$viewer->isManager) {
 			throw new NotManagerException(
-				'Mitglieder dürfen nur interne Mitglieder mit Verwaltungsrecht pflegen.',
+				$this->l10n->t('Mitglieder dürfen nur interne Mitglieder mit Verwaltungsrecht pflegen.'),
 			);
 		}
 	}

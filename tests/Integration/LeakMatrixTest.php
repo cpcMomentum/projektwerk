@@ -13,11 +13,12 @@ use OCA\Projektwerk\Access\BoardAccess;
 use OCA\Projektwerk\Access\TicketScope;
 use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Access\WaitStateCalculator;
+use OCA\Projektwerk\AppInfo\Application;
 use OCA\Projektwerk\Controller\BoardController;
 use OCA\Projektwerk\Controller\DeepLinkController;
 use OCA\Projektwerk\Controller\MemberSearchController;
-use OCA\Projektwerk\Controller\SettingsController;
 use OCA\Projektwerk\Controller\OverviewController;
+use OCA\Projektwerk\Controller\SettingsController;
 use OCA\Projektwerk\Controller\TaskController;
 use OCA\Projektwerk\Controller\TicketController;
 use OCA\Projektwerk\Db\AttachmentMapper;
@@ -36,20 +37,10 @@ use OCA\Projektwerk\Db\StepMapper;
 use OCA\Projektwerk\Db\TaskFilter;
 use OCA\Projektwerk\Db\TicketDep;
 use OCA\Projektwerk\Db\TicketDepMapper;
+use OCA\Projektwerk\Db\TicketLogMapper;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Db\TicketReadMapper;
-use OCA\Projektwerk\Service\IdempotencyService;
-use OCA\Projektwerk\Db\TicketLogMapper;
 use OCA\Projektwerk\Db\TicketUserMapper;
-use OCA\Projektwerk\Service\BoardPinService;
-use OCA\Projektwerk\Service\BoardService;
-use OCA\Projektwerk\Service\ColumnService;
-use OCA\Projektwerk\Service\GithubService;
-use OCA\Projektwerk\Service\MemberService;
-use OCA\Projektwerk\Service\NotifyPrefService;
-use OCA\Projektwerk\Service\ProjectFolderService;
-use OCA\Projektwerk\Service\StepService;
-use OCA\Projektwerk\Service\TicketService;
 use OCA\Projektwerk\Mcp\AuthenticatedCaller;
 use OCA\Projektwerk\Mcp\ToolResult;
 use OCA\Projektwerk\Mcp\Tools\GetTicket;
@@ -57,11 +48,20 @@ use OCA\Projektwerk\Mcp\Tools\ListBoards;
 use OCA\Projektwerk\Mcp\Tools\ListColumns;
 use OCA\Projektwerk\Mcp\Tools\ListMembers;
 use OCA\Projektwerk\Mcp\Tools\ListTickets;
+use OCA\Projektwerk\Service\BoardPinService;
 use OCA\Projektwerk\Service\BoardReadModel;
+use OCA\Projektwerk\Service\BoardService;
+use OCA\Projektwerk\Service\ColumnService;
+use OCA\Projektwerk\Service\GithubService;
+use OCA\Projektwerk\Service\IdempotencyService;
+use OCA\Projektwerk\Service\MemberService;
+use OCA\Projektwerk\Service\NotifyPrefService;
+use OCA\Projektwerk\Service\ProjectFolderService;
+use OCA\Projektwerk\Service\StepService;
 use OCA\Projektwerk\Service\TicketDependencyService;
 use OCA\Projektwerk\Service\TicketReadModel;
+use OCA\Projektwerk\Service\TicketService;
 use OCA\Projektwerk\Tests\ReadPathRegistry;
-use OCA\Projektwerk\AppInfo\Application;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
 use OCP\Config\IUserConfig;
@@ -69,6 +69,7 @@ use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IConfig;
 use OCP\IRequest;
 use OCP\IUserManager;
+use OCP\L10N\IFactory;
 use OCP\Server;
 use ReflectionClass;
 
@@ -2313,6 +2314,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 			Server::get(MemberMapper::class),
 			Server::get(BoardAccess::class),
 			$userId,
+			Server::get(IFactory::class)->get('projektwerk'),
 		);
 	}
 

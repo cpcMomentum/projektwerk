@@ -491,7 +491,7 @@ class BoardService {
 	private function assertManager(ViewerContext $viewer): void {
 		if (!$viewer->isManager) {
 			throw new NotManagerException(
-				'Die Board-Einstellungen dürfen nur interne Mitglieder mit Verwaltungsrecht ändern.',
+				$this->l10n->t('Die Board-Einstellungen dürfen nur interne Mitglieder mit Verwaltungsrecht ändern.'),
 			);
 		}
 	}
@@ -636,7 +636,7 @@ class BoardService {
 
 	private function assertTitle(string $title): void {
 		if (trim($title) === '') {
-			throw new \InvalidArgumentException('Ein Projekt braucht einen Titel.');
+			throw new \InvalidArgumentException($this->l10n->t('Ein Projekt braucht einen Titel.'));
 		}
 	}
 

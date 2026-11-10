@@ -23,6 +23,8 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 - **„Als verworfen abschließen“ im Karten-Menü** schloss den Vorgang als erledigt ab, weil das gewählte
   Ergebnis auf dem Weg zum Board verloren ging.
+- **Fehlermeldungen des Servers übersetzt** (#446): Rund 50 Meldungen, etwa „Eine Spalte braucht einen
+  Namen.“, kamen bisher immer auf Deutsch. Ein Test wacht darüber, dass neue Meldungen übersetzt werden.
 
 ### Changed
 

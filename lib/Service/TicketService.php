@@ -250,7 +250,7 @@ class TicketService {
 					(string)$nachher,
 					$rolle,
 				)) {
-					throw new \InvalidArgumentException('Diese Person kann diesen Vorgang nicht sehen.');
+					throw new \InvalidArgumentException($this->l10n->t('Diese Person kann diesen Vorgang nicht sehen.'));
 				}
 
 				$ticket->setResponsibleUserId($nachher);
@@ -444,7 +444,7 @@ class TicketService {
 
 		$date = \DateTime::createFromFormat('!Y-m-d', trim($value));
 		if ($date === false) {
-			throw new \InvalidArgumentException('Die Fälligkeit braucht das Format JJJJ-MM-TT.');
+			throw new \InvalidArgumentException($this->l10n->t('Die Fälligkeit braucht das Format JJJJ-MM-TT.'));
 		}
 
 		return $date;
@@ -568,7 +568,7 @@ class TicketService {
 		// damit sie nicht bloß in der Oberfläche verborgen ist.
 		if (!$viewer->isInternal()) {
 			throw new NotOwningSideException(
-				'Nur interne Mitglieder können Vorgänge nach GitHub überführen.',
+				$this->l10n->t('Nur interne Mitglieder können Vorgänge nach GitHub überführen.'),
 			);
 		}
 
@@ -583,14 +583,14 @@ class TicketService {
 		$board = $this->boards->findForViewer($viewer);
 		if ((int)$board->getGithubEnabled() !== 1) {
 			throw new GithubTransferException(
-				'Für dieses Projekt ist die GitHub-Anbindung nicht eingeschaltet.',
+				$this->l10n->t('Für dieses Projekt ist die GitHub-Anbindung nicht eingeschaltet.'),
 			);
 		}
 
 		$repo = trim((string)$board->getGithubRepo());
 		if ($repo === '') {
 			throw new GithubTransferException(
-				'Für dieses Projekt ist kein Ziel-Repository hinterlegt.',
+				$this->l10n->t('Für dieses Projekt ist kein Ziel-Repository hinterlegt.'),
 			);
 		}
 
@@ -686,7 +686,7 @@ class TicketService {
 
 		if ($ticket->getCreatorRole() !== $viewer->role) {
 			throw new NotOwningSideException(
-				'Löschen darf nur die Seite, der der Vorgang gehört.',
+				$this->l10n->t('Löschen darf nur die Seite, der der Vorgang gehört.'),
 			);
 		}
 
@@ -776,7 +776,7 @@ class TicketService {
 			// am 2026-08-11 im Aendern gefunden hat.
 			if ($responsibleUserId !== null && $responsibleUserId !== ''
 				&& !$this->mayBecomeResponsible($ticket, $viewer, $responsibleUserId)) {
-				throw new \InvalidArgumentException('Diese Person kann diesen Vorgang nicht sehen.');
+				throw new \InvalidArgumentException($this->l10n->t('Diese Person kann diesen Vorgang nicht sehen.'));
 			}
 
 			$ticket->setResponsibleUserId($responsibleUserId);
@@ -928,14 +928,14 @@ class TicketService {
 	private function assertOwningSide(ViewerContext $viewer, Ticket $ticket, string $visibility): void {
 		if ($ticket->getCreatorRole() !== $viewer->role) {
 			throw new NotOwningSideException(
-				'Die Sichtbarkeit darf nur die Seite ändern, der das Ticket gehört.',
+				$this->l10n->t('Die Sichtbarkeit darf nur die Seite ändern, der das Ticket gehört.'),
 			);
 		}
 
 		if ($visibility === TicketScope::VISIBILITY_PRIVATE
 			&& $ticket->getCreatorUserId() !== $viewer->userId) {
 			throw new NotOwningSideException(
-				'Auf „privat" herunterstufen kann nur die anlegende Person selbst.',
+				$this->l10n->t('Auf „privat" herunterstufen kann nur die anlegende Person selbst.'),
 			);
 		}
 	}

@@ -14,6 +14,7 @@ use OCA\Projektwerk\Service\GithubTransferException;
 use OCP\Http\Client\IClient;
 use OCP\Http\Client\IClientService;
 use OCP\Http\Client\IResponse;
+use OCP\IL10N;
 use OCP\Security\ICredentialsManager;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -48,7 +49,7 @@ class GithubServiceTest extends TestCase {
 
 		$this->clientService->method('newClient')->willReturn($this->client);
 
-		$this->service = new GithubService($this->credentials, $this->clientService, $this->logger);
+		$this->service = new GithubService($this->credentials, $this->clientService, $this->logger, $this->l10n());
 	}
 
 	public function testStoreTokenRejectsAnEmptyValue(): void {
@@ -220,5 +221,11 @@ class GithubServiceTest extends TestCase {
 		$response->method('getBody')->willReturn($body);
 
 		return $response;
+	}
+
+	private function l10n(): IL10N {
+		$l10n = $this->createStub(IL10N::class);
+		$l10n->method('t')->willReturnCallback(static fn (string $text, array $parameters = []): string => vsprintf($text, $parameters));
+		return $l10n;
 	}
 }

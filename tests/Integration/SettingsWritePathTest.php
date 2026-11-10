@@ -31,6 +31,7 @@ use OCP\AppFramework\Http;
 use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IAppConfig;
 use OCP\IRequest;
+use OCP\L10N\IFactory;
 use OCP\Server;
 
 /**
@@ -746,7 +747,7 @@ class SettingsWritePathTest extends IntegrationTestCase {
 		$this->columnService->delete($manager, $a, $b);
 
 		$this->expectException(\InvalidArgumentException::class);
-		$this->expectExceptionMessage('letzte Spalte');
+		$this->expectExceptionMessage(Server::get(IFactory::class)->get('projektwerk')->t('Die letzte Spalte eines Projekts lässt sich nicht entfernen.'));
 
 		$this->columnService->delete($manager, $b, $a);
 	}

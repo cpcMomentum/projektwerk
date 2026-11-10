@@ -12,12 +12,13 @@ namespace OCA\Projektwerk\Service;
 use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Db\BoardMapper;
 use OCA\Projektwerk\Db\Column;
-use OCA\Projektwerk\Db\Ticket;
 use OCA\Projektwerk\Db\ColumnMapper;
+use OCA\Projektwerk\Db\Ticket;
 use OCA\Projektwerk\Db\TicketLog;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\IDBConnection;
+use OCP\IL10N;
 
 /**
  * Spalten pflegen — Name und Reihenfolge (§8).
@@ -41,6 +42,7 @@ class ColumnService {
 		private BoardMapper $boards,
 		private TicketMapper $tickets,
 		private TicketLogService $log,
+		private IL10N $l10n,
 	) {
 	}
 
@@ -129,7 +131,7 @@ class ColumnService {
 
 		if (count($wanted) !== count($existing) || array_diff($wanted, array_keys($existing)) !== []) {
 			throw new \InvalidArgumentException(
-				'Die Reihenfolge muss genau die Spalten dieses Boards enthalten.',
+				$this->l10n->t('Die Reihenfolge muss genau die Spalten dieses Boards enthalten.'),
 			);
 		}
 
@@ -175,7 +177,7 @@ class ColumnService {
 
 		if ($columnId === $targetColumnId) {
 			// Ohne Datenbankzugriff pruefbar, deshalb vor der Transaktion.
-			throw new \InvalidArgumentException('Die Zielspalte muss eine andere sein.');
+			throw new \InvalidArgumentException($this->l10n->t('Die Zielspalte muss eine andere sein.'));
 		}
 
 		// **Alles Weitere innerhalb der Transaktion**, auch das Lesen. Draussen
@@ -195,7 +197,7 @@ class ColumnService {
 			// Problem vorbei. Es gibt hier kein Ziel, und ohne Ziel gibt es
 			// keinen Weg, der nichts verliert.
 			if (count($existing) < 2) {
-				throw new \InvalidArgumentException('Die letzte Spalte eines Projekts lässt sich nicht entfernen.');
+				throw new \InvalidArgumentException($this->l10n->t('Die letzte Spalte eines Projekts lässt sich nicht entfernen.'));
 			}
 
 			// Beide über die Board-Liste, nicht per ID-Zugriff: Das prüft in
@@ -275,7 +277,7 @@ class ColumnService {
 
 	private function assertTitle(string $title): void {
 		if (trim($title) === '') {
-			throw new \InvalidArgumentException('Eine Spalte braucht einen Namen.');
+			throw new \InvalidArgumentException($this->l10n->t('Eine Spalte braucht einen Namen.'));
 		}
 	}
 
@@ -295,7 +297,7 @@ class ColumnService {
 		}
 
 		throw new NotOwnerException(
-			'Eine Spalte entfernen darf nur, wem das Projekt gehört.',
+			$this->l10n->t('Eine Spalte entfernen darf nur, wem das Projekt gehört.'),
 		);
 	}
 
@@ -305,7 +307,7 @@ class ColumnService {
 	private function assertManager(ViewerContext $viewer): void {
 		if (!$viewer->isManager) {
 			throw new NotManagerException(
-				'Spalten dürfen nur interne Mitglieder mit Verwaltungsrecht pflegen.',
+				$this->l10n->t('Spalten dürfen nur interne Mitglieder mit Verwaltungsrecht pflegen.'),
 			);
 		}
 	}
@@ -318,7 +320,7 @@ class ColumnService {
 	private function assertBoardConfigurer(ViewerContext $viewer): void {
 		if (!$viewer->isManager && !$viewer->isBoardCreator) {
 			throw new NotManagerException(
-				'Spalten dieses Boards darf nur der Projekt-Verwalter oder sein Ersteller pflegen.',
+				$this->l10n->t('Spalten dieses Boards darf nur der Projekt-Verwalter oder sein Ersteller pflegen.'),
 			);
 		}
 	}

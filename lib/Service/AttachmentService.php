@@ -20,6 +20,7 @@ use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\Files\Folder;
 use OCP\Files\NotPermittedException;
 use OCP\IDBConnection;
+use OCP\IL10N;
 
 /**
  * Anhänge am Vorgang — als Datei im Projektordner, nicht als Kopie in der App.
@@ -69,6 +70,7 @@ class AttachmentService {
 		private ProjectFolderService $folders,
 		private TicketLogService $log,
 		private IDBConnection $db,
+		private IL10N $l10n,
 	) {
 	}
 
@@ -321,7 +323,7 @@ class AttachmentService {
 			// nicht sehen darf — ein Anhang dort wäre für sie selbst unlesbar.
 			// (Der private Vorgang hat jetzt einen Ablageort, siehe unten.)
 			throw new NoFolderException(
-				'An internen Vorgängen der Kundenseite sind keine Anhänge möglich.',
+				$this->l10n->t('An internen Vorgängen der Kundenseite sind keine Anhänge möglich.'),
 			);
 		}
 
@@ -338,7 +340,7 @@ class AttachmentService {
 
 		if ($folderId === null) {
 			throw new NoFolderException(
-				'Für dieses Projekt ist noch kein Ordner hinterlegt. Die Projektverwaltung trägt ihn in den Einstellungen ein.',
+				$this->l10n->t('Für dieses Projekt ist noch kein Ordner hinterlegt. Die Projektverwaltung trägt ihn in den Einstellungen ein.'),
 			);
 		}
 
@@ -380,7 +382,7 @@ class AttachmentService {
 			}
 		}
 
-		throw new NotPermittedException('Es gibt bereits zu viele Dateien mit diesem Namen.');
+		throw new NotPermittedException($this->l10n->t('Es gibt bereits zu viele Dateien mit diesem Namen.'));
 	}
 
 	/**
@@ -411,7 +413,7 @@ class AttachmentService {
 			}
 		}
 
-		throw new NotPermittedException('Es gibt bereits zu viele Dateien mit diesem Namen.');
+		throw new NotPermittedException($this->l10n->t('Es gibt bereits zu viele Dateien mit diesem Namen.'));
 	}
 
 	/**
@@ -454,6 +456,6 @@ class AttachmentService {
 			}
 		}
 
-		throw new DoesNotExistException('Anhang nicht gefunden.');
+		throw new DoesNotExistException($this->l10n->t('Anhang nicht gefunden.'));
 	}
 }
