@@ -453,6 +453,7 @@
 </template>
 
 <script lang="ts">
+import type { TicketChanges } from '@/services/tickets'
 import type { OutboxEntry, SavedEvent, TicketEntry } from '@/stores/outboxStore'
 import type { Column, Visibility } from '@/types/board'
 import type { Attachment, Comment, Step, Ticket, TicketLinks } from '@/types/ticket'
@@ -1009,60 +1010,34 @@ export default defineComponent({
 			this.openTicketData = ticket
 		},
 
-		// Archivieren und Zurückholen vom Karten-Menü; derselbe Abgleich wie beim Abschließen.
-		async toggleArchived(ticket: Ticket) {
-			try {
-				const updated = await updateTicket(ticket.boardId, ticket.id, ticket.version, { archived: !ticket.archivedAt })
-				this.store.replaceTicket(updated)
-				if (this.openTicketData?.id === updated.id) {
-					this.openTicketData = updated
-				}
-			} catch (e) {
-				if (isConflict(e)) {
-					await this.store.open(this.boardId)
-				}
-				reportWriteError(e, t('projektwerk', 'Archivieren fehlgeschlagen'), isConflict(e))
-			}
+		toggleArchived(ticket: Ticket): Promise<void> {
+			return this.writeFromCard(ticket, { archived: !ticket.archivedAt }, t('projektwerk', 'Archivieren fehlgeschlagen'))
 		},
 
-		/**
-		 * Einen Vorgang vom Karten-Menü aus abschließen oder wieder öffnen (#168) —
-		 * derselbe offen↔geschlossen-Übergang wie der Knopf im Detail.
-		 *
-		 * **Das Overlay geht nur mit, wenn genau dieser Vorgang offen ist.** Sonst
-		 * risse ein Klick im Karten-Menü das Detail auf — `applyChanged` setzt
-		 * `openTicketData` bedingungslos und taugt hier deshalb nicht.
-		 *
-		 * @param ticket Der Vorgang, dessen Abschluss umgeschaltet wird.
-		 * @param outcome Beim Abschließen das gewählte Ergebnis (#171); beim Wieder-öffnen weggelassen.
-		 */
-		async toggleClosed(ticket: Ticket, outcome?: 'done' | 'discarded') {
+		toggleClosed(ticket: Ticket, outcome?: 'done' | 'discarded'): Promise<void> {
 			const schliessen = ticket.closedAt === null
+			// Das Ergebnis begleitet nur das Abschließen; beim Wieder-öffnen löscht der Server es ohnehin.
+			return this.writeFromCard(
+				ticket,
+				schliessen ? { closed: true, outcome } : { closed: false },
+				schliessen ? t('projektwerk', 'Abschließen fehlgeschlagen') : t('projektwerk', 'Wieder öffnen fehlgeschlagen'),
+			)
+		},
 
+		// Das Overlay geht nur mit, wenn genau dieser Vorgang offen ist; applyChanged würde es aufreißen.
+		async writeFromCard(ticket: Ticket, changes: TicketChanges, fehler: string): Promise<void> {
 			try {
-				const updated = await updateTicket(
-					ticket.boardId,
-					ticket.id,
-					ticket.version,
-					// Das Ergebnis begleitet nur das Abschließen (#171); beim
-					// Wieder-öffnen löscht der Server es ohnehin.
-					schliessen ? { closed: true, outcome } : { closed: false },
-				)
+				const updated = await updateTicket(ticket.boardId, ticket.id, ticket.version, changes)
 				this.store.replaceTicket(updated)
 				if (this.openTicketData?.id === updated.id) {
 					this.openTicketData = updated
 				}
 			} catch (e) {
-				// Beim Konflikt wird nachgeladen statt zum Neuladen aufgefordert,
-				// aus demselben Grund wie bei move()/moved(): Das ganze Board
-				// steht im Speicher, ein veralteter `version`-Wert liesse jeden
-				// weiteren Versuch scheitern — auch an einer ganz anderen Karte.
+				// Nachladen wie bei move(): Ein veralteter Stand liesse sonst jeden weiteren Schreibversuch scheitern.
 				if (isConflict(e)) {
 					await this.store.open(this.boardId)
 				}
-				reportWriteError(e, schliessen
-					? t('projektwerk', 'Abschließen fehlgeschlagen')
-					: t('projektwerk', 'Wieder öffnen fehlgeschlagen'), isConflict(e))
+				reportWriteError(e, fehler, isConflict(e))
 			}
 		},
 
