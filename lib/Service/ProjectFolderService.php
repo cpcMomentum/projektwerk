@@ -18,10 +18,12 @@ use OCA\Projektwerk\Db\Ticket;
 use OCP\Config\IUserConfig;
 use OCP\Files\File;
 use OCP\Files\Folder;
+use OCP\Files\IHomeStorage;
 use OCP\Files\IRootFolder;
 use OCP\Files\NotFoundException;
 use OCP\Files\NotPermittedException;
 use OCP\IL10N;
+use OCP\Share\IManager as IShareManager;
 
 /**
  * Die beiden Projektordner eines Boards — auflösen, prüfen, zuordnen.
@@ -59,6 +61,7 @@ class ProjectFolderService {
 		private IRootFolder $root,
 		private IUserConfig $userConfig,
 		private IL10N $l10n,
+		private IShareManager $shares,
 	) {
 	}
 
@@ -220,7 +223,48 @@ class ProjectFolderService {
 			$node = $home->newFolder($clean);
 		}
 
-		return $this->assertUsable($node);
+		return $this->assertOnlyThisPerson($userId, $this->assertUsable($node));
+	}
+
+	/**
+	 * Der persönliche Ordner erreicht **nur diese Person** — sonst ist er keiner.
+	 *
+	 * Der Ordner wird über seinen Namen gefunden. Ohne diese Prüfung träte eine
+	 * fremde Freigabe gleichen Namens an seine Stelle, und private Anhänge
+	 * landeten im Speicher eines anderen. Dasselbe gilt in der Gegenrichtung:
+	 * Ein eigener Ordner, den die Person (oder ein Elternordner) freigegeben
+	 * hat, reicht weiter als „nur ich".
+	 *
+	 * Zwei Bedingungen:
+	 * - Der Ordner liegt im **eigenen** Speicher (Heimatspeicher, Eigentümer ist
+	 *   die Person). Eingehende Freigaben, Team-Ordner und externe Speicher
+	 *   fallen damit heraus.
+	 * - Niemand sonst hat Zugriff: keine Freigabe an Personen oder Gruppen, kein
+	 *   öffentlicher Link, keine Mail- oder Föderationsfreigabe — auch nicht
+	 *   über einen Elternordner.
+	 *
+	 * @throws NotPermittedException
+	 */
+	private function assertOnlyThisPerson(string $userId, Folder $folder): Folder {
+		$eigenerSpeicher = $folder->getStorage()->instanceOfStorage(IHomeStorage::class)
+			&& $folder->getOwner()?->getUID() === $userId;
+
+		if (!$eigenerSpeicher) {
+			throw new NotPermittedException($this->l10n->t('Der persönliche Ordner muss in den eigenen Dateien liegen. Ein freigegebener Ordner oder ein Team-Ordner ist dafür nicht zulässig.'));
+		}
+
+		$zugriff = $this->shares->getAccessList($folder);
+		$andere = array_diff($zugriff['users'] ?? [], [$userId]);
+
+		if ($andere !== []
+			|| ($zugriff['public'] ?? false) === true
+			|| ($zugriff['remote'] ?? false) === true
+			|| ($zugriff['mail'] ?? []) !== []
+		) {
+			throw new NotPermittedException($this->l10n->t('Der persönliche Ordner ist für andere freigegeben. Private Anhänge brauchen einen Ordner ohne Freigabe.'));
+		}
+
+		return $folder;
 	}
 
 	/**

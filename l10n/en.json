@@ -688,7 +688,9 @@
 		"GitHub hat die Anfrage abgelehnt (Rechte oder Ratenbegrenzung). Bitte den Token und dessen Repo-Rechte prüfen.": "GitHub rejected the request (permissions or rate limit). Please check the token and its repository permissions.",
 		"Das Repository wurde nicht gefunden, oder der Token hat keinen Zugriff darauf.": "The repository was not found, or the token has no access to it.",
 		"GitHub hat den Vorgang abgelehnt — für dieses Repository lassen sich keine Issues anlegen.": "GitHub rejected the request: issues cannot be created for this repository.",
-		"GitHub hat mit einem Fehler geantwortet (HTTP %s).": "GitHub responded with an error (HTTP %s)."
+		"GitHub hat mit einem Fehler geantwortet (HTTP %s).": "GitHub responded with an error (HTTP %s).",
+		"Der persönliche Ordner muss in den eigenen Dateien liegen. Ein freigegebener Ordner oder ein Team-Ordner ist dafür nicht zulässig.": "The personal folder must be in your own files. A shared folder or a team folder is not allowed for this.",
+		"Der persönliche Ordner ist für andere freigegeben. Private Anhänge brauchen einen Ordner ohne Freigabe.": "The personal folder is shared with others. Private attachments need a folder that is not shared."
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }

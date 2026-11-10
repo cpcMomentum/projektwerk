@@ -641,6 +641,8 @@ OC.L10N.register(
     "GitHub hat die Anfrage abgelehnt (Rechte oder Ratenbegrenzung). Bitte den Token und dessen Repo-Rechte prüfen." : "GitHub hat die Anfrage abgelehnt (Rechte oder Ratenbegrenzung). Bitte den Token und dessen Repo-Rechte prüfen.",
     "Das Repository wurde nicht gefunden, oder der Token hat keinen Zugriff darauf." : "Das Repository wurde nicht gefunden, oder der Token hat keinen Zugriff darauf.",
     "GitHub hat den Vorgang abgelehnt — für dieses Repository lassen sich keine Issues anlegen." : "GitHub hat den Vorgang abgelehnt — für dieses Repository lassen sich keine Issues anlegen.",
-    "GitHub hat mit einem Fehler geantwortet (HTTP %s)." : "GitHub hat mit einem Fehler geantwortet (HTTP %s)."
+    "GitHub hat mit einem Fehler geantwortet (HTTP %s)." : "GitHub hat mit einem Fehler geantwortet (HTTP %s).",
+    "Der persönliche Ordner muss in den eigenen Dateien liegen. Ein freigegebener Ordner oder ein Team-Ordner ist dafür nicht zulässig." : "Der persönliche Ordner muss in den eigenen Dateien liegen. Ein freigegebener Ordner oder ein Team-Ordner ist dafür nicht zulässig.",
+    "Der persönliche Ordner ist für andere freigegeben. Private Anhänge brauchen einen Ordner ohne Freigabe." : "Der persönliche Ordner ist für andere freigegeben. Private Anhänge brauchen einen Ordner ohne Freigabe."
 },
 "nplurals=2; plural=(n != 1);");
