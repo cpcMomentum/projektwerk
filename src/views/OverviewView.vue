@@ -133,11 +133,6 @@ export default defineComponent({
 	async created() {
 		this.taskStore.load()
 		await Promise.all([this.store.load(), this.boardStore.ensureBoards()])
-		// Ein inzwischen angelegtes Board kennt die geladene Liste noch nicht; ohne Nachladen stünde es als eigenes Projekt da.
-		const bekannt = new Set(this.boardStore.boards.map((b) => b.id))
-		if (this.boardStore.loaded && (this.store.projectStatusRows as ProjectStatusRow[]).some((row) => !bekannt.has(row.boardId))) {
-			await this.boardStore.loadBoards()
-		}
 	},
 
 	methods: { t },

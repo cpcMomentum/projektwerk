@@ -299,6 +299,8 @@ export const useOverviewStore = defineStore('overview', {
 
 					return {
 						boardId,
+						projectId: board?.projectId ?? null,
+						projectTitle: board?.projectTitle ?? null,
 						title: board?.title ?? '',
 						org: [board?.orgInternal, board?.customer].filter(Boolean).join(' · '),
 						neu: z.neu,

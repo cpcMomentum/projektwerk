@@ -1190,6 +1190,17 @@ class LeakMatrixTest extends IntegrationTestCase {
 				array_diff(array_keys($data['neuDieseWoche']), $eigeneBoards),
 				$userId . ': Ein fremdes Board in „N diese Woche".',
 			);
+
+			// (5) Jede Herkunftszeile nennt das eigene Projekt des Boards samt Namen.
+			$projekte = [];
+			foreach (Server::get(ProjectMapper::class)->findAllForUser($userId) as $project) {
+				$projekte[(int)$project->getId()] = (string)$project->getTitle();
+			}
+			foreach (Server::get(BoardMapper::class)->findAllForUser($userId) as $board) {
+				$line = $data['boards'][(int)$board->getId()];
+				$this->assertSame($board->getProjectId(), $line['projectId'], $userId . ': falsches Projekt an Board ' . $board->getId());
+				$this->assertSame($board->getProjectId() === null ? null : $projekte[$board->getProjectId()], $line['projectTitle'], $userId . ': falscher Projektname an Board ' . $board->getId());
+			}
 		}
 
 		// Und das Nichtmitglied: leere Listen, kein 404 — wie bei `task#index`
@@ -2346,6 +2357,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 			Server::get(ColumnMapper::class),
 			Server::get(WaitStateCalculator::class),
 			Server::get(MemberService::class),
+			Server::get(ProjectMapper::class),
 			$userId,
 		);
 	}

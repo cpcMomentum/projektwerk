@@ -14,7 +14,7 @@ function board(id: number, projectId: number | null, extra: Partial<TileBoard> =
 }
 
 function row(boardId: number, extra: Partial<ProjectStatusRow> = {}): ProjectStatusRow {
-	return { boardId, title: `Board ${boardId}`, org: '', neu: 0, offen: 0, wartet: 0, erledigt: 0, verworfen: 0, neuDieseWoche: 0, offenGesamt: 0, fortschritt: 0, zustand: 'gruen', ...extra }
+	return { boardId, projectId: null, projectTitle: null, title: `Board ${boardId}`, org: '', neu: 0, offen: 0, wartet: 0, erledigt: 0, verworfen: 0, neuDieseWoche: 0, offenGesamt: 0, fortschritt: 0, zustand: 'gruen', ...extra }
 }
 
 describe('Projektkacheln', () => {
@@ -84,6 +84,16 @@ describe('Projektkacheln', () => {
 
 		expect(kacheln.map((k) => [k.title, k.boardIds])).toEqual([['P', [1, 2]], ['Unbekannt', [9]]])
 		expect(kacheln[1].org).toBe('cpc · Kunde')
+	})
+
+	it('ordnet ein der Boardliste unbekanntes Board über die Zeile seinem Projekt zu', () => {
+		const kacheln = overviewProjectTiles(
+			[row(1), row(9, { projectId: 7, projectTitle: 'P' })],
+			[board(1, 7, { projectTitle: 'P' })],
+			{},
+		)
+
+		expect(kacheln.map((k) => [k.title, k.boardIds])).toEqual([['P', [1, 9]]])
 	})
 
 	it('übergeht ein veraltetes Gedächtnis und nimmt dann das bevorzugte Board', () => {

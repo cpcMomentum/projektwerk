@@ -109,7 +109,7 @@ export function projectTiles(
 	})
 }
 
-// Die Projektkacheln des Überblicks: nur Boards mit Statuszeile, Projekt-Angaben aus der Boardliste.
+// Die Projektkacheln des Überblicks: nur Boards mit Statuszeile; ein der Boardliste unbekanntes Board ordnet die Zeile zu.
 export function overviewProjectTiles(rows: ProjectStatusRow[], boards: TileBoard[], lastBoards: Record<string, number>): ProjectTileData[] {
 	const mitZeile = new Set(rows.map((row) => row.boardId))
 	const bekannt = new Set(boards.map((b) => b.id))
@@ -117,7 +117,8 @@ export function overviewProjectTiles(rows: ProjectStatusRow[], boards: TileBoard
 	const eingehend: TileBoard[] = [...boards.filter((b) => mitZeile.has(b.id)), ...rows.filter((row) => !bekannt.has(row.boardId)).map((row) => ({
 		id: row.boardId,
 		title: row.title,
-		projectId: null,
+		projectId: row.projectId,
+		projectTitle: row.projectTitle ?? undefined,
 		archived: false,
 		customer: null,
 		orgInternal: row.org === '' ? null : row.org,
