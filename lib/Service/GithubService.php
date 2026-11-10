@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OCA\Projektwerk\Service;
 
 use OCP\Http\Client\IClientService;
+use OCP\IL10N;
 use OCP\Security\ICredentialsManager;
 use Psr\Log\LoggerInterface;
 
@@ -50,6 +51,7 @@ class GithubService {
 		private ICredentialsManager $credentials,
 		private IClientService $clientService,
 		private LoggerInterface $logger,
+		private IL10N $l10n,
 	) {
 	}
 
@@ -62,7 +64,7 @@ class GithubService {
 	public function storeToken(string $userId, string $token): void {
 		$token = trim($token);
 		if ($token === '') {
-			throw new \InvalidArgumentException('Der GitHub-Token darf nicht leer sein.');
+			throw new \InvalidArgumentException($this->l10n->t('Der GitHub-Token darf nicht leer sein.'));
 		}
 
 		$this->credentials->store($userId, self::TOKEN_ID, $token);
@@ -99,14 +101,14 @@ class GithubService {
 		$token = $this->tokenOf($userId);
 		if ($token === null) {
 			throw new GithubTransferException(
-				'Kein GitHub-Token hinterlegt. Bitte in „Meine Einstellungen" einen Token eintragen.',
+				$this->l10n->t('Kein GitHub-Token hinterlegt. Bitte in „Meine Einstellungen" einen Token eintragen.'),
 			);
 		}
 
 		$repo = trim($repo);
 		if (!preg_match('#^[^/\s]+/[^/\s]+$#', $repo)) {
 			throw new GithubTransferException(
-				'Das Ziel-Repository ist nicht im Format „owner/repo" hinterlegt.',
+				$this->l10n->t('Das Ziel-Repository ist nicht im Format „owner/repo" hinterlegt.'),
 			);
 		}
 
@@ -134,7 +136,7 @@ class GithubService {
 			// erreichbar. Der Vorgang bleibt unverändert (fail-closed).
 			$this->logger->warning('GitHub-Überführung: Verbindung fehlgeschlagen', ['exception' => $e]);
 			throw new GithubTransferException(
-				'GitHub war nicht erreichbar. Bitte später erneut versuchen.',
+				$this->l10n->t('GitHub war nicht erreichbar. Bitte später erneut versuchen.'),
 			);
 		}
 
@@ -168,7 +170,7 @@ class GithubService {
 		$token = $this->tokenOf($userId);
 		if ($token === null) {
 			throw new GithubTransferException(
-				'Kein GitHub-Token hinterlegt. Bitte in „Meine Einstellungen" einen Token eintragen.',
+				$this->l10n->t('Kein GitHub-Token hinterlegt. Bitte in „Meine Einstellungen" einen Token eintragen.'),
 			);
 		}
 
@@ -195,7 +197,7 @@ class GithubService {
 				]);
 			} catch (\Throwable $e) {
 				$this->logger->warning('GitHub-Repos: Verbindung fehlgeschlagen', ['exception' => $e]);
-				throw new GithubTransferException('GitHub war nicht erreichbar. Bitte später erneut versuchen.');
+				throw new GithubTransferException($this->l10n->t('GitHub war nicht erreichbar. Bitte später erneut versuchen.'));
 			}
 
 			if ($response->getStatusCode() !== 200) {
@@ -260,7 +262,7 @@ class GithubService {
 		if (!is_array($data) || !isset($data['number'], $data['html_url'])) {
 			$this->logger->warning('GitHub-Überführung: unerwartete Antwort auf 201', ['body' => $body]);
 			throw new GithubTransferException(
-				'GitHub hat das Issue angelegt, aber unerwartet geantwortet.',
+				$this->l10n->t('GitHub hat das Issue angelegt, aber unerwartet geantwortet.'),
 			);
 		}
 
@@ -271,15 +273,15 @@ class GithubService {
 	}
 
 	/**
-	 * Aus einem Fehlstatus eine deutsche, handlungsleitende Meldung.
+	 * Aus einem Fehlstatus eine handlungsleitende Meldung.
 	 */
 	private function messageForStatus(int $status): string {
 		return match ($status) {
-			401 => 'Der GitHub-Token ist ungültig oder abgelaufen. Bitte in „Meine Einstellungen" erneuern.',
-			403, 429 => 'GitHub hat die Anfrage abgelehnt (Rechte oder Ratenbegrenzung). Bitte den Token und dessen Repo-Rechte prüfen.',
-			404 => 'Das Repository wurde nicht gefunden, oder der Token hat keinen Zugriff darauf.',
-			410, 422 => 'GitHub hat den Vorgang abgelehnt — für dieses Repository lassen sich keine Issues anlegen.',
-			default => 'GitHub hat mit einem Fehler geantwortet (HTTP ' . $status . ').',
+			401 => $this->l10n->t('Der GitHub-Token ist ungültig oder abgelaufen. Bitte in „Meine Einstellungen" erneuern.'),
+			403, 429 => $this->l10n->t('GitHub hat die Anfrage abgelehnt (Rechte oder Ratenbegrenzung). Bitte den Token und dessen Repo-Rechte prüfen.'),
+			404 => $this->l10n->t('Das Repository wurde nicht gefunden, oder der Token hat keinen Zugriff darauf.'),
+			410, 422 => $this->l10n->t('GitHub hat den Vorgang abgelehnt — für dieses Repository lassen sich keine Issues anlegen.'),
+			default => $this->l10n->t('GitHub hat mit einem Fehler geantwortet (HTTP %s).', [$status]),
 		};
 	}
 }

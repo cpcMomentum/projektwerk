@@ -21,6 +21,7 @@ use OCP\Files\Folder;
 use OCP\Files\IRootFolder;
 use OCP\Files\NotFoundException;
 use OCP\Files\NotPermittedException;
+use OCP\IL10N;
 use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
@@ -46,7 +47,7 @@ class ProjectFolderServiceTest extends TestCase {
 	protected function setUp(): void {
 		parent::setUp();
 
-		$this->service = new ProjectFolderService($this->createStub(IRootFolder::class), $this->createStub(IUserConfig::class));
+		$this->service = new ProjectFolderService($this->createStub(IRootFolder::class), $this->createStub(IUserConfig::class), $this->l10n());
 	}
 
 	/**
@@ -167,7 +168,7 @@ class ProjectFolderServiceTest extends TestCase {
 
 		$this->expectException(NotPermittedException::class);
 		$this->expectExceptionMessage('Dieser Ordner ist nicht erreichbar.');
-		(new ProjectFolderService($root, $this->createStub(IUserConfig::class)))->resolvePath('lm-intern', 'Gibt/Es/Nicht');
+		(new ProjectFolderService($root, $this->createStub(IUserConfig::class), $this->l10n()))->resolvePath('lm-intern', 'Gibt/Es/Nicht');
 	}
 
 	/**
@@ -196,7 +197,7 @@ class ProjectFolderServiceTest extends TestCase {
 		$root->expects($this->never())->method('getUserFolder');
 
 		$this->expectException(NotPermittedException::class);
-		(new ProjectFolderService($root, $this->createStub(IUserConfig::class)))->resolvePath('lm-intern', '   /  ');
+		(new ProjectFolderService($root, $this->createStub(IUserConfig::class), $this->l10n()))->resolvePath('lm-intern', '   /  ');
 	}
 
 	/**
@@ -209,7 +210,7 @@ class ProjectFolderServiceTest extends TestCase {
 		$root = $this->createStub(IRootFolder::class);
 		$root->method('getUserFolder')->willReturn($home);
 
-		$this->assertTrue((new ProjectFolderService($root, $this->createStub(IUserConfig::class)))->exists('lm-intern', 42));
+		$this->assertTrue((new ProjectFolderService($root, $this->createStub(IUserConfig::class), $this->l10n()))->exists('lm-intern', 42));
 	}
 
 	/**
@@ -223,7 +224,7 @@ class ProjectFolderServiceTest extends TestCase {
 		$root = $this->createStub(IRootFolder::class);
 		$root->method('getUserFolder')->willReturn($home);
 
-		$this->assertFalse((new ProjectFolderService($root, $this->createStub(IUserConfig::class)))->exists('lm-intern', 42));
+		$this->assertFalse((new ProjectFolderService($root, $this->createStub(IUserConfig::class), $this->l10n()))->exists('lm-intern', 42));
 	}
 
 	/**
@@ -235,7 +236,7 @@ class ProjectFolderServiceTest extends TestCase {
 		$root = $this->createStub(IRootFolder::class);
 		$root->method('getUserFolder')->willThrowException(new NotFoundException());
 
-		$this->assertTrue((new ProjectFolderService($root, $this->createStub(IUserConfig::class)))->exists('lm-intern', 42));
+		$this->assertTrue((new ProjectFolderService($root, $this->createStub(IUserConfig::class), $this->l10n()))->exists('lm-intern', 42));
 	}
 
 	/**
@@ -256,7 +257,7 @@ class ProjectFolderServiceTest extends TestCase {
 
 		$this->assertSame(
 			'Projekte/90_Austausch',
-			(new ProjectFolderService($root, $this->createStub(IUserConfig::class)))->displayPath('lm-intern', $folder),
+			(new ProjectFolderService($root, $this->createStub(IUserConfig::class), $this->l10n()))->displayPath('lm-intern', $folder),
 		);
 	}
 
@@ -292,6 +293,12 @@ class ProjectFolderServiceTest extends TestCase {
 		$root = $this->createStub(IRootFolder::class);
 		$root->method('getUserFolder')->willReturn($home);
 
-		return new ProjectFolderService($root, $this->createStub(IUserConfig::class));
+		return new ProjectFolderService($root, $this->createStub(IUserConfig::class), $this->l10n());
+	}
+
+	private function l10n(): IL10N {
+		$l10n = $this->createStub(IL10N::class);
+		$l10n->method('t')->willReturnCallback(static fn (string $text, array $parameters = []): string => vsprintf($text, $parameters));
+		return $l10n;
 	}
 }

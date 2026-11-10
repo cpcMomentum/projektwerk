@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace OCA\Projektwerk\Service;
 
-use OCA\Projektwerk\AppInfo\Application;
 use OCA\Projektwerk\Access\TicketScope;
 use OCA\Projektwerk\Access\ViewerContext;
+use OCA\Projektwerk\AppInfo\Application;
 use OCA\Projektwerk\Db\Attachment;
 use OCA\Projektwerk\Db\Project;
 use OCA\Projektwerk\Db\Ticket;
@@ -21,6 +21,7 @@ use OCP\Files\Folder;
 use OCP\Files\IRootFolder;
 use OCP\Files\NotFoundException;
 use OCP\Files\NotPermittedException;
+use OCP\IL10N;
 
 /**
  * Die beiden Projektordner eines Boards — auflösen, prüfen, zuordnen.
@@ -57,6 +58,7 @@ class ProjectFolderService {
 	public function __construct(
 		private IRootFolder $root,
 		private IUserConfig $userConfig,
+		private IL10N $l10n,
 	) {
 	}
 
@@ -149,7 +151,7 @@ class ProjectFolderService {
 		$node = $this->root->getUserFolder($userId)->getFirstNodeById($fileId);
 
 		if (!$node instanceof File) {
-			throw new NotPermittedException('Diese Datei ist nicht erreichbar.');
+			throw new NotPermittedException($this->l10n->t('Diese Datei ist nicht erreichbar.'));
 		}
 
 		return $node;
@@ -266,7 +268,7 @@ class ProjectFolderService {
 		$clean = trim($path, " \t\n\r\0\x0B/");
 
 		if ($clean === '') {
-			throw new NotPermittedException('Bitte einen Ordner angeben.');
+			throw new NotPermittedException($this->l10n->t('Bitte einen Ordner angeben.'));
 		}
 
 		try {
@@ -289,14 +291,14 @@ class ProjectFolderService {
 			// es nicht gibt oder den diese Person nicht erreicht — **dieselbe**
 			// Meldung für alle drei. Eine genauere Auskunft verriete, ob es den
 			// Ordner anderswo gibt.
-			throw new NotPermittedException('Dieser Ordner ist nicht erreichbar.');
+			throw new NotPermittedException($this->l10n->t('Dieser Ordner ist nicht erreichbar.'));
 		}
 
 		if (!$node->isCreatable()) {
 			// Ein Ordner ohne Schreibrecht wäre erst beim ersten Anhang
 			// aufgefallen — und dann bei der Person, die anhängt, nicht bei der,
 			// die ihn eingetragen hat.
-			throw new NotPermittedException('In diesen Ordner darf nicht geschrieben werden.');
+			throw new NotPermittedException($this->l10n->t('In diesen Ordner darf nicht geschrieben werden.'));
 		}
 
 		return $node;

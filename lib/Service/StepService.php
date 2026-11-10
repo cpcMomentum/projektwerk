@@ -20,6 +20,7 @@ use OCA\Projektwerk\Db\TicketLog;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\IDBConnection;
+use OCP\IL10N;
 
 /**
  * Arbeitsschritte anlegen, zuweisen, erledigen.
@@ -54,6 +55,7 @@ class StepService {
 		private NotificationService $notifications,
 		private TicketLogService $log,
 		private IDBConnection $db,
+		private IL10N $l10n,
 	) {
 	}
 
@@ -75,7 +77,7 @@ class StepService {
 		$trimmed = trim($title);
 
 		if ($trimmed === '') {
-			throw new \InvalidArgumentException('Ein Arbeitsschritt braucht einen Titel.');
+			throw new \InvalidArgumentException($this->l10n->t('Ein Arbeitsschritt braucht einen Titel.'));
 		}
 
 		$step = new Step();
@@ -122,7 +124,7 @@ class StepService {
 		if (array_key_exists('title', $changes)) {
 			$title = trim($changes['title']);
 			if ($title === '') {
-				throw new \InvalidArgumentException('Ein Arbeitsschritt braucht einen Titel.');
+				throw new \InvalidArgumentException($this->l10n->t('Ein Arbeitsschritt braucht einen Titel.'));
 			}
 			$step->setTitle($title);
 		}
@@ -334,11 +336,11 @@ class StepService {
 			// Dieselbe Meldung wie fuer „darf nicht": Ob jemand ueberhaupt
 			// Mitglied ist, beantwortet board#show fuer Mitglieder ohnehin —
 			// aber unterscheiden muss diese Stelle es nicht.
-			throw new \InvalidArgumentException('Diese Person kann diesen Vorgang nicht sehen.');
+			throw new \InvalidArgumentException($this->l10n->t('Diese Person kann diesen Vorgang nicht sehen.'));
 		}
 
 		if (!$this->maySee($ticket, $userId, $role)) {
-			throw new \InvalidArgumentException('Diese Person kann diesen Vorgang nicht sehen.');
+			throw new \InvalidArgumentException($this->l10n->t('Diese Person kann diesen Vorgang nicht sehen.'));
 		}
 
 		// Nur bei einem Wechsel neu stempeln: Sonst spraenge die Wartezeit bei
@@ -390,7 +392,7 @@ class StepService {
 			}
 		}
 
-		throw new DoesNotExistException('Arbeitsschritt nicht gefunden.');
+		throw new DoesNotExistException($this->l10n->t('Arbeitsschritt nicht gefunden.'));
 	}
 
 	private function nextPosition(int $ticketId): int {
@@ -431,7 +433,7 @@ class StepService {
 
 		$date = \DateTime::createFromFormat('!Y-m-d', trim($value));
 		if ($date === false) {
-			throw new \InvalidArgumentException('Die Fälligkeit braucht das Format JJJJ-MM-TT.');
+			throw new \InvalidArgumentException($this->l10n->t('Die Fälligkeit braucht das Format JJJJ-MM-TT.'));
 		}
 
 		return $date;
