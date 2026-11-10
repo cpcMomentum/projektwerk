@@ -107,6 +107,11 @@ jobs:
         working-directory: server
         run: php occ app:disable password_policy || true
 
+      # Sonst startet jede Seite den AJAX-Cron, dessen Schreibzugriffe SQLite für Testanfragen sperren.
+      - name: Hintergrundjobs auf System-Cron stellen
+        working-directory: server
+        run: php occ background:cron
+
       - name: Testkonten anlegen
         working-directory: server
         run: PWERK_OCC="php occ" apps/projektwerk/tests/e2e/provision.sh
