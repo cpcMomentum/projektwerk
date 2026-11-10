@@ -19,7 +19,7 @@ interface TokenValidator {
 	/**
 	 * @return string|null die Benutzerkennung, oder null bei ungültigem Token
 	 */
-	public function userIdFor(string $token): ?string;
+	public function userIdFor(#[\SensitiveParameter] string $token): ?string;
 
 	/**
 	 * Ob der Autorisierungsserver installiert und aktiv ist.

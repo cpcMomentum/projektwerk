@@ -90,8 +90,15 @@ class ImapClient {
 	}
 
 	/** Authenticate and cache the server capability list. */
-	public function login(string $user, string $password): void {
-		$this->command('LOGIN ' . $this->quote($user) . ' ' . $this->quote($password));
+	public function login(string $user, #[\SensitiveParameter] string $password): void {
+		// Der Befehl trägt das Passwort im Klartext. Scheitert die Anmeldung,
+		// stünde er als Argument von command() im Stacktrace — deshalb hier neu
+		// werfen: Die neue Ausnahme entsteht in login(), ohne den Befehl.
+		try {
+			$this->command('LOGIN ' . $this->quote($user) . ' ' . $this->quote($password));
+		} catch (ImapException $e) {
+			throw new ImapException($e->getMessage());
+		}
 		$resp = $this->command('CAPABILITY');
 		if (preg_match('/^\* CAPABILITY (.+)$/mi', $resp['raw'], $m)) {
 			$this->capabilities = array_map('strtoupper', preg_split('/\s+/', trim($m[1])) ?: []);
@@ -205,7 +212,7 @@ class ImapClient {
 	 *
 	 * @return array{raw: string, literals: string[]}
 	 */
-	private function command(string $command): array {
+	private function command(#[\SensitiveParameter] string $command): array {
 		if ($this->stream === null) {
 			throw new ImapException('IMAP: nicht verbunden');
 		}
@@ -286,7 +293,7 @@ class ImapClient {
 	}
 
 	/** Wrap a value as an IMAP quoted string, escaping \ and ". */
-	private function quote(string $value): string {
+	private function quote(#[\SensitiveParameter] string $value): string {
 		return '"' . str_replace(['\\', '"'], ['\\\\', '\\"'], $value) . '"';
 	}
 

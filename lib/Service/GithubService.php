@@ -61,7 +61,7 @@ class GithubService {
 	 *
 	 * @throws \InvalidArgumentException wenn der Token leer ist
 	 */
-	public function storeToken(string $userId, string $token): void {
+	public function storeToken(string $userId, #[\SensitiveParameter] string $token): void {
 		$token = trim($token);
 		if ($token === '') {
 			throw new \InvalidArgumentException($this->l10n->t('Der GitHub-Token darf nicht leer sein.'));
@@ -134,7 +134,9 @@ class GithubService {
 		} catch (\Throwable $e) {
 			// Netz weg, Zeitüberschreitung, TLS — die Gegenstelle war nicht
 			// erreichbar. Der Vorgang bleibt unverändert (fail-closed).
-			$this->logger->warning('GitHub-Überführung: Verbindung fehlgeschlagen', ['exception' => $e]);
+			// **Ohne das Ausnahmeobjekt.** Sein Stacktrace trüge die Optionen der
+			// Anfrage mit, und darin steht der Token als Authorization-Kopfzeile.
+			$this->logger->warning('GitHub-Überführung: Verbindung fehlgeschlagen', ['fehler' => get_class($e) . ': ' . $e->getMessage()]);
 			throw new GithubTransferException(
 				$this->l10n->t('GitHub war nicht erreichbar. Bitte später erneut versuchen.'),
 			);
@@ -196,7 +198,8 @@ class GithubService {
 					'timeout' => 10,
 				]);
 			} catch (\Throwable $e) {
-				$this->logger->warning('GitHub-Repos: Verbindung fehlgeschlagen', ['exception' => $e]);
+				// Ohne das Ausnahmeobjekt, siehe createIssue(): Der Stacktrace trüge den Token.
+				$this->logger->warning('GitHub-Repos: Verbindung fehlgeschlagen', ['fehler' => get_class($e) . ': ' . $e->getMessage()]);
 				throw new GithubTransferException($this->l10n->t('GitHub war nicht erreichbar. Bitte später erneut versuchen.'));
 			}
 

@@ -97,7 +97,7 @@ class ReplyMailboxSettings {
 	 * @param array<string, mixed> $data Teilmenge der Felder aus {@see getPublicConfig()}
 	 *                                    plus optional `imapPassword`/`imapPasswordClear`.
 	 */
-	public function save(array $data): void {
+	public function save(#[\SensitiveParameter] array $data): void {
 		if (array_key_exists('replyEnabled', $data)) {
 			$this->config->setValueBool(self::APP, self::KEY_ENABLED, (bool)$data['replyEnabled']);
 		}
@@ -185,7 +185,7 @@ class ReplyMailboxSettings {
 	 *
 	 * @param array<string, mixed> $data Verbindungsfelder; `imapPassword` optional.
 	 */
-	public function testConnection(array $data): void {
+	public function testConnection(#[\SensitiveParameter] array $data): void {
 		$host = trim((string)($data['imapHost'] ?? ''));
 		$port = (int)($data['imapPort'] ?? self::DEFAULT_PORT);
 		$security = in_array($data['imapSecurity'] ?? '', self::SECURITIES, true) ? (string)$data['imapSecurity'] : self::DEFAULT_SECURITY;
