@@ -11,6 +11,7 @@ namespace OCA\Projektwerk\Controller;
 
 use OCA\Projektwerk\AppInfo\Application;
 use OCA\Projektwerk\Imap\ImapException;
+use OCA\Projektwerk\Imap\ImapPasswordRequiredException;
 use OCA\Projektwerk\Service\ReplyMailboxSettings;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
@@ -111,6 +112,11 @@ class ReplyMailboxController extends Controller {
 			]);
 
 			return new JSONResponse(['ok' => true]);
+		} catch (ImapPasswordRequiredException) {
+			return new JSONResponse(
+				['error' => $this->l10n->t('Server, Port, Verschlüsselung oder Konto weichen von den gespeicherten Daten ab. Bitte das Passwort neu eingeben.')],
+				Http::STATUS_BAD_REQUEST,
+			);
 		} catch (ImapException $e) {
 			// Die IMAP-Meldung ist fuer den Admin gedacht (Host falsch, Login
 			// abgelehnt, Ordner fehlt) — sie darf er sehen.
