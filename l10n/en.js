@@ -587,6 +587,10 @@ OC.L10N.register(
     "{title} (archiviert)" : "{title} (archived)",
     "Archiviert" : "Archived",
     "Archivierte zeigen" : "Show archived",
-    "Archivierte Projekte konnten nicht geladen werden" : "Archived projects could not be loaded"
+    "Archivierte Projekte konnten nicht geladen werden" : "Archived projects could not be loaded",
+    "hat den Vorgang archiviert" : "archived the ticket",
+    "hat den Vorgang aus dem Archiv geholt" : "restored the ticket from the archive",
+    "Nur abgeschlossene Vorgänge lassen sich archivieren." : "Only closed tickets can be archived.",
+    "Archivierte Vorgänge konnten nicht geladen werden" : "Archived tickets could not be loaded"
 },
 "nplurals=2; plural=(n != 1);");

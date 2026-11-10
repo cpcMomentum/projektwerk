@@ -25,6 +25,7 @@ use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\DB\Exception as DbException;
 use OCP\Files\NotPermittedException;
 use OCP\IDBConnection;
+use OCP\IL10N;
 use OCP\IURLGenerator;
 
 /**
@@ -60,6 +61,7 @@ class TicketService {
 		private GithubService $github,
 		private IURLGenerator $urls,
 		private TicketLogService $log,
+		private IL10N $l10n,
 	) {
 	}
 
@@ -212,7 +214,7 @@ class TicketService {
 	 * Update, das ein Feld anders behandelt als die übrigen, wäre die Stelle,
 	 * an der die Regel beim nächsten Feld vergessen wird.
 	 *
-	 * @param array{title?: string, description?: ?string, responsibleUserId?: ?string, dueDate?: ?string, closed?: bool, outcome?: ?string} $changes
+	 * @param array{title?: string, description?: ?string, responsibleUserId?: ?string, dueDate?: ?string, closed?: bool, outcome?: ?string, archived?: bool} $changes
 	 * @throws DoesNotExistException Ticket nicht sichtbar
 	 * @throws ConflictException     zwischenzeitlich geändert
 	 */
@@ -292,6 +294,20 @@ class TicketService {
 			// gewaehlt, beim Wieder-oeffnen geloescht — ein offener Vorgang hat
 			// kein Ergebnis. Kein Drittzustand, nur ein Vorzeichen am Abschluss.
 			$ticket->setClosedOutcome($schliessen ? $this->pruefeOutcome($changes['outcome'] ?? null) : null);
+			// Kein „archiviert, aber offen“: Wieder öffnen hebt das Archiv auf.
+			if (!$schliessen) {
+				$ticket->setArchivedAt(null);
+			}
+		}
+		if (array_key_exists('archived', $changes)) {
+			if ($changes['archived'] && $ticket->getClosedAt() === null) {
+				throw new \InvalidArgumentException($this->l10n->t('Nur abgeschlossene Vorgänge lassen sich archivieren.'));
+			}
+			if (!$changes['archived']) {
+				$ticket->setArchivedAt(null);
+			} elseif ($ticket->getArchivedAt() === null) {
+				$ticket->setArchivedAt(new \DateTime());
+			}
 		}
 
 		$this->touch($ticket, $viewer);
@@ -862,6 +878,11 @@ class TicketService {
 			$this->log->record($viewer, $after, TicketLog::REOPENED);
 		} elseif ($after->getClosedAt() !== null && $before->getClosedOutcome() !== $after->getClosedOutcome()) {
 			$this->log->record($viewer, $after, TicketLog::CLOSED, null, $before->getClosedOutcome(), $after->getClosedOutcome());
+		}
+		if ($before->getArchivedAt() === null && $after->getArchivedAt() !== null) {
+			$this->log->record($viewer, $after, TicketLog::ARCHIVED);
+		} elseif ($before->getArchivedAt() !== null && $after->getArchivedAt() === null && $after->getClosedAt() !== null) {
+			$this->log->record($viewer, $after, TicketLog::UNARCHIVED);
 		}
 	}
 

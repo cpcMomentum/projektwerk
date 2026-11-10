@@ -413,6 +413,19 @@
 	box-shadow: none;
 }
 
+.app-projektwerk .pw-card--archived {
+	opacity: .7;
+}
+
+.app-projektwerk .pw-card__archived {
+	align-self: flex-start;
+	padding: 0 6px;
+	border-radius: var(--border-radius-pill, 12px);
+	background: var(--color-background-dark);
+	color: var(--color-text-maxcontrast);
+	font-size: 12px;
+}
+
 .app-projektwerk .pw-card--closed .pw-card__title {
 	color: var(--color-text-maxcontrast);
 	text-decoration: line-through;

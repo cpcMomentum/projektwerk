@@ -88,6 +88,7 @@
 			</span>
 
 			<span class="pw-card__title">{{ ticket.title }}</span>
+			<span v-if="ticket.archivedAt" class="pw-card__archived">{{ t('projektwerk', 'Archiviert') }}</span>
 
 			<!--
 				**Die Zustandszeile — ein Satz, kein Formular.** Oben steht,
@@ -188,6 +189,17 @@
 				</template>
 				{{ t('projektwerk', 'Wieder öffnen') }}
 			</NcActionButton>
+			<!-- Nur abgeschlossene Vorgänge lassen sich archivieren; Wieder öffnen hebt das Archiv auf. -->
+			<NcActionButton
+				v-if="ticket.closedAt !== null"
+				:closeAfterClick="true"
+				@click="$emit('togglearchived', ticket)">
+				<template #icon>
+					<ArchiveArrowUpIcon v-if="ticket.archivedAt" :size="20" />
+					<ArchiveArrowDownIcon v-else :size="20" />
+				</template>
+				{{ ticket.archivedAt ? t('projektwerk', 'Aus dem Archiv holen') : t('projektwerk', 'Archivieren') }}
+			</NcActionButton>
 
 			<!--
 				**„Verschieben nach …" als Untermenü** (#176). Vorher stand hier
@@ -242,6 +254,8 @@ import { defineComponent } from 'vue'
 import NcActionButton from '@nextcloud/vue/components/NcActionButton'
 import NcActions from '@nextcloud/vue/components/NcActions'
 import NcAvatar from '@nextcloud/vue/components/NcAvatar'
+import ArchiveArrowDownIcon from 'vue-material-design-icons/ArchiveArrowDownOutline.vue'
+import ArchiveArrowUpIcon from 'vue-material-design-icons/ArchiveArrowUpOutline.vue'
 import ArrowRightIcon from 'vue-material-design-icons/ArrowRight.vue'
 import CalendarAlertIcon from 'vue-material-design-icons/CalendarAlert.vue'
 import CalendarIcon from 'vue-material-design-icons/CalendarOutline.vue'
@@ -276,6 +290,8 @@ export default defineComponent({
 		OfficeBuildingIcon,
 		PencilIcon,
 		RestoreIcon,
+		ArchiveArrowDownIcon,
+		ArchiveArrowUpIcon,
 	},
 
 	props: {
@@ -305,7 +321,7 @@ export default defineComponent({
 		fromClientSide: { type: Boolean, default: false },
 	},
 
-	emits: ['open', 'move', 'toggleclosed', 'delete'],
+	emits: ['open', 'move', 'toggleclosed', 'togglearchived', 'delete'],
 
 	computed: {
 		/** Die Zielspalten — die eigene ist keine. */
@@ -329,6 +345,9 @@ export default defineComponent({
 			}
 			if (this.ticket.closedAt !== null) {
 				classes.push('pw-card--closed')
+			}
+			if (this.ticket.archivedAt) {
+				classes.push('pw-card--archived')
 			}
 			// Kurz nach dem Anlegen (#165) — ein vergänglicher Anstrich, den die
 			// CSS von selbst ausklingen lässt.

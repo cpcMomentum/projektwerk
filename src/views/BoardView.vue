@@ -72,6 +72,17 @@
 					{{ t('projektwerk', 'Nur wartend') }} ({{ store.waitingCount }})
 				</NcButton>
 
+				<NcButton
+					v-if="!isOverview"
+					:variant="store.showArchived ? 'primary' : 'secondary'"
+					:aria-pressed="store.showArchived ? 'true' : 'false'"
+					@click="store.setShowArchived(!store.showArchived)">
+					<template #icon>
+						<ArchiveIcon :size="20" />
+					</template>
+					{{ t('projektwerk', 'Archivierte zeigen') }}
+				</NcButton>
+
 				<!-- Suche im Board (#373): grenzt die Karten im Browser ein, die Spalten bleiben stehen. -->
 				<NcTextField
 					v-if="!isOverview"
@@ -265,6 +276,7 @@
 						@menumove="move"
 						@dragmove="moved"
 						@toggleclosed="toggleClosed"
+						@togglearchived="toggleArchived"
 						@delete="deleteTicket" />
 
 					<PendingTicketCard
@@ -456,6 +468,7 @@ import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
 import NcRadioGroup from '@nextcloud/vue/components/NcRadioGroup'
 import NcRadioGroupButton from '@nextcloud/vue/components/NcRadioGroupButton'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
+import ArchiveIcon from 'vue-material-design-icons/ArchiveOutline.vue'
 import ChartDonutIcon from 'vue-material-design-icons/ChartDonut.vue'
 import ChevronLeftIcon from 'vue-material-design-icons/ChevronLeft.vue'
 import ClockAlertIcon from 'vue-material-design-icons/ClockAlertOutline.vue'
@@ -494,7 +507,7 @@ interface ColumnView {
 export default defineComponent({
 	name: 'BoardView',
 
-	components: { BoardDragLayer, ChartDonutIcon, ChevronLeftIcon, ClockAlertIcon, CogIcon, CreateTicketDialog, DeleteOutlineIcon, FolderMultipleIcon, FolderOpenIcon, MagnifyIcon, NcActionButton, NcActions, NcButton, NcDialog, NcEmptyContent, NcRadioGroup, NcRadioGroupButton, NcTextField, PendingTicketCard, PlusIcon, ProjectOverview, TicketDetail, ViewColumnIcon },
+	components: { ArchiveIcon, BoardDragLayer, ChartDonutIcon, ChevronLeftIcon, ClockAlertIcon, CogIcon, CreateTicketDialog, DeleteOutlineIcon, FolderMultipleIcon, FolderOpenIcon, MagnifyIcon, NcActionButton, NcActions, NcButton, NcDialog, NcEmptyContent, NcRadioGroup, NcRadioGroupButton, NcTextField, PendingTicketCard, PlusIcon, ProjectOverview, TicketDetail, ViewColumnIcon },
 
 	setup() {
 		return { store: useBoardStore(), outbox: useOutboxStore() }
@@ -994,6 +1007,22 @@ export default defineComponent({
 				this.store.replaceTicket(ticket)
 			}
 			this.openTicketData = ticket
+		},
+
+		// Archivieren und Zurückholen vom Karten-Menü; derselbe Abgleich wie beim Abschließen.
+		async toggleArchived(ticket: Ticket) {
+			try {
+				const updated = await updateTicket(ticket.boardId, ticket.id, ticket.version, { archived: !ticket.archivedAt })
+				this.store.replaceTicket(updated)
+				if (this.openTicketData?.id === updated.id) {
+					this.openTicketData = updated
+				}
+			} catch (e) {
+				if (isConflict(e)) {
+					await this.store.open(this.boardId)
+				}
+				reportWriteError(e, t('projektwerk', 'Archivieren fehlgeschlagen'), isConflict(e))
+			}
 		},
 
 		/**

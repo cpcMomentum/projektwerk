@@ -634,7 +634,11 @@
 		"{title} (archiviert)": "{title} (archiviert)",
 		"Archiviert": "Archiviert",
 		"Archivierte zeigen": "Archivierte zeigen",
-		"Archivierte Projekte konnten nicht geladen werden": "Archivierte Projekte konnten nicht geladen werden"
+		"Archivierte Projekte konnten nicht geladen werden": "Archivierte Projekte konnten nicht geladen werden",
+		"hat den Vorgang archiviert": "hat den Vorgang archiviert",
+		"hat den Vorgang aus dem Archiv geholt": "hat den Vorgang aus dem Archiv geholt",
+		"Nur abgeschlossene Vorgänge lassen sich archivieren.": "Nur abgeschlossene Vorgänge lassen sich archivieren.",
+		"Archivierte Vorgänge konnten nicht geladen werden": "Archivierte Vorgänge konnten nicht geladen werden"
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }

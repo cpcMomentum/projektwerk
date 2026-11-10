@@ -37,6 +37,8 @@ export interface Ticket {
 	 * Anzeige.
 	 */
 	closedOutcome: 'done' | 'discarded' | null
+	/** Nur bei abgeschlossenen Vorgängen gesetzt; archivierte stehen nur mit „Archivierte zeigen“ auf dem Board. */
+	archivedAt?: string | null
 	/** Für die Konflikterkennung; unverändert zurückschicken. */
 	version: number
 	/**
