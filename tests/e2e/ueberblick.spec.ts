@@ -86,6 +86,24 @@ test.describe('Dienstleisterseite', () => {
 		await kachel.click()
 		await expect(page).toHaveURL(/#\/boards\/\d+$/)
 	})
+
+	test('ein Projekt mit zwei Boards steht im Überblick nur einmal', async ({ page, browser }) => {
+		const kontext = await browser.newContext({ storageState: INTERN.sitzung })
+		try {
+			const api = await Api.fuer(kontext.request)
+			const zweites = await api.weiteresBoardAnlegen(projekt.boardId, 'Zweites Board')
+			const spalten = (await api.boardZeigen(Number(zweites.id))).columns
+			await api.ticketAnlegen(Number(zweites.id), { title: 'Vorgang im zweiten Board', columnId: Number(spalten[0].id), visibility: 'public' })
+		} finally {
+			await kontext.close()
+		}
+
+		await page.goto(APP_PFAD)
+		await expect(page.getByRole('heading', { name: 'Überblick' })).toBeVisible({ timeout: 30_000 })
+
+		await expect(page.locator('.pw-tile', { hasText: projekt.titel })).toHaveCount(1)
+		await expect(page.locator('.pw-tile', { hasText: 'Zweites Board' })).toHaveCount(0)
+	})
 })
 
 test.describe('Board und Übersicht (#388)', () => {

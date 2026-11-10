@@ -17,6 +17,7 @@ import { t } from '@nextcloud/l10n'
 import { defineStore } from 'pinia'
 import { fetchBoard, fetchBoards, setBoardPin } from '@/services/boards'
 import { lastBoards, rememberLastBoard } from '@/services/lastBoard'
+import { groupByProject, targetBoard } from '@/services/projectTiles'
 import { createBoard as createBoardRequest, createSiblingBoard as createSiblingBoardRequest, deleteBoard as deleteBoardRequest } from '@/services/settings'
 import { fetchTickets, markTicketRead, moveTicket as moveTicketRequest } from '@/services/tickets'
 import { showError } from '@/services/toast'
@@ -203,32 +204,13 @@ export const useBoardStore = defineStore('board', {
 		 *
 		 * @param state Der Speicher.
 		 */
-		pinnedProjects: (state): { boardId: number, projectId: number | null, title: string }[] => {
-			const gesehen = new Set<number | string>()
-			const zuletzt = state.lastBoards
-			return state.boards
-				.filter((b) => b.pinned === true)
-				.filter((b) => {
-					const key = b.projectId ?? `b${b.id}`
-					return gesehen.has(key) ? false : (gesehen.add(key), true)
-				})
-				.map((b) => {
-					const gemerkt = b.projectId === null ? undefined : zuletzt[String(b.projectId)]
-					const ziel = state.boards.some((x) => x.id === gemerkt && x.projectId === b.projectId) ? gemerkt as number : b.id
-					return { boardId: ziel, projectId: b.projectId, title: b.projectTitle ?? b.title }
-				})
-		},
-
-		/**
-		 * Die angepinnten Projekte für die Seitenleiste (#115).
-		 *
-		 * Kein eigener Abruf: Es ist die Teilmenge der ohnehin geladenen Liste,
-		 * und die ist bereits die Schnittmenge aus „gepinnt" und „sichtbar" — der
-		 * Server liefert `pinned` nur an den Boards mit, die er auch ausliefert.
-		 *
-		 * @param state Der Speicher.
-		 */
-		pinnedBoards: (state): Board[] => state.boards.filter((board) => board.pinned === true),
+		pinnedProjects: (state): { boardId: number, projectId: number | null, title: string }[] => groupByProject(state.boards)
+			.filter((gruppe) => gruppe.some((b) => b.pinned === true))
+			.map((gruppe) => ({
+				boardId: targetBoard(gruppe, state.lastBoards, (b) => b.pinned === true).id,
+				projectId: gruppe[0].projectId ?? null,
+				title: gruppe[0].projectTitle ?? gruppe[0].title,
+			})),
 
 		/**
 		 * Ob der Betrachter in **mindestens einem** Projekt intern ist (#234).

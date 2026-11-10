@@ -15,6 +15,10 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Changed
 
+- **Überblick mit einer Kachel je Projekt** (#441): Auch der Überblick zeigt jedes Projekt einmal mit
+  Projektnamen und summierten Zahlen; „Steht still“ in den Kennzahlen zählt Projekte. Ein Projekt steht
+  erst still, wenn sich auf keinem Board mit offenen Vorgängen etwas bewegt. Projektliste, Überblick und
+  Seitenleiste öffnen dasselbe Board: zuletzt genutzt, sonst angepinnt, sonst das erste.
 - **Eine Kachel je Projekt** (#380): Die Projektliste zeigt jedes Projekt genau einmal mit dem
   Projektnamen und den über alle Boards summierten Zahlen. Ein Klick öffnet das zuletzt genutzte Board
   (im Browser gemerkt), sonst das erste. Der Schalter „Archivierte zeigen“ blendet archivierte Projekte

@@ -109,6 +109,7 @@
 </template>
 
 <script lang="ts">
+import type { ProjectTileData } from '@/services/projectTiles'
 import type { Board } from '@/types/board'
 import type { ProjectStatusRow } from '@/types/overview'
 
@@ -123,32 +124,10 @@ import PlusIcon from 'vue-material-design-icons/Plus.vue'
 import CreateBoardWizard from '@/components/CreateBoardWizard.vue'
 import ProjectTile from '@/components/ProjectTile.vue'
 import { fetchBoards, setBoardPin } from '@/services/boards'
+import { projectTiles } from '@/services/projectTiles'
 import { showError } from '@/services/toast'
 import { useBoardStore } from '@/stores/boardStore'
 import { useOverviewStore } from '@/stores/overviewStore'
-
-/** Die Anzeigedaten einer Verzeichnis-Kachel. */
-interface TileVM {
-	key: string
-	projectId: number | null
-	/** Das Board, das die Kachel öffnet. */
-	boardId: number
-	/** Alle Boards des Projekts in der Liste. */
-	boardIds: number[]
-	archived: boolean
-	title: string
-	org: string
-	neu: number
-	offen: number
-	wartet: number
-	erledigt: number
-	neuDieseWoche: number
-	zustand: ProjectStatusRow['zustand']
-	pinned: boolean
-}
-
-/** Rot oder gelb an einem Board färbt das Projekt; still steht es erst, wenn sich auf keinem Board etwas bewegt. */
-const ZUSTAND_RANG: ProjectStatusRow['zustand'][] = ['rot', 'gelb', 'gruen', 'grau']
 
 /** Ein Statuseintrag der Legende — dieselbe Reihenfolge wie der Balken. */
 const STATUS = [
@@ -211,45 +190,16 @@ export default defineComponent({
 			return this.showArchived ? this.allBoards : this.store.boards
 		},
 
-		/** Eine Kachel je Projekt, die Statuszahlen über seine Boards summiert; archivierte hinten. */
-		tiles(): TileVM[] {
-			const status = new Map((this.overview.projectStatusRows as ProjectStatusRow[]).map((row) => [row.boardId, row]))
-			const zuletztJeProjekt = this.store.lastBoards
-			const gruppen = new Map<string, Board[]>()
-			for (const board of this.sourceBoards) {
-				const key = board.projectId === null || board.projectId === undefined ? `b${board.id}` : `p${board.projectId}`
-				gruppen.set(key, [...(gruppen.get(key) ?? []), board])
-			}
-
-			return [...gruppen.entries()]
-				.map(([key, boards]): TileVM => {
-					const erstes = boards[0]
-					const aktive = boards.filter((b) => !b.archived)
-					const zuletzt = erstes.projectId === null || erstes.projectId === undefined ? null : zuletztJeProjekt[String(erstes.projectId)]
-					const ziel = aktive.find((b) => b.id === zuletzt) ?? aktive[0] ?? erstes
-					const archiviert = erstes.projectArchived === true || aktive.length === 0
-					const zeilen = boards.map((b) => status.get(b.id)).filter((r): r is ProjectStatusRow => r !== undefined)
-					const summe = (feld: 'neu' | 'offen' | 'wartet' | 'erledigt' | 'neuDieseWoche'): number => zeilen.reduce((n, r) => n + (r[feld] ?? 0), 0)
-
-					return {
-						key,
-						projectId: erstes.projectId ?? null,
-						boardId: ziel.id,
-						boardIds: boards.map((b) => b.id),
-						archived: archiviert,
-						title: erstes.projectTitle ?? erstes.title,
-						// Solange kein Kunde gepflegt ist, bleibt die eigene Firma als Rückfall stehen.
-						org: erstes.customer ?? this.store.orgLine(erstes),
-						neu: summe('neu'),
-						offen: summe('offen'),
-						wartet: summe('wartet'),
-						erledigt: summe('erledigt'),
-						neuDieseWoche: summe('neuDieseWoche'),
-						zustand: archiviert ? 'grau' : (ZUSTAND_RANG.find((z) => zeilen.some((r) => r.zustand === z)) ?? 'gruen'),
-						pinned: boards.some((b) => (this.store.boards.find((s) => s.id === b.id) ?? b).pinned === true),
-					}
-				})
-				.filter((tile) => this.customerFilter === '' || this.sourceBoards.find((b) => b.id === tile.boardId)?.customer === this.customerFilter)
+		/** Eine Kachel je Projekt; archivierte hinten, angepinnte vorn. */
+		tiles(): ProjectTileData[] {
+			const imStore = new Map(this.store.boards.map((b) => [b.id, b]))
+			return projectTiles(
+				this.sourceBoards,
+				this.overview.projectStatusRows as ProjectStatusRow[],
+				this.store.lastBoards,
+				(b) => (imStore.get(b.id) ?? b).pinned === true,
+			)
+				.filter((tile) => this.customerFilter === '' || this.sourceBoards.some((b) => tile.boardIds.includes(b.id) && b.customer === this.customerFilter))
 				.sort((a, b) => Number(a.archived) - Number(b.archived) || Number(b.pinned) - Number(a.pinned) || a.title.localeCompare(b.title))
 		},
 	},
@@ -292,7 +242,7 @@ export default defineComponent({
 		},
 
 		// Angepinnt ist ein Projekt, wenn eines seiner Boards angepinnt ist; Lösen löst alle.
-		async togglePin(tile: TileVM): Promise<void> {
+		async togglePin(tile: ProjectTileData): Promise<void> {
 			if (!tile.pinned) {
 				await this.store.togglePin(tile.boardId)
 				return
