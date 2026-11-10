@@ -266,7 +266,7 @@ class OverviewController extends Controller {
 	 * Eintrag.
 	 *
 	 * @param bool $mitArchivierten Ob archivierte Projekte dazugehören.
-	 * @return array<int, array{title: string, orgInternal: ?string, customer: ?string}>
+	 * @return array<int, array{title: string, projectId: ?int, projectTitle: ?string, orgInternal: ?string, customer: ?string}>
 	 */
 	private function boardLine(bool $mitArchivierten): array {
 		$line = [];
