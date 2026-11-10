@@ -1199,7 +1199,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 			foreach (Server::get(BoardMapper::class)->findAllForUser($userId) as $board) {
 				$line = $data['boards'][(int)$board->getId()];
 				$this->assertSame($board->getProjectId(), $line['projectId'], $userId . ': falsches Projekt an Board ' . $board->getId());
-				$this->assertSame($projekte[(int)$board->getProjectId()], $line['projectTitle'], $userId . ': falscher Projektname an Board ' . $board->getId());
+				$this->assertSame($board->getProjectId() === null ? null : $projekte[$board->getProjectId()], $line['projectTitle'], $userId . ': falscher Projektname an Board ' . $board->getId());
 			}
 		}
 
