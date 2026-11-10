@@ -10,7 +10,7 @@
 	-->
 	<div
 		class="pw-tile"
-		:class="{ 'pw-tile--pinnable': pinnable }"
+		:class="{ 'pw-tile--pinnable': pinnable, 'pw-tile--archived': archived }"
 		role="button"
 		tabindex="0"
 		:aria-label="tileAria"
@@ -50,6 +50,7 @@
 				<span class="pw-tile__name">
 					<StarIcon v-if="!pinnable && pinned" class="pw-tile__pin" :size="14" />
 					<span class="pw-tile__title">{{ title }}</span>
+					<span v-if="archived" class="pw-tile__archived">{{ t('projektwerk', 'Archiviert') }}</span>
 				</span>
 				<span v-if="org" class="pw-tile__org">{{ org }}</span>
 			</span>
@@ -145,6 +146,7 @@ export default defineComponent({
 		pinned: { type: Boolean, default: false },
 		/** Ob der Pin ein anklickbarer Toggle ist (Verzeichnis) statt reiner Anzeige. */
 		pinnable: { type: Boolean, default: false },
+		archived: { type: Boolean, default: false },
 	},
 
 	emits: ['open', 'togglePin'],
@@ -198,6 +200,9 @@ export default defineComponent({
 				wartet: String(this.wartet),
 				erledigt: String(this.erledigt),
 			})
+			if (this.archived) {
+				return kern + '. ' + t('projektwerk', 'Archiviert')
+			}
 			if (this.neuDieseWoche > 0) {
 				return kern + '. ' + n('projektwerk', '%n neuer Vorgang diese Woche', '%n neue Vorgänge diese Woche', this.neuDieseWoche)
 			}

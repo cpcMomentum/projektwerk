@@ -137,4 +137,13 @@ describe('ProjectTile', () => {
 			expect(an.find('.pw-tile__pin').exists()).toBe(true)
 		})
 	})
+
+	it('markiert ein archiviertes Projekt sichtbar und für Screenreader', () => {
+		const w = mount(ProjectTile, { props: { ...basis, archived: true }, global: { stubs } })
+
+		const kachel = w.find('.pw-tile')
+		expect(kachel.classes()).toContain('pw-tile--archived')
+		expect(w.find('.pw-tile__archived').text()).toBe('Archiviert')
+		expect(kachel.attributes('aria-label')).toMatch(/Archiviert$/)
+	})
 })

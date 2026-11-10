@@ -17,6 +17,7 @@ use OCA\Projektwerk\Db\ColumnMapper;
 use OCA\Projektwerk\Db\MemberMapper;
 use OCA\Projektwerk\Db\ProjectMapper;
 use OCA\Projektwerk\Db\TicketMapper;
+use OCA\Projektwerk\Service\BoardReadModel;
 use OCA\Projektwerk\Service\BoardService;
 use OCA\Projektwerk\Service\ColumnService;
 use OCA\Projektwerk\Service\EntitlementService;
@@ -242,6 +243,26 @@ class SettingsWritePathTest extends IntegrationTestCase {
 		} finally {
 			$config->deleteKey('projektwerk', 'plus_max_customer_projects');
 		}
+	}
+
+	public function testShowAndListCarryTheProjectAndItsBoardsEvenWhenArchived(): void {
+		$zweites = $this->boardService->createInProject($this->manager(), 'Arbeitsgruppe');
+		$this->boardService->setArchived($this->fixture->contextFor(LeakMatrixFixture::ANNA, (int)$zweites->getId()), true);
+		$this->boardService->update($this->manager(), ['projectTitle' => 'Projektname']);
+		$this->boardService->setProjectArchived($this->manager(), true);
+		$readModel = Server::get(BoardReadModel::class);
+
+		$geschwister = $readModel->show($this->manager())['siblings'];
+		$this->assertEqualsCanonicalizing(
+			[[$this->manager()->boardId, false], [(int)$zweites->getId(), true]],
+			array_map(static fn (array $s): array => [$s['id'], $s['archived']], $geschwister),
+		);
+
+		$liste = $readModel->listFor(LeakMatrixFixture::CARLA, true);
+		$eigenes = array_values(array_filter($liste, fn (array $b): bool => $b['id'] === $this->manager()->boardId))[0];
+		$this->assertSame('Projektname', $eigenes['projectTitle']);
+		$this->assertTrue($eigenes['projectArchived']);
+		$this->assertSame([], array_filter($readModel->listFor(LeakMatrixFixture::CARLA), fn (array $b): bool => $b['id'] === $this->manager()->boardId));
 	}
 
 	public function testRenamingTheProjectRenamesTheOnlyBoard(): void {

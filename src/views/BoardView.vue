@@ -636,6 +636,9 @@ export default defineComponent({
 				// wo `open()` sie nicht leert. Feld und Store sonst auseinander.
 				this.clearSearch()
 				await this.store.open(id)
+				if (this.store.board?.id === id && this.store.board.projectId !== null) {
+					this.store.rememberBoard(this.store.board.projectId, id)
+				}
 				if (this.store.viewer !== null) {
 					this.outbox.init(this.store.viewer.userId)
 				}

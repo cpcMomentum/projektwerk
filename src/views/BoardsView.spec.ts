@@ -49,6 +49,7 @@ const tileStub = {
 		zustand: {},
 		pinned: { type: Boolean },
 		pinnable: { type: Boolean },
+		archived: { type: Boolean },
 	},
 	template: '<div class="tile" :data-title="title" :data-empty="String(neu + offen + wartet + erledigt === 0)" />',
 }
@@ -58,6 +59,7 @@ const boardStore = {
 	loading: false,
 	loadBoards: vi.fn(),
 	togglePin: vi.fn(),
+	lastBoards: {} as Record<number, number>,
 	orgLine: (b: { orgInternal?: string | null, customer?: string | null }) => [b.orgInternal, b.customer].filter(Boolean).join(' · '),
 	customerSuggestions: [] as string[],
 }
@@ -67,6 +69,10 @@ const overviewStore = {
 }
 
 vi.mock('@/stores/boardStore', () => ({ useBoardStore: () => boardStore }))
+const allBoards = vi.hoisted(() => ({ list: [] as Array<Record<string, unknown>> }))
+const pinApi = vi.hoisted(() => vi.fn(() => Promise.resolve({})))
+vi.mock('@/services/boards', () => ({ fetchBoards: () => Promise.resolve(allBoards.list), setBoardPin: pinApi }))
+vi.mock('@/services/toast', () => ({ showError: () => {} }))
 vi.mock('@/stores/overviewStore', () => ({ useOverviewStore: () => overviewStore }))
 
 function board(id: number, title: string, extra: Record<string, unknown> = {}) {
@@ -96,6 +102,9 @@ beforeEach(() => {
 	overviewStore.load.mockClear()
 	push.mockClear()
 	canCreate = true
+	allBoards.list = []
+	boardStore.lastBoards = {}
+	pinApi.mockClear()
 })
 
 describe('BoardsView', () => {
@@ -219,5 +228,105 @@ describe('BoardsView', () => {
 		;(w.vm as unknown as { openCreated: (id: number) => void }).openCreated(6)
 
 		expect(push).toHaveBeenCalledWith({ name: 'board', params: { boardId: '6' } })
+	})
+})
+
+describe('Eine Kachel je Projekt (#380)', () => {
+	it('fasst die Boards eines Projekts zusammen: Projektname, Summen, dringlichster Zustand', () => {
+		boardStore.boards = [
+			board(1, 'Board A', { projectId: 7, projectTitle: 'Website' }),
+			board(2, 'Board B', { projectId: 7, projectTitle: 'Website' }),
+			board(3, 'Solo', { projectId: 8, projectTitle: 'Solo' }),
+		]
+		overviewStore.projectStatusRows = [
+			statusRow(1, { neu: 1, offen: 2, zustand: 'gelb' }),
+			statusRow(2, { offen: 3, wartet: 1, neuDieseWoche: 2, zustand: 'rot' }),
+			statusRow(3, { erledigt: 4, zustand: 'grau' }),
+		]
+
+		const tiles = mountView().findAllComponents(tileStub)
+
+		expect(tiles).toHaveLength(2)
+		expect(tiles[0].props()).toMatchObject({ title: 'Solo', erledigt: 4, zustand: 'grau' })
+		expect(tiles[1].props()).toMatchObject({ title: 'Website', neu: 1, offen: 5, wartet: 1, neuDieseWoche: 2, zustand: 'rot' })
+	})
+
+	it('öffnet das zuletzt genutzte Board, ohne gespeicherten Wert das erste aktive', () => {
+		boardStore.boards = [
+			board(1, 'Board A', { projectId: 7, projectTitle: 'P' }),
+			board(2, 'Board B', { projectId: 7, projectTitle: 'P' }),
+		]
+		expect(mountView().findComponent(tileStub).props('boardId')).toBe(1)
+
+		boardStore.lastBoards = { 7: 2 }
+		expect(mountView().findComponent(tileStub).props('boardId')).toBe(2)
+	})
+
+	it('zeigt archivierte Projekte erst mit dem Schalter, markiert und hinten, ohne Pin', async () => {
+		boardStore.boards = [board(1, 'Aktiv', { projectId: 7, projectTitle: 'Aktiv' })]
+		allBoards.list = [
+			board(1, 'Aktiv', { projectId: 7, projectTitle: 'Aktiv' }),
+			board(5, 'Alt', { projectId: 9, projectTitle: 'Alt', projectArchived: true }),
+		]
+		const w = mountView()
+		expect(w.findAllComponents(tileStub)).toHaveLength(1)
+
+		await (w.vm as unknown as { setShowArchived: (an: boolean) => Promise<void> }).setShowArchived(true)
+		await w.vm.$nextTick()
+
+		const tiles = w.findAllComponents(tileStub)
+		expect(tiles.map((t) => t.props('title'))).toEqual(['Aktiv', 'Alt'])
+		expect(tiles[1].props()).toMatchObject({ archived: true, pinnable: false, zustand: 'grau' })
+	})
+
+	it('löst beim Abpinnen alle angepinnten Boards des Projekts', async () => {
+		boardStore.boards = [
+			board(1, 'A', { projectId: 7, projectTitle: 'P', pinned: true }),
+			board(2, 'B', { projectId: 7, projectTitle: 'P', pinned: true }),
+		]
+		const w = mountView()
+		w.findComponent(tileStub).vm.$emit('togglePin', 1)
+		await w.vm.$nextTick()
+
+		expect(boardStore.togglePin.mock.calls.map((c) => c[0])).toEqual([1, 2])
+	})
+
+	it('lässt das Projekt laufen, solange sich auf einem seiner Boards etwas bewegt', () => {
+		boardStore.boards = [
+			board(1, 'A', { projectId: 7, projectTitle: 'P' }),
+			board(2, 'B', { projectId: 7, projectTitle: 'P' }),
+		]
+		overviewStore.projectStatusRows = [statusRow(1, { zustand: 'gruen' }), statusRow(2, { zustand: 'grau' })]
+
+		expect(mountView().findComponent(tileStub).props('zustand')).toBe('gruen')
+	})
+
+	it('löst beim Abpinnen auch archivierte Boards des Projekts', async () => {
+		boardStore.boards = [board(1, 'A', { projectId: 7, projectTitle: 'P', pinned: true })]
+		allBoards.list = [
+			board(1, 'A', { projectId: 7, projectTitle: 'P', pinned: true }),
+			board(2, 'B', { projectId: 7, projectTitle: 'P', pinned: true, archived: true }),
+		]
+		const w = mountView()
+		await (w.vm as unknown as { setShowArchived: (an: boolean) => Promise<void> }).setShowArchived(true)
+		await w.vm.$nextTick()
+
+		w.findComponent(tileStub).vm.$emit('togglePin', 1)
+		await new Promise((r) => setTimeout(r, 0))
+
+		expect(boardStore.togglePin).toHaveBeenCalledWith(1)
+		expect(pinApi).toHaveBeenCalledWith(2, false)
+	})
+
+	it('lässt eine späte Antwort den ausgeschalteten Schalter nicht wieder einschalten', async () => {
+		boardStore.boards = [board(1, 'Aktiv', { projectId: 7, projectTitle: 'Aktiv' })]
+		const w = mountView()
+		const ansicht = w.vm as unknown as { setShowArchived: (an: boolean) => Promise<void>, showArchived: boolean }
+
+		const an = ansicht.setShowArchived(true)
+		await ansicht.setShowArchived(false)
+		await an
+
+		expect(ansicht.showArchived).toBe(false)
 	})
 })

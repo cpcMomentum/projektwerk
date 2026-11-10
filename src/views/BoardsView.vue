@@ -2,6 +2,13 @@
 	<div class="pw-view">
 		<div class="pw-view__head">
 			<h2>{{ t('projektwerk', 'Projekte') }}</h2>
+			<NcCheckboxRadioSwitch
+				class="pw-boards__archswitch"
+				:modelValue="showArchived"
+				type="switch"
+				@update:modelValue="setShowArchived">
+				{{ t('projektwerk', 'Archivierte zeigen') }}
+			</NcCheckboxRadioSwitch>
 			<!--
 				Kein „Neues Projekt" für Gäste (#280): Ein Gast, der ein Projekt
 				anlegt, würde darin intern und Manager. Der Server verweigert die
@@ -28,7 +35,7 @@
 			neue Person ratlos zurück (#135).
 		-->
 		<NcEmptyContent
-			v-else-if="store.boards.length === 0"
+			v-else-if="sourceBoards.length === 0"
 			:name="t('projektwerk', 'Noch kein Projekt')"
 			:description="t('projektwerk', 'Legen Sie Ihr erstes Projekt an, oder warten Sie, bis Sie zu einem hinzugefügt werden.')">
 			<template #icon>
@@ -76,7 +83,7 @@
 			<div class="pw-boards">
 				<ProjectTile
 					v-for="tile in tiles"
-					:key="tile.boardId"
+					:key="tile.key"
 					:boardId="tile.boardId"
 					:title="tile.title"
 					:org="tile.org"
@@ -87,9 +94,10 @@
 					:neuDieseWoche="tile.neuDieseWoche"
 					:zustand="tile.zustand"
 					:pinned="tile.pinned"
-					pinnable
+					:archived="tile.archived"
+					:pinnable="!tile.archived || tile.pinned"
 					@open="openBoard"
-					@togglePin="store.togglePin" />
+					@togglePin="togglePin(tile)" />
 			</div>
 		</template>
 
@@ -108,17 +116,26 @@ import { loadState } from '@nextcloud/initial-state'
 import { t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
+import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
 import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
 import FolderMultipleIcon from 'vue-material-design-icons/FolderMultiple.vue'
 import PlusIcon from 'vue-material-design-icons/Plus.vue'
 import CreateBoardWizard from '@/components/CreateBoardWizard.vue'
 import ProjectTile from '@/components/ProjectTile.vue'
+import { fetchBoards, setBoardPin } from '@/services/boards'
+import { showError } from '@/services/toast'
 import { useBoardStore } from '@/stores/boardStore'
 import { useOverviewStore } from '@/stores/overviewStore'
 
 /** Die Anzeigedaten einer Verzeichnis-Kachel. */
 interface TileVM {
+	key: string
+	projectId: number | null
+	/** Das Board, das die Kachel öffnet. */
 	boardId: number
+	/** Alle Boards des Projekts in der Liste. */
+	boardIds: number[]
+	archived: boolean
 	title: string
 	org: string
 	neu: number
@@ -129,6 +146,9 @@ interface TileVM {
 	zustand: ProjectStatusRow['zustand']
 	pinned: boolean
 }
+
+/** Rot oder gelb an einem Board färbt das Projekt; still steht es erst, wenn sich auf keinem Board etwas bewegt. */
+const ZUSTAND_RANG: ProjectStatusRow['zustand'][] = ['rot', 'gelb', 'gruen', 'grau']
 
 /** Ein Statuseintrag der Legende — dieselbe Reihenfolge wie der Balken. */
 const STATUS = [
@@ -155,7 +175,7 @@ const STATUS = [
 export default defineComponent({
 	name: 'BoardsView',
 
-	components: { CreateBoardWizard, NcButton, NcEmptyContent, FolderMultipleIcon, PlusIcon, ProjectTile },
+	components: { CreateBoardWizard, NcButton, NcCheckboxRadioSwitch, NcEmptyContent, FolderMultipleIcon, PlusIcon, ProjectTile },
 
 	setup() {
 		return { store: useBoardStore(), overview: useOverviewStore(), STATUS }
@@ -172,6 +192,11 @@ export default defineComponent({
 			// die echte Sperre sitzt serverseitig (403), dies blendet nur den
 			// Knopf aus.
 			canCreateProject: loadState<boolean>('projektwerk', 'canCreateProject', true),
+			showArchived: false,
+			/** Der zuletzt gewünschte Stand des Schalters; eine späte Antwort darf ihn nicht überholen. */
+			gewuenschtArchiviert: false,
+			/** Mit archivierten Boards und Projekten; nur geladen, solange der Schalter an ist. */
+			allBoards: [] as Board[],
 		}
 	},
 
@@ -182,30 +207,58 @@ export default defineComponent({
 		 * alphabetisch: ein Verzeichnis wird durchgesehen, nicht nach Dringlichkeit
 		 * gelesen (das ist der Überblick).
 		 */
+		sourceBoards(): Board[] {
+			return this.showArchived ? this.allBoards : this.store.boards
+		},
+
+		/** Eine Kachel je Projekt, die Statuszahlen über seine Boards summiert; archivierte hinten. */
 		tiles(): TileVM[] {
 			const status = new Map((this.overview.projectStatusRows as ProjectStatusRow[]).map((row) => [row.boardId, row]))
+			const zuletztJeProjekt = this.store.lastBoards
+			const gruppen = new Map<string, Board[]>()
+			for (const board of this.sourceBoards) {
+				const key = board.projectId === null || board.projectId === undefined ? `b${board.id}` : `p${board.projectId}`
+				gruppen.set(key, [...(gruppen.get(key) ?? []), board])
+			}
 
-			return (this.store.boards as Board[])
-				.filter((board) => this.customerFilter === '' || board.customer === this.customerFilter)
-				.map((board): TileVM => {
-					const s = status.get(board.id)
+			return [...gruppen.entries()]
+				.map(([key, boards]): TileVM => {
+					const erstes = boards[0]
+					const aktive = boards.filter((b) => !b.archived)
+					const zuletzt = erstes.projectId === null || erstes.projectId === undefined ? null : zuletztJeProjekt[String(erstes.projectId)]
+					const ziel = aktive.find((b) => b.id === zuletzt) ?? aktive[0] ?? erstes
+					const archiviert = erstes.projectArchived === true || aktive.length === 0
+					const zeilen = boards.map((b) => status.get(b.id)).filter((r): r is ProjectStatusRow => r !== undefined)
+					const summe = (feld: 'neu' | 'offen' | 'wartet' | 'erledigt' | 'neuDieseWoche'): number => zeilen.reduce((n, r) => n + (r[feld] ?? 0), 0)
 
 					return {
-						boardId: board.id,
-						title: board.title,
-						// Der Kunde des Projekts (#309); solange keiner gepflegt ist,
-						// bleibt die eigene Firma als Rückfall stehen.
-						org: board.customer ?? this.store.orgLine(board),
-						neu: s?.neu ?? 0,
-						offen: s?.offen ?? 0,
-						wartet: s?.wartet ?? 0,
-						erledigt: s?.erledigt ?? 0,
-						neuDieseWoche: s?.neuDieseWoche ?? 0,
-						zustand: s?.zustand ?? 'gruen',
-						pinned: board.pinned === true,
+						key,
+						projectId: erstes.projectId ?? null,
+						boardId: ziel.id,
+						boardIds: boards.map((b) => b.id),
+						archived: archiviert,
+						title: erstes.projectTitle ?? erstes.title,
+						// Solange kein Kunde gepflegt ist, bleibt die eigene Firma als Rückfall stehen.
+						org: erstes.customer ?? this.store.orgLine(erstes),
+						neu: summe('neu'),
+						offen: summe('offen'),
+						wartet: summe('wartet'),
+						erledigt: summe('erledigt'),
+						neuDieseWoche: summe('neuDieseWoche'),
+						zustand: archiviert ? 'grau' : (ZUSTAND_RANG.find((z) => zeilen.some((r) => r.zustand === z)) ?? 'gruen'),
+						pinned: boards.some((b) => (this.store.boards.find((s) => s.id === b.id) ?? b).pinned === true),
 					}
 				})
-				.sort((a, b) => Number(b.pinned) - Number(a.pinned) || a.title.localeCompare(b.title))
+				.filter((tile) => this.customerFilter === '' || this.sourceBoards.find((b) => b.id === tile.boardId)?.customer === this.customerFilter)
+				.sort((a, b) => Number(a.archived) - Number(b.archived) || Number(b.pinned) - Number(a.pinned) || a.title.localeCompare(b.title))
+		},
+	},
+
+	watch: {
+		'store.boards': function() {
+			if (this.showArchived) {
+				this.setShowArchived(true)
+			}
 		},
 	},
 
@@ -220,6 +273,46 @@ export default defineComponent({
 
 	methods: {
 		t,
+
+		async setShowArchived(an: boolean): Promise<void> {
+			this.gewuenschtArchiviert = an
+			if (an) {
+				try {
+					const alle = await fetchBoards(true)
+					if (!this.gewuenschtArchiviert) {
+						return
+					}
+					this.allBoards = alle
+				} catch (e) {
+					showError((e as { message?: string }).message ?? t('projektwerk', 'Archivierte Projekte konnten nicht geladen werden'))
+					return
+				}
+			}
+			this.showArchived = an
+		},
+
+		// Angepinnt ist ein Projekt, wenn eines seiner Boards angepinnt ist; Lösen löst alle.
+		async togglePin(tile: TileVM): Promise<void> {
+			if (!tile.pinned) {
+				await this.store.togglePin(tile.boardId)
+				return
+			}
+			try {
+				for (const board of this.sourceBoards.filter((b) => tile.boardIds.includes(b.id))) {
+					const imStore = this.store.boards.find((s) => s.id === board.id)
+					if (imStore !== undefined) {
+						if (imStore.pinned === true) {
+							await this.store.togglePin(board.id)
+						}
+					} else if (board.pinned === true) {
+						await setBoardPin(board.id, false)
+						board.pinned = false
+					}
+				}
+			} catch (e) {
+				showError((e as { message?: string }).message ?? t('projektwerk', 'Anpinnen fehlgeschlagen'))
+			}
+		},
 
 		/**
 		 * @param boardId Kennung des Projekts.

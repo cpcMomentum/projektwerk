@@ -60,14 +60,14 @@
 				„sichtbar" — ein Projekt, aus dem man herausfällt, verschwindet von
 				selbst.
 			-->
-			<template v-if="store.pinnedBoards.length > 0">
+			<template v-if="store.pinnedProjects.length > 0">
 				<NcAppNavigationCaption :name="t('projektwerk', 'Angepinnt')" />
 				<NcAppNavigationItem
-					v-for="board in store.pinnedBoards"
-					:key="board.id"
-					:name="board.title"
-					:to="{ name: 'board', params: { boardId: board.id } }"
-					:active="$route.name === 'board-overview' && $route.params.boardId === String(board.id)"
+					v-for="pin in store.pinnedProjects"
+					:key="pin.boardId"
+					:name="pin.title"
+					:to="{ name: 'board', params: { boardId: pin.boardId } }"
+					:active="isPinActive(pin)"
 					@click="closeNavigationOnMobile">
 					<template #icon>
 						<StarIcon :size="20" />
@@ -197,6 +197,18 @@ export default {
 
 	methods: {
 		t,
+
+		/** Markiert bleibt der Eintrag in jedem Board und in der Übersicht des angepinnten Projekts. */
+		isPinActive(pin) {
+			if (this.$route.name !== 'board' && this.$route.name !== 'board-overview') {
+				return false
+			}
+			if (this.$route.params.boardId === String(pin.boardId)) {
+				return true
+			}
+			const geladen = this.store.board !== null && String(this.store.board.id) === this.$route.params.boardId
+			return geladen && pin.projectId !== null && this.store.board.projectId === pin.projectId
+		},
 
 		/**
 		 * Auf dem Handy nach der Auswahl zuklappen.

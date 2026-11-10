@@ -630,9 +630,11 @@
 		"Projekt „{title}“": "Projekt „{title}“",
 		"Das Projekt „{title}“ wird mit allen Boards archiviert. Es verschwindet aus der Projektliste und dem Überblick. Nichts wird gelöscht; zurückholen über Projekt › Archiv.": "Das Projekt „{title}“ wird mit allen Boards archiviert. Es verschwindet aus der Projektliste und dem Überblick. Nichts wird gelöscht; zurückholen über Projekt › Archiv.",
 		"Nur das Board „{title}“ wird archiviert. Die anderen Boards des Projekts bleiben unverändert. Nichts wird gelöscht; zurückholen über die Board-Auswahl.": "Nur das Board „{title}“ wird archiviert. Die anderen Boards des Projekts bleiben unverändert. Nichts wird gelöscht; zurückholen über die Board-Auswahl.",
-		"Die Boards des Projekts konnten nicht geladen werden": "Die Boards des Projekts konnten nicht geladen werden",
 		"Zurückholen fehlgeschlagen": "Zurückholen fehlgeschlagen",
-		"{title} (archiviert)": "{title} (archiviert)"
+		"{title} (archiviert)": "{title} (archiviert)",
+		"Archiviert": "Archiviert",
+		"Archivierte zeigen": "Archivierte zeigen",
+		"Archivierte Projekte konnten nicht geladen werden": "Archivierte Projekte konnten nicht geladen werden"
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }

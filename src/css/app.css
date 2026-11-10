@@ -3102,6 +3102,24 @@ body .app-projektwerk .v-select.select {
 	min-width: 0;
 }
 
+.app-projektwerk .pw-tile--archived {
+	opacity: .7;
+}
+
+.app-projektwerk .pw-tile__archived {
+	flex: 0 0 auto;
+	padding: 0 6px;
+	border-radius: var(--border-radius-pill, 12px);
+	background: var(--color-background-dark);
+	color: var(--color-text-maxcontrast);
+	font-size: 12px;
+	font-weight: normal;
+}
+
+.app-projektwerk .pw-boards__archswitch {
+	margin-inline-start: auto;
+}
+
 .app-projektwerk .pw-tile__org {
 	display: block;
 	font-size: 12px;

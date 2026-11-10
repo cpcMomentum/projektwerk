@@ -10,12 +10,13 @@
  * dafür umgebaut werden, wenn niemand mehr weiß, wer sie liest.
  */
 
-import type { Board, BoardDetail, Column, Member, ViewerInfo } from '@/types/board'
+import type { Board, BoardDetail, Column, Member, SiblingBoard, ViewerInfo } from '@/types/board'
 import type { Ticket, TicketDetail, TicketList, WaitState } from '@/types/ticket'
 
 import { t } from '@nextcloud/l10n'
 import { defineStore } from 'pinia'
 import { fetchBoard, fetchBoards, setBoardPin } from '@/services/boards'
+import { lastBoards, rememberLastBoard } from '@/services/lastBoard'
 import { createBoard as createBoardRequest, createSiblingBoard as createSiblingBoardRequest, deleteBoard as deleteBoardRequest } from '@/services/settings'
 import { fetchTickets, markTicketRead, moveTicket as moveTicketRequest } from '@/services/tickets'
 import { showError } from '@/services/toast'
@@ -47,6 +48,10 @@ interface State {
 	projectTitle: string
 	projectDescription: string | null
 	projectArchived: boolean
+	/** Alle Boards des geöffneten Projekts, archivierte eingeschlossen. */
+	siblings: SiblingBoard[]
+	/** Projekt-ID → zuletzt genutztes Board, gespiegelt aus dem Browser-Speicher. */
+	lastBoards: Record<string, number>
 	/** Der Projektordner des geöffneten Boards (#351), oder null. */
 	projectFolder: { id: number, path: string } | null
 	/** Ob der Betrachter das geöffnete Board jetzt löschen dürfte. */
@@ -91,6 +96,8 @@ export const useBoardStore = defineStore('board', {
 		projectTitle: '',
 		projectDescription: null,
 		projectArchived: false,
+		siblings: [],
+		lastBoards: lastBoards(),
 		projectFolder: null,
 		deletable: false,
 		tickets: new Map(),
@@ -185,21 +192,31 @@ export const useBoardStore = defineStore('board', {
 			.filter((c): c is string => !!c))].sort((a, b) => a.localeCompare(b)),
 
 		/**
-		 * Die Boards des geöffneten Projekts (#246) — für den Board-Wechsler.
+		 * Die aktiven Boards des geöffneten Projekts für die Reiter, auch in einem archivierten Projekt.
 		 *
-		 * Ein Projekt kann mehrere Boards haben; sie teilen sich `projectId`.
-		 * Solange ein Projekt genau ein Board hat, ist das eine einelementige
-		 * Liste, und der Wechsler bleibt aus. Ohne geöffnetes Board oder ohne
-		 * `projectId` (Altbestand) ist die Liste leer.
-		 *
-		 * @param state
+		 * @param state Der Speicher.
 		 */
-		siblingBoards: (state): Board[] => {
-			const projectId = state.board?.projectId
-			if (projectId === null || projectId === undefined) {
-				return []
-			}
-			return state.boards.filter((b) => b.projectId === projectId)
+		siblingBoards: (state): SiblingBoard[] => state.siblings.filter((b) => !b.archived),
+
+		/**
+		 * Je angepinntem Projekt ein Eintrag mit dem Projektnamen, auch wenn mehrere seiner Boards angepinnt sind.
+		 *
+		 * @param state Der Speicher.
+		 */
+		pinnedProjects: (state): { boardId: number, projectId: number | null, title: string }[] => {
+			const gesehen = new Set<number | string>()
+			const zuletzt = state.lastBoards
+			return state.boards
+				.filter((b) => b.pinned === true)
+				.filter((b) => {
+					const key = b.projectId ?? `b${b.id}`
+					return gesehen.has(key) ? false : (gesehen.add(key), true)
+				})
+				.map((b) => {
+					const gemerkt = b.projectId === null ? undefined : zuletzt[String(b.projectId)]
+					const ziel = state.boards.some((x) => x.id === gemerkt && x.projectId === b.projectId) ? gemerkt as number : b.id
+					return { boardId: ziel, projectId: b.projectId, title: b.projectTitle ?? b.title }
+				})
 		},
 
 		/**
@@ -376,6 +393,11 @@ export const useBoardStore = defineStore('board', {
 			return nextBoardId
 		},
 
+		rememberBoard(projectId: number, boardId: number): void {
+			this.lastBoards = { ...this.lastBoards, [String(projectId)]: boardId }
+			rememberLastBoard(projectId, boardId)
+		},
+
 		/**
 		 * Ein Projekt an- oder abpinnen und den neuen Stand sofort zeigen (#115).
 		 *
@@ -430,11 +452,17 @@ export const useBoardStore = defineStore('board', {
 				this.projectTitle = detail.projectTitle ?? ''
 				this.projectDescription = detail.projectDescription ?? null
 				this.projectArchived = detail.projectArchived ?? false
+				// Ein Board ohne Projekt (Altbestand) hat keine Geschwister, steht aber selbst in der Liste.
+				this.siblings = detail.siblings?.length ? detail.siblings : [{ id: detail.board.id, title: detail.board.title, archived: detail.board.archived }]
 				this.projectFolder = detail.projectFolder ?? null
 				this.deletable = detail.deletable ?? false
 
 				this.applyTickets(await fetchTickets(boardId))
 			} catch (e) {
+				// Reiter eines anderen Projekts dürfen nicht unter einer fremden Adresse stehen bleiben.
+				if (this.board?.id !== boardId) {
+					this.siblings = []
+				}
 				this.error = (e as { message?: string }).message ?? 'Unbekannter Fehler'
 				showError(this.error)
 			} finally {

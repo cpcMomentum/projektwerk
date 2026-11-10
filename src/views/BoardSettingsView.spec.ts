@@ -39,6 +39,7 @@ vi.mock('@/services/boards', () => ({
 		projectTitle: 'Website',
 		projectDescription: null,
 		projectArchived: state.projectArchived,
+		siblings: state.boards.filter((b) => b.projectId === 1).map(({ id, title, archived }) => ({ id, title, archived })),
 	}),
 	setBoardPin: () => Promise.resolve(),
 }))
@@ -222,18 +223,6 @@ describe('Einstellungen mit Gruppen Projekt und Board', () => {
 
 		expect(wrapper.findComponent({ name: 'PwSettingsNav' }).exists()).toBe(true)
 		expect(wrapper.findComponent({ name: 'PwSettingsNav' }).vm).toBe(nav.vm)
-	})
-
-	it('hält ein Projekt mit mehreren Boards nicht für ein Ein-Board-Projekt, wenn die Liste nicht lädt', async () => {
-		state.boardsFail = true
-		const store = (await import('@/stores/boardStore')).useBoardStore()
-		store.boards = [
-			{ id: 5, projectId: 1, title: 'Board 5', archived: false },
-			{ id: 6, projectId: 1, title: 'Board 6', archived: false },
-		] as never
-		const wrapper = await mountView()
-
-		expect(itemKeys(wrapper).board).toContain('board-archiv')
 	})
 
 	it('behält beim Speichern eines Bereichs die ungespeicherten Eingaben der anderen', async () => {
