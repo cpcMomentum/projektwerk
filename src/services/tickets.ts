@@ -92,6 +92,8 @@ export async function createTicket(boardId: number, data: {
 	return apiPost<Ticket, typeof data>(`/boards/${boardId}/tickets`, data, options)
 }
 
+export type TicketChanges = { title?: string, description?: string | null, responsibleUserId?: string | null, dueDate?: string | null, closed?: boolean, outcome?: 'done' | 'discarded', archived?: boolean }
+
 /**
  * Titel, Beschreibung, Zuständigkeit, geschlossen.
  *
@@ -113,7 +115,7 @@ export async function updateTicket(
 	boardId: number,
 	ticketId: number,
 	version: number,
-	changes: { title?: string, description?: string | null, responsibleUserId?: string | null, dueDate?: string | null, closed?: boolean, outcome?: 'done' | 'discarded', archived?: boolean },
+	changes: TicketChanges,
 ): Promise<Ticket> {
 	return apiPatch<Ticket, typeof changes & { version: number }>(
 		`/boards/${boardId}/tickets/${ticketId}`,
