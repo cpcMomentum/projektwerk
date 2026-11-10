@@ -637,6 +637,7 @@
 
 <script lang="ts">
 import type { PropType } from 'vue'
+import type { TicketChanges } from '@/services/tickets'
 import type { TicketEntry } from '@/stores/outboxStore'
 import type { Column, Member, ViewerInfo } from '@/types/board'
 import type { Attachment, Comment, Step, Ticket, TicketLink, WaitState } from '@/types/ticket'
@@ -1003,47 +1004,29 @@ export default defineComponent({
 			return this.setClosed(false)
 		},
 
-		async setArchived(archived: boolean): Promise<void> {
-			if (this.ticket === null || this.busy) {
-				return
-			}
-			this.busy = true
-			try {
-				const updated = await updateTicket(this.ticket.boardId, this.ticket.id, this.ticket.version, { archived })
-				this.$emit('changed', updated)
-			} catch (e) {
-				reportWriteError(e, t('projektwerk', 'Archivieren fehlgeschlagen'))
-			} finally {
-				this.busy = false
-			}
+		setArchived(archived: boolean): Promise<void> {
+			return this.writeState({ archived }, t('projektwerk', 'Archivieren fehlgeschlagen'))
 		},
 
-		/**
-		 * Den offen/geschlossen-Zustand schreiben; das Ergebnis begleitet nur das
-		 * Abschließen. Der Server löscht es beim Wieder-öffnen ohnehin — hier wird
-		 * es dann gar nicht erst mitgeschickt.
-		 *
-		 * @param schliessen Ob geschlossen (true) oder wieder geöffnet (false).
-		 * @param outcome Beim Schließen das gewählte Ergebnis.
-		 */
-		async setClosed(schliessen: boolean, outcome?: 'done' | 'discarded'): Promise<void> {
+		setClosed(schliessen: boolean, outcome?: 'done' | 'discarded'): Promise<void> {
+			// Das Ergebnis begleitet nur das Abschließen; beim Wieder-öffnen löscht der Server es ohnehin.
+			return this.writeState(
+				schliessen ? { closed: true, outcome } : { closed: false },
+				schliessen ? t('projektwerk', 'Abschließen fehlgeschlagen') : t('projektwerk', 'Wieder öffnen fehlgeschlagen'),
+			)
+		},
+
+		async writeState(changes: TicketChanges, fehler: string): Promise<void> {
 			if (this.ticket === null || this.busy) {
 				return
 			}
 
 			this.busy = true
 			try {
-				const updated = await updateTicket(
-					this.ticket.boardId,
-					this.ticket.id,
-					this.ticket.version,
-					schliessen ? { closed: true, outcome } : { closed: false },
-				)
+				const updated = await updateTicket(this.ticket.boardId, this.ticket.id, this.ticket.version, changes)
 				this.$emit('changed', updated)
 			} catch (e) {
-				reportWriteError(e, schliessen
-					? t('projektwerk', 'Abschließen fehlgeschlagen')
-					: t('projektwerk', 'Wieder öffnen fehlgeschlagen'))
+				reportWriteError(e, fehler)
 			} finally {
 				this.busy = false
 			}
