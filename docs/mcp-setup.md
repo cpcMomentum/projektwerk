@@ -90,7 +90,8 @@ Schreiben (dieselben Rechte und Regeln wie im Browser, über dieselben Dienste):
 | `move_ticket`, `close_ticket` | ans Ende einer Spalte schieben; als erledigt/verworfen abschließen |
 | `add_step`, `update_step` | Arbeitsschritt anlegen, zuweisen, Frist, abhaken |
 | `add_comment` | Kommentar, `@kennung` benachrichtigt |
-| `add_attachment`, `attach_file` | Datei mitschicken (≤ 1 MB je Anfrage) oder aus der eigenen Nextcloud kopieren |
+| `add_attachment` | Datei mitschicken (≤ 1 MB je Anfrage) |
+| `attach_file` | Datei aus der eigenen Nextcloud kopieren, **nur an interne und private Vorgänge** |
 | `transfer_to_github` | als GitHub-Issue übertragen (nur interne Seite) |
 
 Nicht über den KI-Zugang: löschen, wiederöffnen, Sichtbarkeit ändern, Kommentare bearbeiten,
@@ -99,6 +100,10 @@ Mitglieder und Board-Einstellungen.
 - **Kundensichtbares nur mit Bestätigung:** Jede Änderung an einem öffentlichen Vorgang (und das
   Anlegen eines öffentlichen) lehnt der Server ohne `confirm_public: true` ab; die Ablehnung fordert
   die KI auf, die Person zu fragen. Der Server kann nicht prüfen, ob sie wirklich gefragt hat.
+- **Keine Datei aus der Nextcloud an Kundensichtbares:** `attach_file` lehnt öffentliche Vorgänge
+  immer ab, auch mit `confirm_public`. Das Werkzeug liest aus dem ganzen Dateibaum der Person; eine
+  Bestätigung, die die KI selbst setzt, reicht dafür nicht. Dateien für den Kunden hängt man im
+  Browser an.
 - **Kennzeichnung:** Kommentare, angelegte Vorgänge, Schritte, Anhänge und die Benachrichtigungen
   tragen „über KI-Werkzeug“ (`created_via` / `actor_via` = `tool`). Verschieben, Zuweisen und
   Abschließen stehen sonst nur im Audit-Log (Verlauf: #397).
