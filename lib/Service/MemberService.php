@@ -245,7 +245,7 @@ class MemberService {
 		$this->findInBoard($viewer, $userId);
 		$this->assertNotOwner($viewer, $userId);
 
-		return $this->lifecycle->countPrivateOnBoard($userId, $viewer->boardId);
+		return $this->lifecycle->countPrivateInProject($userId, $viewer->projectId);
 	}
 
 	/**
@@ -253,7 +253,7 @@ class MemberService {
 	 *
 	 * Ihre `private`-Vorgänge in diesem Projekt werden gelöscht, ihre offenen
 	 * Zuweisungen aufgehoben, ihre Mitgliedschaft entfernt — die eigentliche
-	 * Arbeit macht {@see MemberLifecycleService::removeFromBoard()}, an genau der
+	 * Arbeit macht {@see MemberLifecycleService::removeFromProject()}, an genau der
 	 * Stelle, die als einzige ohne Betrachter aufräumen darf. Die bezifferte
 	 * Rückfrage steht vorher im Frontend über {@see removalImpact()}.
 	 *
@@ -269,7 +269,7 @@ class MemberService {
 		$this->findInBoard($viewer, $userId);
 		$this->assertNotOwner($viewer, $userId);
 
-		$this->lifecycle->removeFromBoard($userId, $viewer->boardId, $viewer->userId);
+		$this->lifecycle->removeFromProject($userId, $viewer->projectId, $viewer->userId);
 	}
 
 	/**

@@ -9,9 +9,13 @@ declare(strict_types=1);
 
 namespace OCA\Projektwerk\Tests\Integration;
 
+use OCA\Projektwerk\Access\BoardAccess;
+use OCA\Projektwerk\Access\NotAMemberException;
 use OCA\Projektwerk\Access\TicketScope;
 use OCA\Projektwerk\Db\TicketMapper;
+use OCA\Projektwerk\Service\BoardService;
 use OCA\Projektwerk\Service\MemberLifecycleService;
+use OCA\Projektwerk\Service\MemberService;
 use OCP\Server;
 
 /**
@@ -158,11 +162,11 @@ class MemberLifecycleTest extends IntegrationTestCase {
 	 * öffentlicher bleibt dem Projekt, ihre Zuweisungen sind gelöst, ihre
 	 * Mitgliedschaft ist weg.
 	 */
-	public function testRemoveFromBoardClearsThePersonOnThatBoard(): void {
+	public function testRemoveFromProjectClearsThePerson(): void {
 		$privat = $this->fixture->ticketIds['private/anna'];
 		$oeffentlich = $this->fixture->ticketIds['public/anna'];
 
-		$this->lifecycle->removeFromBoard(LeakMatrixFixture::ANNA, $this->fixture->boardId);
+		$this->lifecycle->removeFromProject(LeakMatrixFixture::ANNA, $this->fixture->projectId);
 
 		$this->assertSame(0, $this->zeilenMitId('pwerk_tickets', $privat), 'Der private Vorgang muss weg sein.');
 		$this->assertSame(1, $this->zeilenMitId('pwerk_tickets', $oeffentlich), 'Der öffentliche gehört dem Projekt und bleibt.');
@@ -185,23 +189,62 @@ class MemberLifecycleTest extends IntegrationTestCase {
 	}
 
 	/**
+	 * **Entfernen über ein Geschwister-Board entzieht den Zugriff auf das ganze
+	 * Projekt.** Die Mitgliedschaft gilt projektweit; ihre Zeile nennt nur das
+	 * Heimat-Board. Früher grenzte das Löschen auf das Board des Betrachters
+	 * ein: Über ein zweites Board traf es keine Zeile, meldete Erfolg, und die
+	 * Person blieb Mitglied.
+	 */
+	public function testRemovingViaASiblingBoardRevokesTheWholeProject(): void {
+		$access = Server::get(BoardAccess::class);
+		$anna = $access->contextFor(LeakMatrixFixture::ANNA, $this->fixture->boardId);
+		$zweites = (int)Server::get(BoardService::class)->createInProject($anna, 'Zweites Board')->getId();
+
+		// Anna handelt vom zweiten Board aus; Dirks Heimat-Board ist das erste.
+		Server::get(MemberService::class)->remove(
+			$access->contextFor(LeakMatrixFixture::ANNA, $zweites),
+			LeakMatrixFixture::DIRK,
+		);
+
+		$verweigert = 0;
+		foreach ([$this->fixture->boardId, $zweites] as $boardId) {
+			try {
+				$access->contextFor(LeakMatrixFixture::DIRK, $boardId);
+			} catch (NotAMemberException) {
+				$verweigert++;
+			}
+		}
+
+		$this->assertSame(2, $verweigert, 'Dirk darf nach dem Entfernen auf keinem Board des Projekts mehr Zugriff haben.');
+	}
+
+	/**
+	 * Trifft das Löschen der Mitgliedschaft keine Zeile, scheitert das
+	 * Entfernen laut, statt Erfolg zu melden.
+	 */
+	public function testRemoveFailsLoudlyWhenNoMembershipWasDeleted(): void {
+		$this->expectException(\RuntimeException::class);
+		$this->lifecycle->removeFromProject(LeakMatrixFixture::FREMD, $this->fixture->projectId);
+	}
+
+	/**
 	 * Die bezifferte Vorschau zählt nur die privaten Vorgänge **dieser** Person
 	 * auf **diesem** Projekt — je Person und board-begrenzt.
 	 *
 	 * Anna hat auf dem anderen Projekt keinen privaten Vorgang: Dort zählt für
 	 * sie null, obwohl sie auf dem ersten einen hat. Das ist die Gegenprobe auf
-	 * den `board_id`-Filter.
+	 * den `project_id`-Filter.
 	 */
-	public function testCountPrivateOnBoardIsScopedToTheBoard(): void {
+	public function testCountPrivateIsScopedToTheProject(): void {
 		$this->assertSame(
 			1,
-			$this->lifecycle->countPrivateOnBoard(LeakMatrixFixture::ANNA, $this->fixture->boardId),
+			$this->lifecycle->countPrivateInProject(LeakMatrixFixture::ANNA, $this->fixture->projectId),
 			'Anna hat genau einen privaten Vorgang auf diesem Projekt.',
 		);
 
 		$this->assertSame(
 			0,
-			$this->lifecycle->countPrivateOnBoard(LeakMatrixFixture::ANNA, $this->fixture->otherBoardId),
+			$this->lifecycle->countPrivateInProject(LeakMatrixFixture::ANNA, $this->fixture->otherProjectId),
 			'Auf dem anderen Projekt hat Anna keinen privaten Vorgang.',
 		);
 
@@ -209,7 +252,7 @@ class MemberLifecycleTest extends IntegrationTestCase {
 		// Zählung ist je Person, Annas Zahl schließt ihn nicht ein und umgekehrt.
 		$this->assertSame(
 			1,
-			$this->lifecycle->countPrivateOnBoard(LeakMatrixFixture::BERT, $this->fixture->boardId),
+			$this->lifecycle->countPrivateInProject(LeakMatrixFixture::BERT, $this->fixture->projectId),
 			'Bert hat seinen eigenen privaten Vorgang.',
 		);
 	}
@@ -219,15 +262,15 @@ class MemberLifecycleTest extends IntegrationTestCase {
 	 * entfernen lässt seine Spuren im zweiten unangetastet — Mitgliedschaft und
 	 * Vorgänge dort bleiben.
 	 *
-	 * Ohne den `board_id`-Filter wäre `removeFromBoard` still ein `forget`: Es
+	 * Ohne den `project_id`-Filter wäre `removeFromProject` still ein `forget`: Es
 	 * risse einer Person überall den Boden weg, obwohl sie nur aus einem Projekt
 	 * gehen soll.
 	 */
-	public function testRemoveFromBoardDoesNotTouchOtherBoards(): void {
+	public function testRemoveFromProjectDoesNotTouchOtherProjects(): void {
 		$privatHier = $this->fixture->ticketIds['private/bert'];
 		$vorgangDort = $this->fixture->ticketIds['b:internal/bert'];
 
-		$this->lifecycle->removeFromBoard(LeakMatrixFixture::BERT, $this->fixture->boardId);
+		$this->lifecycle->removeFromProject(LeakMatrixFixture::BERT, $this->fixture->projectId);
 
 		// Hier weg …
 		$this->assertSame(0, $this->zeilenMitId('pwerk_tickets', $privatHier), 'Berts privater Vorgang hier muss weg sein.');
