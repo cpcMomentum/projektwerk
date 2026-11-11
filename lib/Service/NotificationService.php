@@ -17,7 +17,9 @@ use OCA\Projektwerk\Db\NotifyPref;
 use OCA\Projektwerk\Db\NotifyPrefMapper;
 use OCA\Projektwerk\Db\StepMapper;
 use OCA\Projektwerk\Db\Ticket;
+use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Notification\Notifier;
+use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\IURLGenerator;
 use OCP\L10N\IFactory;
 use OCP\Notification\IManager;
@@ -67,6 +69,9 @@ class NotificationService {
 		// Hinten angehängt (siehe oben): baut Betreff, Satz und Metazeile und
 		// wird vom Nachversand geteilt (#248, Teil 2).
 		private MailComposer $composer,
+		// Hinten angehängt (siehe oben): beantwortet „sieht diese Person den
+		// Vorgang" über die eine Sichtbarkeitsregel.
+		private TicketMapper $tickets,
 	) {
 	}
 
@@ -276,7 +281,7 @@ class NotificationService {
 	}
 
 	/**
-	 * Die drei Regeln aus §5.21, an einer Stelle.
+	 * Die Regeln aus §5.21, an einer Stelle.
 	 *
 	 * @param Ticket $ticket Der Vorgang.
 	 * @param string $recipientUid Wer benachrichtigt würde.
@@ -296,7 +301,24 @@ class NotificationService {
 			return false;
 		}
 
-		return $recipientUid !== '';
+		if ($recipientUid === '') {
+			return false;
+		}
+
+		// (3) **Nur an Personen, die den Vorgang jetzt sehen.** Beteiligt ist,
+		// wer einmal gehandelt hat — das bleibt, auch wenn die Person das
+		// Projekt verlässt oder der Vorgang herabgestuft wird. Ohne diese
+		// Prüfung ginge der Titel eines internen Vorgangs an die Kundenseite,
+		// die früher daran kommentiert hat. Dieselbe Frage stellt der
+		// Nachversand vor jeder Mail; hier gilt sie schon für die erste und
+		// für die Glocke.
+		try {
+			$this->tickets->findVisibleAnywhere($recipientUid, (int)$ticket->getId());
+		} catch (DoesNotExistException) {
+			return false;
+		}
+
+		return true;
 	}
 
 	/**
