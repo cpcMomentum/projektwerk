@@ -63,7 +63,7 @@ class ReplyMailboxController extends Controller {
 		string $imapSecurity = 'ssl',
 		string $imapUser = '',
 		string $imapFolder = 'INBOX',
-		string $imapPassword = '',
+		#[\SensitiveParameter] string $imapPassword = '',
 		bool $imapPasswordClear = false,
 	): JSONResponse {
 		$this->settings->save([
@@ -94,7 +94,7 @@ class ReplyMailboxController extends Controller {
 		string $imapSecurity = 'ssl',
 		string $imapUser = '',
 		string $imapFolder = 'INBOX',
-		string $imapPassword = '',
+		#[\SensitiveParameter] string $imapPassword = '',
 	): JSONResponse {
 		if (trim($imapHost) === '') {
 			return new JSONResponse(['error' => $this->l10n->t('Kein IMAP-Server angegeben.')], Http::STATUS_BAD_REQUEST);

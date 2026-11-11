@@ -60,7 +60,7 @@ class GithubTokenController extends Controller {
 	 * @param string $token Der persönliche GitHub-Token (fine-grained PAT).
 	 */
 	#[NoAdminRequired]
-	public function update(string $token): JSONResponse {
+	public function update(#[\SensitiveParameter] string $token): JSONResponse {
 		if ($this->userId === null) {
 			return new JSONResponse([], Http::STATUS_UNAUTHORIZED);
 		}
