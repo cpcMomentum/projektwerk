@@ -13,6 +13,7 @@ use OCA\Projektwerk\Access\WaitStateCalculator;
 use OCA\Projektwerk\Db\Step;
 use OCA\Projektwerk\Db\Ticket;
 use OCP\AppFramework\Utility\ITimeFactory;
+use OCP\IDateTimeZone;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -33,10 +34,33 @@ class WaitStateCalculatorTest extends TestCase {
 	protected function setUp(): void {
 		parent::setUp();
 
-		$time = $this->createMock(ITimeFactory::class);
-		$time->method('getDateTime')->willReturn(new \DateTime(self::HEUTE . ' 09:00:00'));
+		$this->calculator = $this->calculatorAt(self::HEUTE . ' 09:00:00', 'UTC');
+	}
 
-		$this->calculator = new WaitStateCalculator($time);
+	/** Rechner mit fester Uhr (in UTC) und fester Zeitzone des Nutzers. */
+	private function calculatorAt(string $utc, string $zone): WaitStateCalculator {
+		$time = $this->createMock(ITimeFactory::class);
+		$time->method('getDateTime')->willReturnCallback(
+			static fn (string $t = 'now', ?\DateTimeZone $tz = null): \DateTime
+				=> (new \DateTime($utc, new \DateTimeZone('UTC')))->setTimezone($tz ?? new \DateTimeZone('UTC')),
+		);
+		$dtz = $this->createMock(IDateTimeZone::class);
+		$dtz->method('getTimeZone')->willReturn(new \DateTimeZone($zone));
+
+		return new WaitStateCalculator($time, $dtz);
+	}
+
+	public function testOverdueFollowsTheUsersDayNotTheUtcDay(): void {
+		// 23:30 UTC am Fälligkeitstag ist in Berlin schon 01:30 am Folgetag.
+		$steps = [$this->step('external', false, '2026-06-12')];
+
+		$berlin = $this->calculatorAt(self::HEUTE . ' 23:30:00', 'Europe/Berlin')
+			->forTicket($this->ticketWithDue(self::HEUTE), $steps);
+		$utc = $this->calculatorAt(self::HEUTE . ' 23:30:00', 'UTC')
+			->forTicket($this->ticketWithDue(self::HEUTE), $steps);
+
+		$this->assertTrue($berlin['overdue']);
+		$this->assertFalse($utc['overdue']);
 	}
 
 	public function testAnOpenExternalStepMakesTheTicketWait(): void {

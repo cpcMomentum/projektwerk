@@ -112,6 +112,7 @@ class BoardService {
 			throw new GuestNotAllowedException($this->l10n->t('Als Gast können Sie keine Projekte anlegen.'));
 		}
 		$this->assertTitle($title);
+		// tz-ok: Zeitstempel fuer createdAt, updatedAt und addedAt
 		$now = new \DateTime();
 		// Ohne Angabe gilt die eigene Firma der Instanz (#352), auch für Wege ohne
 		// den Assistenten.
@@ -198,6 +199,7 @@ class BoardService {
 	 */
 	public function createInProject(ViewerContext $viewer, string $title): Board {
 		$this->assertTitle($title);
+		// tz-ok: Zeitstempel fuer createdAt, updatedAt und addedAt
 		$now = new \DateTime();
 
 		$this->db->beginTransaction();

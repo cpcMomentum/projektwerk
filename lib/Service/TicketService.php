@@ -263,6 +263,7 @@ class TicketService {
 					// Rolle taute auf, sobald sich anderswo die Mitgliedschaft
 					// aendert.
 					$ticket->setResponsibleRole($rolle);
+					// tz-ok: Zeitstempel, seit wann die Seite am Zug ist
 					$ticket->setResponsibleSince(new \DateTime());
 					$neuZugewiesen = (string)$nachher;
 				}
@@ -748,6 +749,7 @@ class TicketService {
 			// Erst nach der Board-Sperre prüfen, damit ein gleichzeitiges Board-Löschen keinen verwaisten Vorgang hinterlässt.
 			$this->assertColumnInBoard($viewer, $columnId);
 			$last = $this->tickets->findLastPositionInColumn($viewer, $columnId);
+			// tz-ok: Zeitstempel fuer createdAt, updatedAt und responsibleSince
 			$now = new \DateTime();
 
 			$ticket = new Ticket();

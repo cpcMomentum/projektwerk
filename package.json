@@ -24,6 +24,7 @@
     "test:e2e": "playwright test",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
+    "timezone:check": "nc-timezone-check",
     "whatsnew:check": "nc-whatsnew-check"
   },
   "dependencies": {
@@ -49,7 +50,7 @@
     "@vue/tsconfig": "^0.7.0",
     "eslint": "^10.8.0",
     "happy-dom": "^21.0.4",
-    "nc-app-tooling": "github:cpcMomentum/nc-app-tooling#v1.17.0",
+    "nc-app-tooling": "github:cpcMomentum/nc-app-tooling#v1.22.0",
     "sass": "^1.70.0",
     "typescript": "^5.7.2",
     "vite": "^8.2.0",

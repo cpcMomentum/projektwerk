@@ -76,6 +76,7 @@ class CommentService {
 		$ticket = $this->tickets->findVisible($viewer, $ticketId);
 		$text = $this->clean($body);
 
+		// tz-ok: Zeitstempel fuer createdAt und updatedAt
 		$now = new \DateTime();
 
 		$comment = new Comment();

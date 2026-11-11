@@ -77,6 +77,10 @@ jobs:
       - name: Frontend-Unit-Tests (vitest)
         run: npm test -- --passWithNoTests
 
+      # Kalendertage duerfen nicht aus dem UTC-"jetzt" des Servers entstehen
+      - name: Zeitzonen-Check
+        run: npm run timezone:check
+
       - name: Produktions-Build
         run: npm run build
 

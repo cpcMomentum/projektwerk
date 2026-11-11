@@ -382,6 +382,7 @@ class MailDispatcher {
 	 * @param string $event Einer der `EVENT_*`-Werte.
 	 */
 	private function imFenster(string $recipientUid, int $ticketId, string $event): bool {
+		// tz-ok: rollendes Minutenfenster, kein Kalendertag
 		$seit = (new \DateTime())->modify('-' . self::FENSTER_MINUTEN . ' minutes');
 
 		return $this->outbox->existsSince($recipientUid, $ticketId, $event, $seit);
