@@ -164,6 +164,7 @@ class OverviewController extends Controller {
 			'neuDieseWoche' => $this->tickets->countNewByBoard(
 				$this->userId,
 				array_keys($aktiv),
+				// tz-ok: rollendes Sieben-Tage-Fenster gegen UTC-Zeitstempel, kein Kalendertag
 				(new \DateTime('now', new \DateTimeZone('UTC')))->modify('-7 days')->format('Y-m-d H:i:s'),
 			),
 		]);
