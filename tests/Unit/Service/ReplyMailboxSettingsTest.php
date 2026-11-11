@@ -133,6 +133,63 @@ class ReplyMailboxSettingsTest extends TestCase {
 		$this->assertSame(143, $cfg['port']);
 	}
 
+	/**
+	 * Das gespeicherte Passwort gehört zu einem Zugang. Der Verbindungstest
+	 * schickt es nicht an einen anderen Server, Port, ein anderes Konto oder
+	 * über eine andere Verschlüsselung — er verlangt eine neue Eingabe, **bevor**
+	 * er eine Verbindung aufbaut.
+	 *
+	 * @param array<string, mixed> $abweichung
+	 */
+	#[\PHPUnit\Framework\Attributes\DataProvider('abweichendeZugaenge')]
+	public function testStoredPasswordIsNotSentToADifferentTarget(array $abweichung): void {
+		$settings = $this->settings();
+		$settings->save(['imapHost' => 'imap.firma.de', 'imapPort' => 993, 'imapSecurity' => 'ssl', 'imapUser' => 'projekte', 'imapPassword' => 'geheim']);
+
+		$this->expectException(\OCA\Projektwerk\Imap\ImapPasswordRequiredException::class);
+		$settings->testConnection($abweichung + ['imapHost' => 'imap.firma.de', 'imapPort' => 993, 'imapSecurity' => 'ssl', 'imapUser' => 'projekte']);
+	}
+
+	/**
+	 * @return array<string, array{array<string, mixed>}>
+	 */
+	public static function abweichendeZugaenge(): array {
+		return [
+			'anderer Server' => [['imapHost' => 'fremd.example']],
+			'anderer Port' => [['imapPort' => 1143]],
+			'andere Verschlüsselung' => [['imapSecurity' => 'starttls']],
+			'anderes Konto' => [['imapUser' => 'jemand']],
+		];
+	}
+
+	/**
+	 * Ändert sich der Zugang beim Speichern ohne neues Passwort, wird das alte
+	 * verworfen — sonst schickte der Einlese-Job es an den neuen Server.
+	 */
+	public function testChangingTheTargetWithoutANewPasswordDropsTheStoredOne(): void {
+		$settings = $this->settings();
+		$settings->save(['imapHost' => 'imap.firma.de', 'imapUser' => 'projekte', 'imapPassword' => 'geheim']);
+		$this->assertTrue($settings->getPublicConfig()['imapPasswordSet']);
+
+		$settings->save(['imapHost' => 'fremd.example', 'imapUser' => 'projekte', 'imapPassword' => '']);
+
+		$this->assertFalse($settings->getPublicConfig()['imapPasswordSet']);
+		$this->assertSame('', $settings->getImapConfig()['password'] ?? null);
+	}
+
+	/**
+	 * Gegenstück: Bleibt der Zugang gleich, überlebt das Passwort ein Speichern
+	 * ohne Neueingabe — auch wenn Ordner, Adresse oder Schalter sich ändern.
+	 */
+	public function testSavingOtherFieldsKeepsTheStoredPassword(): void {
+		$settings = $this->settings();
+		$settings->save(['imapHost' => 'imap.firma.de', 'imapUser' => 'projekte', 'imapPassword' => 'geheim']);
+
+		$settings->save(['imapHost' => 'IMAP.firma.de ', 'imapUser' => 'projekte', 'imapFolder' => 'Antworten', 'replyEnabled' => true, 'imapPassword' => '']);
+
+		$this->assertSame('geheim', $settings->getImapConfig()['password'] ?? null);
+	}
+
 	public function testSaveStoresFieldsAndEncryptsPassword(): void {
 		$settings = $this->settings();
 		$settings->save([
@@ -158,11 +215,12 @@ class ReplyMailboxSettingsTest extends TestCase {
 
 	public function testEmptyPasswordLeavesStoredPasswordUntouched(): void {
 		$settings = $this->settings();
-		$settings->save(['imapPassword' => 'geheim']);
+		$settings->save(['imapHost' => 'imap.firma.de', 'imapPassword' => 'geheim']);
 		$this->assertSame('ENC(geheim)', $this->store[ReplyMailboxSettings::KEY_PASSWORD]);
 
-		// Erneutes Speichern der Verbindungsdaten ohne Passwort darf es nicht löschen.
-		$settings->save(['imapHost' => 'imap.firma.de', 'imapPassword' => '']);
+		// Erneutes Speichern derselben Verbindungsdaten ohne Passwort darf es
+		// nicht löschen. (Ein anderer Zugang verwirft es — eigener Test.)
+		$settings->save(['imapHost' => 'imap.firma.de', 'imapFolder' => 'Antworten', 'imapPassword' => '']);
 		$this->assertSame('ENC(geheim)', $this->store[ReplyMailboxSettings::KEY_PASSWORD]);
 	}
 

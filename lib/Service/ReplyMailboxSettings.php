@@ -11,6 +11,7 @@ namespace OCA\Projektwerk\Service;
 
 use OCA\Projektwerk\AppInfo\Application;
 use OCA\Projektwerk\Imap\ImapClient;
+use OCA\Projektwerk\Imap\ImapPasswordRequiredException;
 use OCP\IAppConfig;
 use OCP\Security\ICrypto;
 use Psr\Log\LoggerInterface;
@@ -104,6 +105,10 @@ class ReplyMailboxSettings {
 		if (array_key_exists('replyAddress', $data)) {
 			$this->config->setValueString(self::APP, self::KEY_ADDRESS, trim((string)$data['replyAddress']));
 		}
+		// Vor den Verbindungsfeldern festhalten, zu welchem Zugang das
+		// gespeicherte Passwort gehört (siehe unten).
+		$zugangVorher = $this->storedTarget();
+
 		if (array_key_exists('imapHost', $data)) {
 			$this->config->setValueString(self::APP, self::KEY_HOST, trim((string)$data['imapHost']));
 		}
@@ -128,7 +133,27 @@ class ReplyMailboxSettings {
 			$this->config->setValueString(self::APP, self::KEY_PASSWORD, '');
 		} elseif (isset($data['imapPassword']) && (string)$data['imapPassword'] !== '') {
 			$this->config->setValueString(self::APP, self::KEY_PASSWORD, $this->crypto->encrypt((string)$data['imapPassword']));
+		} elseif ($this->storedTarget() !== $zugangVorher) {
+			// **Das Passwort gehört zum Zugang, für den es eingegeben wurde.**
+			// Ändern sich Server, Port, Verschlüsselung oder Konto ohne neue
+			// Eingabe, wird es verworfen — sonst schickte der Einlese-Job es an
+			// den neuen Server.
+			$this->config->setValueString(self::APP, self::KEY_PASSWORD, '');
 		}
+	}
+
+	/**
+	 * Der Zugang, zu dem das gespeicherte Passwort gehört.
+	 *
+	 * @return array{string, int, string, string} Server (klein), Port, Verschlüsselung, Konto
+	 */
+	private function storedTarget(): array {
+		return [
+			strtolower(trim($this->config->getValueString(self::APP, self::KEY_HOST))),
+			(int)$this->config->getValueString(self::APP, self::KEY_PORT, (string)self::DEFAULT_PORT),
+			$this->config->getValueString(self::APP, self::KEY_SECURITY, self::DEFAULT_SECURITY),
+			trim($this->config->getValueString(self::APP, self::KEY_USER)),
+		];
 	}
 
 	/**
@@ -181,9 +206,12 @@ class ReplyMailboxSettings {
 	 * Controller macht daraus eine verständliche Meldung.
 	 *
 	 * Kein Passwort im Aufruf → das gespeicherte wird genommen (die UI schickt
-	 * es beim Test nur mit, wenn es gerade neu eingegeben wurde).
+	 * es beim Test nur mit, wenn es gerade neu eingegeben wurde) — **aber nur
+	 * für den Zugang, zu dem es gehört**. Weichen Server, Port, Verschlüsselung
+	 * oder Konto von den gespeicherten ab, verlangt der Test eine neue Eingabe.
 	 *
 	 * @param array<string, mixed> $data Verbindungsfelder; `imapPassword` optional.
+	 * @throws ImapPasswordRequiredException wenn das gespeicherte Passwort nicht zu diesem Zugang gehört
 	 */
 	public function testConnection(#[\SensitiveParameter] array $data): void {
 		$host = trim((string)($data['imapHost'] ?? ''));
@@ -191,11 +219,17 @@ class ReplyMailboxSettings {
 		$security = in_array($data['imapSecurity'] ?? '', self::SECURITIES, true) ? (string)$data['imapSecurity'] : self::DEFAULT_SECURITY;
 		$user = trim((string)($data['imapUser'] ?? ''));
 		$folder = trim((string)($data['imapFolder'] ?? '')) ?: self::DEFAULT_FOLDER;
-		$password = isset($data['imapPassword']) && (string)$data['imapPassword'] !== ''
-			? (string)$data['imapPassword']
-			: $this->storedPassword();
+		$port = $port > 0 ? $port : self::DEFAULT_PORT;
 
-		$client = new ImapClient($host, $port > 0 ? $port : self::DEFAULT_PORT, $security);
+		if (isset($data['imapPassword']) && (string)$data['imapPassword'] !== '') {
+			$password = (string)$data['imapPassword'];
+		} elseif ([strtolower($host), $port, $security, $user] === $this->storedTarget()) {
+			$password = $this->storedPassword();
+		} else {
+			throw new ImapPasswordRequiredException('IMAP: gespeichertes Passwort gehört zu einem anderen Zugang');
+		}
+
+		$client = new ImapClient($host, $port, $security);
 		try {
 			$client->connect();
 			$client->login($user, $password);

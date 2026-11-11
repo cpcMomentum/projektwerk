@@ -643,6 +643,7 @@ OC.L10N.register(
     "GitHub hat den Vorgang abgelehnt — für dieses Repository lassen sich keine Issues anlegen." : "GitHub hat den Vorgang abgelehnt — für dieses Repository lassen sich keine Issues anlegen.",
     "GitHub hat mit einem Fehler geantwortet (HTTP %s)." : "GitHub hat mit einem Fehler geantwortet (HTTP %s).",
     "Der persönliche Ordner muss in den eigenen Dateien liegen. Ein freigegebener Ordner oder ein Team-Ordner ist dafür nicht zulässig." : "Der persönliche Ordner muss in den eigenen Dateien liegen. Ein freigegebener Ordner oder ein Team-Ordner ist dafür nicht zulässig.",
-    "Der persönliche Ordner ist für andere freigegeben. Private Anhänge brauchen einen Ordner ohne Freigabe." : "Der persönliche Ordner ist für andere freigegeben. Private Anhänge brauchen einen Ordner ohne Freigabe."
+    "Der persönliche Ordner ist für andere freigegeben. Private Anhänge brauchen einen Ordner ohne Freigabe." : "Der persönliche Ordner ist für andere freigegeben. Private Anhänge brauchen einen Ordner ohne Freigabe.",
+    "Server, Port, Verschlüsselung oder Konto weichen von den gespeicherten Daten ab. Bitte das Passwort neu eingeben." : "Server, Port, Verschlüsselung oder Konto weichen von den gespeicherten Daten ab. Bitte das Passwort neu eingeben."
 },
 "nplurals=2; plural=(n != 1);");
