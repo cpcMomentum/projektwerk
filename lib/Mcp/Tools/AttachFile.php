@@ -45,7 +45,8 @@ class AttachFile extends WriteTool {
 	public function description(): string {
 		return 'Copies a file from the user\'s own Nextcloud (path relative to their files, e.g. "Documents/offer.pdf") '
 			. 'into the ticket\'s project folder and attaches it. Only files the user can access. No size limit. '
-			. 'On a customer-visible ticket the customer can open it, so ask the user first and pass confirm_public: true.';
+			. 'Only for internal and private tickets: on a customer-visible ticket it is refused, '
+			. 'the user attaches such a file in the browser.';
 	}
 
 	public function inputSchema(): array {
@@ -55,6 +56,8 @@ class AttachFile extends WriteTool {
 				'board_id' => ['type' => 'integer', 'minimum' => 1, 'description' => 'Board id from list_boards.'],
 				'ticket_id' => ['type' => 'integer', 'minimum' => 1, 'description' => 'Ticket id from list_tickets or get_ticket.'],
 				'path' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 4000, 'description' => 'Path in the user\'s Nextcloud files.'],
+				// Bleibt im Schema, damit ein Aufruf mit dem Feld die erklärende
+				// Ablehnung bekommt und keinen Schemafehler. Es erlaubt hier nichts.
 				'confirm_public' => self::CONFIRM_PUBLIC,
 			],
 			'required' => ['board_id', 'ticket_id', 'path'],
@@ -67,9 +70,17 @@ class AttachFile extends WriteTool {
 	}
 
 	protected function write(AuthenticatedCaller $caller, ViewerContext $viewer, array $arguments): array {
-		[$ticket, $refusal] = $this->guard->forTicket($viewer, $arguments['ticket_id'], $arguments);
-		if ($refusal !== null) {
-			return [$refusal, 0];
+		// **Kein `confirm_public` hebt das auf.** Dieses Werkzeug liest aus dem
+		// ganzen Dateibaum der Person, und was es in einen öffentlichen Vorgang
+		// kopiert, kann der Kunde öffnen. Die Bestätigung setzt das Modell
+		// selbst; Text aus Vorgängen und Kommentaren (auch vom Kunden) erreicht
+		// es ungefiltert. Eine Datei für den Kunden hängt die Person im Browser
+		// an oder gibt ihren Inhalt über `add_attachment` ausdrücklich mit.
+		[$ticket] = $this->guard->forTicket($viewer, $arguments['ticket_id'], $arguments);
+		if ((string)$ticket->getVisibility() === PublicGuard::VISIBILITY_PUBLIC) {
+			return [ToolResult::error('Ticket #' . $ticket->getNumber() . ' is customer-visible: attach_file is not available there, '
+				. 'because it would copy a file from the user\'s Nextcloud to a place the customer can open. '
+				. 'Tell the user to attach the file in the browser.'), 0];
 		}
 
 		try {
