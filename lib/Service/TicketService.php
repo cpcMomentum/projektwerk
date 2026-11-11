@@ -706,9 +706,9 @@ class TicketService {
 	 * Einen weich gelöschten Vorgang wiederherstellen (#167, Undo).
 	 *
 	 * Das Gegenstück zu {@see delete()}. Wer löschen darf, darf auch zurückholen —
-	 * {@see \OCA\Projektwerk\Db\TicketMapper::findForRestore()} grenzt bereits auf
-	 * das Board des Betrachters und die eigene Rolle ein, deshalb hier keine
-	 * zweite Besitzerprüfung.
+	 * {@see \OCA\Projektwerk\Db\TicketMapper::findForRestore()} wendet die
+	 * Sichtbarkeitsregel an und grenzt auf die eigene Rolle ein, deshalb hier
+	 * keine zweite Besitzerprüfung.
 	 *
 	 * **Kein `version`:** Die Wiederherstellung folgt dem Löschen unmittelbar
 	 * (Undo-Toast) und ist idempotent — ein bereits offener Vorgang wird
