@@ -6,6 +6,8 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.4.25] - 2026-11-12
+
 ### Added
 
 - **Abgeschlossene Vorgänge archivieren** (#376): Erledigte und verworfene Vorgänge lassen sich über das
@@ -25,6 +27,9 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
   Ergebnis auf dem Weg zum Board verloren ging.
 - **Fehlermeldungen des Servers übersetzt** (#446): Rund 50 Meldungen, etwa „Eine Spalte braucht einen
   Namen.“, kamen bisher immer auf Deutsch. Ein Test wacht darüber, dass neue Meldungen übersetzt werden.
+- **Überfällig nach dem eigenen Kalendertag**: Ob eine Frist überschritten ist, entscheidet jetzt der
+  Tag in der Zeitzone der Person. Bisher galt in den ersten Stunden nach Mitternacht noch der Vortag
+  (UTC).
 
 ### Changed
 
@@ -55,11 +60,18 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
   untereinander. Bearbeiten und Löschen erscheinen bei Maus und Tastatur erst am Schritt selbst, auf
   Touch-Geräten und schmalen Breiten bleiben sie sichtbar.
 - **„Löschen“ im Vorgang wie „Verworfen“ und „Erledigt“** (#435): helle rote Fläche statt Kontur.
+- **Persönlicher Ordner für private Anhänge**: Er muss der Person allein gehören und darf nicht
+  freigegeben sein. Ist er freigegeben, erscheint beim nächsten privaten Anhang ein Hinweis.
+- **Antwort-Postfach**: Wer Server, Port, Verschlüsselung oder Konto ändert, gibt das Passwort neu ein.
+- **Claude (MCP)**: `attach_file` hängt keine Nextcloud-Dateien mehr an kundensichtbare Vorgänge.
 
 ### Security
 
 - **Abhängigkeiten aktualisiert** (#438): Bekannte kritische und hohe Schwachstellen in den
   npm-Paketen (u. a. `dompurify`, `axios`, `vue`, `vite`) sind behoben.
+- **Ergebnisse einer internen Sicherheitsprüfung behoben** (#453 bis #462): Wiederherstellen gelöschter
+  Vorgänge, Entfernen von Mitgliedern, Benachrichtigungen und das Lesen eingehender Antwort-Mails folgen
+  strenger der Sichtbarkeitsregel; Zugangsdaten erscheinen nicht mehr in Fehlerprotokollen.
 
 ## [0.4.24] - 2026-11-09
 
