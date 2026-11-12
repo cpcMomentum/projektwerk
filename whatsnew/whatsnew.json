@@ -1,4 +1,57 @@
 {
+	"0.4.25": [
+		{
+			"title": {
+				"de": "Abgeschlossenes archivieren",
+				"en": "Archive what is done"
+			},
+			"text": {
+				"de": "Erledigte und verworfene Vorgänge lassen sich archivieren und verschwinden vom Board; „Archivierte zeigen“ blendet sie wieder ein. Auch ein ganzes Projekt lässt sich mit allen Boards archivieren und zurückholen.",
+				"en": "Completed and discarded tickets can be archived and leave the board; “Show archived” brings them back into view. A whole project can be archived with all its boards and restored, too."
+			},
+			"icon": "folder",
+			"where": {
+				"de": "⋯-Menü der Karte, Einstellungen › Projekt › Archiv",
+				"en": "Card ⋯ menu, Settings › Project › Archive"
+			},
+			"adminOnly": false,
+			"plus": false
+		},
+		{
+			"title": {
+				"de": "Eine Kachel je Projekt",
+				"en": "One tile per project"
+			},
+			"text": {
+				"de": "Projektliste und Überblick zeigen jedes Projekt genau einmal, mit den Zahlen aller Boards. Ein Klick führt direkt ins Board; „Board | Übersicht“ schaltet zu Kennzahlen, Fortschritt und Phasen.",
+				"en": "The project list and the overview show each project exactly once, with the numbers of all its boards. One click leads straight into the board; “Board | Overview” switches to key figures, progress and phases."
+			},
+			"icon": "chart-bar",
+			"where": {
+				"de": "Projektliste und Überblick",
+				"en": "Project list and overview"
+			},
+			"adminOnly": false,
+			"plus": false
+		},
+		{
+			"title": {
+				"de": "Projekt und Board getrennt einstellen",
+				"en": "Separate project and board settings"
+			},
+			"text": {
+				"de": "Die Einstellungen sind in „Projekt“ und „Board“ gegliedert. Projektname und Beschreibung lassen sich jetzt ändern und stehen im Board-Kopf.",
+				"en": "Settings are split into “Project” and “Board”. The project name and description can now be changed and appear in the board header."
+			},
+			"icon": "cog",
+			"where": {
+				"de": "Zahnrad im Board-Kopf",
+				"en": "Gear icon in the board header"
+			},
+			"adminOnly": false,
+			"plus": false
+		}
+	],
 	"0.4.24": [
 		{
 			"title": {

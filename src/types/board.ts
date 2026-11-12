@@ -70,6 +70,9 @@ export interface Board {
 	 * extern ist, landet nicht auf dem Überblick, sondern auf seinem Board.
 	 */
 	viewerRole?: MemberRole
+	/** Nur in der Liste (`board#index`): Name und Archiv-Stand des Projekts. */
+	projectTitle?: string | null
+	projectArchived?: boolean
 	createdAt: string | null
 	updatedAt: string | null
 }
@@ -136,6 +139,13 @@ export interface ViewerInfo {
 	isBoardCreator: boolean
 }
 
+/** Ein Board desselben Projekts, archivierte eingeschlossen. */
+export interface SiblingBoard {
+	id: number
+	title: string
+	archived: boolean
+}
+
 export interface BoardDetail {
 	board: Board
 	members: Member[]
@@ -145,6 +155,9 @@ export interface BoardDetail {
 	memberBoardsAllowed: boolean
 	/** Der Name des Projekts, zu dem das Board gehört (#350). */
 	projectTitle?: string
+	projectDescription?: string | null
+	projectArchived?: boolean
+	siblings?: SiblingBoard[]
 	/** Der Projektordner (#351): Datei-ID zum Öffnen, Pfad zur Anzeige. */
 	projectFolder?: { id: number, path: string } | null
 	/** Ob der Betrachter dieses Board jetzt löschen dürfte. */

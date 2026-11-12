@@ -461,7 +461,7 @@ export default defineComponent({
 					const board = await this.store.createBoard(data)
 					this.boardId = board.id
 				} else {
-					await updateBoard(this.boardId, data)
+					await updateBoard(this.boardId, { projectTitle: data.title, projectDescription: data.description })
 				}
 			} else if (this.step === 1 && this.boardId !== null) {
 				await updateBoard(this.boardId, {

@@ -27,6 +27,7 @@ use OCP\AppFramework\Http\JSONResponse;
 use OCP\Files\InvalidPathException;
 use OCP\Files\NotEnoughSpaceException;
 use OCP\Files\NotPermittedException;
+use OCP\IL10N;
 use OCP\IRequest;
 use OCP\Lock\LockedException;
 
@@ -52,6 +53,7 @@ class AttachmentController extends Controller {
 		private BoardAccess $access,
 		private IdempotencyService $idem,
 		private ?string $userId,
+		private IL10N $l10n,
 	) {
 		parent::__construct(Application::APP_ID, $request);
 	}
@@ -74,7 +76,7 @@ class AttachmentController extends Controller {
 			// fehlendes Feld. Alle drei sind eine Frage an den Aufruf, nicht an
 			// die Rechte — und die Meldung nennt den haeufigsten Grund.
 			return new JSONResponse(
-				['error' => 'Die Datei ist nicht vollständig angekommen. Möglicherweise ist sie zu groß.'],
+				['error' => $this->l10n->t('Die Datei ist nicht vollständig angekommen. Möglicherweise ist sie zu groß.')],
 				Http::STATUS_BAD_REQUEST,
 			);
 		}
@@ -83,7 +85,7 @@ class AttachmentController extends Controller {
 
 		if ($strom === false) {
 			return new JSONResponse(
-				['error' => 'Die hochgeladene Datei ließ sich nicht lesen.'],
+				['error' => $this->l10n->t('Die hochgeladene Datei ließ sich nicht lesen.')],
 				Http::STATUS_BAD_REQUEST,
 			);
 		}
@@ -154,7 +156,7 @@ class AttachmentController extends Controller {
 			// `\Exception`. Ohne diese Zeile schlaegt eine gesperrte Datei als
 			// 500 durch, und der Browser zeigt „Antwort war kein JSON".
 			return new JSONResponse(
-				['error' => 'Die Datei ist gerade in Bearbeitung. Bitte in einem Moment erneut versuchen.'],
+				['error' => $this->l10n->t('Die Datei ist gerade in Bearbeitung. Bitte in einem Moment erneut versuchen.')],
 				Http::STATUS_CONFLICT,
 			);
 		} catch (NotEnoughSpaceException) {
@@ -162,7 +164,7 @@ class AttachmentController extends Controller {
 			// aber die Meldung muss nennen, was zu tun ist, sonst sucht jemand
 			// den Fehler in der App.
 			return new JSONResponse(
-				['error' => 'Der Speicherplatz reicht nicht aus. Bitte im Projektordner aufräumen oder mehr Platz anfordern.'],
+				['error' => $this->l10n->t('Der Speicherplatz reicht nicht aus. Bitte im Projektordner aufräumen oder mehr Platz anfordern.')],
 				Http::STATUS_CONFLICT,
 			);
 		} catch (NoFolderException|NotPermittedException|InvalidPathException $e) {

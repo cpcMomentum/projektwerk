@@ -48,8 +48,8 @@ class TicketReadModel {
 	 *
 	 * @return array{tickets: Ticket[], waiting: array<int, mixed>, counts: array<string, array<int, int>>, stepTitles: array<int, string[]>, changed: array<int, true>}
 	 */
-	public function index(ViewerContext $viewer, ?int $columnId = null): array {
-		$tickets = $this->tickets->findVisibleInBoard($viewer, $columnId);
+	public function index(ViewerContext $viewer, ?int $columnId = null, bool $includeArchived = false): array {
+		$tickets = $this->tickets->findVisibleInBoard($viewer, $columnId, !$includeArchived);
 		$ids = array_map(static fn (Ticket $ticket): int => (int)$ticket->getId(), $tickets);
 		$steps = $this->steps->findForTickets($ids);
 

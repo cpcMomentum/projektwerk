@@ -12,6 +12,7 @@ namespace OCA\Projektwerk\Access;
 use OCA\Projektwerk\Db\Step;
 use OCA\Projektwerk\Db\Ticket;
 use OCP\AppFramework\Utility\ITimeFactory;
+use OCP\IDateTimeZone;
 
 /**
  * „Wartet auf Kunde" — gerechnet, nicht gespeichert.
@@ -59,6 +60,7 @@ class WaitStateCalculator {
 
 	public function __construct(
 		private ITimeFactory $time,
+		private IDateTimeZone $zone,
 	) {
 	}
 
@@ -142,7 +144,9 @@ class WaitStateCalculator {
 	 * Nur die **Intensitaet** der Marke haengt hieran (#144), nicht ihr
 	 * Vorhandensein: Ballbesitz und Verzug sind zwei Fragen. Der Vergleich ist auf
 	 * Tagesebene und der Faelligkeitstag selbst zaehlt noch nicht als zu spaet —
-	 * Wort fuer Wort dieselbe Regel wie im Frontend (`taskStore.ts`).
+	 * Wort fuer Wort dieselbe Regel wie im Frontend (`taskStore.ts`). „Heute" ist
+	 * der Tag in der Zeitzone des Nutzers, sonst widersprechen sich Marke und
+	 * Karte in den Stunden nach Mitternacht.
 	 */
 	private function isOverdue(Ticket $ticket): bool {
 		$dueDate = $ticket->getDueDate();
@@ -150,7 +154,9 @@ class WaitStateCalculator {
 			return false;
 		}
 
-		return $dueDate->format('Y-m-d') < $this->time->getDateTime()->format('Y-m-d');
+		$heute = $this->time->getDateTime('now', $this->zone->getTimeZone())->format('Y-m-d');
+
+		return $dueDate->format('Y-m-d') < $heute;
 	}
 
 	/**

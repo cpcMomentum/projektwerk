@@ -49,6 +49,8 @@ class TicketLog extends Entity implements JsonSerializable {
 	public const DUE_DATE = 'due_date';
 	public const CLOSED = 'closed';
 	public const REOPENED = 'reopened';
+	public const ARCHIVED = 'archived';
+	public const UNARCHIVED = 'unarchived';
 	public const VISIBILITY = 'visibility';
 	public const GITHUB = 'github';
 	public const DELETED = 'deleted';

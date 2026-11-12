@@ -18,6 +18,12 @@ namespace OCA\Projektwerk\Imap;
  */
 final class MimeMessage {
 
+	/** Wie tief verschachtelte Multiparts höchstens verfolgt werden. */
+	private const MAX_DEPTH = 8;
+
+	/** Wie viele Teile je Multipart-Ebene höchstens angesehen werden. */
+	private const MAX_PARTS = 50;
+
 	/**
 	 * Parse a raw RFC 822 message into the fields ProjektWerk's reply intake
 	 * (#287) matches and guards on.
@@ -35,7 +41,7 @@ final class MimeMessage {
 		$headers = self::parseHeaderBlock($headerBlock);
 
 		return [
-			'from' => self::address($headers['from'] ?? ''),
+			'from' => self::countHeader($headerBlock, 'from') === 1 ? self::address($headers['from'] ?? '') : '',
 			'inReplyTo' => self::firstMessageId($headers['in-reply-to'] ?? ''),
 			'references' => trim($headers['references'] ?? ''),
 			'messageId' => self::firstMessageId($headers['message-id'] ?? ''),
@@ -48,19 +54,53 @@ final class MimeMessage {
 	}
 
 	/**
-	 * Die nackte E-Mail-Adresse aus einem Adress-Header, klein geschrieben.
+	 * Die nackte E-Mail-Adresse aus einem From-Header, klein geschrieben —
+	 * oder leer, wenn der Header nicht eindeutig **eine** Adresse nennt.
 	 *
-	 * `"Anna Reuter" <anna@firma.de>` → `anna@firma.de`. Ohne spitze Klammern
-	 * gilt der getrimmte Wert selbst als Adresse. Für die Gegenprüfung des
-	 * Absenders zählt allein die Adresse, nicht der Anzeigename.
+	 * `"Anna Reuter" <anna@firma.de>` → `anna@firma.de`. Die Adresse ist die
+	 * Gegenkontrolle zum Antwort-Token; sie darf deshalb nur aus der Stelle
+	 * kommen, an der nach RFC 5322 die Adresse steht:
+	 *
+	 * - Anzeigename in Anführungszeichen und Kommentare in runden Klammern
+	 *   werden **vor** der Suche entfernt. Ein `<…>` darin ist Text, keine
+	 *   Adresse.
+	 * - Kodierte Wörter (RFC 2047) werden hier **nicht** dekodiert. Sie dürfen
+	 *   nur im Anzeigenamen stehen; dekodiert könnten sie ein `<…>` vortäuschen.
+	 * - Mehrere Adressen (Komma), mehrere spitze Klammern oder Text hinter der
+	 *   Adresse ergeben leer. Der Aufrufer verwirft eine Mail ohne Absender.
 	 */
 	private static function address(string $value): string {
-		$value = self::decodeHeader(trim($value));
-		if (preg_match('/<([^>]+)>/', $value, $m)) {
-			return strtolower(trim($m[1]));
+		// Anzeigename in Anführungszeichen (mit \-Maskierung) und Kommentare weg.
+		$value = preg_replace('/"(?:[^"\\\\]|\\\\.)*"/', '', $value) ?? '';
+		$value = preg_replace('/\((?:[^()\\\\]|\\\\.)*\)/', '', $value) ?? '';
+		$value = trim($value);
+
+		if ($value === '' || str_contains($value, ',') || str_contains($value, '"') || str_contains($value, '(')) {
+			return '';
+		}
+
+		if (str_contains($value, '<') || str_contains($value, '>')) {
+			// Genau ein Klammerpaar, und es schließt den Header ab.
+			if (preg_match('/^[^<>]*<([^<>]+)>$/', $value, $m) !== 1) {
+				return '';
+			}
+			$value = trim($m[1]);
+		}
+
+		if (preg_match('/^[^\s@<>,;:]+@[^\s@<>,;:]+$/', $value) !== 1) {
+			return '';
 		}
 
 		return strtolower($value);
+	}
+
+	/**
+	 * Wie oft ein Header im Kopfblock vorkommt. Ein doppelter From-Header ist
+	 * ein Zeichen für eine gebaute Mail: Welcher gilt, läse jeder Empfänger
+	 * anders.
+	 */
+	private static function countHeader(string $headerBlock, string $name): int {
+		return (int)preg_match_all('/^' . preg_quote($name, '/') . '[ \t]*:/mi', $headerBlock);
 	}
 
 	/**
@@ -171,10 +211,9 @@ final class MimeMessage {
 		if (str_starts_with($contentType, 'multipart/')) {
 			$boundary = self::boundary($headers['content-type'] ?? '');
 			if ($boundary !== '') {
-				$text = self::textFromMultipart($body, $boundary);
-				if ($text !== null) {
-					return $text;
-				}
+				// Kein Textteil gefunden (oder jenseits der Tiefengrenze): leer,
+				// nicht der rohe Multipart-Körper — der wäre als Kommentar Müll.
+				return self::textFromMultipart($body, $boundary) ?? '';
 			}
 		}
 
@@ -185,8 +224,16 @@ final class MimeMessage {
 	 * Walk the parts of a multipart body and return the first usable text part.
 	 * Recurses into nested multiparts (multipart/alternative inside related…).
 	 */
-	private static function textFromMultipart(string $body, string $boundary): ?string {
-		$parts = self::splitParts($body, $boundary);
+	private static function textFromMultipart(string $body, string $boundary, int $depth = 0): ?string {
+		// Eine echte Mail schachtelt zwei, drei Ebenen tief. Mehr ist gebaut:
+		// Jede Ebene kopiert den Rest des Rohtexts, eine tief geschachtelte
+		// Mail liefe sonst in die Speichergrenze — ein Abbruch, den kein
+		// `catch` fängt und der das Einlesen bei jedem Lauf erneut träfe.
+		if ($depth >= self::MAX_DEPTH) {
+			return null;
+		}
+
+		$parts = array_slice(self::splitParts($body, $boundary), 0, self::MAX_PARTS);
 		$fallback = null;
 		foreach ($parts as $part) {
 			[$pHeaderBlock, $pBody] = self::splitHeaders($part);
@@ -196,7 +243,7 @@ final class MimeMessage {
 			if (str_starts_with($pType, 'multipart/')) {
 				$nested = self::boundary($pHeaders['content-type'] ?? '');
 				if ($nested !== '') {
-					$inner = self::textFromMultipart($pBody, $nested);
+					$inner = self::textFromMultipart($pBody, $nested, $depth + 1);
 					if ($inner !== null) {
 						return $inner;
 					}
@@ -222,7 +269,7 @@ final class MimeMessage {
 	 */
 	private static function splitParts(string $body, string $boundary): array {
 		$delimiter = '--' . $boundary;
-		$segments = explode($delimiter, $body);
+		$segments = explode($delimiter, $body, self::MAX_PARTS + 2);
 		$parts = [];
 		foreach ($segments as $i => $segment) {
 			// First segment is the preamble; a segment starting with "--" is the

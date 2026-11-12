@@ -42,7 +42,7 @@ class AddAttachment extends WriteTool {
 	public function description(): string {
 		return 'Attaches a file whose content you pass directly: text as is (encoding "text"), '
 			. 'binary files such as PDF or images base64-encoded (encoding "base64"). The whole request is limited to 1 MB, '
-			. 'so binary files up to about 700 KB. For larger files or files already in Nextcloud use attach_file. '
+			. 'so binary files up to about 700 KB. For larger files or files already in Nextcloud use attach_file (internal and private tickets only). '
 			. 'The file lands in the ticket\'s project folder; on a customer-visible ticket the customer can open it, '
 			. 'so ask the user first and pass confirm_public: true.';
 	}

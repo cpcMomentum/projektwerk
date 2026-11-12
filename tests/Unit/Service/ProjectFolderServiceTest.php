@@ -21,6 +21,8 @@ use OCP\Files\Folder;
 use OCP\Files\IRootFolder;
 use OCP\Files\NotFoundException;
 use OCP\Files\NotPermittedException;
+use OCP\IL10N;
+use OCP\Share\IManager as IShareManager;
 use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
@@ -46,7 +48,7 @@ class ProjectFolderServiceTest extends TestCase {
 	protected function setUp(): void {
 		parent::setUp();
 
-		$this->service = new ProjectFolderService($this->createStub(IRootFolder::class), $this->createStub(IUserConfig::class));
+		$this->service = new ProjectFolderService($this->createStub(IRootFolder::class), $this->createStub(IUserConfig::class), $this->l10n(), $this->createStub(IShareManager::class));
 	}
 
 	/**
@@ -167,7 +169,7 @@ class ProjectFolderServiceTest extends TestCase {
 
 		$this->expectException(NotPermittedException::class);
 		$this->expectExceptionMessage('Dieser Ordner ist nicht erreichbar.');
-		(new ProjectFolderService($root, $this->createStub(IUserConfig::class)))->resolvePath('lm-intern', 'Gibt/Es/Nicht');
+		(new ProjectFolderService($root, $this->createStub(IUserConfig::class), $this->l10n(), $this->createStub(IShareManager::class)))->resolvePath('lm-intern', 'Gibt/Es/Nicht');
 	}
 
 	/**
@@ -196,7 +198,7 @@ class ProjectFolderServiceTest extends TestCase {
 		$root->expects($this->never())->method('getUserFolder');
 
 		$this->expectException(NotPermittedException::class);
-		(new ProjectFolderService($root, $this->createStub(IUserConfig::class)))->resolvePath('lm-intern', '   /  ');
+		(new ProjectFolderService($root, $this->createStub(IUserConfig::class), $this->l10n(), $this->createStub(IShareManager::class)))->resolvePath('lm-intern', '   /  ');
 	}
 
 	/**
@@ -209,7 +211,7 @@ class ProjectFolderServiceTest extends TestCase {
 		$root = $this->createStub(IRootFolder::class);
 		$root->method('getUserFolder')->willReturn($home);
 
-		$this->assertTrue((new ProjectFolderService($root, $this->createStub(IUserConfig::class)))->exists('lm-intern', 42));
+		$this->assertTrue((new ProjectFolderService($root, $this->createStub(IUserConfig::class), $this->l10n(), $this->createStub(IShareManager::class)))->exists('lm-intern', 42));
 	}
 
 	/**
@@ -223,7 +225,7 @@ class ProjectFolderServiceTest extends TestCase {
 		$root = $this->createStub(IRootFolder::class);
 		$root->method('getUserFolder')->willReturn($home);
 
-		$this->assertFalse((new ProjectFolderService($root, $this->createStub(IUserConfig::class)))->exists('lm-intern', 42));
+		$this->assertFalse((new ProjectFolderService($root, $this->createStub(IUserConfig::class), $this->l10n(), $this->createStub(IShareManager::class)))->exists('lm-intern', 42));
 	}
 
 	/**
@@ -235,7 +237,7 @@ class ProjectFolderServiceTest extends TestCase {
 		$root = $this->createStub(IRootFolder::class);
 		$root->method('getUserFolder')->willThrowException(new NotFoundException());
 
-		$this->assertTrue((new ProjectFolderService($root, $this->createStub(IUserConfig::class)))->exists('lm-intern', 42));
+		$this->assertTrue((new ProjectFolderService($root, $this->createStub(IUserConfig::class), $this->l10n(), $this->createStub(IShareManager::class)))->exists('lm-intern', 42));
 	}
 
 	/**
@@ -256,7 +258,7 @@ class ProjectFolderServiceTest extends TestCase {
 
 		$this->assertSame(
 			'Projekte/90_Austausch',
-			(new ProjectFolderService($root, $this->createStub(IUserConfig::class)))->displayPath('lm-intern', $folder),
+			(new ProjectFolderService($root, $this->createStub(IUserConfig::class), $this->l10n(), $this->createStub(IShareManager::class)))->displayPath('lm-intern', $folder),
 		);
 	}
 
@@ -283,6 +285,99 @@ class ProjectFolderServiceTest extends TestCase {
 	}
 
 	/**
+	 * Der persönliche Ordner wird über seinen Namen gefunden. Liegt unter dem
+	 * Namen eine **fremde Freigabe**, darf sie nicht an seine Stelle treten —
+	 * private Anhänge landeten sonst im Speicher eines anderen.
+	 */
+	public function testPrivateFolderRefusesAFolderOwnedBySomeoneElse(): void {
+		$service = $this->privateService($this->privateFolder('jemand-anders', true), ['users' => ['jemand-anders', 'lm-intern']]);
+
+		$this->expectException(NotPermittedException::class);
+		$service->privateFolderFor('lm-intern');
+	}
+
+	/**
+	 * Ein Team-Ordner oder externer Speicher ist kein Heimatspeicher — auch
+	 * dann nicht, wenn die Person als Eigentümer gemeldet wird.
+	 */
+	public function testPrivateFolderRefusesAFolderOutsideTheHomeStorage(): void {
+		$service = $this->privateService($this->privateFolder('lm-intern', false), ['users' => ['lm-intern']]);
+
+		$this->expectException(NotPermittedException::class);
+		$service->privateFolderFor('lm-intern');
+	}
+
+	/**
+	 * Der eigene Ordner reicht weiter als „nur ich", sobald er (oder ein
+	 * Elternordner) freigegeben ist — an Personen, per Link, per Mail oder
+	 * föderiert.
+	 *
+	 * @param array<string, mixed> $zugriff
+	 */
+	#[\PHPUnit\Framework\Attributes\DataProvider('freigaben')]
+	public function testPrivateFolderRefusesAnOwnFolderThatIsSharedOut(array $zugriff): void {
+		$service = $this->privateService($this->privateFolder('lm-intern', true), $zugriff);
+
+		$this->expectException(NotPermittedException::class);
+		$service->privateFolderFor('lm-intern');
+	}
+
+	/**
+	 * @return array<string, array{array<string, mixed>}>
+	 */
+	public static function freigaben(): array {
+		return [
+			'an eine Person' => [['users' => ['lm-intern', 'kollege']]],
+			'öffentlicher Link' => [['users' => ['lm-intern'], 'public' => true]],
+			'föderiert' => [['users' => ['lm-intern'], 'remote' => true]],
+			'per Mail' => [['users' => ['lm-intern'], 'mail' => ['x@example.org']]],
+		];
+	}
+
+	public function testPrivateFolderAcceptsAnOwnUnsharedFolder(): void {
+		$folder = $this->privateFolder('lm-intern', true);
+		$service = $this->privateService($folder, ['users' => ['lm-intern'], 'public' => false, 'remote' => false]);
+
+		$this->assertSame($folder, $service->privateFolderFor('lm-intern'));
+	}
+
+	/**
+	 * @param string $ownerUid Wem der Ordner gehört.
+	 * @param bool $homeStorage Liegt er in einem Heimatspeicher?
+	 */
+	private function privateFolder(string $ownerUid, bool $homeStorage): Folder {
+		$owner = $this->createStub(\OCP\IUser::class);
+		$owner->method('getUID')->willReturn($ownerUid);
+
+		$storage = $this->createStub(\OCP\Files\Storage\IStorage::class);
+		$storage->method('instanceOfStorage')->willReturn($homeStorage);
+
+		$folder = $this->createStub(Folder::class);
+		$folder->method('isCreatable')->willReturn(true);
+		$folder->method('getOwner')->willReturn($owner);
+		$folder->method('getStorage')->willReturn($storage);
+
+		return $folder;
+	}
+
+	/**
+	 * @param Folder $folder Was unter dem Ordnernamen liegt.
+	 * @param array<string, mixed> $zugriff Was Nextcloud als Zugriffsliste meldet.
+	 */
+	private function privateService(Folder $folder, array $zugriff): ProjectFolderService {
+		$home = $this->homeStub();
+		$home->method('get')->willReturn($folder);
+
+		$root = $this->createStub(IRootFolder::class);
+		$root->method('getUserFolder')->willReturn($home);
+
+		$shares = $this->createStub(IShareManager::class);
+		$shares->method('getAccessList')->willReturn($zugriff);
+
+		return new ProjectFolderService($root, $this->createStub(IUserConfig::class), $this->l10n(), $shares);
+	}
+
+	/**
 	 * @param object $node Was der Dateibaum zurückgeben soll.
 	 */
 	private function serviceResolving(object $node): ProjectFolderService {
@@ -292,6 +387,12 @@ class ProjectFolderServiceTest extends TestCase {
 		$root = $this->createStub(IRootFolder::class);
 		$root->method('getUserFolder')->willReturn($home);
 
-		return new ProjectFolderService($root, $this->createStub(IUserConfig::class));
+		return new ProjectFolderService($root, $this->createStub(IUserConfig::class), $this->l10n(), $this->createStub(IShareManager::class));
+	}
+
+	private function l10n(): IL10N {
+		$l10n = $this->createStub(IL10N::class);
+		$l10n->method('t')->willReturnCallback(static fn (string $text, array $parameters = []): string => vsprintf($text, $parameters));
+		return $l10n;
 	}
 }

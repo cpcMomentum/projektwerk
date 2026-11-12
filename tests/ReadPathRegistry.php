@@ -108,6 +108,8 @@ final class ReadPathRegistry {
 		// Mitgliedschaftsgrenze sitzt eine Schicht hoeher in `BoardAccess`. Die
 		// Erwartung ist dieselbe: `testBoardMetadataPathsTrustTheContextAlone`.
 		'ProjectMapper::findForViewer',
+		// Projektname und Archiv-Stand fuer die Projektliste; folgt der Mitgliedschaft wie die Boardliste.
+		'ProjectMapper::findAllForUser',
 		'MemberMapper::findForBoard',
 		// Dieselbe Frage ueber alle Projekte des Betrachters (#76). Der
 		// Ueberblick loest Anzeigenamen auf, und bei ueber zwanzig Projekten

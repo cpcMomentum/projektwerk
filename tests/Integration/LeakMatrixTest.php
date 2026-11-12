@@ -13,11 +13,12 @@ use OCA\Projektwerk\Access\BoardAccess;
 use OCA\Projektwerk\Access\TicketScope;
 use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Access\WaitStateCalculator;
+use OCA\Projektwerk\AppInfo\Application;
 use OCA\Projektwerk\Controller\BoardController;
 use OCA\Projektwerk\Controller\DeepLinkController;
 use OCA\Projektwerk\Controller\MemberSearchController;
-use OCA\Projektwerk\Controller\SettingsController;
 use OCA\Projektwerk\Controller\OverviewController;
+use OCA\Projektwerk\Controller\SettingsController;
 use OCA\Projektwerk\Controller\TaskController;
 use OCA\Projektwerk\Controller\TicketController;
 use OCA\Projektwerk\Db\AttachmentMapper;
@@ -36,20 +37,10 @@ use OCA\Projektwerk\Db\StepMapper;
 use OCA\Projektwerk\Db\TaskFilter;
 use OCA\Projektwerk\Db\TicketDep;
 use OCA\Projektwerk\Db\TicketDepMapper;
+use OCA\Projektwerk\Db\TicketLogMapper;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Db\TicketReadMapper;
-use OCA\Projektwerk\Service\IdempotencyService;
-use OCA\Projektwerk\Db\TicketLogMapper;
 use OCA\Projektwerk\Db\TicketUserMapper;
-use OCA\Projektwerk\Service\BoardPinService;
-use OCA\Projektwerk\Service\BoardService;
-use OCA\Projektwerk\Service\ColumnService;
-use OCA\Projektwerk\Service\GithubService;
-use OCA\Projektwerk\Service\MemberService;
-use OCA\Projektwerk\Service\NotifyPrefService;
-use OCA\Projektwerk\Service\ProjectFolderService;
-use OCA\Projektwerk\Service\StepService;
-use OCA\Projektwerk\Service\TicketService;
 use OCA\Projektwerk\Mcp\AuthenticatedCaller;
 use OCA\Projektwerk\Mcp\ToolResult;
 use OCA\Projektwerk\Mcp\Tools\GetTicket;
@@ -57,17 +48,28 @@ use OCA\Projektwerk\Mcp\Tools\ListBoards;
 use OCA\Projektwerk\Mcp\Tools\ListColumns;
 use OCA\Projektwerk\Mcp\Tools\ListMembers;
 use OCA\Projektwerk\Mcp\Tools\ListTickets;
+use OCA\Projektwerk\Service\BoardPinService;
 use OCA\Projektwerk\Service\BoardReadModel;
+use OCA\Projektwerk\Service\BoardService;
+use OCA\Projektwerk\Service\ColumnService;
+use OCA\Projektwerk\Service\GithubService;
+use OCA\Projektwerk\Service\IdempotencyService;
+use OCA\Projektwerk\Service\MemberService;
+use OCA\Projektwerk\Service\NotifyPrefService;
+use OCA\Projektwerk\Service\ProjectFolderService;
+use OCA\Projektwerk\Service\StepService;
 use OCA\Projektwerk\Service\TicketDependencyService;
 use OCA\Projektwerk\Service\TicketReadModel;
+use OCA\Projektwerk\Service\TicketService;
 use OCA\Projektwerk\Tests\ReadPathRegistry;
-use OCA\Projektwerk\AppInfo\Application;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
 use OCP\Config\IUserConfig;
+use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IConfig;
 use OCP\IRequest;
 use OCP\IUserManager;
+use OCP\L10N\IFactory;
 use OCP\Server;
 use ReflectionClass;
 
@@ -120,30 +122,25 @@ class LeakMatrixTest extends IntegrationTestCase {
 	];
 
 	/**
-	 * Was jeder Betrachter **wiederherstellen** darf (#167) — und warum das
-	 * anders geschnitten ist als {@see VISIBLE}.
+	 * Was jeder Betrachter **wiederherstellen** darf (#167): was er sehen darf
+	 * **und** was die eigene Seite erzeugt hat.
 	 *
-	 * `findForRestore` bindet an **Board + Erzeugerrolle**, nicht an die
-	 * Sichtbarkeitsregel: Es findet auch Geloeschtes und joint bewusst nicht auf
-	 * die Mitgliedschaft. Deshalb sind Annas und Berts Mengen hier **identisch**
-	 * — beide sind intern, und es zaehlt die Rolle, nicht die Person; eine
-	 * interne Person stellt jeden intern erzeugten Vorgang ihres Boards wieder
-	 * her, auch einen fremden. Carla und Dirk als Kundenseite ebenso ueber die
-	 * externe Erzeugerrolle.
+	 * `findForRestore` laeuft durch die Sichtbarkeitsregel (ohne Loeschfilter)
+	 * und grenzt zusaetzlich auf die Erzeugerrolle ein. Eine interne Person
+	 * stellt jeden oeffentlichen und internen Vorgang ihrer Seite wieder her,
+	 * auch einen fremden — einen **privaten** aber nur den eigenen. Vorher
+	 * zaehlte allein die Rolle; damit liess sich ueber den Wiederherstell-Abruf
+	 * ein fremder privater Vorgang lesen.
 	 *
-	 * FREMD steht hier **nicht**: Sein Betrachterkontext existiert im Betrieb
-	 * nicht (`BoardAccess::contextFor` wirft fuer ein Nichtmitglied, der
-	 * Restore-Endpunkt endet mit 404, bevor der Mapper laeuft). Die
-	 * Mitgliedschaftsgrenze ist eine Schicht hoeher, nicht in diesem Finder — ihn
-	 * hier von Hand zu bauen pruefte einen Zustand, den es nicht gibt.
+	 * FREMD ist kein Mitglied und findet nichts.
 	 *
 	 * @var array<string, string[]>
 	 */
 	private const RESTORABLE = [
-		self::ANNA => ['public/anna', 'public/bert', 'internal/anna', 'internal/bert', 'private/anna', 'private/bert'],
-		self::BERT => ['public/anna', 'public/bert', 'internal/anna', 'internal/bert', 'private/anna', 'private/bert'],
+		self::ANNA => ['public/anna', 'public/bert', 'internal/anna', 'internal/bert', 'private/anna'],
+		self::BERT => ['public/anna', 'public/bert', 'internal/anna', 'internal/bert', 'private/bert'],
 		self::CARLA => ['public/carla', 'internal/carla', 'private/carla'],
-		self::DIRK => ['public/carla', 'internal/carla', 'private/carla'],
+		self::DIRK => ['public/carla', 'internal/carla'],
 	];
 
 	/** @var array<string, string[]> */
@@ -277,6 +274,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 		// zusaetzlich gefahren von testBothCompanyNamesReachEveryViewer
 		'BoardMapper::findForViewer' => 'testBoardMetadataPathsTrustTheContextAlone',
 		'ProjectMapper::findForViewer' => 'testBoardMetadataPathsTrustTheContextAlone',
+		'ProjectMapper::findAllForUser' => 'testProjectListFollowsMembership',
 		'BoardMapper::findAllForUser' => 'testBoardListFollowsMembership',
 		'MemberMapper::findForBoard' => 'testBoardMetadataPathsTrustTheContextAlone',
 		'ColumnMapper::findForBoard' => 'testBoardMetadataPathsTrustTheContextAlone',
@@ -671,6 +669,20 @@ class LeakMatrixTest extends IntegrationTestCase {
 		}
 	}
 
+	public function testTheArchiveSwitchShowsOnlyWhatTheViewerMaySeeAnyway(): void {
+		$tickets = Server::get(TicketMapper::class);
+		$qb = $this->db->getQueryBuilder();
+		$qb->update('pwerk_tickets')
+			->set('archived_at', $qb->createNamedParameter(new \DateTime(), IQueryBuilder::PARAM_DATETIME_MUTABLE))
+			->where($qb->expr()->in('id', $qb->createNamedParameter(array_values($this->fixture->ticketIds), IQueryBuilder::PARAM_INT_ARRAY)));
+		$qb->executeStatement();
+
+		foreach (self::VISIBLE as $userId => $expected) {
+			$this->assertSame([], $tickets->findVisibleInBoard($this->contextFor($userId), null, true), $userId . ' sieht Archiviertes ohne Schalter.');
+			$this->assertTicketLabels($expected, $tickets->findVisibleInBoard($this->contextFor($userId)), $userId . ' mit Schalter');
+		}
+	}
+
 	/**
 	 * Dieselbe Menge, spaltenweise — und die Summe stimmt.
 	 *
@@ -759,20 +771,16 @@ class LeakMatrixTest extends IntegrationTestCase {
 	/**
 	 * Der Wiederherstell-Abruf (#167) — vier Betrachter x **alle** Fixture-Tickets.
 	 *
-	 * `findForRestore` geht bewusst am Sichtbarkeits-Scope vorbei: kein Join auf
-	 * die Mitgliedschaft (sonst faende es Geloeschtes nie wieder), kein
-	 * Deleted-Filter. Es traegt stattdessen eine engere, andere Bedingung —
+	 * `findForRestore` traegt die Sichtbarkeitsregel ohne Loeschfilter, dazu
 	 * **Board + Erzeugerrolle**. Jede Kombination muss das Ticket liefern **oder**
 	 * `DoesNotExistException` werfen; die Fehlerform verraet nicht, ob es das
-	 * Ticket nicht gibt oder es nur nicht das eigene Board/die eigene Rolle ist.
+	 * Ticket nicht gibt oder der Betrachter es nur nicht zurueckholen darf.
 	 *
-	 * Zwei Belege stecken in der Iteration ueber **alle** Tickets: Die
+	 * Drei Belege stecken in der Iteration ueber **alle** Tickets: Die
 	 * `b:`-Tickets liegen auf dem Zweitboard, jeder Kontext hier traegt das erste
-	 * — sie muessen ausnahmslos werfen (Beleg fuer die Board-Bedingung). Und dass
-	 * Anna Berts intern erzeugte Vorgaenge findet, aber keinen der Kundenseite,
-	 * ist der Beleg fuer die Rollen-Bedingung.
-	 *
-	 * FREMD fehlt bewusst — Begruendung bei {@see RESTORABLE}.
+	 * — sie muessen ausnahmslos werfen (Board-Bedingung). Anna findet Berts
+	 * intern erzeugte Vorgaenge, aber keinen der Kundenseite (Rollen-Bedingung).
+	 * Und Bert findet Annas privaten Vorgang nicht (Sichtbarkeitsregel).
 	 */
 	public function testRestoreLookupIsScopedToBoardAndOwningRole(): void {
 		$tickets = Server::get(TicketMapper::class);
@@ -1174,6 +1182,17 @@ class LeakMatrixTest extends IntegrationTestCase {
 				array_diff(array_keys($data['neuDieseWoche']), $eigeneBoards),
 				$userId . ': Ein fremdes Board in „N diese Woche".',
 			);
+
+			// (5) Jede Herkunftszeile nennt das eigene Projekt des Boards samt Namen.
+			$projekte = [];
+			foreach (Server::get(ProjectMapper::class)->findAllForUser($userId) as $project) {
+				$projekte[(int)$project->getId()] = (string)$project->getTitle();
+			}
+			foreach (Server::get(BoardMapper::class)->findAllForUser($userId) as $board) {
+				$line = $data['boards'][(int)$board->getId()];
+				$this->assertSame($board->getProjectId(), $line['projectId'], $userId . ': falsches Projekt an Board ' . $board->getId());
+				$this->assertSame($board->getProjectId() === null ? null : $projekte[$board->getProjectId()], $line['projectTitle'], $userId . ': falscher Projektname an Board ' . $board->getId());
+			}
 		}
 
 		// Und das Nichtmitglied: leere Listen, kein 404 — wie bei `task#index`
@@ -1486,6 +1505,18 @@ class LeakMatrixTest extends IntegrationTestCase {
 			$boards->findAllForUser(self::FREMD),
 			'Das Nichtmitglied bekommt eine Boardliste.',
 		);
+	}
+
+	public function testProjectListFollowsMembership(): void {
+		$projects = Server::get(ProjectMapper::class);
+
+		foreach ([self::ANNA, self::BERT, self::CARLA, self::DIRK] as $userId) {
+			$titles = array_map(static fn ($p): string => (string)$p->getTitle(), $projects->findAllForUser($userId));
+			$this->assertContains('Leak-Matrix', $titles, $userId . ' findet sein Projekt nicht.');
+			$this->assertSame(count($titles), count(array_unique($titles)), $userId . ' bekommt ein Projekt doppelt.');
+		}
+
+		$this->assertSame([], $projects->findAllForUser(self::FREMD), 'Das Nichtmitglied bekommt eine Projektliste.');
 	}
 
 	/**
@@ -2285,6 +2316,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 			Server::get(MemberMapper::class),
 			Server::get(BoardAccess::class),
 			$userId,
+			Server::get(IFactory::class)->get('projektwerk'),
 		);
 	}
 
@@ -2318,6 +2350,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 			Server::get(ColumnMapper::class),
 			Server::get(WaitStateCalculator::class),
 			Server::get(MemberService::class),
+			Server::get(ProjectMapper::class),
 			$userId,
 		);
 	}

@@ -13,6 +13,7 @@ use OCA\Projektwerk\Access\WaitStateCalculator;
 use OCA\Projektwerk\AppInfo\Application;
 use OCA\Projektwerk\Db\BoardMapper;
 use OCA\Projektwerk\Db\ColumnMapper;
+use OCA\Projektwerk\Db\ProjectMapper;
 use OCA\Projektwerk\Db\Step;
 use OCA\Projektwerk\Db\StepMapper;
 use OCA\Projektwerk\Db\TaskFilter;
@@ -63,6 +64,7 @@ class OverviewController extends Controller {
 		private ColumnMapper $columns,
 		private WaitStateCalculator $waitState,
 		private MemberService $memberService,
+		private ProjectMapper $projects,
 		private ?string $userId,
 	) {
 		parent::__construct(Application::APP_ID, $request);
@@ -162,6 +164,7 @@ class OverviewController extends Controller {
 			'neuDieseWoche' => $this->tickets->countNewByBoard(
 				$this->userId,
 				array_keys($aktiv),
+				// tz-ok: rollendes Sieben-Tage-Fenster gegen UTC-Zeitstempel, kein Kalendertag
 				(new \DateTime('now', new \DateTimeZone('UTC')))->modify('-7 days')->format('Y-m-d H:i:s'),
 			),
 		]);
@@ -264,14 +267,22 @@ class OverviewController extends Controller {
 	 * Eintrag.
 	 *
 	 * @param bool $mitArchivierten Ob archivierte Projekte dazugehören.
-	 * @return array<int, array{title: string, orgInternal: ?string, customer: ?string}>
+	 * @return array<int, array{title: string, projectId: ?int, projectTitle: ?string, orgInternal: ?string, customer: ?string}>
 	 */
 	private function boardLine(bool $mitArchivierten): array {
 		$line = [];
+		$projektnamen = [];
+		foreach ($this->projects->findAllForUser((string)$this->userId) as $project) {
+			$projektnamen[(int)$project->getId()] = (string)$project->getTitle();
+		}
 
 		foreach ($this->boards->findAllForUser((string)$this->userId, $mitArchivierten) as $board) {
+			$projectId = $board->getProjectId();
 			$line[(int)$board->getId()] = [
 				'title' => (string)$board->getTitle(),
+				// Damit der Überblick ein Board seinem Projekt zuordnet, auch wenn die Boardliste es noch nicht kennt.
+				'projectId' => $projectId,
+				'projectTitle' => $projectId === null ? null : ($projektnamen[$projectId] ?? null),
 				'orgInternal' => $board->getOrgInternal(),
 				// Kunde des Projekts (#309) — die Firmenzeile der Gegenseite kommt
 				// seit Phase 5 von hier, nicht mehr aus dem eingefrorenen

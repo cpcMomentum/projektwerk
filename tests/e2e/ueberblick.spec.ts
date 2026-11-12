@@ -83,39 +83,57 @@ test.describe('Dienstleisterseite', () => {
 		// nicht nur Farbe).
 		await expect(kachel).toHaveAttribute('aria-label', /1 wartet/)
 
-		// Der Klick führt seit Stufe 2 (#227) ins **Projekt-Dashboard**, nicht
-		// mehr direkt aufs Board.
 		await kachel.click()
-		await expect(page).toHaveURL(/#\/project\/\d+/)
+		await expect(page).toHaveURL(/#\/boards\/\d+$/)
+	})
+
+	test('ein Projekt mit zwei Boards steht im Überblick nur einmal', async ({ page, browser }) => {
+		const kontext = await browser.newContext({ storageState: INTERN.sitzung })
+		try {
+			const api = await Api.fuer(kontext.request)
+			const zweites = await api.weiteresBoardAnlegen(projekt.boardId, 'Zweites Board')
+			const spalten = (await api.boardZeigen(Number(zweites.id))).columns
+			await api.ticketAnlegen(Number(zweites.id), { title: 'Vorgang im zweiten Board', columnId: Number(spalten[0].id), visibility: 'public' })
+		} finally {
+			await kontext.close()
+		}
+
+		await page.goto(APP_PFAD)
+		await expect(page.getByRole('heading', { name: 'Überblick' })).toBeVisible({ timeout: 30_000 })
+
+		await expect(page.locator('.pw-tile', { hasText: projekt.titel })).toHaveCount(1)
+		await expect(page.locator('.pw-tile', { hasText: 'Zweites Board' })).toHaveCount(0)
 	})
 })
 
-test.describe('Projekt-Dashboard (#227)', () => {
+test.describe('Board und Übersicht (#388)', () => {
 	test.use({ storageState: INTERN.sitzung })
 
 	/**
-	 * Die zweite Ebene: Klick auf eine Kachel landet im Projekt-Dashboard, und
-	 * von dort führt „Board öffnen" weiter aufs Kanban. Beide Wege sind der Kern
-	 * dieses Issues — der Landepunkt **und** der Weiterweg.
+	 * Klick auf eine Kachel landet direkt im Board, ohne Zwischenebene. Der
+	 * Umschalter zeigt die Übersicht an derselben Stelle, und der Zurück-Knopf
+	 * des Browsers kehrt zur vorherigen Ansicht zurück.
 	 */
-	test('führt vom Überblick ins Projekt-Dashboard und weiter aufs Board', async ({ page }) => {
+	test('führt vom Überblick direkt ins Board und schaltet zur Übersicht', async ({ page }) => {
 		await page.goto(APP_PFAD)
 		await expect(page.getByRole('heading', { name: 'Überblick' })).toBeVisible({ timeout: 30_000 })
 
 		await page.locator('.pw-tile', { hasText: projekt.titel }).click()
-		await expect(page).toHaveURL(/#\/project\/\d+/)
-
-		// Der Kopf trägt den Projektnamen; die Kennzahlen-Karte des Überblicks
-		// ist hier **nicht** — das unterscheidet die Ebene-2-Seite von Ebene 1.
+		await expect(page).toHaveURL(/#\/boards\/\d+$/)
 		await expect(page.getByRole('heading', { name: projekt.titel })).toBeVisible()
-		await expect(page.locator('.pw-kpicard')).toHaveCount(0)
-		// Die vier Status-Kacheln und der Phasen-Balken stehen.
+		await expect(page.locator('.pw-col').first()).toBeVisible()
+
+		await page.getByRole('button', { name: 'Übersicht' }).click()
+		await expect(page).toHaveURL(/#\/boards\/\d+\/overview$/)
+		await expect(page.getByRole('button', { name: 'Übersicht' })).toHaveAttribute('aria-pressed', 'true')
+		// Kopf bleibt, die Übersicht zeigt die vier Status-Kacheln und den Phasen-Balken.
+		await expect(page.getByRole('heading', { name: projekt.titel })).toBeVisible()
 		await expect(page.locator('.pw-pd__kpi')).toHaveCount(4)
 		await expect(page.locator('.pw-pd__phasebar')).toBeVisible()
 
-		// „Board öffnen" führt aufs Kanban dieses Projekts.
-		await page.getByRole('button', { name: 'Board öffnen' }).click()
-		await expect(page).toHaveURL(/#\/boards\/\d+/)
+		await page.goBack()
+		await expect(page).toHaveURL(/#\/boards\/\d+$/)
+		await expect(page.locator('.pw-col').first()).toBeVisible()
 	})
 })
 
@@ -144,7 +162,8 @@ test.describe('Kundenseite', () => {
 		await page.goto(APP_PFAD)
 
 		// Warten, bis der Rahmen steht: Den „Projekte"-Eintrag hat jede Rolle.
-		await expect(page.getByRole('link', { name: 'Projekte' })).toBeVisible({ timeout: 30_000 })
+		// exact, weil im Board zusätzlich die Brotkrume „Alle Projekte“ steht.
+		await expect(page.getByRole('link', { name: 'Projekte', exact: true })).toBeVisible({ timeout: 30_000 })
 
 		// Der Überblick ist weg: kein Menüeintrag, keine Kennzahlen-Karte, und
 		// die Adresse steht nicht mehr auf dem bloßen Einstieg.

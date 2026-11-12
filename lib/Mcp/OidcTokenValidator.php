@@ -34,7 +34,7 @@ class OidcTokenValidator implements TokenValidator {
 		return $this->appManager->isEnabledForAnyone(self::APP_ID) && class_exists(self::EVENT_CLASS);
 	}
 
-	public function userIdFor(string $token): ?string {
+	public function userIdFor(#[\SensitiveParameter] string $token): ?string {
 		if (!$this->isAvailable()) {
 			return null;
 		}

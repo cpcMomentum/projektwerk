@@ -79,6 +79,7 @@ import ViewDashboardIcon from 'vue-material-design-icons/ViewDashboardOutline.vu
 import KennzahlenCard from '@/components/KennzahlenCard.vue'
 import MeasuresTable from '@/components/MeasuresTable.vue'
 import ProjectTiles from '@/components/ProjectTiles.vue'
+import { useBoardStore } from '@/stores/boardStore'
 import { useOverviewStore } from '@/stores/overviewStore'
 import { useTaskStore } from '@/stores/taskStore'
 
@@ -98,7 +99,7 @@ export default defineComponent({
 	components: { AlertIcon, KennzahlenCard, MeasuresTable, NcEmptyContent, ProjectTiles, ViewDashboardIcon },
 
 	setup() {
-		return { store: useOverviewStore(), taskStore: useTaskStore() }
+		return { store: useOverviewStore(), boardStore: useBoardStore(), taskStore: useTaskStore() }
 	},
 
 	computed: {
@@ -129,9 +130,9 @@ export default defineComponent({
 		},
 	},
 
-	created() {
-		this.store.load()
+	async created() {
 		this.taskStore.load()
+		await Promise.all([this.store.load(), this.boardStore.ensureBoards()])
 	},
 
 	methods: { t },

@@ -66,20 +66,12 @@ jobs:
           coverage: none
           tools: composer:v2
 
-      # Leitet die zu testenden nextcloud/ocp-Versionen aus info.xml ab
-      # (<nextcloud min-version max-version/>). NC 32-34 -> "^32.0 ^33.0 ^34.0".
+      # ocp-Versionen aus info.xml, gefiltert nach der PHP-Untergrenze je NC-Major.
       - name: NC-Versionen aus info.xml ableiten
+        uses: cpcMomentum/nc-app-tooling/.github/actions/ocp-versionen@v1.17.0
         id: derive
-        run: |
-          line=$(grep -oE '<nextcloud[^>]*/>' appinfo/info.xml)
-          min=$(printf '%s' "$line" | grep -oE 'min-version="[0-9]+"' | grep -oE '[0-9]+')
-          max=$(printf '%s' "$line" | grep -oE 'max-version="[0-9]+"' | grep -oE '[0-9]+')
-          if [ -z "$min" ] || [ -z "$max" ]; then
-            echo "::error::Konnte min/max-version nicht aus info.xml lesen"; exit 1
-          fi
-          ocp=$(seq "$min" "$max" | sed 's/.*/^&.0/' | paste -sd' ' -)
-          echo "ocp=$ocp" >> "$GITHUB_OUTPUT"
-          echo "Abgeleitete ocp-Versionen: $ocp"
+        with:
+          php-version: ${{ matrix.php-version }}
 
       # Der abgeleitete Wert geht ueber env in die Shell, nicht per ${{ }}-
       # Interpolation ins Skript: info.xml ist in einem PR aenderbar, direkte
@@ -87,7 +79,10 @@ jobs:
       - name: Unit-Tests gegen alle ocp-Versionen
         env:
           OCP_VERSIONS: ${{ steps.derive.outputs.ocp }}
+          PHPV: ${{ matrix.php-version }}
         run: |
+          # Der Pin aus composer.json (8.3) darf ocp-Versionen dieses Jobs nicht ablehnen; nur im Lauf, nie committet.
+          composer config platform.php "$PHPV"
           failed=""
           for ocp in $OCP_VERSIONS; do
             echo "::group::ocp $ocp"

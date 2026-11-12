@@ -18,9 +18,8 @@ use OCP\IDBConnection;
  * Das Projekt-Dach (#246).
  *
  * Bewusst schmal: Ein Projekt trägt keine Sichtbarkeit — seine Zeile ist für
- * alle Mitglieder dieselbe. Es gibt hier **kein** `find(int $id)`; wo der
- * Projektname gebraucht wird, kommt er über die schon gesperrte
- * {@see BoardMapper::findAllForUser()} aus Sicht des Betrachters. Angelegt wird
+ * alle Mitglieder dieselbe. Es gibt hier **kein** `find(int $id)`; gelesen wird
+ * über den Kontext oder, für die Projektliste, über die Mitgliedschaft. Angelegt wird
  * ein Projekt einzig beim Anlegen eines Boards (dort besitzt die aufrufende
  * Person das Board ohnehin).
  *
@@ -53,6 +52,19 @@ class ProjectMapper extends QBMapper {
 			));
 
 		return $this->findEntity($qb);
+	}
+
+	/** @return Project[] alle Projekte mit Mitgliedschaft, archivierte eingeschlossen */
+	public function findAllForUser(string $userId): array {
+		$qb = $this->db->getQueryBuilder();
+		$qb->selectDistinct('p.*')
+			->from($this->tableName, 'p')
+			->innerJoin('p', 'pwerk_members', 'm', $qb->expr()->andX(
+				$qb->expr()->eq('m.project_id', 'p.id'),
+				$qb->expr()->eq('m.user_id', $qb->createNamedParameter($userId)),
+			));
+
+		return $this->findEntities($qb);
 	}
 
 	/**

@@ -564,7 +564,7 @@
 					<div class="pw-detail__fuss-aktionen">
 						<NcButton
 							class="pw-detail__loeschen"
-							variant="tertiary"
+							variant="error"
 							:disabled="busy || pending"
 							:title="t('projektwerk', 'Endgültig löschen')"
 							:ariaLabel="t('projektwerk', 'Endgültig löschen')"
@@ -609,6 +609,17 @@
 							</template>
 							{{ t('projektwerk', 'Wieder öffnen') }}
 						</NcButton>
+						<NcButton
+							v-if="ticket.closedAt !== null"
+							variant="secondary"
+							:disabled="busy || pending"
+							@click="setArchived(!ticket.archivedAt)">
+							<template #icon>
+								<ArchiveArrowUpIcon v-if="ticket.archivedAt" :size="20" />
+								<ArchiveArrowDownIcon v-else :size="20" />
+							</template>
+							{{ ticket.archivedAt ? t('projektwerk', 'Aus dem Archiv holen') : t('projektwerk', 'Archivieren') }}
+						</NcButton>
 					</div>
 
 					<NcButton
@@ -626,6 +637,7 @@
 
 <script lang="ts">
 import type { PropType } from 'vue'
+import type { TicketChanges } from '@/services/tickets'
 import type { TicketEntry } from '@/stores/outboxStore'
 import type { Column, Member, ViewerInfo } from '@/types/board'
 import type { Attachment, Comment, Step, Ticket, TicketLink, WaitState } from '@/types/ticket'
@@ -640,6 +652,8 @@ import NcRichText, { NcReferenceList } from '@nextcloud/vue/components/NcRichTex
 import NcSelectUsers from '@nextcloud/vue/components/NcSelectUsers'
 import NcTextArea from '@nextcloud/vue/components/NcTextArea'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
+import ArchiveArrowDownIcon from 'vue-material-design-icons/ArchiveArrowDownOutline.vue'
+import ArchiveArrowUpIcon from 'vue-material-design-icons/ArchiveArrowUpOutline.vue'
 import CalendarAlertIcon from 'vue-material-design-icons/CalendarAlert.vue'
 import CalendarIcon from 'vue-material-design-icons/CalendarOutline.vue'
 import CancelIcon from 'vue-material-design-icons/Cancel.vue'
@@ -685,7 +699,7 @@ interface PersonOption {
 export default defineComponent({
 	name: 'TicketDetail',
 
-	components: { AttachmentList, CalendarIcon, CalendarAlertIcon, CancelIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, CommentList, DeleteOutlineIcon, DependencyList, FormatBoldIcon, FormatListBulletedIcon, FormatListNumberedIcon, GithubIcon, LinkVariantIcon, NcAvatar, NcButton, NcDateTimePicker, NcModal, NcReferenceList, NcRichText, NcSelectUsers, NcTextArea, NcTextField, PencilOutlineIcon, PlusIcon, RestoreIcon, StepList, TicketHistory, VisibilityControl, WaitBadge },
+	components: { ArchiveArrowDownIcon, ArchiveArrowUpIcon, AttachmentList, CalendarIcon, CalendarAlertIcon, CancelIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, CommentList, DeleteOutlineIcon, DependencyList, FormatBoldIcon, FormatListBulletedIcon, FormatListNumberedIcon, GithubIcon, LinkVariantIcon, NcAvatar, NcButton, NcDateTimePicker, NcModal, NcReferenceList, NcRichText, NcSelectUsers, NcTextArea, NcTextField, PencilOutlineIcon, PlusIcon, RestoreIcon, StepList, TicketHistory, VisibilityControl, WaitBadge },
 
 	props: {
 		ticket: { type: Object as PropType<Ticket | null>, default: null },
@@ -990,32 +1004,29 @@ export default defineComponent({
 			return this.setClosed(false)
 		},
 
-		/**
-		 * Den offen/geschlossen-Zustand schreiben; das Ergebnis begleitet nur das
-		 * Abschließen. Der Server löscht es beim Wieder-öffnen ohnehin — hier wird
-		 * es dann gar nicht erst mitgeschickt.
-		 *
-		 * @param schliessen Ob geschlossen (true) oder wieder geöffnet (false).
-		 * @param outcome Beim Schließen das gewählte Ergebnis.
-		 */
-		async setClosed(schliessen: boolean, outcome?: 'done' | 'discarded'): Promise<void> {
+		setArchived(archived: boolean): Promise<void> {
+			return this.writeState({ archived }, t('projektwerk', 'Archivieren fehlgeschlagen'))
+		},
+
+		setClosed(schliessen: boolean, outcome?: 'done' | 'discarded'): Promise<void> {
+			// Das Ergebnis begleitet nur das Abschließen; beim Wieder-öffnen löscht der Server es ohnehin.
+			return this.writeState(
+				schliessen ? { closed: true, outcome } : { closed: false },
+				schliessen ? t('projektwerk', 'Abschließen fehlgeschlagen') : t('projektwerk', 'Wieder öffnen fehlgeschlagen'),
+			)
+		},
+
+		async writeState(changes: TicketChanges, fehler: string): Promise<void> {
 			if (this.ticket === null || this.busy) {
 				return
 			}
 
 			this.busy = true
 			try {
-				const updated = await updateTicket(
-					this.ticket.boardId,
-					this.ticket.id,
-					this.ticket.version,
-					schliessen ? { closed: true, outcome } : { closed: false },
-				)
+				const updated = await updateTicket(this.ticket.boardId, this.ticket.id, this.ticket.version, changes)
 				this.$emit('changed', updated)
 			} catch (e) {
-				reportWriteError(e, schliessen
-					? t('projektwerk', 'Abschließen fehlgeschlagen')
-					: t('projektwerk', 'Wieder öffnen fehlgeschlagen'))
+				reportWriteError(e, fehler)
 			} finally {
 				this.busy = false
 			}

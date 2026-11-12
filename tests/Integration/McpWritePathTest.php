@@ -74,6 +74,46 @@ class McpWritePathTest extends IntegrationTestCase {
 		$this->assertSame($before, $this->snapshot($ticketId), 'Ohne Bestätigung ändert sich nichts.');
 	}
 
+	/**
+	 * `attach_file` liest aus dem ganzen Dateibaum der Person. An einen
+	 * kundensichtbaren Vorgang kopiert es deshalb nie — auch nicht mit der
+	 * Bestätigung, die das Modell selbst setzt.
+	 */
+	public function testAttachFileIsRefusedOnACustomerVisibleTicketEvenWhenConfirmed(): void {
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+		$before = $this->snapshot($ticketId);
+
+		$result = $this->call(AttachFile::class, LeakMatrixFixture::ANNA, [
+			'ticket_id' => $ticketId,
+			'path' => 'nicht/da.txt',
+			'confirm_public' => true,
+		]);
+
+		$this->assertTrue($result->isError());
+		$this->assertStringContainsString('attach_file is not available', $this->text($result));
+		$this->assertSame($before, $this->snapshot($ticketId));
+	}
+
+	/**
+	 * An einem internen Vorgang greift die Ablehnung nicht: Sie gilt der
+	 * Sichtbarkeit, nicht dem Werkzeug. Das Fixture-Konto hat keinen Dateibaum,
+	 * der Aufruf endet deshalb erst bei der Dateisuche — mit einer Fehlermeldung
+	 * oder einer Ausnahme, je nach Plattform.
+	 */
+	public function testAttachFileIsNotRefusedOnAnInternalTicket(): void {
+		try {
+			$text = $this->text($this->call(AttachFile::class, LeakMatrixFixture::ANNA, [
+				'ticket_id' => $this->fixture->ticketIds['internal/anna'],
+				'path' => 'nicht/da.txt',
+			]));
+		} catch (\Throwable $e) {
+			$text = $e->getMessage();
+		}
+
+		$this->assertStringNotContainsString('attach_file is not available', $text);
+		$this->assertStringNotContainsString('customer-visible', $text);
+	}
+
 	public function testCreatingACustomerVisibleTicketNeedsConfirmation(): void {
 		$args = [
 			'column_id' => $this->fixture->columnIds[LeakMatrixFixture::COLUMN_A],

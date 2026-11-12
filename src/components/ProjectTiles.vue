@@ -13,24 +13,20 @@
 		</div>
 
 		<div class="pw-tiles">
-			<!--
-				Dieselbe Kachel wie im Projekt-Verzeichnis (#276), hier nur zur
-				Anzeige: `pinnable` bleibt aus, der Stern zeigt an, klickt aber
-				nicht. Der Klick auf die Kachel führt ins Projekt-Dashboard (#227).
-			-->
+			<!-- Dieselbe Kachel wie in der Projektliste, hier ohne Pin-Toggle. -->
 			<ProjectTile
-				v-for="row in shown"
-				:key="row.boardId"
-				:boardId="row.boardId"
-				:title="row.title"
-				:org="row.org"
-				:neu="row.neu"
-				:offen="row.offen"
-				:wartet="row.wartet"
-				:erledigt="row.erledigt"
-				:neuDieseWoche="row.neuDieseWoche"
-				:zustand="row.zustand"
-				:pinned="isPinned(row.boardId)"
+				v-for="tile in shown"
+				:key="tile.key"
+				:boardId="tile.boardId"
+				:title="tile.title"
+				:org="tile.org"
+				:neu="tile.neu"
+				:offen="tile.offen"
+				:wartet="tile.wartet"
+				:erledigt="tile.erledigt"
+				:neuDieseWoche="tile.neuDieseWoche"
+				:zustand="tile.zustand"
+				:pinned="tile.pinned"
 				@open="open" />
 		</div>
 
@@ -45,11 +41,13 @@
 </template>
 
 <script lang="ts">
+import type { ProjectTileData } from '@/services/projectTiles'
 import type { ProjectStatusRow } from '@/types/overview'
 
 import { n, t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
 import ProjectTile from '@/components/ProjectTile.vue'
+import { AUFMERKSAMKEIT, overviewProjectTiles } from '@/services/projectTiles'
 import { useBoardStore } from '@/stores/boardStore'
 import { useOverviewStore } from '@/stores/overviewStore'
 
@@ -92,28 +90,18 @@ export default defineComponent({
 	},
 
 	computed: {
-		/** Kennungen der angepinnten Projekte, als Menge. */
-		pinnedIds(): Set<number> {
-			return new Set(this.boardStore.pinnedBoards.map((board) => board.id))
-		},
-
-		/**
-		 * Die anzuzeigenden Projekte: leere (nichts offen, nichts erledigt/
-		 * verworfen) fallen weg, angepinnte zuerst — stabile Teilung.
-		 */
-		rows(): ProjectStatusRow[] {
-			const alle = (this.store.projectStatusRows as ProjectStatusRow[])
-				.filter((row) => row.offenGesamt > 0 || row.erledigt > 0 || row.verworfen > 0)
-			const pinned = this.pinnedIds
-
-			return [
-				...alle.filter((row) => pinned.has(row.boardId)),
-				...alle.filter((row) => !pinned.has(row.boardId)),
-			]
+		/** Je Projekt eine Kachel mit Inhalt; angepinnte zuerst, dann nach Aufmerksamkeit. */
+		rows(): ProjectTileData[] {
+			return overviewProjectTiles(this.store.projectStatusRows as ProjectStatusRow[], this.boardStore.boards, this.boardStore.lastBoards)
+				.filter((tile) => tile.offenGesamt > 0 || tile.erledigt > 0 || tile.verworfen > 0)
+				.sort((a, b) => Number(b.pinned) - Number(a.pinned)
+					|| AUFMERKSAMKEIT[a.zustand] - AUFMERKSAMKEIT[b.zustand]
+					|| b.offenGesamt - a.offenGesamt
+					|| a.title.localeCompare(b.title))
 		},
 
 		/** Die tatsächlich gezeigten — bis zum Aufklappen auf sechs begrenzt. */
-		shown(): ProjectStatusRow[] {
+		shown(): ProjectTileData[] {
 			return this.expandiert ? this.rows : this.rows.slice(0, MAX_KACHELN)
 		},
 
@@ -129,18 +117,8 @@ export default defineComponent({
 		/**
 		 * @param boardId Kennung des Projekts.
 		 */
-		isPinned(boardId: number): boolean {
-			return this.pinnedIds.has(boardId)
-		},
-
-		/**
-		 * Ins **Projekt-Dashboard** des Projekts (#227, Ebene 2) — nicht mehr
-		 * direkt aufs Board. Von dort führt „Board öffnen" weiter aufs Kanban.
-		 *
-		 * @param boardId Kennung des Projekts.
-		 */
 		open(boardId: number): void {
-			this.$router.push({ name: 'project-dashboard', params: { boardId: String(boardId) } })
+			this.$router.push({ name: 'board', params: { boardId: String(boardId) } })
 		},
 	},
 })

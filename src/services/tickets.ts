@@ -18,9 +18,16 @@ import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from '@/services/api'
  * @param boardId Kennung des Projekts.
  * @param columnId Auf eine Spalte einschränken; das ist keine zweite Berechtigungsfrage.
  */
-export async function fetchTickets(boardId: number, columnId?: number): Promise<TicketList> {
-	const query = columnId === undefined ? '' : `?columnId=${columnId}`
-	return apiGet<TicketList>(`/boards/${boardId}/tickets${query}`)
+export async function fetchTickets(boardId: number, columnId?: number, includeArchived = false): Promise<TicketList> {
+	const params = new URLSearchParams()
+	if (columnId !== undefined) {
+		params.set('columnId', String(columnId))
+	}
+	if (includeArchived) {
+		params.set('includeArchived', '1')
+	}
+	const query = params.toString()
+	return apiGet<TicketList>(`/boards/${boardId}/tickets${query === '' ? '' : `?${query}`}`)
 }
 
 /**
@@ -85,6 +92,8 @@ export async function createTicket(boardId: number, data: {
 	return apiPost<Ticket, typeof data>(`/boards/${boardId}/tickets`, data, options)
 }
 
+export type TicketChanges = { title?: string, description?: string | null, responsibleUserId?: string | null, dueDate?: string | null, closed?: boolean, outcome?: 'done' | 'discarded', archived?: boolean }
+
 /**
  * Titel, Beschreibung, Zuständigkeit, geschlossen.
  *
@@ -106,7 +115,7 @@ export async function updateTicket(
 	boardId: number,
 	ticketId: number,
 	version: number,
-	changes: { title?: string, description?: string | null, responsibleUserId?: string | null, dueDate?: string | null, closed?: boolean, outcome?: 'done' | 'discarded' },
+	changes: TicketChanges,
 ): Promise<Ticket> {
 	return apiPatch<Ticket, typeof changes & { version: number }>(
 		`/boards/${boardId}/tickets/${ticketId}`,

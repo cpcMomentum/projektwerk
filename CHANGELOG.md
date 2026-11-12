@@ -6,6 +6,73 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.4.25] - 2026-11-12
+
+### Added
+
+- **Abgeschlossene Vorgänge archivieren** (#376): Erledigte und verworfene Vorgänge lassen sich über das
+  ⋯-Menü der Karte oder im Vorgang archivieren und verschwinden vom Board. Der Schalter „Archivierte
+  zeigen“ blendet sie gedämpft ein; darüber holt man sie zurück. Wieder öffnen hebt das Archiv auf.
+  Schritte, Kommentare und Anhänge archivierter Vorgänge bleiben bedienbar; Überblick und Kennzahlen
+  zählen sie weiter mit.
+
+- **Projekt archivieren** (#379): Unter Einstellungen › Projekt › Archiv lässt sich das ganze Projekt
+  mit allen Boards archivieren und zurückholen; vorher einzeln archivierte Boards bleiben dabei
+  archiviert. Beide Archiv-Aktionen fragen mit dem Namen nach. Ein archiviertes Kundenprojekt zählt
+  weiter gegen den freien Umfang.
+
+### Fixed
+
+- **„Als verworfen abschließen“ im Karten-Menü** schloss den Vorgang als erledigt ab, weil das gewählte
+  Ergebnis auf dem Weg zum Board verloren ging.
+- **Fehlermeldungen des Servers übersetzt** (#446): Rund 50 Meldungen, etwa „Eine Spalte braucht einen
+  Namen.“, kamen bisher immer auf Deutsch. Ein Test wacht darüber, dass neue Meldungen übersetzt werden.
+- **Überfällig nach dem eigenen Kalendertag**: Ob eine Frist überschritten ist, entscheidet jetzt der
+  Tag in der Zeitzone der Person. Bisher galt in den ersten Stunden nach Mitternacht noch der Vortag
+  (UTC).
+
+### Changed
+
+- **Überblick mit einer Kachel je Projekt** (#441): Auch der Überblick zeigt jedes Projekt einmal mit
+  Projektnamen und summierten Zahlen; „Steht still“ in den Kennzahlen zählt Projekte. Ein Projekt steht
+  erst still, wenn sich auf keinem Board mit offenen Vorgängen etwas bewegt. Projektliste, Überblick und
+  Seitenleiste öffnen dasselbe Board: zuletzt genutzt, sonst angepinnt, sonst das erste.
+- **Eine Kachel je Projekt** (#380): Die Projektliste zeigt jedes Projekt genau einmal mit dem
+  Projektnamen und den über alle Boards summierten Zahlen. Ein Klick öffnet das zuletzt genutzte Board
+  (im Browser gemerkt), sonst das erste. Der Schalter „Archivierte zeigen“ blendet archivierte Projekte
+  markiert ein; in einem archivierten Projekt bleiben die Board-Reiter erhalten. Angepinnte Projekte
+  stehen in der Seitenleiste einmal mit dem Projektnamen.
+- **Einstellungen in zwei Gruppen „Projekt“ und „Board“** (#379): Projektname und -beschreibung sind
+  jetzt änderbar und stehen im Board-Kopf. Ab zwei Boards gibt es eine Board-Auswahl (archivierte mit
+  Zusatz „(archiviert)“, darüber zurückholbar), einen eigenen Boardnamen und ein Board-Archiv. Ein
+  Board-Ersteller ohne Verwaltungsrecht sieht nur die Gruppe „Board“. Das Zahnrad führt aus dem Board
+  zu den Spalten, aus der Übersicht zum Projekt.
+- **Bestandsdaten abgeglichen** (#379): Beim Update übernehmen Projekte mit einem Board dessen Namen,
+  Beschreibung und Archiv-Stand; Projekte mit mehreren Boards sind nicht archiviert.
+
+- **Projekt öffnet direkt im Board** (#388): Ein Klick auf die Projektkachel führt ohne Zwischenseite
+  ins Board. Der Umschalter „Board | Übersicht“ zeigt an derselben Stelle die Kennzahlen, den
+  Fortschritt, die Phasen und die offenen und zuletzt bearbeiteten Vorgänge; Kopf, „Neuer Vorgang“
+  und Board-Reiter bleiben stehen. Gespeicherte Links auf das frühere Projekt-Dashboard landen auf
+  der Übersicht.
+- **Arbeitsschritte klarer gegliedert** (#436): Jeder Schritt steht als eigener Block mit Trennlinie;
+  Beschreibung und Ergebnis beginnen bündig am Titel, die Avatare von Zuständigen und Fristen stehen
+  untereinander. Bearbeiten und Löschen erscheinen bei Maus und Tastatur erst am Schritt selbst, auf
+  Touch-Geräten und schmalen Breiten bleiben sie sichtbar.
+- **„Löschen“ im Vorgang wie „Verworfen“ und „Erledigt“** (#435): helle rote Fläche statt Kontur.
+- **Persönlicher Ordner für private Anhänge**: Er muss der Person allein gehören und darf nicht
+  freigegeben sein. Ist er freigegeben, erscheint beim nächsten privaten Anhang ein Hinweis.
+- **Antwort-Postfach**: Wer Server, Port, Verschlüsselung oder Konto ändert, gibt das Passwort neu ein.
+- **Claude (MCP)**: `attach_file` hängt keine Nextcloud-Dateien mehr an kundensichtbare Vorgänge.
+
+### Security
+
+- **Abhängigkeiten aktualisiert** (#438): Bekannte kritische und hohe Schwachstellen in den
+  npm-Paketen (u. a. `dompurify`, `axios`, `vue`, `vite`) sind behoben.
+- **Ergebnisse einer internen Sicherheitsprüfung behoben** (#453 bis #462): Wiederherstellen gelöschter
+  Vorgänge, Entfernen von Mitgliedern, Benachrichtigungen und das Lesen eingehender Antwort-Mails folgen
+  strenger der Sichtbarkeitsregel; Zugangsdaten erscheinen nicht mehr in Fehlerprotokollen.
+
 ## [0.4.24] - 2026-11-09
 
 ### Added

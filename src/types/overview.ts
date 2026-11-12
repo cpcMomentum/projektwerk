@@ -143,6 +143,8 @@ export interface ProjectRow {
  */
 export interface ProjectStatusRow {
 	boardId: number
+	projectId: number | null
+	projectTitle: string | null
 	title: string
 	/** Beide Firmennamen, wie in `ProjectRow`. */
 	org: string

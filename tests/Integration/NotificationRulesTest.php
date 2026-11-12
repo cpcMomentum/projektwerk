@@ -73,6 +73,7 @@ class NotificationRulesTest extends IntegrationTestCase {
 			Server::get(\OCA\Projektwerk\Db\StepMapper::class),
 			Server::get(\OCA\Projektwerk\Db\CommentMapper::class),
 			Server::get(\OCA\Projektwerk\Service\MailComposer::class),
+			Server::get(\OCA\Projektwerk\Db\TicketMapper::class),
 		);
 	}
 
@@ -183,6 +184,47 @@ class NotificationRulesTest extends IntegrationTestCase {
 			[LeakMatrixFixture::ANNA, LeakMatrixFixture::BERT],
 			$empfaenger,
 			'Anna genau einmal (Erstellerin, Kommentarverfasserin, Schrittinhaberin), Bert als Zustaendiger.',
+		);
+	}
+
+	/**
+	 * **Beteiligt heisst nicht sichtberechtigt.** Die Kundin war an einem
+	 * Vorgang zustaendig, der inzwischen intern ist. Sie darf ueber ihn nichts
+	 * mehr erfahren — weder per Mail noch ueber die Glocke —, sonst erreichte
+	 * sie der Titel eines Vorgangs, den sie nicht sehen darf.
+	 */
+	public function testAnInvolvedPersonWhoCannotSeeTheTicketGetsNothing(): void {
+		$service = $this->service(1);
+		$fixture = new LeakMatrixFixture();
+
+		$ticket = $this->ticket(TicketScope::VISIBILITY_INTERNAL, LeakMatrixFixture::CARLA);
+		$ticket->setId($fixture->ticketIds['internal/anna']);
+
+		$vorgemerkt = $service->announceToInvolved($ticket, LeakMatrixFixture::BERT, MailOutbox::EVENT_COMMENT_ADDED);
+
+		$this->assertSame(
+			[LeakMatrixFixture::ANNA],
+			array_map(static fn (MailOutbox $z): string => (string)$z->getRecipientUid(), $vorgemerkt),
+			'Nur Anna sieht den internen Vorgang; Carla ist zustaendig eingetragen, sieht ihn aber nicht.',
+		);
+	}
+
+	/**
+	 * Wer kein Mitglied (mehr) ist, bekommt auch zu einem oeffentlichen Vorgang
+	 * nichts — die Beteiligung ueberlebt das Entfernen aus dem Projekt.
+	 */
+	public function testANonMemberGetsNothingEvenAboutAPublicTicket(): void {
+		$service = $this->service(1);
+
+		$vorgemerkt = $service->announceToInvolved(
+			$this->ticket(TicketScope::VISIBILITY_PUBLIC, LeakMatrixFixture::FREMD),
+			LeakMatrixFixture::BERT,
+			MailOutbox::EVENT_COMMENT_ADDED,
+		);
+
+		$this->assertSame(
+			[LeakMatrixFixture::ANNA],
+			array_map(static fn (MailOutbox $z): string => (string)$z->getRecipientUid(), $vorgemerkt),
 		);
 	}
 

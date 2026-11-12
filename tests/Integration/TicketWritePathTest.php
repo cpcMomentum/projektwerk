@@ -628,6 +628,41 @@ class TicketWritePathTest extends IntegrationTestCase {
 	}
 
 	/**
+	 * Ein privater Vorgang gehört auch gelöscht nur seiner Person: Ein Kollege
+	 * derselben Seite holt ihn nicht zurück und bekommt ihn auch nicht zu lesen.
+	 */
+	public function testRestoreOfAForeignPrivateTicketIsRefused(): void {
+		$anna = $this->viewer(LeakMatrixFixture::ANNA);
+		$bert = $this->viewer(LeakMatrixFixture::BERT);
+		$ticketId = $this->fixture->ticketIds['private/anna'];
+
+		$this->service->delete($anna, $ticketId, 1);
+
+		try {
+			$this->service->restore($bert, $ticketId);
+			$this->fail('Bert hat Annas privaten Vorgang wiederhergestellt.');
+		} catch (DoesNotExistException) {
+			// erwartet: dieselbe Fehlerform wie für einen unbekannten Vorgang
+		}
+
+		// Anna selbst holt ihn zurück.
+		$restored = $this->service->restore($anna, $ticketId);
+		$this->assertNull($restored->getDeletedAt());
+	}
+
+	/**
+	 * Der Wiederherstell-Abruf liefert auch einen **nicht gelöschten** fremden
+	 * privaten Vorgang nicht aus — sonst wäre er ein Leseweg an der
+	 * Sichtbarkeit vorbei.
+	 */
+	public function testRestoreDoesNotRevealAnOpenForeignPrivateTicket(): void {
+		$bert = $this->viewer(LeakMatrixFixture::BERT);
+
+		$this->expectException(DoesNotExistException::class);
+		$this->service->restore($bert, $this->fixture->ticketIds['private/anna']);
+	}
+
+	/**
 	 * Ein bereits offener Vorgang lässt sich schadlos „wiederherstellen" — der
 	 * Undo-Toast darf ohne Fehler mehrfach ausgelöst werden.
 	 */
@@ -888,6 +923,52 @@ class TicketWritePathTest extends IntegrationTestCase {
 		foreach ($attachments->findForTickets([$ticketId]) as $attachment) {
 			$attachments->delete($attachment);
 		}
+	}
+
+	public function testOnlyAClosedTicketCanBeArchived(): void {
+		$this->expectException(\InvalidArgumentException::class);
+		$this->service->update($this->viewer(LeakMatrixFixture::ANNA), $this->fixture->ticketIds['public/anna'], 1, ['archived' => true]);
+	}
+
+	public function testAnArchivedTicketLeavesTheBoardAndComesBackWithTheSwitch(): void {
+		$anna = $this->viewer(LeakMatrixFixture::ANNA);
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+		$zu = $this->service->update($anna, $ticketId, 1, ['closed' => true]);
+		$archiviert = $this->service->update($anna, $ticketId, (int)$zu->getVersion(), ['archived' => true]);
+
+		$this->assertNotNull($archiviert->getArchivedAt());
+		$ohne = array_map(static fn ($t): int => (int)$t->getId(), $this->tickets->findVisibleInBoard($anna, null, true));
+		$mit = array_map(static fn ($t): int => (int)$t->getId(), $this->tickets->findVisibleInBoard($anna));
+		$this->assertNotContains($ticketId, $ohne);
+		$this->assertContains($ticketId, $mit);
+
+		$zurueck = $this->service->update($anna, $ticketId, (int)$archiviert->getVersion(), ['archived' => false]);
+		$this->assertNull($zurueck->getArchivedAt());
+		$this->assertNotNull($zurueck->getClosedAt(), 'Zurückholen öffnet den Vorgang nicht.');
+	}
+
+	public function testStepsOfAnArchivedTicketStayUsable(): void {
+		$anna = $this->viewer(LeakMatrixFixture::ANNA);
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+		$steps = Server::get(\OCA\Projektwerk\Service\StepService::class);
+		$schritt = $steps->create($anna, $ticketId, 'Abnahme');
+		$zu = $this->service->update($anna, $ticketId, (int)$this->tickets->findVisible($anna, $ticketId)->getVersion(), ['closed' => true]);
+		$this->service->update($anna, $ticketId, (int)$zu->getVersion(), ['archived' => true]);
+
+		$erledigt = $steps->update($anna, (int)$schritt->getId(), ['done' => true]);
+
+		$this->assertSame(1, (int)$erledigt->getDone());
+	}
+
+	public function testReopeningLiftsTheArchive(): void {
+		$anna = $this->viewer(LeakMatrixFixture::ANNA);
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+		$zu = $this->service->update($anna, $ticketId, 1, ['closed' => true]);
+		$archiviert = $this->service->update($anna, $ticketId, (int)$zu->getVersion(), ['archived' => true]);
+
+		$offen = $this->service->update($anna, $ticketId, (int)$archiviert->getVersion(), ['closed' => false]);
+
+		$this->assertNull($offen->getArchivedAt(), 'Ein offener Vorgang ist nie archiviert.');
 	}
 
 	/**

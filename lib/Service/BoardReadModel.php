@@ -12,6 +12,7 @@ namespace OCA\Projektwerk\Service;
 use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Db\BoardMapper;
 use OCA\Projektwerk\Db\ColumnMapper;
+use OCA\Projektwerk\Db\ProjectMapper;
 
 /**
  * Der eine Lesepfad auf Boards, den REST und MCP gemeinsam nutzen.
@@ -24,6 +25,7 @@ class BoardReadModel {
 		private MemberService $members,
 		private ColumnMapper $columns,
 		private BoardPinService $pins,
+		private ProjectMapper $projects,
 	) {
 	}
 
@@ -39,11 +41,21 @@ class BoardReadModel {
 		$boards = $this->boards->findAllForUser($userId, $includeArchived);
 		$pinned = $this->pins->pinnedIds($userId);
 		$roles = $this->members->rolesForUserBoards($userId);
+		$projects = [];
+		foreach ($this->projects->findAllForUser($userId) as $project) {
+			$projects[(int)$project->getId()] = $project;
+		}
 
 		return array_map(
-			static fn ($board): array => $board->jsonSerialize()
-				+ ['pinned' => in_array((int)$board->getId(), $pinned, true)]
-				+ ['viewerRole' => $roles[(int)$board->getId()] ?? null],
+			static function ($board) use ($pinned, $roles, $projects): array {
+				$project = $projects[(int)$board->getProjectId()] ?? null;
+
+				return $board->jsonSerialize()
+					+ ['pinned' => in_array((int)$board->getId(), $pinned, true)]
+					+ ['viewerRole' => $roles[(int)$board->getId()] ?? null]
+					+ ['projectTitle' => $project?->getTitle()]
+					+ ['projectArchived' => $project !== null && (int)$project->getArchived() === 1];
+			},
 			$boards,
 		);
 	}
@@ -72,6 +84,8 @@ class BoardReadModel {
 	 * @return array<string, mixed>
 	 */
 	public function show(ViewerContext $viewer): array {
+		$project = $this->boardService->projectFields($viewer);
+
 		return [
 			'board' => $this->boardService->forViewerWithProjectFields($viewer),
 			'members' => $this->members->listForBoard($viewer),
@@ -85,7 +99,10 @@ class BoardReadModel {
 			'deletable' => $this->boardService->isDeletable($viewer),
 			'memberBoardsAllowed' => $this->boardService->projectAllowsMemberBoards($viewer),
 			// #350: Der Kopf zeigt das Projekt, die Boards stehen als Reiter darunter.
-			'projectTitle' => $this->boardService->projectTitle($viewer),
+			'projectTitle' => $project['title'],
+			'projectDescription' => $project['description'],
+			'projectArchived' => $project['archived'],
+			'siblings' => $this->boardService->siblingBoards($viewer),
 			// #351: Der Projektordner für den Knopf im Kopf und den Start des Ordner-Dialogs.
 			'projectFolder' => $this->boardService->projectFolder($viewer),
 		];

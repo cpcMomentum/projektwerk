@@ -91,6 +91,9 @@ export async function updateBoard(boardId: number, changes: {
 	githubRepo?: string | null
 	/** #281: Projekt-Schalter „Mitglieder dürfen Boards anlegen" (Manager-only). */
 	memberBoardsAllowed?: boolean
+	/** Projektweit, nur Verwalter; bei einem einzigen Board zieht dessen Name mit. */
+	projectTitle?: string
+	projectDescription?: string | null
 }): Promise<Board> {
 	return apiPatch<Board, typeof changes>(`/boards/${boardId}`, changes)
 }
@@ -103,6 +106,11 @@ export async function updateBoard(boardId: number, changes: {
  */
 export async function setBoardArchived(boardId: number, archived: boolean): Promise<Board> {
 	return apiPut<Board, { archived: boolean }>(`/boards/${boardId}/archived`, { archived })
+}
+
+/** Archiviert oder holt das ganze Projekt des Boards zurück. */
+export async function setProjectArchived(boardId: number, archived: boolean): Promise<{ archived: boolean }> {
+	return apiPut<{ archived: boolean }, { archived: boolean }>(`/boards/${boardId}/project-archived`, { archived })
 }
 
 /**

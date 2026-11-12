@@ -15,9 +15,10 @@ use OCA\Projektwerk\Db\Column;
 use OCA\Projektwerk\Db\ColumnMapper;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Service\ColumnService;
-use OCA\Projektwerk\Service\TicketLogService;
 use OCA\Projektwerk\Service\NotManagerException;
+use OCA\Projektwerk\Service\TicketLogService;
 use OCP\IDBConnection;
+use OCP\IL10N;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -35,6 +36,7 @@ class ColumnServiceTest extends TestCase {
 			$this->createStub(BoardMapper::class),
 			$this->createStub(TicketMapper::class),
 			$this->createStub(TicketLogService::class),
+			$this->l10n(),
 		);
 	}
 
@@ -82,5 +84,11 @@ class ColumnServiceTest extends TestCase {
 		);
 
 		$this->assertInstanceOf(Column::class, $column);
+	}
+
+	private function l10n(): IL10N {
+		$l10n = $this->createStub(IL10N::class);
+		$l10n->method('t')->willReturnCallback(static fn (string $text, array $parameters = []): string => vsprintf($text, $parameters));
+		return $l10n;
 	}
 }

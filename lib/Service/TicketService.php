@@ -25,6 +25,7 @@ use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\DB\Exception as DbException;
 use OCP\Files\NotPermittedException;
 use OCP\IDBConnection;
+use OCP\IL10N;
 use OCP\IURLGenerator;
 
 /**
@@ -60,6 +61,7 @@ class TicketService {
 		private GithubService $github,
 		private IURLGenerator $urls,
 		private TicketLogService $log,
+		private IL10N $l10n,
 	) {
 	}
 
@@ -212,7 +214,7 @@ class TicketService {
 	 * Update, das ein Feld anders behandelt als die übrigen, wäre die Stelle,
 	 * an der die Regel beim nächsten Feld vergessen wird.
 	 *
-	 * @param array{title?: string, description?: ?string, responsibleUserId?: ?string, dueDate?: ?string, closed?: bool, outcome?: ?string} $changes
+	 * @param array{title?: string, description?: ?string, responsibleUserId?: ?string, dueDate?: ?string, closed?: bool, outcome?: ?string, archived?: bool} $changes
 	 * @throws DoesNotExistException Ticket nicht sichtbar
 	 * @throws ConflictException     zwischenzeitlich geändert
 	 */
@@ -248,7 +250,7 @@ class TicketService {
 					(string)$nachher,
 					$rolle,
 				)) {
-					throw new \InvalidArgumentException('Diese Person kann diesen Vorgang nicht sehen.');
+					throw new \InvalidArgumentException($this->l10n->t('Diese Person kann diesen Vorgang nicht sehen.'));
 				}
 
 				$ticket->setResponsibleUserId($nachher);
@@ -261,6 +263,7 @@ class TicketService {
 					// Rolle taute auf, sobald sich anderswo die Mitgliedschaft
 					// aendert.
 					$ticket->setResponsibleRole($rolle);
+					// tz-ok: Zeitstempel, seit wann die Seite am Zug ist
 					$ticket->setResponsibleSince(new \DateTime());
 					$neuZugewiesen = (string)$nachher;
 				}
@@ -292,6 +295,20 @@ class TicketService {
 			// gewaehlt, beim Wieder-oeffnen geloescht — ein offener Vorgang hat
 			// kein Ergebnis. Kein Drittzustand, nur ein Vorzeichen am Abschluss.
 			$ticket->setClosedOutcome($schliessen ? $this->pruefeOutcome($changes['outcome'] ?? null) : null);
+			// Kein „archiviert, aber offen“: Wieder öffnen hebt das Archiv auf.
+			if (!$schliessen) {
+				$ticket->setArchivedAt(null);
+			}
+		}
+		if (array_key_exists('archived', $changes)) {
+			if ($changes['archived'] && $ticket->getClosedAt() === null) {
+				throw new \InvalidArgumentException($this->l10n->t('Nur abgeschlossene Vorgänge lassen sich archivieren.'));
+			}
+			if (!$changes['archived']) {
+				$ticket->setArchivedAt(null);
+			} elseif ($ticket->getArchivedAt() === null) {
+				$ticket->setArchivedAt(new \DateTime());
+			}
 		}
 
 		$this->touch($ticket, $viewer);
@@ -428,7 +445,7 @@ class TicketService {
 
 		$date = \DateTime::createFromFormat('!Y-m-d', trim($value));
 		if ($date === false) {
-			throw new \InvalidArgumentException('Die Fälligkeit braucht das Format JJJJ-MM-TT.');
+			throw new \InvalidArgumentException($this->l10n->t('Die Fälligkeit braucht das Format JJJJ-MM-TT.'));
 		}
 
 		return $date;
@@ -552,7 +569,7 @@ class TicketService {
 		// damit sie nicht bloß in der Oberfläche verborgen ist.
 		if (!$viewer->isInternal()) {
 			throw new NotOwningSideException(
-				'Nur interne Mitglieder können Vorgänge nach GitHub überführen.',
+				$this->l10n->t('Nur interne Mitglieder können Vorgänge nach GitHub überführen.'),
 			);
 		}
 
@@ -567,14 +584,14 @@ class TicketService {
 		$board = $this->boards->findForViewer($viewer);
 		if ((int)$board->getGithubEnabled() !== 1) {
 			throw new GithubTransferException(
-				'Für dieses Projekt ist die GitHub-Anbindung nicht eingeschaltet.',
+				$this->l10n->t('Für dieses Projekt ist die GitHub-Anbindung nicht eingeschaltet.'),
 			);
 		}
 
 		$repo = trim((string)$board->getGithubRepo());
 		if ($repo === '') {
 			throw new GithubTransferException(
-				'Für dieses Projekt ist kein Ziel-Repository hinterlegt.',
+				$this->l10n->t('Für dieses Projekt ist kein Ziel-Repository hinterlegt.'),
 			);
 		}
 
@@ -670,7 +687,7 @@ class TicketService {
 
 		if ($ticket->getCreatorRole() !== $viewer->role) {
 			throw new NotOwningSideException(
-				'Löschen darf nur die Seite, der der Vorgang gehört.',
+				$this->l10n->t('Löschen darf nur die Seite, der der Vorgang gehört.'),
 			);
 		}
 
@@ -690,9 +707,9 @@ class TicketService {
 	 * Einen weich gelöschten Vorgang wiederherstellen (#167, Undo).
 	 *
 	 * Das Gegenstück zu {@see delete()}. Wer löschen darf, darf auch zurückholen —
-	 * {@see \OCA\Projektwerk\Db\TicketMapper::findForRestore()} grenzt bereits auf
-	 * das Board des Betrachters und die eigene Rolle ein, deshalb hier keine
-	 * zweite Besitzerprüfung.
+	 * {@see \OCA\Projektwerk\Db\TicketMapper::findForRestore()} wendet die
+	 * Sichtbarkeitsregel an und grenzt auf die eigene Rolle ein, deshalb hier
+	 * keine zweite Besitzerprüfung.
 	 *
 	 * **Kein `version`:** Die Wiederherstellung folgt dem Löschen unmittelbar
 	 * (Undo-Toast) und ist idempotent — ein bereits offener Vorgang wird
@@ -732,6 +749,7 @@ class TicketService {
 			// Erst nach der Board-Sperre prüfen, damit ein gleichzeitiges Board-Löschen keinen verwaisten Vorgang hinterlässt.
 			$this->assertColumnInBoard($viewer, $columnId);
 			$last = $this->tickets->findLastPositionInColumn($viewer, $columnId);
+			// tz-ok: Zeitstempel fuer createdAt, updatedAt und responsibleSince
 			$now = new \DateTime();
 
 			$ticket = new Ticket();
@@ -760,7 +778,7 @@ class TicketService {
 			// am 2026-08-11 im Aendern gefunden hat.
 			if ($responsibleUserId !== null && $responsibleUserId !== ''
 				&& !$this->mayBecomeResponsible($ticket, $viewer, $responsibleUserId)) {
-				throw new \InvalidArgumentException('Diese Person kann diesen Vorgang nicht sehen.');
+				throw new \InvalidArgumentException($this->l10n->t('Diese Person kann diesen Vorgang nicht sehen.'));
 			}
 
 			$ticket->setResponsibleUserId($responsibleUserId);
@@ -863,6 +881,11 @@ class TicketService {
 		} elseif ($after->getClosedAt() !== null && $before->getClosedOutcome() !== $after->getClosedOutcome()) {
 			$this->log->record($viewer, $after, TicketLog::CLOSED, null, $before->getClosedOutcome(), $after->getClosedOutcome());
 		}
+		if ($before->getArchivedAt() === null && $after->getArchivedAt() !== null) {
+			$this->log->record($viewer, $after, TicketLog::ARCHIVED);
+		} elseif ($before->getArchivedAt() !== null && $after->getArchivedAt() === null && $after->getClosedAt() !== null) {
+			$this->log->record($viewer, $after, TicketLog::UNARCHIVED);
+		}
 	}
 
 	private function columnTitle(ViewerContext $viewer, int $columnId): ?string {
@@ -907,14 +930,14 @@ class TicketService {
 	private function assertOwningSide(ViewerContext $viewer, Ticket $ticket, string $visibility): void {
 		if ($ticket->getCreatorRole() !== $viewer->role) {
 			throw new NotOwningSideException(
-				'Die Sichtbarkeit darf nur die Seite ändern, der das Ticket gehört.',
+				$this->l10n->t('Die Sichtbarkeit darf nur die Seite ändern, der das Ticket gehört.'),
 			);
 		}
 
 		if ($visibility === TicketScope::VISIBILITY_PRIVATE
 			&& $ticket->getCreatorUserId() !== $viewer->userId) {
 			throw new NotOwningSideException(
-				'Auf „privat" herunterstufen kann nur die anlegende Person selbst.',
+				$this->l10n->t('Auf „privat" herunterstufen kann nur die anlegende Person selbst.'),
 			);
 		}
 	}

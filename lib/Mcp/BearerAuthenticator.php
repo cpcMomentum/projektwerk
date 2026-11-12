@@ -51,7 +51,7 @@ class BearerAuthenticator {
 	/**
 	 * @throws McpAuthException
 	 */
-	public function authenticate(string $authorizationHeader): AuthenticatedCaller {
+	public function authenticate(#[\SensitiveParameter] string $authorizationHeader): AuthenticatedCaller {
 		if (!$this->config->isEnabled()) {
 			throw new McpAuthException(Http::STATUS_NOT_FOUND);
 		}

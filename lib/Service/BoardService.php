@@ -112,6 +112,7 @@ class BoardService {
 			throw new GuestNotAllowedException($this->l10n->t('Als Gast können Sie keine Projekte anlegen.'));
 		}
 		$this->assertTitle($title);
+		// tz-ok: Zeitstempel fuer createdAt, updatedAt und addedAt
 		$now = new \DateTime();
 		// Ohne Angabe gilt die eigene Firma der Instanz (#352), auch für Wege ohne
 		// den Assistenten.
@@ -198,6 +199,7 @@ class BoardService {
 	 */
 	public function createInProject(ViewerContext $viewer, string $title): Board {
 		$this->assertTitle($title);
+		// tz-ok: Zeitstempel fuer createdAt, updatedAt und addedAt
 		$now = new \DateTime();
 
 		$this->db->beginTransaction();
@@ -222,6 +224,14 @@ class BoardService {
 			// Feature bleibt, das Entitlement steuert nur das Ab-wann. Bestehende
 			// Boards über dem Limit werden nicht angefasst.
 			$this->entitlement->assertMayCreateBoardInProject($viewer->projectId);
+
+			// Das bisher einzige Board hieß wie das Projekt; ab jetzt hat es einen eigenen, frei änderbaren Namen.
+			$bisher = $this->projectBoards($viewer);
+			if (count($bisher) === 1 && $bisher[0]->getTitle() !== $project->getTitle()) {
+				$bisher[0]->setTitle((string)$project->getTitle());
+				$bisher[0]->setUpdatedAt($now);
+				$this->boards->update($bisher[0]);
+			}
 
 			$board = new Board();
 			$board->setTitle(trim($title));
@@ -258,7 +268,7 @@ class BoardService {
 	 * nichts gesetzt — die Anhänge aus Phase 5 sind der erste Anlass. Ohne sie
 	 * hätte ein Anhang keinen Ort, an den er gehört.
 	 *
-	 * @param array{title?: string, description?: ?string, orgInternal?: ?string, customer?: ?string, chatUrl?: ?string, folderPublicPath?: ?string, folderInternalPath?: ?string, folderRootPath?: ?string, githubEnabled?: bool, githubRepo?: ?string} $changes
+	 * @param array{title?: string, description?: ?string, orgInternal?: ?string, customer?: ?string, chatUrl?: ?string, folderPublicPath?: ?string, folderInternalPath?: ?string, folderRootPath?: ?string, githubEnabled?: bool, githubRepo?: ?string, memberBoardsAllowed?: bool, projectTitle?: string, projectDescription?: ?string} $changes
 	 * @throws NotManagerException
 	 * @throws \OCP\Files\NotPermittedException Ordner nicht erreichbar oder nicht beschreibbar
 	 */
@@ -290,6 +300,24 @@ class BoardService {
 		}
 		if (array_key_exists('description', $changes)) {
 			$board->setDescription($changes['description']);
+		}
+		// Bei nur einem Board heißen Projekt und Board gleich; es gibt dann kein eigenes Boardfeld.
+		$singleBoard = (array_key_exists('projectTitle', $changes) || array_key_exists('projectDescription', $changes))
+			&& count($this->projectBoards($viewer)) === 1;
+		if (array_key_exists('projectTitle', $changes)) {
+			$this->assertTitle($changes['projectTitle']);
+			$project->setTitle(trim($changes['projectTitle']));
+			$projectChanged = true;
+			if ($singleBoard) {
+				$board->setTitle(trim($changes['projectTitle']));
+			}
+		}
+		if (array_key_exists('projectDescription', $changes)) {
+			$project->setDescription($changes['projectDescription']);
+			$projectChanged = true;
+			if ($singleBoard) {
+				$board->setDescription($changes['projectDescription']);
+			}
 		}
 		if (array_key_exists('orgInternal', $changes)) {
 			// Eigene Firma (#309 Phase 5): Autorität am Projekt, Anzeige-Kopie auf
@@ -426,10 +454,26 @@ class BoardService {
 		$this->assertBoardConfigurer($viewer);
 
 		$board = $this->boards->findForViewer($viewer);
+		// Zurückholen zählt wie ein weiteres Board, sonst umginge Archivieren und Neuanlegen die Grenze.
+		if (!$archived && $board->isArchived()) {
+			$this->entitlement->assertMayCreateBoardInProject($viewer->projectId);
+		}
 		$board->setArchived($archived ? 1 : 0);
 		$board->setUpdatedAt(new \DateTime());
 
 		return $this->boards->update($board);
+	}
+
+	/** @return array{archived: bool} Einzeln archivierte Boards bleiben beim Zurückholen archiviert; die WerkPlus-Zählung ändert sich nicht. */
+	public function setProjectArchived(ViewerContext $viewer, bool $archived): array {
+		$this->assertManager($viewer);
+
+		$project = $this->projects->findForViewer($viewer);
+		$project->setArchived($archived ? 1 : 0);
+		$project->setUpdatedAt(new \DateTime());
+		$this->projects->update($project);
+
+		return ['archived' => $archived];
 	}
 
 	private function insertDefaultColumns(int $boardId): void {
@@ -449,7 +493,7 @@ class BoardService {
 	private function assertManager(ViewerContext $viewer): void {
 		if (!$viewer->isManager) {
 			throw new NotManagerException(
-				'Die Board-Einstellungen dürfen nur interne Mitglieder mit Verwaltungsrecht ändern.',
+				$this->l10n->t('Die Board-Einstellungen dürfen nur interne Mitglieder mit Verwaltungsrecht ändern.'),
 			);
 		}
 	}
@@ -468,11 +512,15 @@ class BoardService {
 		}
 	}
 
-	/**
-	 * Der Name des Projekts, zu dem das Board gehört (#350) — der Titel im Kopf der Boardansicht.
-	 */
-	public function projectTitle(ViewerContext $viewer): string {
-		return (string)$this->projects->findForViewer($viewer)->getTitle();
+	/** @return array{title: string, description: ?string, archived: bool} */
+	public function projectFields(ViewerContext $viewer): array {
+		$project = $this->projects->findForViewer($viewer);
+
+		return [
+			'title' => (string)$project->getTitle(),
+			'description' => $project->getDescription(),
+			'archived' => (int)$project->getArchived() === 1,
+		];
 	}
 
 	/**
@@ -521,7 +569,23 @@ class BoardService {
 
 			$this->members->moveHomeBoard($viewer, $ziel);
 			$this->tickets->purgeDeletedInBoard($viewer);
+			$verbleibend = array_values(array_filter(
+				$this->projectBoards($viewer),
+				static fn (Board $b): bool => (int)$b->getId() !== $viewer->boardId,
+			));
 			$this->boards->purge($viewer);
+			// Bleibt nur ein Board, heißt es wieder wie das Projekt; sonst zeigten Liste und Einstellungen verschiedene Namen.
+			if (count($verbleibend) === 1) {
+				$project = $this->projects->findForViewer($viewer);
+				if ($project->getDescription() === null || $project->getDescription() === '') {
+					$project->setDescription($verbleibend[0]->getDescription());
+					$this->projects->update($project);
+				}
+				$verbleibend[0]->setTitle((string)$project->getTitle());
+				$verbleibend[0]->setDescription($project->getDescription());
+				$verbleibend[0]->setUpdatedAt(new \DateTime());
+				$this->boards->update($verbleibend[0]);
+			}
 			$this->db->commit();
 		} catch (\Throwable $e) {
 			$this->db->rollBack();
@@ -535,8 +599,8 @@ class BoardService {
 	/** Ein anderes Board desselben Projekts, aktive vor archivierten. */
 	private function otherBoardId(ViewerContext $viewer): ?int {
 		$archiviert = null;
-		foreach ($this->boards->findAllForUser($viewer->userId, true) as $board) {
-			if ((int)$board->getProjectId() !== $viewer->projectId || (int)$board->getId() === $viewer->boardId) {
+		foreach ($this->projectBoards($viewer) as $board) {
+			if ((int)$board->getId() === $viewer->boardId) {
 				continue;
 			}
 			if (!$board->isArchived()) {
@@ -546,6 +610,22 @@ class BoardService {
 		}
 
 		return $archiviert;
+	}
+
+	/** @return list<array{id: int, title: string, archived: bool}> */
+	public function siblingBoards(ViewerContext $viewer): array {
+		return array_map(
+			static fn (Board $b): array => ['id' => (int)$b->getId(), 'title' => (string)$b->getTitle(), 'archived' => $b->isArchived()],
+			$this->projectBoards($viewer),
+		);
+	}
+
+	/** @return list<Board> auch die archivierten */
+	private function projectBoards(ViewerContext $viewer): array {
+		return array_values(array_filter(
+			$this->boards->findAllForUser($viewer->userId, true),
+			static fn (Board $board): bool => (int)$board->getProjectId() === $viewer->projectId,
+		));
 	}
 
 	/**
@@ -558,7 +638,7 @@ class BoardService {
 
 	private function assertTitle(string $title): void {
 		if (trim($title) === '') {
-			throw new \InvalidArgumentException('Ein Projekt braucht einen Titel.');
+			throw new \InvalidArgumentException($this->l10n->t('Ein Projekt braucht einen Titel.'));
 		}
 	}
 

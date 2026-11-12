@@ -93,18 +93,18 @@ class MemberLifecycleService {
 	 * Wie viele private Vorgänge das Entfernen aus **einem** Projekt löschen würde.
 	 *
 	 * Grundlage der bezifferten Rückfrage vor dem Entfernen eines Mitglieds
-	 * (§5.29). Zählt nur, was auch {@see removeFromBoard()} löscht: die privaten
+	 * (§5.29). Zählt nur, was auch {@see removeFromProject()} löscht: die privaten
 	 * Vorgänge dieser Person in genau diesem Projekt. Interne und öffentliche
 	 * bleiben stehen und werden nicht gezählt — sie gehören dem Projekt.
 	 *
 	 * @param string $userId Kennung der Person.
-	 * @param int $boardId Kennung des Projekts.
+	 * @param int $projectId Kennung des Projekts.
 	 */
-	public function countPrivateOnBoard(string $userId, int $boardId): int {
+	public function countPrivateInProject(string $userId, int $projectId): int {
 		$qb = $this->db->getQueryBuilder();
 		$qb->select($qb->func()->count('*', 'anzahl'))
 			->from('pwerk_tickets')
-			->where($qb->expr()->eq('board_id', $qb->createNamedParameter($boardId, IQueryBuilder::PARAM_INT)))
+			->where($qb->expr()->eq('project_id', $qb->createNamedParameter($projectId, IQueryBuilder::PARAM_INT)))
 			->andWhere($qb->expr()->eq('creator_user_id', $qb->createNamedParameter($userId)))
 			->andWhere($qb->expr()->eq('visibility', $qb->createNamedParameter(TicketScope::VISIBILITY_PRIVATE)));
 
@@ -113,7 +113,7 @@ class MemberLifecycleService {
 
 	/**
 	 * Eine Person aus **einem** Projekt entfernen — dieselbe Aufräumlogik wie
-	 * {@see forget()}, aber board-begrenzt (§5.29, manuelles Entfernen).
+	 * {@see forget()}, aber auf das Projekt begrenzt (§5.29, manuelles Entfernen).
 	 *
 	 * Der Unterschied zum Kontolöschen: Die Person bleibt bestehen und in anderen
 	 * Projekten Mitglied. Angefasst wird ausschließlich, was zu **diesem** Projekt
@@ -121,27 +121,35 @@ class MemberLifecycleService {
 	 * ihre Mitgliedschaft hier. Kanalschalter und Vorgemerktes bleiben, sie gelten
 	 * projektübergreifend.
 	 *
+	 * **Projektweit, nicht je Board.** Die Mitgliedschaft gilt seit #246 für das
+	 * ganze Projekt; `pwerk_members.board_id` nennt nur das Heimat-Board. Würde
+	 * hier auf ein Board eingegrenzt, träfe das Entfernen über ein
+	 * Geschwister-Board keine Zeile, und die Person behielte den Zugriff.
+	 *
 	 * Reihenfolge wie bei `forget`: erst Zuweisungen lösen, dann private Vorgänge
-	 * löschen, dann die Mitgliedschaft. Alles in einer Transaktion.
+	 * löschen, dann die Mitgliedschaft. Alles in einer Transaktion. Bleibt die
+	 * Mitgliedschaft stehen, wird alles zurückgerollt.
+	 *
+	 * @throws \RuntimeException wenn nicht genau eine Mitgliedschaft entfernt wurde
 	 *
 	 * @param string $userId Kennung der Person.
-	 * @param int $boardId Kennung des Projekts.
+	 * @param int $projectId Kennung des Projekts.
 	 */
-	public function removeFromBoard(string $userId, int $boardId, string $actorUserId = TicketLog::ACTOR_SYSTEM): void {
+	public function removeFromProject(string $userId, int $projectId, string $actorUserId = TicketLog::ACTOR_SYSTEM): void {
 		$this->db->beginTransaction();
 
 		try {
-			$this->protokolliereZuweisungen($userId, $boardId, $actorUserId);
-			$geloest = $this->loeseZuweisungenAufBoard($userId, $boardId);
-			$geloescht = $this->loeschePrivateTicketsAufBoard($userId, $boardId);
-			$this->entferneMitgliedschaftAufBoard($userId, $boardId);
+			$this->protokolliereZuweisungen($userId, $projectId, $actorUserId);
+			$geloest = $this->loeseZuweisungenImProjekt($userId, $projectId);
+			$geloescht = $this->loeschePrivateTicketsImProjekt($userId, $projectId);
+			$this->entferneMitgliedschaftImProjekt($userId, $projectId);
 
 			$this->db->commit();
 
 			$this->logger->info(sprintf(
 				'ProjektWerk: %s aus Projekt %d entfernt — %d Zuweisungen geloest, %d private Vorgaenge entfernt.',
 				$userId,
-				$boardId,
+				$projectId,
 				$geloest,
 				$geloescht,
 			));
@@ -153,17 +161,17 @@ class MemberLifecycleService {
 
 	/**
 	 * Die IDs aller Vorgänge eines Projekts — als Unterabfrage für die
-	 * board-begrenzten Aufräumschritte, die selbst kein `board_id` tragen
+	 * projektbegrenzten Aufräumschritte, die selbst kein `project_id` tragen
 	 * (Schritte, Mitarbeitende hängen am Vorgang, nicht am Projekt).
 	 *
 	 * @param IQueryBuilder $outer Der Query, in dessen Kontext die Unterabfrage steht.
-	 * @param int $boardId Kennung des Projekts.
+	 * @param int $projectId Kennung des Projekts.
 	 */
-	private function ticketIdsOnBoard(IQueryBuilder $outer, int $boardId): IQueryBuilder {
+	private function ticketIdsInProject(IQueryBuilder $outer, int $projectId): IQueryBuilder {
 		$sub = $this->db->getQueryBuilder();
 		$sub->select('id')
 			->from('pwerk_tickets')
-			->where($sub->expr()->eq('board_id', $outer->createNamedParameter($boardId, IQueryBuilder::PARAM_INT)));
+			->where($sub->expr()->eq('project_id', $outer->createNamedParameter($projectId, IQueryBuilder::PARAM_INT)));
 
 		return $sub;
 	}
@@ -172,14 +180,14 @@ class MemberLifecycleService {
 	 * Verlaufseinträge für die Zuweisungen, die gleich aufgehoben werden; die der eigenen privaten Vorgänge räumt der Purge mit ab.
 	 *
 	 * @param string $userId Kennung der Person.
-	 * @param int $boardId Kennung des Projekts.
+	 * @param int $projectId Kennung des Projekts.
 	 * @param string $actorUserId Wer entfernt.
 	 */
-	private function protokolliereZuweisungen(string $userId, int $boardId, string $actorUserId): void {
+	private function protokolliereZuweisungen(string $userId, int $projectId, string $actorUserId): void {
 		$qb = $this->db->getQueryBuilder();
 		$qb->select('id', 'visibility')
 			->from('pwerk_tickets')
-			->where($qb->expr()->eq('board_id', $qb->createNamedParameter($boardId, IQueryBuilder::PARAM_INT)))
+			->where($qb->expr()->eq('project_id', $qb->createNamedParameter($projectId, IQueryBuilder::PARAM_INT)))
 			->andWhere($qb->expr()->eq('responsible_user_id', $qb->createNamedParameter($userId)));
 		$result = $qb->executeQuery();
 		foreach ($result->fetchAll() as $row) {
@@ -191,7 +199,7 @@ class MemberLifecycleService {
 		$qb->select('s.title', 't.id', 't.visibility')
 			->from('pwerk_steps', 's')
 			->innerJoin('s', 'pwerk_tickets', 't', $qb->expr()->eq('t.id', 's.ticket_id'))
-			->where($qb->expr()->eq('t.board_id', $qb->createNamedParameter($boardId, IQueryBuilder::PARAM_INT)))
+			->where($qb->expr()->eq('t.project_id', $qb->createNamedParameter($projectId, IQueryBuilder::PARAM_INT)))
 			->andWhere($qb->expr()->eq('s.assigned_user_id', $qb->createNamedParameter($userId)));
 		$result = $qb->executeQuery();
 		foreach ($result->fetchAll() as $row) {
@@ -204,15 +212,15 @@ class MemberLifecycleService {
 	 * Offene Zuweisungen dieser Person in **diesem** Projekt aufheben.
 	 *
 	 * @param string $userId Kennung der Person.
-	 * @param int $boardId Kennung des Projekts.
+	 * @param int $projectId Kennung des Projekts.
 	 */
-	private function loeseZuweisungenAufBoard(string $userId, int $boardId): int {
+	private function loeseZuweisungenImProjekt(string $userId, int $projectId): int {
 		$anzahl = 0;
 
 		$qb = $this->db->getQueryBuilder();
 		$qb->update('pwerk_tickets')
 			->set('responsible_user_id', $qb->createNamedParameter(null, IQueryBuilder::PARAM_NULL))
-			->where($qb->expr()->eq('board_id', $qb->createNamedParameter($boardId, IQueryBuilder::PARAM_INT)))
+			->where($qb->expr()->eq('project_id', $qb->createNamedParameter($projectId, IQueryBuilder::PARAM_INT)))
 			->andWhere($qb->expr()->eq('responsible_user_id', $qb->createNamedParameter($userId)));
 		$anzahl += $qb->executeStatement();
 
@@ -222,7 +230,7 @@ class MemberLifecycleService {
 			->set('assigned_role', $qb->createNamedParameter(null, IQueryBuilder::PARAM_NULL))
 			->set('assigned_at', $qb->createNamedParameter(null, IQueryBuilder::PARAM_NULL))
 			->where($qb->expr()->eq('assigned_user_id', $qb->createNamedParameter($userId)))
-			->andWhere($qb->expr()->in('ticket_id', $qb->createFunction($this->ticketIdsOnBoard($qb, $boardId)->getSQL())));
+			->andWhere($qb->expr()->in('ticket_id', $qb->createFunction($this->ticketIdsInProject($qb, $projectId)->getSQL())));
 		$anzahl += $qb->executeStatement();
 
 		return $anzahl;
@@ -233,13 +241,13 @@ class MemberLifecycleService {
 	 * Kindern. Interne und öffentliche bleiben stehen — sie gehören dem Projekt.
 	 *
 	 * @param string $userId Kennung der Person.
-	 * @param int $boardId Kennung des Projekts.
+	 * @param int $projectId Kennung des Projekts.
 	 */
-	private function loeschePrivateTicketsAufBoard(string $userId, int $boardId): int {
+	private function loeschePrivateTicketsImProjekt(string $userId, int $projectId): int {
 		$qb = $this->db->getQueryBuilder();
 		$qb->select('id')
 			->from('pwerk_tickets')
-			->where($qb->expr()->eq('board_id', $qb->createNamedParameter($boardId, IQueryBuilder::PARAM_INT)))
+			->where($qb->expr()->eq('project_id', $qb->createNamedParameter($projectId, IQueryBuilder::PARAM_INT)))
 			->andWhere($qb->expr()->eq('creator_user_id', $qb->createNamedParameter($userId)))
 			->andWhere($qb->expr()->eq('visibility', $qb->createNamedParameter(TicketScope::VISIBILITY_PRIVATE)));
 
@@ -272,20 +280,32 @@ class MemberLifecycleService {
 	 * Projekts, damit keine tote Zuordnung stehen bleibt.
 	 *
 	 * @param string $userId Kennung der Person.
-	 * @param int $boardId Kennung des Projekts.
+	 * @param int $projectId Kennung des Projekts.
 	 */
-	private function entferneMitgliedschaftAufBoard(string $userId, int $boardId): void {
+	private function entferneMitgliedschaftImProjekt(string $userId, int $projectId): void {
 		$qb = $this->db->getQueryBuilder();
 		$qb->delete('pwerk_ticket_users')
 			->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
-			->andWhere($qb->expr()->in('ticket_id', $qb->createFunction($this->ticketIdsOnBoard($qb, $boardId)->getSQL())));
+			->andWhere($qb->expr()->in('ticket_id', $qb->createFunction($this->ticketIdsInProject($qb, $projectId)->getSQL())));
 		$qb->executeStatement();
 
 		$qb = $this->db->getQueryBuilder();
 		$qb->delete('pwerk_members')
 			->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
-			->andWhere($qb->expr()->eq('board_id', $qb->createNamedParameter($boardId, IQueryBuilder::PARAM_INT)));
-		$qb->executeStatement();
+			->andWhere($qb->expr()->eq('project_id', $qb->createNamedParameter($projectId, IQueryBuilder::PARAM_INT)));
+		$entfernt = $qb->executeStatement();
+
+		// Der Aufrufer hat die Mitgliedschaft vorher festgestellt. Trifft das
+		// Löschen trotzdem nicht genau eine Zeile, wäre „entfernt" eine falsche
+		// Auskunft — lieber scheitern als Zugriff stehen lassen.
+		if ($entfernt !== 1) {
+			throw new \RuntimeException(sprintf(
+				'ProjektWerk: Mitgliedschaft von %s in Projekt %d nicht entfernt (%d Zeilen).',
+				$userId,
+				$projectId,
+				$entfernt,
+			));
+		}
 	}
 
 	/**

@@ -176,6 +176,10 @@ export default defineComponent({
 						: t('projektwerk', 'hat den Vorgang als erledigt abgeschlossen')
 				case 'reopened':
 					return t('projektwerk', 'hat den Vorgang wieder geöffnet')
+				case 'archived':
+					return t('projektwerk', 'hat den Vorgang archiviert')
+				case 'unarchived':
+					return t('projektwerk', 'hat den Vorgang aus dem Archiv geholt')
 				case 'visibility':
 					return entry.oldValue === null
 						? t('projektwerk', 'hat die Sichtbarkeit auf „{to}“ gesetzt', { to: this.visibilityName(entry.newValue) }, undefined, RAW)

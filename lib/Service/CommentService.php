@@ -16,6 +16,7 @@ use OCA\Projektwerk\Db\MailOutbox;
 use OCA\Projektwerk\Db\Ticket;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCP\AppFramework\Db\DoesNotExistException;
+use OCP\IL10N;
 
 /**
  * Kommentare schreiben, aendern, loeschen.
@@ -58,6 +59,7 @@ class CommentService {
 		// derselben Regel hier wäre genau der zweite Ort, an dem sie stimmen
 		// müsste — und der, der irgendwann nicht mehr stimmt.
 		private StepService $steps,
+		private IL10N $l10n,
 	) {
 	}
 
@@ -74,6 +76,7 @@ class CommentService {
 		$ticket = $this->tickets->findVisible($viewer, $ticketId);
 		$text = $this->clean($body);
 
+		// tz-ok: Zeitstempel fuer createdAt und updatedAt
 		$now = new \DateTime();
 
 		$comment = new Comment();
@@ -195,7 +198,7 @@ class CommentService {
 			// Meldung, die nur den einen nennt, waere beim anderen schlicht
 			// falsch. Sie steht im 403-Rumpf und kann damit im Fehlerfall in
 			// einer Meldung landen.
-			throw new NotAuthorException('Nur die verfassende Person kann diesen Kommentar ändern oder löschen.');
+			throw new NotAuthorException($this->l10n->t('Nur die verfassende Person kann diesen Kommentar ändern oder löschen.'));
 		}
 	}
 
@@ -221,7 +224,7 @@ class CommentService {
 			}
 		}
 
-		throw new DoesNotExistException('Kommentar nicht gefunden.');
+		throw new DoesNotExistException($this->l10n->t('Kommentar nicht gefunden.'));
 	}
 
 	/**
@@ -231,11 +234,11 @@ class CommentService {
 		$text = trim($body);
 
 		if ($text === '') {
-			throw new \InvalidArgumentException('Ein Kommentar braucht einen Text.');
+			throw new \InvalidArgumentException($this->l10n->t('Ein Kommentar braucht einen Text.'));
 		}
 
 		if (mb_strlen($text) > self::MAX_LENGTH) {
-			throw new \InvalidArgumentException('Dieser Kommentar ist zu lang.');
+			throw new \InvalidArgumentException($this->l10n->t('Dieser Kommentar ist zu lang.'));
 		}
 
 		return $text;

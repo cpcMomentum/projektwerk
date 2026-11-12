@@ -1,13 +1,7 @@
 <template>
 	<div class="pw-view" :style="{ '--pw-columns': store.columns.length || 1 }">
-		<!--
-			Brotkrume zurück zur Projektübersicht (#245) — dieselbe Form wie im
-			Projekt-Dashboard, ein echtes Ziel statt eines Zurück-Rätsels.
-		-->
-		<router-link
-			class="pw-crumb"
-			:to="{ name: 'project-dashboard', params: { boardId: String(boardId) } }">
-			<ChevronLeftIcon :size="16" />{{ t('projektwerk', 'Projektübersicht') }}
+		<router-link class="pw-crumb" :to="{ name: 'boards' }">
+			<ChevronLeftIcon :size="16" />{{ t('projektwerk', 'Alle Projekte') }}
 		</router-link>
 
 		<div class="pw-view__head pw-view__head--split">
@@ -27,15 +21,12 @@
 					{{ t('projektwerk', 'Neuer Vorgang') }}
 				</NcButton>
 
-				<!--
-					Der Weg in die Einstellungen steht Managern offen — und seit
-					#281 auch dem Ersteller eines Boards, der dort nur seinen
-					board-scopeden Teil (Titel, Spalten, Archiv) sieht.
-				-->
+				<!-- Aus der Übersicht in die Projekt-Einstellungen, aus dem Board in dessen Spalten. -->
 				<NcButton
 					v-if="store.canConfigureBoard"
-					:aria-label="t('projektwerk', 'Projekteinstellungen')"
-					@click="$router.push({ name: 'board-settings', params: { boardId: String(boardId) } })">
+					:aria-label="t('projektwerk', 'Einstellungen')"
+					:title="t('projektwerk', 'Einstellungen')"
+					@click="$router.push({ name: 'board-settings', params: { boardId: String(boardId) }, query: isOverview ? { bereich: 'projekt', zurueck: 'uebersicht' } : { bereich: 'spalten' } })">
 					<template #icon>
 						<CogIcon :size="20" />
 					</template>
@@ -72,7 +63,7 @@
 					Zusammenhang, in dem er entsteht.
 				-->
 				<NcButton
-					v-if="store.waitingCount > 0 || store.onlyWaiting"
+					v-if="!isOverview && (store.waitingCount > 0 || store.onlyWaiting)"
 					:variant="store.onlyWaiting ? 'primary' : 'secondary'"
 					@click="store.onlyWaiting = !store.onlyWaiting">
 					<template #icon>
@@ -81,8 +72,20 @@
 					{{ t('projektwerk', 'Nur wartend') }} ({{ store.waitingCount }})
 				</NcButton>
 
+				<NcButton
+					v-if="!isOverview"
+					:variant="store.showArchived ? 'primary' : 'secondary'"
+					:aria-pressed="store.showArchived ? 'true' : 'false'"
+					@click="store.setShowArchived(!store.showArchived)">
+					<template #icon>
+						<ArchiveIcon :size="20" />
+					</template>
+					{{ t('projektwerk', 'Archivierte zeigen') }}
+				</NcButton>
+
 				<!-- Suche im Board (#373): grenzt die Karten im Browser ein, die Spalten bleiben stehen. -->
 				<NcTextField
+					v-if="!isOverview"
 					v-model="searchInput"
 					class="pw-board-search"
 					:labelOutside="true"
@@ -101,9 +104,9 @@
 			</div>
 		</div>
 
-		<!-- Wer ein Board anlegen darf, sieht die Reiter schon bei einem Board, damit das „+" erreichbar bleibt. -->
-		<div v-if="store.siblingBoards.length > 1 || store.canAddBoard" class="pw-boardtabs">
-			<div class="pw-boardtabs__group">
+		<div class="pw-boardtabs">
+			<!-- Wer ein Board anlegen darf, sieht die Reiter schon bei einem Board, damit das „+" erreichbar bleibt. -->
+			<div v-if="showBoardTabs" class="pw-boardtabs__group">
 				<NcRadioGroup
 					:modelValue="String(boardId)"
 					:label="t('projektwerk', 'Boards')"
@@ -117,7 +120,7 @@
 				</NcRadioGroup>
 			</div>
 			<NcButton
-				v-if="store.canAddBoard"
+				v-if="showBoardTabs && store.canAddBoard"
 				class="pw-add-board"
 				variant="tertiary"
 				:aria-label="t('projektwerk', 'Board hinzufügen')"
@@ -142,6 +145,26 @@
 					{{ t('projektwerk', 'Board „{title}“ löschen', { title: store.board?.title ?? '' }, undefined, { escape: false }) }}
 				</NcActionButton>
 			</NcActions>
+
+			<div
+				class="pw-umschalter pw-ansicht"
+				role="group"
+				:aria-label="t('projektwerk', 'Ansicht')">
+				<button
+					type="button"
+					class="pw-umschalter__knopf"
+					:aria-pressed="!isOverview"
+					@click="showView('board')">
+					<ViewColumnIcon :size="18" />{{ t('projektwerk', 'Board') }}
+				</button>
+				<button
+					type="button"
+					class="pw-umschalter__knopf"
+					:aria-pressed="isOverview"
+					@click="showView('board-overview')">
+					<ChartDonutIcon :size="18" />{{ t('projektwerk', 'Übersicht') }}
+				</button>
+			</div>
 		</div>
 
 		<!-- Leerzustand der Suche (#373): einmal über dem Board, die Spalten bleiben darunter stehen. -->
@@ -190,6 +213,8 @@
 				</div>
 			</div>
 		</div>
+
+		<ProjectOverview v-else-if="isOverview" @open="openById" />
 
 		<NcEmptyContent
 			v-else-if="store.columns.length === 0"
@@ -251,6 +276,7 @@
 						@menumove="move"
 						@dragmove="moved"
 						@toggleclosed="toggleClosed"
+						@togglearchived="toggleArchived"
 						@delete="deleteTicket" />
 
 					<PendingTicketCard
@@ -427,6 +453,7 @@
 </template>
 
 <script lang="ts">
+import type { TicketChanges } from '@/services/tickets'
 import type { OutboxEntry, SavedEvent, TicketEntry } from '@/stores/outboxStore'
 import type { Column, Visibility } from '@/types/board'
 import type { Attachment, Comment, Step, Ticket, TicketLinks } from '@/types/ticket'
@@ -442,6 +469,8 @@ import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
 import NcRadioGroup from '@nextcloud/vue/components/NcRadioGroup'
 import NcRadioGroupButton from '@nextcloud/vue/components/NcRadioGroupButton'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
+import ArchiveIcon from 'vue-material-design-icons/ArchiveOutline.vue'
+import ChartDonutIcon from 'vue-material-design-icons/ChartDonut.vue'
 import ChevronLeftIcon from 'vue-material-design-icons/ChevronLeft.vue'
 import ClockAlertIcon from 'vue-material-design-icons/ClockAlertOutline.vue'
 import CogIcon from 'vue-material-design-icons/Cog.vue'
@@ -450,9 +479,11 @@ import FolderMultipleIcon from 'vue-material-design-icons/FolderMultiple.vue'
 import FolderOpenIcon from 'vue-material-design-icons/FolderOpenOutline.vue'
 import MagnifyIcon from 'vue-material-design-icons/Magnify.vue'
 import PlusIcon from 'vue-material-design-icons/Plus.vue'
+import ViewColumnIcon from 'vue-material-design-icons/ViewColumn.vue'
 import BoardDragLayer from '@/components/board/BoardDragLayer.vue'
 import CreateTicketDialog from '@/components/CreateTicketDialog.vue'
 import PendingTicketCard from '@/components/PendingTicketCard.vue'
+import ProjectOverview from '@/components/ProjectOverview.vue'
 import TicketDetail from '@/components/TicketDetail.vue'
 import { deleteTicket as apiDeleteTicket, restoreTicket as apiRestoreTicket, fetchTicket, updateTicket } from '@/services/tickets'
 import { showError, showUndo } from '@/services/toast'
@@ -477,7 +508,7 @@ interface ColumnView {
 export default defineComponent({
 	name: 'BoardView',
 
-	components: { BoardDragLayer, ChevronLeftIcon, ClockAlertIcon, CogIcon, CreateTicketDialog, DeleteOutlineIcon, FolderMultipleIcon, FolderOpenIcon, MagnifyIcon, NcActionButton, NcActions, NcButton, NcDialog, NcEmptyContent, NcRadioGroup, NcRadioGroupButton, NcTextField, PendingTicketCard, PlusIcon, TicketDetail },
+	components: { ArchiveIcon, BoardDragLayer, ChartDonutIcon, ChevronLeftIcon, ClockAlertIcon, CogIcon, CreateTicketDialog, DeleteOutlineIcon, FolderMultipleIcon, FolderOpenIcon, MagnifyIcon, NcActionButton, NcActions, NcButton, NcDialog, NcEmptyContent, NcRadioGroup, NcRadioGroupButton, NcTextField, PendingTicketCard, PlusIcon, ProjectOverview, TicketDetail, ViewColumnIcon },
 
 	setup() {
 		return { store: useBoardStore(), outbox: useOutboxStore() }
@@ -528,6 +559,16 @@ export default defineComponent({
 
 		boardId(): number {
 			return Number(this.$route.params.boardId)
+		},
+
+		/** Die Adresse entscheidet die Ansicht, damit Zurück-Knopf und Links stimmen. */
+		isOverview(): boolean {
+			return this.$route.name === 'board-overview'
+		},
+
+		/** Auch bei einem Board, damit das „+" für Berechtigte erreichbar bleibt. */
+		showBoardTabs(): boolean {
+			return this.store.siblingBoards.length > 1 || this.store.canAddBoard
 		},
 
 		/** Der Text des „Auch abschließen?"-Prompts (#172) — nach dem Ergebnis der Endspalte. */
@@ -582,6 +623,7 @@ export default defineComponent({
 		/** Ob die Suche (#373) auf dem ganzen Board nichts findet. */
 		noSearchHits(): boolean {
 			return !this.store.loading
+				&& !this.isOverview
 				&& this.store.searchTerms.length > 0
 				&& this.columnViews.every((view) => view.tickets.length === 0)
 		},
@@ -608,6 +650,9 @@ export default defineComponent({
 				// wo `open()` sie nicht leert. Feld und Store sonst auseinander.
 				this.clearSearch()
 				await this.store.open(id)
+				if (this.store.board?.id === id && this.store.board.projectId !== null) {
+					this.store.rememberBoard(this.store.board.projectId, id)
+				}
 				if (this.store.viewer !== null) {
 					this.outbox.init(this.store.viewer.userId)
 				}
@@ -679,7 +724,22 @@ export default defineComponent({
 			if (id === this.boardId) {
 				return
 			}
-			this.$router.push({ name: 'board', params: { boardId: String(id) } })
+			this.$router.push({ name: this.isOverview ? 'board-overview' : 'board', params: { boardId: String(id) } })
+		},
+
+		/**
+		 * Die Suche gilt nur dem Board und wird beim Verlassen geleert.
+		 *
+		 * @param name Die Zielroute.
+		 */
+		showView(name: 'board' | 'board-overview'): void {
+			if (this.$route.name === name) {
+				return
+			}
+			if (name === 'board-overview') {
+				this.clearSearch()
+			}
+			this.$router.push({ name, params: { boardId: String(this.boardId) } })
 		},
 
 		/** Den „Board hinzufügen"-Dialog schließen und das Feld leeren (#246). */
@@ -950,44 +1010,34 @@ export default defineComponent({
 			this.openTicketData = ticket
 		},
 
-		/**
-		 * Einen Vorgang vom Karten-Menü aus abschließen oder wieder öffnen (#168) —
-		 * derselbe offen↔geschlossen-Übergang wie der Knopf im Detail.
-		 *
-		 * **Das Overlay geht nur mit, wenn genau dieser Vorgang offen ist.** Sonst
-		 * risse ein Klick im Karten-Menü das Detail auf — `applyChanged` setzt
-		 * `openTicketData` bedingungslos und taugt hier deshalb nicht.
-		 *
-		 * @param ticket Der Vorgang, dessen Abschluss umgeschaltet wird.
-		 * @param outcome Beim Abschließen das gewählte Ergebnis (#171); beim Wieder-öffnen weggelassen.
-		 */
-		async toggleClosed(ticket: Ticket, outcome?: 'done' | 'discarded') {
-			const schliessen = ticket.closedAt === null
+		toggleArchived(ticket: Ticket): Promise<void> {
+			return this.writeFromCard(ticket, { archived: !ticket.archivedAt }, t('projektwerk', 'Archivieren fehlgeschlagen'))
+		},
 
+		toggleClosed(ticket: Ticket, outcome?: 'done' | 'discarded'): Promise<void> {
+			const schliessen = ticket.closedAt === null
+			// Das Ergebnis begleitet nur das Abschließen; beim Wieder-öffnen löscht der Server es ohnehin.
+			return this.writeFromCard(
+				ticket,
+				schliessen ? { closed: true, outcome } : { closed: false },
+				schliessen ? t('projektwerk', 'Abschließen fehlgeschlagen') : t('projektwerk', 'Wieder öffnen fehlgeschlagen'),
+			)
+		},
+
+		// Das Overlay geht nur mit, wenn genau dieser Vorgang offen ist; applyChanged würde es aufreißen.
+		async writeFromCard(ticket: Ticket, changes: TicketChanges, fehler: string): Promise<void> {
 			try {
-				const updated = await updateTicket(
-					ticket.boardId,
-					ticket.id,
-					ticket.version,
-					// Das Ergebnis begleitet nur das Abschließen (#171); beim
-					// Wieder-öffnen löscht der Server es ohnehin.
-					schliessen ? { closed: true, outcome } : { closed: false },
-				)
+				const updated = await updateTicket(ticket.boardId, ticket.id, ticket.version, changes)
 				this.store.replaceTicket(updated)
 				if (this.openTicketData?.id === updated.id) {
 					this.openTicketData = updated
 				}
 			} catch (e) {
-				// Beim Konflikt wird nachgeladen statt zum Neuladen aufgefordert,
-				// aus demselben Grund wie bei move()/moved(): Das ganze Board
-				// steht im Speicher, ein veralteter `version`-Wert liesse jeden
-				// weiteren Versuch scheitern — auch an einer ganz anderen Karte.
+				// Nachladen wie bei move(): Ein veralteter Stand liesse sonst jeden weiteren Schreibversuch scheitern.
 				if (isConflict(e)) {
 					await this.store.open(this.boardId)
 				}
-				reportWriteError(e, schliessen
-					? t('projektwerk', 'Abschließen fehlgeschlagen')
-					: t('projektwerk', 'Wieder öffnen fehlgeschlagen'), isConflict(e))
+				reportWriteError(e, fehler, isConflict(e))
 			}
 		},
 
