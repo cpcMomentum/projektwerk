@@ -1256,6 +1256,19 @@ export default defineComponent({
 			}
 		},
 
+		// Stellt ein Inline-Feld zurück, wenn der Server die Änderung nicht übernommen hat.
+		async writeInline(run: () => Promise<unknown>, fallback: string, restore: () => void): Promise<void> {
+			let saved = false
+			await this.write(async () => {
+				await run()
+				saved = true
+			}, fallback)
+			if (!saved) {
+				// Vue setzt das Feld nicht zurück, weil sich der gebundene Wert nicht geändert hat.
+				restore()
+			}
+		},
+
 		saveProject() {
 			return this.write(
 				() => updateBoard(this.boardId, {
@@ -1409,12 +1422,13 @@ export default defineComponent({
 		 * @param event Das change-Ereignis des Auswahlfelds.
 		 */
 		setColumnOutcome(column: Column, event: Event) {
-			const wert = (event.target as HTMLSelectElement).value
-			const outcome = wert === '' ? null : (wert as 'done' | 'discarded')
+			const select = event.target as HTMLSelectElement
+			const outcome = select.value === '' ? null : (select.value as 'done' | 'discarded')
 
-			return this.write(
+			return this.writeInline(
 				() => setColumnFinalOutcome(this.boardId, column.id, outcome),
 				t('projektwerk', 'Endspalte konnte nicht gesetzt werden'),
+				() => { select.value = column.finalOutcome ?? '' },
 			)
 		},
 
@@ -1709,11 +1723,13 @@ export default defineComponent({
 		 * @param event Das Auswahlereignis.
 		 */
 		changeRole(member: Member, event: Event) {
-			const role = (event.target as HTMLSelectElement).value as MemberRole
+			const select = event.target as HTMLSelectElement
+			const role = select.value as MemberRole
 
-			return this.write(
+			return this.writeInline(
 				() => updateMember(this.boardId, member.userId, { role }),
 				t('projektwerk', 'Rolle konnte nicht geändert werden'),
+				() => { select.value = member.role },
 			)
 		},
 
@@ -1722,11 +1738,13 @@ export default defineComponent({
 		 * @param event Das Umschaltereignis.
 		 */
 		changeManager(member: Member, event: Event) {
-			const isManager = (event.target as HTMLInputElement).checked
+			const box = event.target as HTMLInputElement
+			const isManager = box.checked
 
-			return this.write(
+			return this.writeInline(
 				() => updateMember(this.boardId, member.userId, { isManager }),
 				t('projektwerk', 'Verwaltungsrecht konnte nicht geändert werden'),
+				() => { box.checked = Boolean(member.isManager) },
 			)
 		},
 
