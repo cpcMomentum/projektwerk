@@ -297,6 +297,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 		// Der Antwort-Anker (#287) ist derselbe betrachterlose Pfad — vom selben
 		// Test gedeckt: der Ausgangskorb nimmt keinen ViewerContext.
 		'MailOutboxMapper::findByReplyToken' => 'testTheOutboxIsNotAViewerPath',
+		'MailOutboxMapper::countFromActorToRecipientSince' => 'testTheOutboxIsNotAViewerPath',
 		'NotifyPrefMapper::findForUser' => 'testChannelPreferencesAreScopedToTheirOwner',
 		'TicketReadMapper::findSeenForTickets' => 'testReadStateIsScopedToItsOwner',
 		'IdemKeyMapper::findForUser' => 'testIdempotencyKeysAreScopedToTheirOwner',
