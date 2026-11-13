@@ -13,7 +13,7 @@ use OCA\Projektwerk\AppInfo\Application;
 use OCP\IAppConfig;
 
 /**
- * Die drei Schalter des MCP-Endpunkts. Standard ist aus; der Endpunkt antwortet dann 404.
+ * Die Schalter des MCP-Endpunkts. Alle stehen ab Werk aus; ohne `mcp_enabled` antwortet der Endpunkt 404.
  *
  * Gesetzt per `occ config:app:set projektwerk <key> --value=…` (siehe docs/mcp-setup.md).
  */
@@ -22,6 +22,7 @@ class McpConfig {
 	public const KEY_ENABLED = 'mcp_enabled';
 	public const KEY_ALLOWED_CLIENTS = 'mcp_allowed_clients';
 	public const KEY_RESOURCE_URL = 'mcp_resource_url';
+	public const KEY_PUBLIC_WRITE = 'mcp_public_write';
 
 	public function __construct(
 		private IAppConfig $config,
@@ -39,6 +40,14 @@ class McpConfig {
 
 	public function isSwitchedOn(): bool {
 		return $this->config->getValueString(Application::APP_ID, self::KEY_ENABLED, 'no') === 'yes';
+	}
+
+	public function publicWriteAllowed(): bool {
+		return $this->config->getValueString(Application::APP_ID, self::KEY_PUBLIC_WRITE, 'no') === 'yes';
+	}
+
+	public function setPublicWriteAllowed(bool $allowed): void {
+		$this->config->setValueString(Application::APP_ID, self::KEY_PUBLIC_WRITE, $allowed ? 'yes' : 'no');
 	}
 
 	/**

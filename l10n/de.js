@@ -644,6 +644,10 @@ OC.L10N.register(
     "GitHub hat mit einem Fehler geantwortet (HTTP %s)." : "GitHub hat mit einem Fehler geantwortet (HTTP %s).",
     "Der persönliche Ordner muss in den eigenen Dateien liegen. Ein freigegebener Ordner oder ein Team-Ordner ist dafür nicht zulässig." : "Der persönliche Ordner muss in den eigenen Dateien liegen. Ein freigegebener Ordner oder ein Team-Ordner ist dafür nicht zulässig.",
     "Der persönliche Ordner ist für andere freigegeben. Private Anhänge brauchen einen Ordner ohne Freigabe." : "Der persönliche Ordner ist für andere freigegeben. Private Anhänge brauchen einen Ordner ohne Freigabe.",
-    "Server, Port, Verschlüsselung oder Konto weichen von den gespeicherten Daten ab. Bitte das Passwort neu eingeben." : "Server, Port, Verschlüsselung oder Konto weichen von den gespeicherten Daten ab. Bitte das Passwort neu eingeben."
+    "Server, Port, Verschlüsselung oder Konto weichen von den gespeicherten Daten ab. Bitte das Passwort neu eingeben." : "Server, Port, Verschlüsselung oder Konto weichen von den gespeicherten Daten ab. Bitte das Passwort neu eingeben.",
+    "KI-Zugriff" : "KI-Zugriff",
+    "Über den KI-Zugang (MCP) kann Claude im Namen einer Person Vorgänge anlegen und ändern. Interne und private Vorgänge sind immer erlaubt." : "Über den KI-Zugang (MCP) kann Claude im Namen einer Person Vorgänge anlegen und ändern. Interne und private Vorgänge sind immer erlaubt.",
+    "KI darf in kundensichtbare Vorgänge schreiben" : "KI darf in kundensichtbare Vorgänge schreiben",
+    "Ist der Schalter aus, lehnt ProjektWerk jede KI-Änderung an Vorgängen ab, die der Kunde sieht. Ist er an, muss die KI vor jeder solchen Änderung nachfragen. Dateien aus der Nextcloud hängt die KI nie an kundensichtbare Vorgänge an." : "Ist der Schalter aus, lehnt ProjektWerk jede KI-Änderung an Vorgängen ab, die der Kunde sieht. Ist er an, muss die KI vor jeder solchen Änderung nachfragen. Dateien aus der Nextcloud hängt die KI nie an kundensichtbare Vorgänge an."
 },
 "nplurals=2; plural=(n != 1);");
