@@ -16,6 +16,7 @@ use OCA\Projektwerk\Mcp\McpAudit;
 use OCA\Projektwerk\Mcp\McpRateLimiter;
 use OCA\Projektwerk\Mcp\PublicGuard;
 use OCA\Projektwerk\Mcp\ToolResult;
+use OCA\Projektwerk\Service\ContentLimits;
 use OCA\Projektwerk\Service\TicketService;
 
 class CreateTicket extends WriteTool {
@@ -51,7 +52,7 @@ class CreateTicket extends WriteTool {
 			'properties' => [
 				'board_id' => ['type' => 'integer', 'minimum' => 1, 'description' => 'Board id from list_boards.'],
 				'column_id' => ['type' => 'integer', 'minimum' => 1, 'description' => 'Column id from list_columns.'],
-				'title' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 255, 'description' => 'Title.'],
+				'title' => ['type' => 'string', 'minLength' => 1, 'maxLength' => ContentLimits::TICKET_TITLE, 'description' => 'Title.'],
 				'description' => ['type' => 'string', 'maxLength' => 20000, 'description' => 'Markdown.'],
 				'visibility' => ['type' => 'string', 'enum' => ['public', 'internal', 'private'], 'description' => '"public" = customer sees it, "internal" = only your side, "private" = only you.'],
 				'responsible_user_id' => ['type' => 'string', 'maxLength' => 64, 'description' => 'User id from list_members.'],

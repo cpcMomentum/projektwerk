@@ -66,7 +66,7 @@ use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
 use OCP\Config\IUserConfig;
 use OCP\DB\QueryBuilder\IQueryBuilder;
-use OCP\IConfig;
+use OCP\IAppConfig;
 use OCP\IRequest;
 use OCP\IUserManager;
 use OCP\L10N\IFactory;
@@ -297,6 +297,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 		// Der Antwort-Anker (#287) ist derselbe betrachterlose Pfad — vom selben
 		// Test gedeckt: der Ausgangskorb nimmt keinen ViewerContext.
 		'MailOutboxMapper::findByReplyToken' => 'testTheOutboxIsNotAViewerPath',
+		'MailOutboxMapper::countFromActorToRecipientSince' => 'testTheOutboxIsNotAViewerPath',
 		'NotifyPrefMapper::findForUser' => 'testChannelPreferencesAreScopedToTheirOwner',
 		'TicketReadMapper::findSeenForTickets' => 'testReadStateIsScopedToItsOwner',
 		'IdemKeyMapper::findForUser' => 'testIdempotencyKeysAreScopedToTheirOwner',
@@ -2312,7 +2313,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 		return new MemberSearchController(
 			$this->createStub(IRequest::class),
 			Server::get(IUserManager::class),
-			Server::get(IConfig::class),
+			Server::get(IAppConfig::class),
 			Server::get(MemberMapper::class),
 			Server::get(BoardAccess::class),
 			$userId,
