@@ -21,6 +21,7 @@ use OCP\AppFramework\Controller;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
+use OCP\AppFramework\Http\Attribute\UserRateLimit;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\IRequest;
 
@@ -49,6 +50,7 @@ class StepController extends Controller {
 	}
 
 	#[NoAdminRequired]
+	#[UserRateLimit(limit: 300, period: 3600)]
 	public function create(
 		int $boardId,
 		int $ticketId,
@@ -70,6 +72,7 @@ class StepController extends Controller {
 	}
 
 	#[NoAdminRequired]
+	#[UserRateLimit(limit: 600, period: 3600)]
 	public function update(
 		int $boardId,
 		int $stepId,

@@ -163,6 +163,7 @@ class TicketController extends Controller {
 	}
 
 	#[NoAdminRequired]
+	#[UserRateLimit(limit: 600, period: 3600)]
 	public function update(
 		int $boardId,
 		int $ticketId,
