@@ -79,6 +79,12 @@ class StepService {
 		if ($trimmed === '') {
 			throw new \InvalidArgumentException($this->l10n->t('Ein Arbeitsschritt braucht einen Titel.'));
 		}
+		$this->assertStepTitle($trimmed);
+		$this->assertStepText($description);
+		$vorhanden = $this->steps->findForTickets([$ticketId]);
+		if (count($vorhanden) >= ContentLimits::STEPS_PER_TICKET) {
+			throw new \InvalidArgumentException($this->l10n->t('Ein Vorgang kann höchstens %s Arbeitsschritte haben.', [ContentLimits::STEPS_PER_TICKET]));
+		}
 
 		$step = new Step();
 		$step->setTicketId($ticketId);
@@ -88,7 +94,7 @@ class StepService {
 		$step->setDescription($this->leerAlsNull($description));
 		$step->setDone(0);
 		$step->setDueDate($this->parseDueDate($dueDate));
-		$step->setPosition($this->nextPosition($ticketId));
+		$step->setPosition($this->nextPosition($vorhanden));
 		$step->setCreatedAt(new \DateTime());
 		$step->setCreatedVia($viewer->via);
 
@@ -126,14 +132,17 @@ class StepService {
 			if ($title === '') {
 				throw new \InvalidArgumentException($this->l10n->t('Ein Arbeitsschritt braucht einen Titel.'));
 			}
+			$this->assertStepTitle($title);
 			$step->setTitle($title);
 		}
 
 		if (array_key_exists('description', $changes)) {
+			$this->assertStepText($changes['description']);
 			$step->setDescription($this->leerAlsNull($changes['description']));
 		}
 
 		if (array_key_exists('result', $changes)) {
+			$this->assertStepText($changes['result']);
 			$step->setResult($this->leerAlsNull($changes['result']));
 		}
 
@@ -395,10 +404,25 @@ class StepService {
 		throw new DoesNotExistException($this->l10n->t('Arbeitsschritt nicht gefunden.'));
 	}
 
-	private function nextPosition(int $ticketId): int {
+	private function assertStepTitle(string $title): void {
+		if (ContentLimits::exceeds($title, ContentLimits::STEP_TITLE)) {
+			throw new \InvalidArgumentException($this->l10n->t('Der Titel darf höchstens %s Zeichen lang sein.', [ContentLimits::STEP_TITLE]));
+		}
+	}
+
+	private function assertStepText(?string $text): void {
+		if (ContentLimits::exceeds($text, ContentLimits::STEP_TEXT)) {
+			throw new \InvalidArgumentException($this->l10n->t('Beschreibung und Ergebnis dürfen je höchstens %s Zeichen lang sein.', [ContentLimits::STEP_TEXT]));
+		}
+	}
+
+	/**
+	 * @param Step[] $vorhanden
+	 */
+	private function nextPosition(array $vorhanden): int {
 		$positions = array_map(
 			static fn (Step $step): int => (int)$step->getPosition(),
-			$this->steps->findForTickets([$ticketId]),
+			$vorhanden,
 		);
 
 		return $positions === [] ? 0 : max($positions) + 1;

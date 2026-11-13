@@ -18,7 +18,8 @@
 					id="pw-new-title"
 					v-model="title"
 					class="pw-input"
-					type="text">
+					type="text"
+					:maxlength="limits.ticketTitle">
 			</div>
 
 			<div class="pw-feld">
@@ -127,6 +128,7 @@ import NcSelectUsers from '@nextcloud/vue/components/NcSelectUsers'
 import VisibilityChoice from '@/components/VisibilityChoice.vue'
 import { fetchAssignableForNew } from '@/services/steps'
 import { toIsoDay } from '@/utils/date'
+import { LIMITS } from '@/utils/limits'
 
 /** Die Form, die `NcSelectUsers` je Option erwartet — wie im Detail-Picker. */
 interface PersonOption {
@@ -157,6 +159,7 @@ export default defineComponent({
 
 	data() {
 		return {
+			limits: LIMITS,
 			title: '',
 			description: '',
 			// „Alle Beteiligten" ist die Voreinstellung, fuer alle Rollen gleich (§9).
