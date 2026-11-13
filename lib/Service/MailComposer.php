@@ -82,6 +82,8 @@ class MailComposer {
 		$actor = $this->actorName($zeile);
 		if ($actor !== null && $zeile->getActorVia() === ViewerContext::VIA_TOOL) {
 			$actor = $l->t('%1$s (über KI-Werkzeug)', [$actor]);
+		} elseif ($actor !== null && $zeile->getActorVia() === ViewerContext::VIA_MAIL) {
+			$actor = $l->t('%1$s (per E-Mail)', [$actor]);
 		}
 		$schritt = $this->leer($zeile->getStepTitle());
 		$projekt = $this->projectName((string)$zeile->getRecipientUid(), (int)$ticket->getBoardId());

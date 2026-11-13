@@ -665,6 +665,16 @@ OC.L10N.register(
     "hat einen Kommentar gelöscht" : "deleted a comment",
     "Protokoll" : "Log",
     "Wer Mitglieder, Rollen, Verwaltungsrechte und Boards dieses Projekts geändert hat. Sichtbar nur für interne Mitglieder mit Verwaltungsrecht." : "Who changed members, roles, management rights and boards of this project. Visible only to internal members with management rights.",
-    "Das Protokoll sehen nur interne Mitglieder mit Verwaltungsrecht." : "Only internal members with management rights can see the log."
+    "Das Protokoll sehen nur interne Mitglieder mit Verwaltungsrecht." : "Only internal members with management rights can see the log.",
+    "per E-Mail" : "via email",
+    "%1$s (per E-Mail)" : "%1$s (via email)",
+    "KI-Zugriff" : "AI access",
+    "Über den KI-Zugang (MCP) kann Claude im Namen einer Person Vorgänge anlegen und ändern. Interne und private Vorgänge sind immer erlaubt." : "Through the AI access (MCP), Claude can create and change tickets on behalf of a person. Internal and private tickets are always allowed.",
+    "KI darf in kundensichtbare Vorgänge schreiben" : "AI may write to customer-visible tickets",
+    "Ist der Schalter aus, lehnt ProjektWerk jede KI-Änderung an Vorgängen ab, die der Kunde sieht. Ist er an, muss die KI vor jeder solchen Änderung nachfragen. Dateien aus der Nextcloud hängt die KI nie an kundensichtbare Vorgänge an." : "When the switch is off, ProjektWerk refuses every AI change to tickets the customer sees. When it is on, the AI must ask before each such change. The AI never attaches files from Nextcloud to customer-visible tickets.",
+    "Ein Vorgang kann höchstens %s Arbeitsschritte haben." : "A ticket can have at most %s work steps.",
+    "Der Titel darf höchstens %s Zeichen lang sein." : "The title may be at most %s characters long.",
+    "Beschreibung und Ergebnis dürfen je höchstens %s Zeichen lang sein." : "Description and result may each be at most %s characters long.",
+    "Die Beschreibung darf höchstens %s Zeichen lang sein." : "The description may be at most %s characters long."
 },
 "nplurals=2; plural=(n != 1);");

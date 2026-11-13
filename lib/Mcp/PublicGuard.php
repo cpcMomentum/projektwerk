@@ -14,7 +14,7 @@ use OCA\Projektwerk\Db\Ticket;
 use OCA\Projektwerk\Db\TicketMapper;
 
 /**
- * Ohne `confirm_public: true` keine Änderung an Kundensichtbarem; verschärft nur, erlaubt nie.
+ * Kundensichtbares nur mit Admin-Schalter und `confirm_public: true`; verschärft nur, erlaubt nie.
  */
 class PublicGuard {
 
@@ -22,6 +22,7 @@ class PublicGuard {
 
 	public function __construct(
 		private TicketMapper $tickets,
+		private McpConfig $config,
 	) {
 	}
 
@@ -53,7 +54,14 @@ class PublicGuard {
 	 * @param array<string, mixed> $arguments
 	 */
 	private function refusal(string $visibility, string $label, array $arguments): ?ToolResult {
-		if ($visibility !== self::VISIBILITY_PUBLIC || self::confirmed($arguments)) {
+		if ($visibility !== self::VISIBILITY_PUBLIC) {
+			return null;
+		}
+		if (!$this->config->publicWriteAllowed()) {
+			return ToolResult::error($label . ' is customer-visible, and the administrator has switched off AI writes to customer-visible tickets. '
+				. 'Tell the user to make this change in ProjektWerk directly. Changes that touch only internal or private tickets still work.');
+		}
+		if (self::confirmed($arguments)) {
 			return null;
 		}
 

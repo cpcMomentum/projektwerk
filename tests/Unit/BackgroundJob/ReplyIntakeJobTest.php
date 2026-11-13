@@ -47,8 +47,10 @@ class ReplyIntakeJobTest extends TestCase {
 	private const RECIPIENT_MAIL = 'carla@kunde.de';
 	private const TICKET_ID = 4242;
 	private const BOARD_ID = 7;
+	private const NOW = 1_800_000_000;
 
 	private CommentService&MockObject $comments;
+	private MailOutbox $zeile;
 	private ReplyIntakeJob $job;
 	/** 32 Hex-Zeichen, berechnet statt als Literal (Secret-Check). */
 	private string $token;
@@ -68,6 +70,8 @@ class ReplyIntakeJobTest extends TestCase {
 		$zeile->setReplyToken($this->token);
 		$zeile->setRecipientUid(self::RECIPIENT);
 		$zeile->setTicketId(self::TICKET_ID);
+		$zeile->setSentAt((new \DateTime())->setTimestamp(self::NOW - 86400));
+		$this->zeile = $zeile;
 		$outbox = $this->createMock(MailOutboxMapper::class);
 		$outbox->method('findByReplyToken')->willReturnCallback(
 			fn (string $t): ?MailOutbox => $t === $this->token ? $zeile : null,
@@ -99,8 +103,11 @@ class ReplyIntakeJobTest extends TestCase {
 		$l10nFactory->method('get')->willReturn($l10n);
 		$l10nFactory->method('getUserLanguage')->willReturn('de');
 
+		$time = $this->createMock(ITimeFactory::class);
+		$time->method('getTime')->willReturn(self::NOW);
+
 		$this->job = new ReplyIntakeJob(
-			$this->createMock(ITimeFactory::class),
+			$time,
 			$settings,
 			$outbox,
 			$tickets,
@@ -149,7 +156,11 @@ class ReplyIntakeJobTest extends TestCase {
 	public function testValidReplyBecomesAComment(): void {
 		$this->comments->expects($this->once())
 			->method('create')
-			->with($this->isInstanceOf(ViewerContext::class), self::TICKET_ID, 'Ja, bitte umsetzen.');
+			->with(
+				$this->callback(static fn (ViewerContext $v): bool => $v->via === ViewerContext::VIA_MAIL),
+				self::TICKET_ID,
+				'Ja, bitte umsetzen.',
+			);
 
 		$counter = [];
 		$client = $this->verarbeiten(
@@ -175,6 +186,35 @@ class ReplyIntakeJobTest extends TestCase {
 			$this->raw(self::RECIPIENT_MAIL, $this->betreff(), 'Passt.', ['Content-Disposition' => 'attachment; filename="x.pdf"']),
 			$counter,
 		);
+	}
+
+	public function testAReplyToANotificationOlderThanSevenDaysIsDroppedAndMarkedSeen(): void {
+		$this->zeile->setSentAt((new \DateTime())->setTimestamp(self::NOW - ReplyIntakeJob::TOKEN_GUELTIG_SEKUNDEN - 1));
+		$this->comments->expects($this->never())->method('create');
+
+		$client = $this->createMock(ImapClient::class);
+		$client->method('uidFetchRaw')->willReturn($this->raw(self::RECIPIENT_MAIL, $this->betreff(), 'Spät, aber doch.'));
+		$client->expects($this->once())->method('markSeen')->with(1);
+
+		$counter = [];
+		(new ReflectionMethod(ReplyIntakeJob::class, 'verarbeiten'))->invokeArgs($this->job, [$client, 1, &$counter]);
+	}
+
+	public function testAReplyExactlySevenDaysAfterSendingIsStillAccepted(): void {
+		$this->zeile->setSentAt((new \DateTime())->setTimestamp(self::NOW - ReplyIntakeJob::TOKEN_GUELTIG_SEKUNDEN));
+		$this->comments->expects($this->once())->method('create');
+
+		$counter = [];
+		$this->verarbeiten($this->raw(self::RECIPIENT_MAIL, $this->betreff(), 'Auf den Tag genau.'), $counter);
+	}
+
+	public function testAnUnsentRowCountsFromItsCreation(): void {
+		$this->zeile->setSentAt(null);
+		$this->zeile->setCreatedAt((new \DateTime())->setTimestamp(self::NOW - 3600));
+		$this->comments->expects($this->once())->method('create');
+
+		$counter = [];
+		$this->verarbeiten($this->raw(self::RECIPIENT_MAIL, $this->betreff(), 'Gerade noch.'), $counter);
 	}
 
 	public function testAutoSubmittedIsDroppedBeforeMatching(): void {

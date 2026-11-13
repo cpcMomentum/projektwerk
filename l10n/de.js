@@ -665,6 +665,16 @@ OC.L10N.register(
     "hat einen Kommentar gelöscht" : "hat einen Kommentar gelöscht",
     "Protokoll" : "Protokoll",
     "Wer Mitglieder, Rollen, Verwaltungsrechte und Boards dieses Projekts geändert hat. Sichtbar nur für interne Mitglieder mit Verwaltungsrecht." : "Wer Mitglieder, Rollen, Verwaltungsrechte und Boards dieses Projekts geändert hat. Sichtbar nur für interne Mitglieder mit Verwaltungsrecht.",
-    "Das Protokoll sehen nur interne Mitglieder mit Verwaltungsrecht." : "Das Protokoll sehen nur interne Mitglieder mit Verwaltungsrecht."
+    "Das Protokoll sehen nur interne Mitglieder mit Verwaltungsrecht." : "Das Protokoll sehen nur interne Mitglieder mit Verwaltungsrecht.",
+    "per E-Mail" : "per E-Mail",
+    "%1$s (per E-Mail)" : "%1$s (per E-Mail)",
+    "KI-Zugriff" : "KI-Zugriff",
+    "Über den KI-Zugang (MCP) kann Claude im Namen einer Person Vorgänge anlegen und ändern. Interne und private Vorgänge sind immer erlaubt." : "Über den KI-Zugang (MCP) kann Claude im Namen einer Person Vorgänge anlegen und ändern. Interne und private Vorgänge sind immer erlaubt.",
+    "KI darf in kundensichtbare Vorgänge schreiben" : "KI darf in kundensichtbare Vorgänge schreiben",
+    "Ist der Schalter aus, lehnt ProjektWerk jede KI-Änderung an Vorgängen ab, die der Kunde sieht. Ist er an, muss die KI vor jeder solchen Änderung nachfragen. Dateien aus der Nextcloud hängt die KI nie an kundensichtbare Vorgänge an." : "Ist der Schalter aus, lehnt ProjektWerk jede KI-Änderung an Vorgängen ab, die der Kunde sieht. Ist er an, muss die KI vor jeder solchen Änderung nachfragen. Dateien aus der Nextcloud hängt die KI nie an kundensichtbare Vorgänge an.",
+    "Ein Vorgang kann höchstens %s Arbeitsschritte haben." : "Ein Vorgang kann höchstens %s Arbeitsschritte haben.",
+    "Der Titel darf höchstens %s Zeichen lang sein." : "Der Titel darf höchstens %s Zeichen lang sein.",
+    "Beschreibung und Ergebnis dürfen je höchstens %s Zeichen lang sein." : "Beschreibung und Ergebnis dürfen je höchstens %s Zeichen lang sein.",
+    "Die Beschreibung darf höchstens %s Zeichen lang sein." : "Die Beschreibung darf höchstens %s Zeichen lang sein."
 },
 "nplurals=2; plural=(n != 1);");

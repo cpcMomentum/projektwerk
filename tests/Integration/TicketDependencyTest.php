@@ -12,6 +12,7 @@ namespace OCA\Projektwerk\Tests\Integration;
 use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Mcp\AuthenticatedCaller;
+use OCA\Projektwerk\Mcp\McpConfig;
 use OCA\Projektwerk\Mcp\McpRateLimiter;
 use OCA\Projektwerk\Mcp\ToolResult;
 use OCA\Projektwerk\Mcp\Tools\AddDependency;
@@ -21,11 +22,17 @@ use OCA\Projektwerk\Service\TicketDependencyService;
 use OCA\Projektwerk\Service\TicketReadModel;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\DB\QueryBuilder\IQueryBuilder;
+use OCP\IAppConfig;
 use OCP\Server;
 
 class TicketDependencyTest extends IntegrationTestCase {
 
 	private LeakMatrixFixture $fixture;
+
+	protected function tearDown(): void {
+		Server::get(IAppConfig::class)->deleteKey('projektwerk', McpConfig::KEY_PUBLIC_WRITE);
+		parent::tearDown();
+	}
 
 	protected function setUp(): void {
 		parent::setUp();
@@ -95,6 +102,7 @@ class TicketDependencyTest extends IntegrationTestCase {
 	}
 
 	public function testTheAiToolAsksBeforeTouchingACustomerVisibleTicketAndMarksItsLink(): void {
+		Server::get(McpConfig::class)->setPublicWriteAllowed(true);
 		$args = ['ticket_id' => $this->id('internal/anna'), 'depends_on_id' => $this->id('public/bert')];
 
 		$refused = $this->call(AddDependency::class, $args);

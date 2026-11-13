@@ -36,6 +36,9 @@
 					<span v-if="comment.createdVia === 'tool'" class="pw-comment__edited">
 						{{ t('projektwerk', 'über KI-Werkzeug') }}
 					</span>
+					<span v-else-if="comment.createdVia === 'mail'" class="pw-comment__edited">
+						{{ t('projektwerk', 'per E-Mail') }}
+					</span>
 				</header>
 
 				<!--

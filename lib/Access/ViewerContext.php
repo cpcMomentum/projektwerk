@@ -46,12 +46,13 @@ final readonly class ViewerContext {
 		 * board-bezogene (statt projektweite) Berechtigung der App.
 		 */
 		public bool $isBoardCreator,
-		/** Herkunft: `null` = Browser, {@see VIA_TOOL} = KI-Werkzeug über MCP. */
+		/** Herkunft: `null` = Browser, {@see VIA_TOOL} = KI-Werkzeug über MCP, {@see VIA_MAIL} = Antwort per E-Mail. */
 		public ?string $via = null,
 	) {
 	}
 
 	public const VIA_TOOL = 'tool';
+	public const VIA_MAIL = 'mail';
 
 	/**
 	 * Einzige Tuer. Nur `BoardAccess` darf sie benutzen — durchgesetzt vom
@@ -81,6 +82,10 @@ final readonly class ViewerContext {
 	 */
 	public function viaTool(): self {
 		return new self($this->userId, $this->boardId, $this->projectId, $this->role, $this->isManager, $this->isBoardCreator, self::VIA_TOOL);
+	}
+
+	public function viaMail(): self {
+		return new self($this->userId, $this->boardId, $this->projectId, $this->role, $this->isManager, $this->isBoardCreator, self::VIA_MAIL);
 	}
 
 	public function isInternal(): bool {

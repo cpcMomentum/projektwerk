@@ -167,6 +167,8 @@ final class ReadPathRegistry {
 		// den Einlese-Job. Kein Betrachter (Token statt ViewerContext) — die
 		// Deckung ist wie bei findRetryable strukturell über VIEWERLESS_MAPPERS.
 		'MailOutboxMapper::findByReplyToken',
+		// Die Stundengrenze zählt Zeilen eines Paars aus Auslöser und Empfänger, ohne Betrachter.
+		'MailOutboxMapper::countFromActorToRecipientSince',
 		// `NotifyPrefMapper::isEnabled()` steht hier bewusst **nicht**: Es fragt
 		// die Datenbank nicht selbst, sondern ruft `findForUser()` auf. Der
 		// Lesepfad ist der eine darunter; ein zweiter Eintrag waere eine
@@ -297,6 +299,7 @@ final class ReadPathRegistry {
 		// existiert nicht.
 		'replyMailbox#config' => 'Instanz-weite IMAP-Einstellungen (admin-only, ohne Passwort), '
 			. 'keine Board-/Vorgangsdaten.',
+		'aiAccess#show' => 'Instanz-weiter Schalter für KI-Schreiben (admin-only), keine Board-/Vorgangsdaten.',
 		// Das „Was ist neu?"-Fenster (#315) liest allein die ausgelieferte
 		// whatsnew.json und die Nutzer-Marke (`whatsnew_last_seen`). Kein Mapper,
 		// kein Board im Pfad, keine Rolle: Ein Leak-Vektor auf Vorgangsdaten
