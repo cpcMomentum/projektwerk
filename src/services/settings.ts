@@ -284,3 +284,22 @@ export async function searchCandidates(boardId: number, search: string): Promise
 
 	return antwort.users
 }
+
+export interface ProjectLogEntry {
+	id: number
+	actorUserId: string
+	actorName: string | null
+	via: string | null
+	action: string
+	targetUserId: string | null
+	targetName: string | null
+	subject: string | null
+	oldValue: string | null
+	newValue: string | null
+	createdAt: string
+}
+
+/** Das Projekt-Protokoll, neueste zuerst; `beforeId` blättert ab dem ältesten geladenen Eintrag weiter. */
+export async function fetchProjectLog(boardId: number, beforeId?: number): Promise<{ entries: ProjectLogEntry[], hasMore: boolean }> {
+	return apiGet<{ entries: ProjectLogEntry[], hasMore: boolean }>(`/boards/${boardId}/project-log${beforeId === undefined ? '' : `?beforeId=${beforeId}`}`)
+}

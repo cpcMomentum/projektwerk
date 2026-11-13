@@ -22,6 +22,7 @@ use OCP\IURLGenerator;
 use OCP\IUser;
 use OCP\IUserManager;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\AbstractLogger;
 
 class BearerAuthenticatorTest extends TestCase {
 
@@ -37,6 +38,8 @@ class BearerAuthenticatorTest extends TestCase {
 	private bool $userExists = true;
 	/** @var array<string, mixed> */
 	private array $cache = [];
+	/** @var list<string> */
+	private array $warnungen = [];
 
 	protected function setUp(): void {
 		$this->config = $this->createStub(McpConfig::class);
@@ -100,6 +103,15 @@ class BearerAuthenticatorTest extends TestCase {
 			$this->assertRejected(401, null, fn () => $authenticator->authenticate('Bearer ' . $token));
 		}
 		$this->assertRejected(429, null, fn () => $authenticator->authenticate('Bearer ' . $token));
+	}
+
+	public function testRejectedLoginsAreLoggedWithReasonAndClientButWithoutToken(): void {
+		$this->validator->method('userIdFor')->willReturn(null);
+		$token = $this->token();
+
+		$this->assertRejected(401, null, fn () => $this->authenticator()->authenticate('Bearer ' . $token));
+
+		$this->assertSame(['warning: Token ungueltig oder fremd / ' . self::CLIENT], $this->warnungen);
 	}
 
 	public function testMalformedTokensNeitherReachOidcNorFillTheCounter(): void {
@@ -172,7 +184,17 @@ class BearerAuthenticatorTest extends TestCase {
 		$time = $this->createStub(ITimeFactory::class);
 		$time->method('getTime')->willReturn(1_800_000_000);
 
-		return new BearerAuthenticator($config ?? $this->config, $this->validator, $this->accountType, $urls, $users, $apps, $time, $factory);
+		$logger = new class($this->warnungen) extends AbstractLogger {
+			/** @param list<string> $warnungen */
+			public function __construct(private array &$warnungen) {
+			}
+
+			public function log($level, \Stringable|string $message, array $context = []): void {
+				$this->warnungen[] = $level . ': ' . ($context['grund'] ?? '') . ' / ' . ($context['client'] ?? '');
+			}
+		};
+
+		return new BearerAuthenticator($config ?? $this->config, $this->validator, $this->accountType, $urls, $users, $apps, $time, $factory, $logger);
 	}
 
 	/**

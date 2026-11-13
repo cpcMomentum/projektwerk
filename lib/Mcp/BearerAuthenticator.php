@@ -18,6 +18,7 @@ use OCP\ICache;
 use OCP\ICacheFactory;
 use OCP\IURLGenerator;
 use OCP\IUserManager;
+use Psr\Log\LoggerInterface;
 
 /**
  * Prüft das Bearer-Token einer MCP-Anfrage und liefert, wer ruft.
@@ -44,6 +45,7 @@ class BearerAuthenticator {
 		private IAppManager $appManager,
 		private ITimeFactory $time,
 		ICacheFactory $cacheFactory,
+		private LoggerInterface $logger,
 	) {
 		$this->failures = $cacheFactory->createDistributed('projektwerk_mcp_authfail');
 	}
@@ -71,16 +73,19 @@ class BearerAuthenticator {
 
 		$failureKey = hash('sha256', $token);
 		if ((int)$this->failures->get($failureKey) >= self::MAX_FAILURES) {
+			$this->abgelehnt('zu viele Fehlversuche', $clientId);
 			throw new McpAuthException(Http::STATUS_TOO_MANY_REQUESTS);
 		}
 
 		$userId = $this->validator->userIdFor($token);
 		if ($userId === null || ($claims['sub'] ?? null) !== $userId) {
 			$this->failures->set($failureKey, (int)$this->failures->get($failureKey) + 1, self::FAILURE_WINDOW);
+			$this->abgelehnt('Token ungueltig oder fremd', $clientId);
 			throw new McpAuthException(Http::STATUS_UNAUTHORIZED, $this->challenge('invalid_token'));
 		}
 
 		if ($this->accountType->isGuest($userId)) {
+			$this->abgelehnt('Gastkonto', $clientId, $userId);
 			throw new McpAuthException(Http::STATUS_FORBIDDEN);
 		}
 
@@ -88,10 +93,20 @@ class BearerAuthenticator {
 		// #[PublicPage] prüft Nextcloud das nicht, also hier: dieselbe Grenze wie im Browser.
 		$user = $this->users->get($userId);
 		if ($user === null || !$user->isEnabled() || !$this->appManager->isEnabledForUser(Application::APP_ID, $user)) {
+			$this->abgelehnt('Konto gesperrt oder App nicht freigegeben', $clientId, $userId);
 			throw new McpAuthException(Http::STATUS_UNAUTHORIZED, $this->challenge('invalid_token'));
 		}
 
 		return new AuthenticatedCaller($userId, $clientId);
+	}
+
+	private function abgelehnt(string $grund, string $clientId, ?string $userId = null): void {
+		$this->logger->warning('ProjektWerk MCP: Anmeldung abgelehnt ({grund}), Client {client}, Konto {user}', [
+			'app' => Application::APP_ID,
+			'grund' => $grund,
+			'client' => $clientId,
+			'user' => $userId ?? '-',
+		]);
 	}
 
 	public function protectedResourceMetadataUrl(): string {

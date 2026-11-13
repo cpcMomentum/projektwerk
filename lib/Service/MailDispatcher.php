@@ -83,6 +83,9 @@ class MailDispatcher {
 	 */
 	private const GEDROSSELT = [MailOutbox::EVENT_COMMENT_ADDED];
 
+	/** Obergrenze je Auslöser und Empfänger und Stunde, damit kein Mitglied ein Postfach flutet, ohne fremde Mails stummzuschalten. */
+	public const HOECHSTENS_JE_STUNDE = 30;
+
 	public function __construct(
 		private MailOutboxMapper $outbox,
 		private NotifyPrefMapper $prefs,
@@ -129,7 +132,8 @@ class MailDispatcher {
 		// festgehalten: „unterdrueckt" ist etwas anderes als „abgeschaltet"
 		// (keine Zeile) und als „keine Adresse" — und der Unterschied gehoert
 		// im Ausgangskorb ablesbar, sonst sucht man ihn spaeter im Log.
-		if (in_array($event, self::GEDROSSELT, true) && $this->imFenster($recipientUid, $ticketId, $event)) {
+		if ((in_array($event, self::GEDROSSELT, true) && $this->imFenster($recipientUid, $ticketId, $event))
+			|| $this->ueberStundengrenze($actorUid, $recipientUid)) {
 			$unterdrueckt = new MailOutbox();
 			$unterdrueckt->setRecipientUid($recipientUid);
 			$unterdrueckt->setTicketId($ticketId);
@@ -386,6 +390,16 @@ class MailDispatcher {
 		$seit = (new \DateTime())->modify('-' . self::FENSTER_MINUTEN . ' minutes');
 
 		return $this->outbox->existsSince($recipientUid, $ticketId, $event, $seit);
+	}
+
+	private function ueberStundengrenze(?string $actorUid, string $recipientUid): bool {
+		if ($actorUid === null) {
+			return false;
+		}
+		// tz-ok: rollendes Stundenfenster, kein Kalendertag
+		$seit = (new \DateTime())->modify('-1 hour');
+
+		return $this->outbox->countFromActorToRecipientSince($actorUid, $recipientUid, $seit) >= self::HOECHSTENS_JE_STUNDE;
 	}
 
 	/**

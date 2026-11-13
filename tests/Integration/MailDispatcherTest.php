@@ -272,7 +272,8 @@ class MailDispatcherTest extends IntegrationTestCase {
 	 *
 	 * Sie sind die Nachrichten, die zaehlen, und sie kommen einzeln. Sich davon
 	 * abzumelden, dass einem Arbeit zugewiesen wird, waere kein Komfort,
-	 * sondern ein Loch — deshalb steht in `GEDROSSELT` nur der Kommentar.
+	 * sondern ein Loch — deshalb stehen sie nicht in `GEDROSSELT`. Nur die
+	 * Stundengrenze je Auslöser greift, damit niemand ein Postfach flutet.
 	 */
 	public function testAssignmentsAreNeverSuppressed(): void {
 		$dispatcher = $this->dispatcher(['kunde@example.invalid']);
@@ -284,6 +285,36 @@ class MailDispatcherTest extends IntegrationTestCase {
 		$this->assertNotNull($erste);
 		$this->assertNotNull($zweite, 'Ein anderer Anlass zum selben Vorgang bleibt ohnehin unberuehrt.');
 		$this->assertNotNull($dritte, 'Auch dieselbe Zuweisung ein zweites Mal geht raus.');
+	}
+
+	public function testAboveTheHourlyCapOneActorIsSuppressedButOthersStillReachThePerson(): void {
+		$dispatcher = $this->dispatcher(['kunde@example.invalid']);
+
+		for ($i = 0; $i < MailDispatcher::HOECHSTENS_JE_STUNDE; $i++) {
+			$this->assertNotNull($dispatcher->queue(self::MIT_ADRESSE, 5000 + $i, MailOutbox::EVENT_TICKET_ASSIGNED, self::BOARD, 'pw-flut'), 'Mail ' . $i);
+		}
+
+		$this->assertNull($dispatcher->queue(self::MIT_ADRESSE, 5999, MailOutbox::EVENT_TICKET_ASSIGNED, self::BOARD, 'pw-flut'));
+		$this->assertNotNull(
+			$dispatcher->queue(self::MIT_ADRESSE, 5999, MailOutbox::EVENT_TICKET_ASSIGNED, self::BOARD, 'pw-kollegin'),
+			'Ein anderer Auslöser erreicht die Person weiter.',
+		);
+		$this->assertNotNull(
+			$dispatcher->queue(self::OHNE_ADRESSE, 5999, MailOutbox::EVENT_TICKET_ASSIGNED, self::BOARD, 'pw-flut'),
+			'Die Grenze gilt je Empfänger.',
+		);
+	}
+
+	public function testUndeliveredRowsDoNotUseUpTheHourlyCap(): void {
+		$dispatcher = $this->dispatcher(['kunde@example.invalid']);
+
+		for ($i = 0; $i < MailDispatcher::HOECHSTENS_JE_STUNDE; $i++) {
+			$zeile = $dispatcher->queue(self::OHNE_ADRESSE, 6000 + $i, MailOutbox::EVENT_TICKET_ASSIGNED, self::BOARD, 'pw-flut');
+			$this->assertNotNull($zeile);
+			$this->assertSame(MailOutbox::STATUS_SKIPPED_NO_ADDRESS, $dispatcher->flush($zeile, 'Betreff', 'Text')->getStatus());
+		}
+
+		$this->assertNotNull($dispatcher->queue(self::OHNE_ADRESSE, 6999, MailOutbox::EVENT_TICKET_ASSIGNED, self::BOARD, 'pw-flut'));
 	}
 
 	/**

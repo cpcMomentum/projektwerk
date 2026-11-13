@@ -144,6 +144,7 @@ return [
 		// Mitgliedschaft, nicht am Nextcloud-Konto.
 		['name' => 'settings#addMember', 'url' => '/api/v1/boards/{boardId}/members', 'verb' => 'POST'],
 		['name' => 'settings#updateMember', 'url' => '/api/v1/boards/{boardId}/members/{userId}', 'verb' => 'PATCH'],
+		['name' => 'settings#projectLog', 'url' => '/api/v1/boards/{boardId}/project-log', 'verb' => 'GET'],
 		// Entfernen (§5.29): erst die bezifferte Vorschau (GET), dann das
 		// Entfernen selbst (DELETE). Die Vorschau nennt, wie viele private
 		// Vorgaenge der Person dabei geloescht wuerden.
@@ -186,6 +187,8 @@ return [
 		// Eigene Firma der Instanz (#352), admin-only. Kein GET: Der Wert kommt als
 		// Initial-State mit der Seite, weil ihn jede Person beim Projektanlegen braucht.
 		['name' => 'ownCompany#save', 'url' => '/api/v1/admin/own-company', 'verb' => 'PUT'],
+		['name' => 'aiAccess#show', 'url' => '/api/v1/admin/ai-access', 'verb' => 'GET'],
+		['name' => 'aiAccess#save', 'url' => '/api/v1/admin/ai-access', 'verb' => 'PUT'],
 
 		// MCP-Endpunkt fuer Claude (#343), Bearer-Token statt Sitzung. Keine OCS-Route:
 		// Claude sendet kein `OCS-APIRequest` und bekaeme 412.

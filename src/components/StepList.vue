@@ -125,6 +125,7 @@
 							:id="'pw-step-title-' + step.id"
 							class="pw-step__feld"
 							:modelValue="editTitle"
+							:maxlength="limits.stepTitle"
 							:label="t('projektwerk', 'Titel')"
 							:labelOutside="true"
 							:disabled="busy"
@@ -252,6 +253,7 @@
 		<div class="pw-step pw-step--new">
 			<NcTextField
 				v-model="newTitle"
+				:maxlength="limits.stepTitle"
 				class="pw-step__neu-titel"
 				:labelOutside="true"
 				:aria-label="t('projektwerk', 'Neuer Arbeitsschritt')"
@@ -344,6 +346,7 @@ import PlusIcon from 'vue-material-design-icons/Plus.vue'
 import { deleteStep, fetchAssignable, fetchAssignableForNew, updateStep } from '@/services/steps'
 import { showError } from '@/services/toast'
 import { useOutboxStore } from '@/stores/outboxStore'
+import { LIMITS } from '@/utils/limits'
 
 const offeneListen = new Set<{ closePersonMenu: () => boolean }>()
 
@@ -426,7 +429,7 @@ export default defineComponent({
 	emits: ['changed'],
 
 	setup() {
-		return { outbox: useOutboxStore() }
+		return { outbox: useOutboxStore(), limits: LIMITS }
 	},
 
 	data() {

@@ -42,6 +42,29 @@
 					</section>
 				</div>
 
+				<div v-show="activeSection === 'ki'">
+					<section class="pw-form-section">
+						<h3>
+							{{ t('projektwerk', 'KI-Zugriff') }}
+						</h3>
+						<p class="pw-settings__hint">
+							{{ t('projektwerk', 'Über den KI-Zugang (MCP) kann Claude im Namen einer Person Vorgänge anlegen und ändern. Interne und private Vorgänge sind immer erlaubt.') }}
+						</p>
+						<label class="pw-settings__check">
+							<NcCheckboxRadioSwitch
+								:modelValue="aiPublicWrite"
+								type="switch"
+								:disabled="aiBusy"
+								@update:modelValue="kiSchalten">
+								{{ t('projektwerk', 'KI darf in kundensichtbare Vorgänge schreiben') }}
+							</NcCheckboxRadioSwitch>
+						</label>
+						<p class="pw-settings__hint">
+							{{ t('projektwerk', 'Ist der Schalter aus, lehnt ProjektWerk jede KI-Änderung an Vorgängen ab, die der Kunde sieht. Ist er an, muss die KI vor jeder solchen Änderung nachfragen. Dateien aus der Nextcloud hängt die KI nie an kundensichtbare Vorgänge an.') }}
+						</p>
+					</section>
+				</div>
+
 				<div v-show="activeSection === 'antworten'">
 					<section class="pw-form-section">
 						<h3>
@@ -213,6 +236,7 @@ import AlertIcon from 'vue-material-design-icons/AlertCircleOutline.vue'
 import CheckIcon from 'vue-material-design-icons/CheckCircleOutline.vue'
 import LanConnectIcon from 'vue-material-design-icons/LanConnect.vue'
 import PwSettingsNav from '@/components/PwSettingsNav.vue'
+import { fetchAiAccess, saveAiAccess } from '@/services/aiAccess'
 import { ownCompany, saveOwnCompany } from '@/services/ownCompany'
 import { fetchReplyMailbox, saveReplyMailbox, testReplyMailbox } from '@/services/replyMailbox'
 import { showError, showSuccess } from '@/services/toast'
@@ -237,6 +261,8 @@ export default defineComponent({
 	data() {
 		return {
 			activeSection: 'firma',
+			aiPublicWrite: false,
+			aiBusy: false,
 			/** Das Eingabefeld der eigenen Firma, bis es gespeichert wird. */
 			firmaEntwurf: ownCompany.value,
 			busy: false,
@@ -269,6 +295,7 @@ export default defineComponent({
 			return [
 				{ key: 'firma', label: t('projektwerk', 'Eigene Firma') },
 				{ key: 'antworten', label: t('projektwerk', 'Antworten per E-Mail') },
+				{ key: 'ki', label: t('projektwerk', 'KI-Zugriff') },
 			]
 		},
 
@@ -279,7 +306,7 @@ export default defineComponent({
 	},
 
 	async mounted() {
-		await this.laden()
+		await Promise.all([this.laden(), this.kiLaden()])
 	},
 
 	methods: {
@@ -326,6 +353,29 @@ export default defineComponent({
 			} finally {
 				this.testing = false
 				this.busy = false
+			}
+		},
+
+		async kiLaden(): Promise<void> {
+			try {
+				this.aiPublicWrite = (await fetchAiAccess()).publicWrite
+			} catch (e) {
+				showError((e as { message?: string }).message ?? t('projektwerk', 'Einstellungen konnten nicht geladen werden'))
+			}
+		},
+
+		/**
+		 * @param an Der neue Stand des Schalters.
+		 */
+		async kiSchalten(an: boolean): Promise<void> {
+			this.aiBusy = true
+			try {
+				this.aiPublicWrite = (await saveAiAccess(an)).publicWrite
+				showSuccess(t('projektwerk', 'Einstellungen gespeichert.'))
+			} catch (e) {
+				showError((e as { message?: string }).message ?? t('projektwerk', 'Einstellungen konnten nicht gespeichert werden'))
+			} finally {
+				this.aiBusy = false
 			}
 		},
 

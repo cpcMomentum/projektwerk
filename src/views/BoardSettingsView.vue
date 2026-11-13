@@ -598,6 +598,16 @@
 					</div>
 				</section>
 
+				<section v-if="mayManage && activeSection === 'protokoll'" class="pw-settings__block">
+					<h3 class="pw-col__head">
+						{{ t('projektwerk', 'Protokoll') }}
+					</h3>
+					<p class="pw-settings__hint">
+						{{ t('projektwerk', 'Wer Mitglieder, Rollen, Verwaltungsrechte und Boards dieses Projekts geändert hat. Sichtbar nur für interne Mitglieder mit Verwaltungsrecht.') }}
+					</p>
+					<ProjectLogList :boardId="boardId" />
+				</section>
+
 				<section v-if="showBoardArchive" v-show="activeSection === 'board-archiv'" class="pw-settings__block">
 					<h3 class="pw-col__head">
 						{{ t('projektwerk', 'Board archivieren') }}
@@ -765,6 +775,7 @@ import DeleteIcon from 'vue-material-design-icons/DeleteOutline.vue'
 import FolderIcon from 'vue-material-design-icons/Folder.vue'
 import LockIcon from 'vue-material-design-icons/Lock.vue'
 import FolderPicker from '@/components/FolderPicker.vue'
+import ProjectLogList from '@/components/ProjectLogList.vue'
 import PwSettingsNav from '@/components/PwSettingsNav.vue'
 import { searchGithubRepos } from '@/services/github'
 import {
@@ -811,7 +822,7 @@ function parentPath(path: string): string {
 export default defineComponent({
 	name: 'BoardSettingsView',
 
-	components: { ArrowDownIcon, ArrowUpIcon, ChevronLeftIcon, DeleteIcon, FolderIcon, FolderPicker, LockIcon, NcAvatar, NcButton, NcCheckboxRadioSwitch, NcDialog, NcEmptyContent, NcSelect, NcTextField, PwSettingsNav },
+	components: { ArrowDownIcon, ArrowUpIcon, ChevronLeftIcon, DeleteIcon, FolderIcon, FolderPicker, LockIcon, NcAvatar, NcButton, NcCheckboxRadioSwitch, NcDialog, NcEmptyContent, NcSelect, NcTextField, ProjectLogList, PwSettingsNav },
 
 	setup() {
 		return { store: useBoardStore() }
@@ -942,6 +953,7 @@ export default defineComponent({
 						{ key: 'mitglieder', label: t('projektwerk', 'Mitglieder') },
 						{ key: 'dateiablage', label: t('projektwerk', 'Dateiablage') },
 						{ key: 'projekt-archiv', label: t('projektwerk', 'Archiv') },
+						{ key: 'protokoll', label: t('projektwerk', 'Protokoll') },
 					],
 				},
 				board,
@@ -1256,6 +1268,19 @@ export default defineComponent({
 			}
 		},
 
+		// Stellt ein Inline-Feld zurück, wenn der Server die Änderung nicht übernommen hat.
+		async writeInline(run: () => Promise<unknown>, fallback: string, restore: () => void): Promise<void> {
+			let saved = false
+			await this.write(async () => {
+				await run()
+				saved = true
+			}, fallback)
+			if (!saved) {
+				// Vue setzt das Feld nicht zurück, weil sich der gebundene Wert nicht geändert hat.
+				restore()
+			}
+		},
+
 		saveProject() {
 			return this.write(
 				() => updateBoard(this.boardId, {
@@ -1409,12 +1434,13 @@ export default defineComponent({
 		 * @param event Das change-Ereignis des Auswahlfelds.
 		 */
 		setColumnOutcome(column: Column, event: Event) {
-			const wert = (event.target as HTMLSelectElement).value
-			const outcome = wert === '' ? null : (wert as 'done' | 'discarded')
+			const select = event.target as HTMLSelectElement
+			const outcome = select.value === '' ? null : (select.value as 'done' | 'discarded')
 
-			return this.write(
+			return this.writeInline(
 				() => setColumnFinalOutcome(this.boardId, column.id, outcome),
 				t('projektwerk', 'Endspalte konnte nicht gesetzt werden'),
+				() => { select.value = column.finalOutcome ?? '' },
 			)
 		},
 
@@ -1709,11 +1735,13 @@ export default defineComponent({
 		 * @param event Das Auswahlereignis.
 		 */
 		changeRole(member: Member, event: Event) {
-			const role = (event.target as HTMLSelectElement).value as MemberRole
+			const select = event.target as HTMLSelectElement
+			const role = select.value as MemberRole
 
-			return this.write(
+			return this.writeInline(
 				() => updateMember(this.boardId, member.userId, { role }),
 				t('projektwerk', 'Rolle konnte nicht geändert werden'),
+				() => { select.value = member.role },
 			)
 		},
 
@@ -1722,11 +1750,13 @@ export default defineComponent({
 		 * @param event Das Umschaltereignis.
 		 */
 		changeManager(member: Member, event: Event) {
-			const isManager = (event.target as HTMLInputElement).checked
+			const box = event.target as HTMLInputElement
+			const isManager = box.checked
 
-			return this.write(
+			return this.writeInline(
 				() => updateMember(this.boardId, member.userId, { isManager }),
 				t('projektwerk', 'Verwaltungsrecht konnte nicht geändert werden'),
+				() => { box.checked = Boolean(member.isManager) },
 			)
 		},
 

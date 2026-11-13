@@ -10,8 +10,11 @@ declare(strict_types=1);
 namespace OCA\Projektwerk\Service;
 
 use OCA\Projektwerk\Access\TicketScope;
+use OCA\Projektwerk\Access\ViewerContext;
+use OCA\Projektwerk\AppInfo\Application;
 use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCA\Projektwerk\Db\TicketLog;
+use OCP\IAppConfig;
 use OCP\IDBConnection;
 use Psr\Log\LoggerInterface;
 
@@ -39,11 +42,19 @@ use Psr\Log\LoggerInterface;
  */
 class MemberLifecycleService {
 
+	public const KEY_PENDING = 'forget_pending';
+
 	public function __construct(
 		private IDBConnection $db,
 		private LoggerInterface $logger,
 		private TicketLogService $log,
+		private IAppConfig $config,
 	) {
+	}
+
+	/** @return list<string> */
+	public function pending(): array {
+		return array_values(array_filter($this->config->getValueArray(Application::APP_ID, self::KEY_PENDING, [], true), 'is_string'));
 	}
 
 	/**
@@ -64,16 +75,18 @@ class MemberLifecycleService {
 		try {
 			$geloest = $this->loeseZuweisungen($userId);
 			$geloescht = $this->loeschePrivateTickets($userId);
+			$uebergeben = $this->uebergebeEigentum($userId);
 			$this->entferneMitgliedschaften($userId);
 			$this->entferneEinstellungen($userId);
 
 			$this->db->commit();
 
 			$this->logger->info(sprintf(
-				'ProjektWerk: Konto %s aufgeraeumt — %d Zuweisungen geloest, %d private Vorgaenge entfernt.',
+				'ProjektWerk: Konto %s aufgeraeumt — %d Zuweisungen geloest, %d private Vorgaenge entfernt, %d Projekte uebergeben.',
 				$userId,
 				$geloest,
 				$geloescht,
+				$uebergeben,
 			));
 		} catch (\Throwable $e) {
 			$this->db->rollBack();
@@ -82,11 +95,95 @@ class MemberLifecycleService {
 			// Loeschen eines Kontos; eine Ausnahme hier braeche den
 			// Loeschvorgang ab und liesse ein halbes Konto zurueck. Was hier
 			// misslingt, gehoert ins Log und in eine spaetere Bereinigung.
-			$this->logger->error('ProjektWerk: Aufraeumen nach Kontoloeschung gescheitert', [
+			$this->logger->error('ProjektWerk: Aufraeumen nach Kontoloeschung gescheitert, wird wiederholt', [
 				'exception' => $e,
 				'userId' => $userId,
 			]);
+			$this->merke($userId, true);
+
+			return;
 		}
+
+		$this->merke($userId, false);
+	}
+
+	/**
+	 * @return bool ob sich etwas geändert hat
+	 */
+	public function setzeEigentuemer(int $projectId, string $von, string $nach): bool {
+		$geaendert = false;
+		foreach (['pwerk_projects' => 'id', 'pwerk_boards' => 'project_id'] as $tabelle => $spalte) {
+			$qb = $this->db->getQueryBuilder();
+			$qb->update($tabelle)
+				->set('owner_user_id', $qb->createNamedParameter($nach))
+				->where($qb->expr()->eq($spalte, $qb->createNamedParameter($projectId, IQueryBuilder::PARAM_INT)))
+				->andWhere($qb->expr()->eq('owner_user_id', $qb->createNamedParameter($von)));
+			$geaendert = $qb->executeStatement() > 0 || $geaendert;
+		}
+
+		return $geaendert;
+	}
+
+	private function merke(string $userId, bool $offen): void {
+		$bisher = $this->pending();
+		$liste = array_values(array_diff($bisher, [$userId]));
+		if ($offen) {
+			$liste[] = $userId;
+		}
+		if ($liste === $bisher) {
+			return;
+		}
+		try {
+			$this->config->setValueArray(Application::APP_ID, self::KEY_PENDING, $liste, true);
+		} catch (\Throwable $e) {
+			// Nicht weiterwerfen: Das Löschen des Kontos darf hieran nicht scheitern.
+			$this->logger->error('ProjektWerk: Merkliste fuer das Aufraeumen nicht gespeichert', ['exception' => $e, 'userId' => $userId]);
+		}
+	}
+
+	/** Projekte gehen an das dienstälteste interne Mitglied mit Verwaltungsrecht, sonst bleiben sie ohne Eigentümer. */
+	private function uebergebeEigentum(string $userId): int {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('id')
+			->from('pwerk_projects')
+			->where($qb->expr()->eq('owner_user_id', $qb->createNamedParameter($userId)));
+		$projekte = array_map(static fn (array $zeile): int => (int)$zeile['id'], $qb->executeQuery()->fetchAll());
+
+		foreach ($projekte as $projectId) {
+			$qb = $this->db->getQueryBuilder();
+			$qb->select('user_id')
+				->from('pwerk_members')
+				->where($qb->expr()->eq('project_id', $qb->createNamedParameter($projectId, IQueryBuilder::PARAM_INT)))
+				->andWhere($qb->expr()->eq('role', $qb->createNamedParameter(ViewerContext::ROLE_INTERNAL)))
+				->andWhere($qb->expr()->eq('is_manager', $qb->createNamedParameter(1, IQueryBuilder::PARAM_INT)))
+				->andWhere($qb->expr()->notIn('user_id', $qb->createNamedParameter([$userId, ...$this->pending()], IQueryBuilder::PARAM_STR_ARRAY)))
+				->orderBy('added_at', 'ASC')
+				->addOrderBy('id', 'ASC')
+				->setMaxResults(1);
+			$this->setzeEigentuemer($projectId, $userId, (string)($qb->executeQuery()->fetchOne() ?: ''));
+		}
+
+		// Boards mit abweichendem Eigentümer folgen ihrem Projekt.
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('b.id', 'p.owner_user_id')
+			->from('pwerk_boards', 'b')
+			->innerJoin('b', 'pwerk_projects', 'p', $qb->expr()->eq('p.id', 'b.project_id'))
+			->where($qb->expr()->eq('b.owner_user_id', $qb->createNamedParameter($userId)));
+		foreach ($qb->executeQuery()->fetchAll() as $zeile) {
+			$update = $this->db->getQueryBuilder();
+			$update->update('pwerk_boards')
+				->set('owner_user_id', $update->createNamedParameter((string)$zeile['owner_user_id']))
+				->where($update->expr()->eq('id', $update->createNamedParameter((int)$zeile['id'], IQueryBuilder::PARAM_INT)));
+			$update->executeStatement();
+		}
+
+		$qb = $this->db->getQueryBuilder();
+		$qb->update('pwerk_boards')
+			->set('created_by', $qb->createNamedParameter(null, IQueryBuilder::PARAM_NULL))
+			->where($qb->expr()->eq('created_by', $qb->createNamedParameter($userId)));
+		$qb->executeStatement();
+
+		return count($projekte);
 	}
 
 	/**

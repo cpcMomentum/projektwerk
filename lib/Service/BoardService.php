@@ -19,6 +19,7 @@ use OCA\Projektwerk\Db\ColumnMapper;
 use OCA\Projektwerk\Db\Member;
 use OCA\Projektwerk\Db\MemberMapper;
 use OCA\Projektwerk\Db\Project;
+use OCA\Projektwerk\Db\ProjectLog;
 use OCA\Projektwerk\Db\ProjectMapper;
 use OCA\Projektwerk\Db\Ticket;
 use OCA\Projektwerk\Db\TicketMapper;
@@ -76,6 +77,7 @@ class BoardService {
 		private EntitlementService $entitlement,
 		private OwnCompanySettings $ownCompany,
 		private TicketMapper $tickets,
+		private ProjectLogService $projectLog,
 	) {
 	}
 
@@ -172,13 +174,15 @@ class BoardService {
 			$this->insertDefaultColumns((int)$board->getId());
 
 			$this->db->commit();
-
-			return $board;
 		} catch (\Throwable $e) {
 			$this->db->rollBack();
 
 			throw $e;
 		}
+
+		$this->projectLog->recordFor($projectId, $userId, null, ProjectLog::PROJECT_CREATED, null, trim($title));
+
+		return $board;
 	}
 
 	/**
@@ -251,13 +255,15 @@ class BoardService {
 			$this->insertDefaultColumns((int)$board->getId());
 
 			$this->db->commit();
-
-			return $board;
 		} catch (\Throwable $e) {
 			$this->db->rollBack();
 
 			throw $e;
 		}
+
+		$this->projectLog->record($viewer, ProjectLog::BOARD_CREATED, null, trim($title));
+
+		return $board;
 	}
 
 	/**
@@ -458,10 +464,15 @@ class BoardService {
 		if (!$archived && $board->isArchived()) {
 			$this->entitlement->assertMayCreateBoardInProject($viewer->projectId);
 		}
+		$vorher = $board->isArchived();
 		$board->setArchived($archived ? 1 : 0);
 		$board->setUpdatedAt(new \DateTime());
+		$gespeichert = $this->boards->update($board);
+		if ($vorher !== $archived) {
+			$this->projectLog->record($viewer, $archived ? ProjectLog::BOARD_ARCHIVED : ProjectLog::BOARD_UNARCHIVED, null, (string)$board->getTitle());
+		}
 
-		return $this->boards->update($board);
+		return $gespeichert;
 	}
 
 	/** @return array{archived: bool} Einzeln archivierte Boards bleiben beim Zurückholen archiviert; die WerkPlus-Zählung ändert sich nicht. */
@@ -469,9 +480,13 @@ class BoardService {
 		$this->assertManager($viewer);
 
 		$project = $this->projects->findForViewer($viewer);
+		$vorher = (int)$project->getArchived() === 1;
 		$project->setArchived($archived ? 1 : 0);
 		$project->setUpdatedAt(new \DateTime());
 		$this->projects->update($project);
+		if ($vorher !== $archived) {
+			$this->projectLog->record($viewer, $archived ? ProjectLog::PROJECT_ARCHIVED : ProjectLog::PROJECT_UNARCHIVED, null, (string)$project->getTitle());
+		}
 
 		return ['archived' => $archived];
 	}
@@ -567,6 +582,7 @@ class BoardService {
 				throw new \InvalidArgumentException($this->l10n->t('Dieses Board kann nicht gelöscht werden.'));
 			}
 
+			$titel = (string)$this->boards->findForViewer($viewer)->getTitle();
 			$this->members->moveHomeBoard($viewer, $ziel);
 			$this->tickets->purgeDeletedInBoard($viewer);
 			$verbleibend = array_values(array_filter(
@@ -592,6 +608,8 @@ class BoardService {
 
 			throw $e;
 		}
+
+		$this->projectLog->record($viewer, ProjectLog::BOARD_DELETED, null, $titel);
 
 		return ['nextBoardId' => $ziel];
 	}

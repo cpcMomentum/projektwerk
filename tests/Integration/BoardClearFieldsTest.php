@@ -19,6 +19,7 @@ use OCA\Projektwerk\Db\ProjectMapper;
 use OCA\Projektwerk\Service\BoardService;
 use OCA\Projektwerk\Service\ColumnService;
 use OCA\Projektwerk\Service\MemberService;
+use OCA\Projektwerk\Service\ProjectLogService;
 use OCP\AppFramework\Http;
 use OCP\IRequest;
 use OCP\Server;
@@ -126,6 +127,7 @@ class BoardClearFieldsTest extends IntegrationTestCase {
 			Server::get(BoardService::class),
 			Server::get(ColumnService::class),
 			Server::get(MemberService::class),
+			Server::get(ProjectLogService::class),
 			Server::get(BoardAccess::class),
 			LeakMatrixFixture::ANNA,
 		);

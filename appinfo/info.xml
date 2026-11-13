@@ -23,7 +23,7 @@ Der eigentliche Zweck ist nicht das Board, sondern die **sichtbare Zustaendigkei
 - **Kunden ohne Fremdkonto** — Zusammenarbeit auf der eigenen Nextcloud, wahlweise per Gastzugang
     ]]></description>
 
-    <version>0.4.25</version>
+    <version>0.4.26</version>
     <licence>AGPL-3.0-or-later</licence>
 
     <author mail="axel.deffner@cpcmomentum.com" homepage="https://github.com/cpcMomentum">Axel Deffner</author>
@@ -68,6 +68,7 @@ Der eigentliche Zweck ist nicht das Board, sondern die **sichtbare Zustaendigkei
         <job>OCA\Projektwerk\BackgroundJob\MailRetryJob</job>
         <job>OCA\Projektwerk\BackgroundJob\ReplyIntakeJob</job>
         <job>OCA\Projektwerk\BackgroundJob\IdemCleanupJob</job>
+        <job>OCA\Projektwerk\BackgroundJob\ForgetRetryJob</job>
     </background-jobs>
 
     <!--
@@ -107,5 +108,6 @@ Der eigentliche Zweck ist nicht das Board, sondern die **sichtbare Zustaendigkei
 		<command>OCA\Projektwerk\Command\TicketRestore</command>
 		<command>OCA\Projektwerk\Command\AttachmentsRelocate</command>
 		<command>OCA\Projektwerk\Command\AttachmentsVerify</command>
+		<command>OCA\Projektwerk\Command\ProjectSetManager</command>
 	</commands>
 </info>

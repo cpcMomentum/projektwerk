@@ -143,6 +143,8 @@ final class ReadPathRegistry {
 		'TicketUserMapper::countForTickets',
 		'TicketLogMapper::findForTickets',
 		'TicketLogMapper::countForTickets',
+		// Das Projekt-Protokoll: nur das Projekt des Betrachters; das Verwaltungsrecht prüft der Dienst.
+		'ProjectLogMapper::findForProject',
 
 		// **Zwei Lesepfade ohne Betrachter — und das ist die Erwartung.**
 		//
@@ -165,6 +167,8 @@ final class ReadPathRegistry {
 		// den Einlese-Job. Kein Betrachter (Token statt ViewerContext) — die
 		// Deckung ist wie bei findRetryable strukturell über VIEWERLESS_MAPPERS.
 		'MailOutboxMapper::findByReplyToken',
+		// Die Stundengrenze zählt Zeilen eines Paars aus Auslöser und Empfänger, ohne Betrachter.
+		'MailOutboxMapper::countFromActorToRecipientSince',
 		// `NotifyPrefMapper::isEnabled()` steht hier bewusst **nicht**: Es fragt
 		// die Datenbank nicht selbst, sondern ruft `findForUser()` auf. Der
 		// Lesepfad ist der eine darunter; ein zweiter Eintrag waere eine
@@ -247,6 +251,7 @@ final class ReadPathRegistry {
 		// offen — dieselbe Rechtegrenze wie die Kontensuche, deshalb ebenfalls in
 		// der Matrix. Erwartung: `testRemovalImpactRefusesEveryoneWithoutManagementRights`.
 		'settings#memberRemovalImpact',
+		'settings#projectLog',
 		// **Kein Board im Pfad — und trotzdem in der Matrix.** Die Route
 		// liefert keine Projektdaten, sondern die eigenen Kanalschalter. Die
 		// Erwartung ist deshalb eine andere als sonst und trotzdem eine echte:
@@ -294,6 +299,7 @@ final class ReadPathRegistry {
 		// existiert nicht.
 		'replyMailbox#config' => 'Instanz-weite IMAP-Einstellungen (admin-only, ohne Passwort), '
 			. 'keine Board-/Vorgangsdaten.',
+		'aiAccess#show' => 'Instanz-weiter Schalter für KI-Schreiben (admin-only), keine Board-/Vorgangsdaten.',
 		// Das „Was ist neu?"-Fenster (#315) liest allein die ausgelieferte
 		// whatsnew.json und die Nutzer-Marke (`whatsnew_last_seen`). Kein Mapper,
 		// kein Board im Pfad, keine Rolle: Ein Leak-Vektor auf Vorgangsdaten

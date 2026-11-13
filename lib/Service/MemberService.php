@@ -14,6 +14,7 @@ use OCA\Projektwerk\Db\Board;
 use OCA\Projektwerk\Db\BoardMapper;
 use OCA\Projektwerk\Db\Member;
 use OCA\Projektwerk\Db\MemberMapper;
+use OCA\Projektwerk\Db\ProjectLog;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\DB\Exception as DbException;
 use OCP\IL10N;
@@ -49,6 +50,7 @@ class MemberService {
 		private MemberLifecycleService $lifecycle,
 		private EntitlementService $entitlement,
 		private IL10N $l10n,
+		private ProjectLogService $projectLog,
 	) {
 	}
 
@@ -99,7 +101,13 @@ class MemberService {
 		$member->setAddedAt(new \DateTime());
 
 		try {
-			return $this->members->insert($member);
+			$neu = $this->members->insert($member);
+			$this->projectLog->record($viewer, ProjectLog::MEMBER_ADDED, $userId, null, null, $role);
+			if ($neu->getIsManager() === 1) {
+				$this->projectLog->record($viewer, ProjectLog::MANAGER_GRANTED, $userId);
+			}
+
+			return $neu;
 		} catch (DbException $e) {
 			if ($e->getReason() === DbException::REASON_UNIQUE_CONSTRAINT_VIOLATION) {
 				throw new \InvalidArgumentException($this->l10n->t('Diese Person ist bereits Mitglied.'));
@@ -191,16 +199,22 @@ class MemberService {
 	 * @param array{role?: string, isManager?: bool, displayName?: ?string, company?: ?string} $changes
 	 * @throws NotManagerException
 	 * @throws DoesNotExistException das Mitglied gehört nicht zu diesem Board
+	 * @throws WerkPlusLimitException der Wechsel auf extern machte ein Kundenprojekt über dem freien Umfang
 	 */
 	public function update(ViewerContext $viewer, string $userId, array $changes): Member {
 		$this->assertManager($viewer);
 
 		$member = $this->findInBoard($viewer, $userId);
 		$role = $changes['role'] ?? (string)$member->getRole();
+		$rolleVorher = (string)$member->getRole();
+		$verwalterVorher = $member->getIsManager() === 1;
 
 		if (array_key_exists('role', $changes)) {
 			$this->assertKnownRole($changes['role']);
 			$this->assertNotDemotingTheOwner($viewer, $userId, $changes['role']);
+			if ($changes['role'] === ViewerContext::ROLE_EXTERNAL && $member->getRole() !== ViewerContext::ROLE_EXTERNAL) {
+				$this->entitlement->assertMayAddExternalMember($viewer->projectId);
+			}
 			$member->setRole($changes['role']);
 		}
 
@@ -224,7 +238,15 @@ class MemberService {
 			$member->setCompany($this->trimOrNull($changes['company']));
 		}
 
-		return $this->members->update($member);
+		$gespeichert = $this->members->update($member);
+		if ((string)$gespeichert->getRole() !== $rolleVorher) {
+			$this->projectLog->record($viewer, ProjectLog::ROLE_CHANGED, $userId, null, $rolleVorher, (string)$gespeichert->getRole());
+		}
+		if (($gespeichert->getIsManager() === 1) !== $verwalterVorher) {
+			$this->projectLog->record($viewer, $verwalterVorher ? ProjectLog::MANAGER_REVOKED : ProjectLog::MANAGER_GRANTED, $userId);
+		}
+
+		return $gespeichert;
 	}
 
 	/**
@@ -270,6 +292,7 @@ class MemberService {
 		$this->assertNotOwner($viewer, $userId);
 
 		$this->lifecycle->removeFromProject($userId, $viewer->projectId, $viewer->userId);
+		$this->projectLog->record($viewer, ProjectLog::MEMBER_REMOVED, $userId);
 	}
 
 	/**

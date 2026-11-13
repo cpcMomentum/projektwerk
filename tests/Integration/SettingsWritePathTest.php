@@ -14,6 +14,7 @@ use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Controller\SettingsController;
 use OCA\Projektwerk\Db\BoardMapper;
 use OCA\Projektwerk\Db\ColumnMapper;
+use OCA\Projektwerk\Db\Member;
 use OCA\Projektwerk\Db\MemberMapper;
 use OCA\Projektwerk\Db\ProjectMapper;
 use OCA\Projektwerk\Db\TicketMapper;
@@ -22,6 +23,7 @@ use OCA\Projektwerk\Service\BoardService;
 use OCA\Projektwerk\Service\ColumnService;
 use OCA\Projektwerk\Service\EntitlementService;
 use OCA\Projektwerk\Service\MemberService;
+use OCA\Projektwerk\Service\ProjectLogService;
 use OCA\Projektwerk\Service\NotManagerException;
 use OCA\Projektwerk\Service\NotOwnerException;
 use OCA\Projektwerk\Service\TicketService;
@@ -230,13 +232,7 @@ class SettingsWritePathTest extends IntegrationTestCase {
 		$config = Server::get(IAppConfig::class);
 		$this->boardService->setProjectArchived($this->manager(), true);
 
-		$qb = $this->db->getQueryBuilder();
-		$qb->select($qb->createFunction('COUNT(DISTINCT m.project_id)'))
-			->from('pwerk_members', 'm')
-			->where($qb->expr()->eq('m.role', $qb->createNamedParameter(ViewerContext::ROLE_EXTERNAL)));
-		$alle = (int)$qb->executeQuery()->fetchOne();
-
-		$config->setValueInt('projektwerk', 'plus_max_customer_projects', $alle);
+		$config->setValueInt('projektwerk', 'plus_max_customer_projects', $this->customerProjectCount());
 		try {
 			$neu = $this->boardService->create(LeakMatrixFixture::ANNA, 'Zweites Kundenprojekt');
 			$this->expectException(WerkPlusLimitException::class);
@@ -244,6 +240,64 @@ class SettingsWritePathTest extends IntegrationTestCase {
 		} finally {
 			$config->deleteKey('projektwerk', 'plus_max_customer_projects');
 		}
+	}
+
+	/** Der Wechsel auf extern macht ein Kundenprojekt, also gilt dieselbe Grenze wie beim Hinzufügen. */
+	public function testSwitchingAMemberToExternalRespectsTheCustomerProjectLimit(): void {
+		$config = Server::get(IAppConfig::class);
+		$neu = $this->boardService->create(LeakMatrixFixture::ANNA, 'Internes Projekt');
+		$anna = $this->fixture->contextFor(LeakMatrixFixture::ANNA, (int)$neu->getId());
+		$bert = new Member();
+		$bert->setBoardId((int)$neu->getId());
+		$bert->setProjectId((int)$neu->getProjectId());
+		$bert->setUserId(LeakMatrixFixture::BERT);
+		$bert->setRole(ViewerContext::ROLE_INTERNAL);
+		$bert->setIsManager(0);
+		$bert->setAddedBy(LeakMatrixFixture::ANNA);
+		$bert->setAddedAt(new \DateTime());
+		Server::get(MemberMapper::class)->insert($bert);
+
+		$config->setValueInt('projektwerk', 'plus_max_customer_projects', $this->customerProjectCount());
+		try {
+			try {
+				$this->memberService->update($anna, LeakMatrixFixture::BERT, ['role' => ViewerContext::ROLE_EXTERNAL]);
+				$this->fail('Der Rollenwechsel machte ein weiteres Kundenprojekt über dem freien Umfang.');
+			} catch (WerkPlusLimitException) {
+			}
+		} finally {
+			$config->deleteKey('projektwerk', 'plus_max_customer_projects');
+		}
+
+		$rollen = array_column($this->memberService->listForBoard($anna), 'role', 'userId');
+		$this->assertSame(ViewerContext::ROLE_INTERNAL, $rollen[LeakMatrixFixture::BERT]);
+	}
+
+	/** Ein bestehendes Kundenprojekt bleibt frei: Weitere Externe kosten nichts. */
+	public function testSwitchingToExternalInAnExistingCustomerProjectStaysFree(): void {
+		$config = Server::get(IAppConfig::class);
+
+		$config->setValueInt('projektwerk', 'plus_max_customer_projects', $this->customerProjectCount());
+		try {
+			$member = $this->memberService->update($this->manager(), LeakMatrixFixture::BERT, ['role' => ViewerContext::ROLE_EXTERNAL]);
+		} finally {
+			$config->deleteKey('projektwerk', 'plus_max_customer_projects');
+		}
+
+		$this->assertSame(ViewerContext::ROLE_EXTERNAL, $member->getRole());
+	}
+
+	/** Zählt wie EntitlementService::countCustomerProjects, damit die gesetzte Grenze genau ausgeschöpft ist. */
+	private function customerProjectCount(): int {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select($qb->createFunction('COUNT(DISTINCT p.id)'))
+			->from('pwerk_projects', 'p')
+			->innerJoin('p', 'pwerk_members', 'm', $qb->expr()->eq('m.project_id', 'p.id'))
+			->where($qb->expr()->eq('m.role', $qb->createNamedParameter(ViewerContext::ROLE_EXTERNAL)));
+		$result = $qb->executeQuery();
+		$count = (int)$result->fetchOne();
+		$result->closeCursor();
+
+		return $count;
 	}
 
 	public function testShowAndListCarryTheProjectAndItsBoardsEvenWhenArchived(): void {
@@ -845,6 +899,7 @@ class SettingsWritePathTest extends IntegrationTestCase {
 			$this->boardService,
 			$this->columnService,
 			$this->memberService,
+			Server::get(ProjectLogService::class),
 			Server::get(BoardAccess::class),
 			$userId,
 		);

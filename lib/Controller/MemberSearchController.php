@@ -19,7 +19,7 @@ use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\JSONResponse;
-use OCP\IConfig;
+use OCP\IAppConfig;
 use OCP\IL10N;
 use OCP\IRequest;
 use OCP\IUser;
@@ -50,7 +50,7 @@ class MemberSearchController extends Controller {
 	public function __construct(
 		IRequest $request,
 		private IUserManager $users,
-		private IConfig $config,
+		private IAppConfig $config,
 		private MemberMapper $members,
 		private BoardAccess $access,
 		private ?string $userId,
@@ -94,19 +94,7 @@ class MemberSearchController extends Controller {
 			return new JSONResponse(['users' => []]);
 		}
 
-		// **Nextclouds Auffindbarkeits-Einstellung achten.** Steht sie auf
-		// „nein", findet die Instanz Konten absichtlich nicht ueber eine
-		// Teilzeichenkette — ProjektWerk darf sie dann nicht doch finden. Der
-		// Vergleich laeuft in diesem Fall auf die vollstaendige Kennung.
-		$enumeration = $this->config->getAppValue(
-			'core',
-			'shareapi_allow_share_dialog_user_enumeration',
-			'yes',
-		) === 'yes';
-
-		$gefunden = $enumeration
-			? $this->users->searchDisplayName($term, self::LIMIT * 2)
-			: array_filter([$this->users->get($term)]);
+		$gefunden = $this->auffindbar($term);
 
 		$vorhanden = [];
 		foreach ($this->members->findForBoard($viewer) as $member) {
@@ -115,7 +103,7 @@ class MemberSearchController extends Controller {
 
 		$treffer = [];
 		foreach ($gefunden as $user) {
-			if (!$user instanceof IUser || isset($vorhanden[$user->getUID()])) {
+			if (isset($vorhanden[$user->getUID()])) {
 				// Bereits Mitglied: erneut anzubieten erzeugt nur den Fehler
 				// „ist bereits Mitglied" — und der ist keine Auskunft, sondern
 				// eine Sackgasse.
@@ -143,5 +131,44 @@ class MemberSearchController extends Controller {
 		}
 
 		return new JSONResponse(['users' => $treffer]);
+	}
+
+	/** @return array<string, IUser> */
+	private function auffindbar(string $term): array {
+		// Gruppen- oder Telefonbuch-Grenze: nur exakte Treffer, weil die App keine Gruppen abfragt (Architekturtest).
+		$teiltreffer = $this->core('shareapi_allow_share_dialog_user_enumeration', 'yes')
+			&& !$this->core('shareapi_restrict_user_enumeration_to_group', 'no')
+			&& !$this->core('shareapi_restrict_user_enumeration_to_phone', 'no');
+		$exakt = $this->core('shareapi_restrict_user_enumeration_full_match', 'yes');
+		$perKennung = $exakt && $this->core('shareapi_restrict_user_enumeration_full_match_userid', 'yes');
+		$perMail = $exakt && $this->core('shareapi_restrict_user_enumeration_full_match_email', 'yes');
+		if (!$teiltreffer && !$exakt) {
+			return [];
+		}
+
+		$gesucht = mb_strtolower($term);
+		$genaue = [];
+		$weitere = [];
+		foreach ($this->users->searchDisplayName($term, self::LIMIT * 2) as $user) {
+			$genau = mb_strtolower($user->getDisplayName()) === $gesucht
+				|| ($perKennung && mb_strtolower($user->getUID()) === $gesucht)
+				|| ($perMail && mb_strtolower((string)$user->getEMailAddress()) === $gesucht);
+			if ($exakt && $genau) {
+				$genaue[$user->getUID()] = $user;
+			} elseif ($teiltreffer) {
+				$weitere[$user->getUID()] = $user;
+			}
+		}
+		foreach ([$perKennung ? $this->users->get($term) : null, ...($perMail ? $this->users->getByEmail($term) : [])] as $user) {
+			if ($user instanceof IUser) {
+				$genaue[$user->getUID()] = $user;
+			}
+		}
+
+		return array_filter($genaue + $weitere, static fn (IUser $user): bool => $user->isEnabled());
+	}
+
+	private function core(string $key, string $default): bool {
+		return $this->config->getValueString('core', $key, $default) === 'yes';
 	}
 }

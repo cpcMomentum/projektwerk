@@ -37,6 +37,12 @@ class McpConfigTest extends TestCase {
 		$this->assertFalse($this->config(['mcp_allowed_clients' => ' , '] + $full)->isEnabled());
 	}
 
+	public function testPublicWriteIsOffUnlessSwitchedOn(): void {
+		$this->assertFalse($this->config([])->publicWriteAllowed());
+		$this->assertFalse($this->config(['mcp_public_write' => 'no'])->publicWriteAllowed());
+		$this->assertTrue($this->config(['mcp_public_write' => 'yes'])->publicWriteAllowed());
+	}
+
 	public function testOriginMustBeOurOwnWhenSent(): void {
 		$config = $this->config(['mcp_resource_url' => 'https://Cloud.Example:8443/index.php/apps/projektwerk/mcp']);
 

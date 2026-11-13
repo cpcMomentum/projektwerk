@@ -19,6 +19,7 @@ use OCA\Projektwerk\Service\GuestNotAllowedException;
 use OCA\Projektwerk\Service\MemberService;
 use OCA\Projektwerk\Service\NotManagerException;
 use OCA\Projektwerk\Service\NotOwnerException;
+use OCA\Projektwerk\Service\ProjectLogService;
 use OCA\Projektwerk\Service\WerkPlusLimitException;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Db\DoesNotExistException;
@@ -48,6 +49,7 @@ class SettingsController extends Controller {
 		private BoardService $boardService,
 		private ColumnService $columnService,
 		private MemberService $memberService,
+		private ProjectLogService $projectLog,
 		private BoardAccess $access,
 		private ?string $userId,
 	) {
@@ -250,6 +252,12 @@ class SettingsController extends Controller {
 
 		return $this->write($boardId, fn (ViewerContext $viewer): mixed
 			=> $this->memberService->update($viewer, $userId, $changes));
+	}
+
+	#[NoAdminRequired]
+	public function projectLog(int $boardId, ?int $beforeId = null): JSONResponse {
+		return $this->write($boardId, fn (ViewerContext $viewer): mixed
+			=> $this->projectLog->listFor($viewer, $beforeId));
 	}
 
 	/**

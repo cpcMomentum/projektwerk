@@ -140,6 +140,25 @@ class MailOutboxMapper extends QBMapper {
 		return $anzahl > 0;
 	}
 
+	public function countFromActorToRecipientSince(string $actorUid, string $recipientUid, \DateTimeInterface $seit): int {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select($qb->func()->count('*', 'anzahl'))
+			->from($this->getTableName())
+			->where($qb->expr()->eq('recipient_uid', $qb->createNamedParameter($recipientUid)))
+			->andWhere($qb->expr()->eq('actor_uid', $qb->createNamedParameter($actorUid)))
+			->andWhere($qb->expr()->gte('created_at', $qb->createNamedParameter($seit, IQueryBuilder::PARAM_DATETIME_MUTABLE)))
+			->andWhere($qb->expr()->in('status', $qb->createNamedParameter(
+				[MailOutbox::STATUS_PENDING, MailOutbox::STATUS_SENT],
+				IQueryBuilder::PARAM_STR_ARRAY,
+			)));
+
+		$ergebnis = $qb->executeQuery();
+		$anzahl = (int)$ergebnis->fetchOne();
+		$ergebnis->closeCursor();
+
+		return $anzahl;
+	}
+
 	/**
 	 * Die Ausgangszeile zu einem Antwort-Token (#287), oder `null`.
 	 *

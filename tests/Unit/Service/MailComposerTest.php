@@ -209,4 +209,14 @@ class MailComposerTest extends TestCase {
 		$this->assertStringContainsString('Anna Reuter (über KI-Werkzeug)', $viaTool['einleitung']);
 		$this->assertStringNotContainsString('KI-Werkzeug', $browser['einleitung']);
 	}
+
+	public function testAReplyByEmailSaysSoInTheMail(): void {
+		$composer = new MailComposer($this->users(['anna' => 'Anna Reuter']), $this->boards([7 => 'Relaunch Website']));
+		$zeile = $this->zeile(MailOutbox::EVENT_COMMENT_ADDED, 'anna');
+		$zeile->setActorVia(ViewerContext::VIA_MAIL);
+
+		$text = $composer->compose($zeile, $this->ticket(7, 'Logo liefern', 7), $this->l10n());
+
+		$this->assertStringContainsString('Anna Reuter (per E-Mail)', $text['einleitung']);
+	}
 }
