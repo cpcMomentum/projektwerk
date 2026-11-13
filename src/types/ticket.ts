@@ -80,7 +80,7 @@ export interface Comment {
 	id: number
 	ticketId: number
 	authorUserId: string
-	/** `'tool'` = über ein KI-Werkzeug angelegt, sonst `null`. */
+	/** `'tool'` = über ein KI-Werkzeug, `'mail'` = per E-Mail angelegt, sonst `null`. */
 	createdVia?: string | null
 	/** Markdown. Wird mit `NcRichText` gerendert, ohne `interactive`. */
 	body: string

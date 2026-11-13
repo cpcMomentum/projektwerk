@@ -645,6 +645,8 @@ OC.L10N.register(
     "Der persönliche Ordner muss in den eigenen Dateien liegen. Ein freigegebener Ordner oder ein Team-Ordner ist dafür nicht zulässig." : "The personal folder must be in your own files. A shared folder or a team folder is not allowed for this.",
     "Der persönliche Ordner ist für andere freigegeben. Private Anhänge brauchen einen Ordner ohne Freigabe." : "The personal folder is shared with others. Private attachments need a folder that is not shared.",
     "Server, Port, Verschlüsselung oder Konto weichen von den gespeicherten Daten ab. Bitte das Passwort neu eingeben." : "Server, port, encryption or account differ from the saved data. Please enter the password again.",
+    "per E-Mail" : "via email",
+    "%1$s (per E-Mail)" : "%1$s (via email)",
     "KI-Zugriff" : "AI access",
     "Über den KI-Zugang (MCP) kann Claude im Namen einer Person Vorgänge anlegen und ändern. Interne und private Vorgänge sind immer erlaubt." : "Through the AI access (MCP), Claude can create and change tickets on behalf of a person. Internal and private tickets are always allowed.",
     "KI darf in kundensichtbare Vorgänge schreiben" : "AI may write to customer-visible tickets",

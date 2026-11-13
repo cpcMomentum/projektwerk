@@ -72,6 +72,8 @@ class ReplyIntakeJob extends TimedJob {
 	 */
 	private const MAX_JE_ABSENDER = 20;
 
+	public const TOKEN_GUELTIG_SEKUNDEN = 7 * 86400;
+
 	public function __construct(
 		ITimeFactory $time,
 		private ReplyMailboxSettings $settings,
@@ -185,6 +187,13 @@ class ReplyIntakeJob extends TimedJob {
 			return;
 		}
 
+		$versandt = $zeile->getSentAt() ?? $zeile->getCreatedAt();
+		if ($versandt === null || $versandt->getTimestamp() < $this->time->getTime() - self::TOKEN_GUELTIG_SEKUNDEN) {
+			$this->unmatched($client, $uid, 'Antwort-Code abgelaufen');
+
+			return;
+		}
+
 		$recipientUid = (string)$zeile->getRecipientUid();
 		$ticketId = $zeile->getTicketId();
 		if ($ticketId === null) {
@@ -239,7 +248,7 @@ class ReplyIntakeJob extends TimedJob {
 		}
 
 		// 5. Kommentar über den regulären Weg — ViewerContext NUR über BoardAccess.
-		$viewer = $this->access->contextFor($recipientUid, $boardId);
+		$viewer = $this->access->contextFor($recipientUid, $boardId)->viaMail();
 		$this->comments->create($viewer, $ticketId, $body);
 
 		// **Erst der Kommentar, dann `markSeen` — bewusst diese Richtung** (PR-Review
