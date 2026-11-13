@@ -164,6 +164,7 @@
 					<div v-else class="pw-detail__title-edit">
 						<NcTextField
 							v-model="titleEntwurf"
+							:maxlength="limits.ticketTitle"
 							:labelOutside="true"
 							:aria-label="t('projektwerk', 'Titel')"
 							:placeholder="t('projektwerk', 'Titel')"
@@ -684,6 +685,7 @@ import { showError, showSuccess } from '@/services/toast'
 import { reportWriteError } from '@/services/writeError'
 import { useOutboxStore } from '@/stores/outboxStore'
 import { asDate, isOverdue, toIsoDay } from '@/utils/date'
+import { LIMITS } from '@/utils/limits'
 import { ticketLink } from '@/utils/ticketLink'
 
 /** Ab welcher Hoehe die Beschreibung gedeckelt wird. Deckt sich mit der CSS. */
@@ -729,7 +731,7 @@ export default defineComponent({
 	emits: ['close', 'changed', 'delete', 'stepsChanged', 'commentsChanged', 'attachmentsChanged', 'openTicket', 'linksChanged'],
 
 	setup() {
-		return { outbox: useOutboxStore() }
+		return { outbox: useOutboxStore(), limits: LIMITS }
 	},
 
 	data() {

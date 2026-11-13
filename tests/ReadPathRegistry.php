@@ -165,6 +165,8 @@ final class ReadPathRegistry {
 		// den Einlese-Job. Kein Betrachter (Token statt ViewerContext) — die
 		// Deckung ist wie bei findRetryable strukturell über VIEWERLESS_MAPPERS.
 		'MailOutboxMapper::findByReplyToken',
+		// Die Stundengrenze zählt Zeilen eines Paars aus Auslöser und Empfänger, ohne Betrachter.
+		'MailOutboxMapper::countFromActorToRecipientSince',
 		// `NotifyPrefMapper::isEnabled()` steht hier bewusst **nicht**: Es fragt
 		// die Datenbank nicht selbst, sondern ruft `findForUser()` auf. Der
 		// Lesepfad ist der eine darunter; ein zweiter Eintrag waere eine

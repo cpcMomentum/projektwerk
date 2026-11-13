@@ -85,6 +85,8 @@ class TicketService {
 		?string $dueDate = null,
 	): Ticket {
 		$this->assertKnownVisibility($visibility);
+		$this->assertTicketTitle($title);
+		$this->assertTicketDescription($description);
 
 		// Einmal wiederholen, nicht öfter: Ein zweiter Fehlschlag am
 		// eindeutigen Index ist kein Wettlauf mehr, sondern ein kaputter
@@ -224,9 +226,11 @@ class TicketService {
 		$before = clone $ticket;
 
 		if (array_key_exists('title', $changes)) {
+			$this->assertTicketTitle($changes['title']);
 			$ticket->setTitle($changes['title']);
 		}
 		if (array_key_exists('description', $changes)) {
+			$this->assertTicketDescription($changes['description']);
 			$ticket->setDescription($changes['description']);
 		}
 		// **Nur eine echte Aenderung loest aus.** Wer denselben Namen noch einmal
@@ -939,6 +943,18 @@ class TicketService {
 			throw new NotOwningSideException(
 				$this->l10n->t('Auf „privat" herunterstufen kann nur die anlegende Person selbst.'),
 			);
+		}
+	}
+
+	private function assertTicketTitle(string $title): void {
+		if (ContentLimits::exceeds($title, ContentLimits::TICKET_TITLE)) {
+			throw new \InvalidArgumentException($this->l10n->t('Der Titel darf höchstens %s Zeichen lang sein.', [ContentLimits::TICKET_TITLE]));
+		}
+	}
+
+	private function assertTicketDescription(?string $description): void {
+		if (ContentLimits::exceeds($description, ContentLimits::TICKET_DESCRIPTION)) {
+			throw new \InvalidArgumentException($this->l10n->t('Die Beschreibung darf höchstens %s Zeichen lang sein.', [ContentLimits::TICKET_DESCRIPTION]));
 		}
 	}
 
