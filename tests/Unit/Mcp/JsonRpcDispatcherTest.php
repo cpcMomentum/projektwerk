@@ -11,6 +11,7 @@ namespace OCA\Projektwerk\Tests\Unit\Mcp;
 
 use OCA\Projektwerk\Mcp\AuthenticatedCaller;
 use OCA\Projektwerk\Mcp\JsonRpcDispatcher;
+use OCA\Projektwerk\Mcp\McpConfig;
 use OCA\Projektwerk\Mcp\McpRateLimiter;
 use OCA\Projektwerk\Mcp\McpResponse;
 use OCA\Projektwerk\Mcp\SchemaValidator;
@@ -21,6 +22,7 @@ use OCA\Projektwerk\Mcp\Tools\ListBoards;
 use OCA\Projektwerk\Mcp\Tools\ListColumns;
 use OCA\Projektwerk\Mcp\Tools\ListTickets;
 use OCP\App\IAppManager;
+use OCP\IAppConfig;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\TestCase;
 
@@ -67,6 +69,7 @@ class JsonRpcDispatcherTest extends TestCase {
 			new SchemaValidator(),
 			$this->rateLimiter,
 			$appManager,
+			new McpConfig($this->createStub(IAppConfig::class)),
 		);
 		$this->caller = new AuthenticatedCaller('anna', 'claude');
 	}
@@ -109,6 +112,26 @@ class JsonRpcDispatcherTest extends TestCase {
 		$body = '{"jsonrpc":"2.0","id":7,"method":"initialize","params":{"protocolVersion":"2024-11-05"}}';
 		$unknown = $this->resultOf($this->dispatcher->dispatch($body, $this->headers('', '', ''), $this->caller));
 		$this->assertSame('2025-11-25', $unknown['protocolVersion']);
+	}
+
+	public function testInstructionsFollowTheSwitchForCustomerVisibleWrites(): void {
+		$body = '{"jsonrpc":"2.0","id":7,"method":"initialize","params":{"protocolVersion":"2025-06-18"}}';
+
+		$off = $this->resultOf($this->dispatcher->dispatch($body, $this->headers('', '', ''), $this->caller));
+		$this->assertStringContainsString('switched off', $off['instructions']);
+		$this->assertStringNotContainsString('confirm_public', $off['instructions']);
+
+		$appConfig = $this->createStub(IAppConfig::class);
+		$appConfig->method('getValueString')->willReturn('yes');
+		$appManager = $this->createStub(IAppManager::class);
+		$on = (new JsonRpcDispatcher(
+			new ToolRegistry($this->listBoards, $this->createStub(ListColumns::class), $this->createStub(ListTickets::class), $this->createStub(GetTicket::class), ...$this->writeToolStubs()),
+			new SchemaValidator(),
+			$this->rateLimiter,
+			$appManager,
+			new McpConfig($appConfig),
+		))->dispatch($body, $this->headers('', '', ''), $this->caller);
+		$this->assertStringContainsString('confirm_public: true', $this->resultOf($on)['instructions']);
 	}
 
 	public function testMissingOrUnknownVersionListsTheSupportedOnes(): void {
@@ -213,7 +236,7 @@ class JsonRpcDispatcherTest extends TestCase {
 			$this->createStub(ListTickets::class),
 			$this->createStub(GetTicket::class),
 			...$this->writeToolStubs(),
-		), new SchemaValidator(), $limiter, $appManager);
+		), new SchemaValidator(), $limiter, $appManager, new McpConfig($this->createStub(IAppConfig::class)));
 
 		$response = $dispatcher->dispatch($this->request('tools/call', ['name' => 'list_boards']), $this->legacyHeaders(), $this->caller);
 

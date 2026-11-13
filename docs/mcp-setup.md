@@ -97,7 +97,11 @@ Schreiben (dieselben Rechte und Regeln wie im Browser, über dieselben Dienste):
 Nicht über den KI-Zugang: löschen, wiederöffnen, Sichtbarkeit ändern, Kommentare bearbeiten,
 Mitglieder und Board-Einstellungen.
 
-- **Kundensichtbares nur mit Bestätigung:** Jede Änderung an einem öffentlichen Vorgang (und das
+- **Kundensichtbares ab Werk gesperrt:** Solange in ProjektWerk unter Verwaltung › KI-Zugriff der
+  Schalter „KI darf in kundensichtbare Vorgänge schreiben“ aus ist (Standard), lehnt der Server jede
+  Änderung an einem öffentlichen Vorgang und das Anlegen eines öffentlichen ab, auch mit
+  `confirm_public`. Per `occ`: `occ config:app:set projektwerk mcp_public_write --value=yes`.
+- **Kundensichtbares nur mit Bestätigung:** Ist der Schalter an, gilt: Jede Änderung an einem öffentlichen Vorgang (und das
   Anlegen eines öffentlichen) lehnt der Server ohne `confirm_public: true` ab; die Ablehnung fordert
   die KI auf, die Person zu fragen. Der Server kann nicht prüfen, ob sie wirklich gefragt hat.
 - **Keine Datei aus der Nextcloud an Kundensichtbares:** `attach_file` lehnt öffentliche Vorgänge

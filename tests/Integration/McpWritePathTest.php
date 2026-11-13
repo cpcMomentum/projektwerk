@@ -15,6 +15,7 @@ use OCA\Projektwerk\Db\StepMapper;
 use OCA\Projektwerk\Db\Ticket;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Mcp\AuthenticatedCaller;
+use OCA\Projektwerk\Mcp\McpConfig;
 use OCA\Projektwerk\Mcp\McpRateLimiter;
 use OCA\Projektwerk\Mcp\Tool;
 use OCA\Projektwerk\Mcp\ToolResult;
@@ -28,6 +29,7 @@ use OCA\Projektwerk\Mcp\Tools\MoveTicket;
 use OCA\Projektwerk\Mcp\Tools\TransferToGithub;
 use OCA\Projektwerk\Mcp\Tools\UpdateStep;
 use OCA\Projektwerk\Mcp\Tools\UpdateTicket;
+use OCP\IAppConfig;
 use OCP\IDBConnection;
 use OCP\Server;
 
@@ -41,6 +43,47 @@ class McpWritePathTest extends IntegrationTestCase {
 	protected function setUp(): void {
 		parent::setUp();
 		$this->fixture = new LeakMatrixFixture();
+		Server::get(McpConfig::class)->setPublicWriteAllowed(true);
+	}
+
+	protected function tearDown(): void {
+		Server::get(IAppConfig::class)->deleteKey('projektwerk', McpConfig::KEY_PUBLIC_WRITE);
+		parent::tearDown();
+	}
+
+	/** @param array<string, mixed> $extra */
+	#[\PHPUnit\Framework\Attributes\DataProvider('writesOnAnExistingTicket')]
+	public function testWithTheSwitchOffACustomerVisibleTicketIsRefusedEvenWhenConfirmed(string $class, array $extra): void {
+		Server::get(McpConfig::class)->setPublicWriteAllowed(false);
+		$ticketId = $this->fixture->ticketIds['public/anna'];
+		if ($class === MoveTicket::class) {
+			$extra['target_column_id'] = $this->fixture->columnIds[LeakMatrixFixture::COLUMN_B];
+		}
+		$before = $this->snapshot($ticketId);
+
+		$result = $this->call($class, LeakMatrixFixture::ANNA, ['ticket_id' => $ticketId, 'confirm_public' => true] + $extra);
+
+		$this->assertTrue($result->isError());
+		$this->assertSame($before, $this->snapshot($ticketId));
+	}
+
+	public function testWithTheSwitchOffNoCustomerVisibleTicketIsCreatedButInternalWritesWork(): void {
+		Server::get(McpConfig::class)->setPublicWriteAllowed(false);
+
+		$refused = $this->call(CreateTicket::class, LeakMatrixFixture::ANNA, [
+			'column_id' => $this->fixture->columnIds[LeakMatrixFixture::COLUMN_A],
+			'title' => 'Von der KI',
+			'visibility' => 'public',
+			'confirm_public' => true,
+		]);
+		$this->assertTrue($refused->isError());
+		$this->assertStringContainsString('switched off', $this->text($refused));
+
+		$intern = $this->call(AddComment::class, LeakMatrixFixture::ANNA, [
+			'ticket_id' => $this->fixture->ticketIds['internal/anna'],
+			'body' => 'Notiz',
+		]);
+		$this->assertFalse($intern->isError(), $this->text($intern));
 	}
 
 	/**
