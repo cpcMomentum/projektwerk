@@ -191,6 +191,7 @@ class MemberService {
 	 * @param array{role?: string, isManager?: bool, displayName?: ?string, company?: ?string} $changes
 	 * @throws NotManagerException
 	 * @throws DoesNotExistException das Mitglied gehört nicht zu diesem Board
+	 * @throws WerkPlusLimitException der Wechsel auf extern machte ein Kundenprojekt über dem freien Umfang
 	 */
 	public function update(ViewerContext $viewer, string $userId, array $changes): Member {
 		$this->assertManager($viewer);
@@ -201,6 +202,9 @@ class MemberService {
 		if (array_key_exists('role', $changes)) {
 			$this->assertKnownRole($changes['role']);
 			$this->assertNotDemotingTheOwner($viewer, $userId, $changes['role']);
+			if ($changes['role'] === ViewerContext::ROLE_EXTERNAL && $member->getRole() !== ViewerContext::ROLE_EXTERNAL) {
+				$this->entitlement->assertMayAddExternalMember($viewer->projectId);
+			}
 			$member->setRole($changes['role']);
 		}
 
