@@ -62,6 +62,8 @@ class TicketLog extends Entity implements JsonSerializable {
 	public const STEP_DELETED = 'step_deleted';
 	public const ATTACHMENT_ADDED = 'attachment_added';
 	public const ATTACHMENT_REMOVED = 'attachment_removed';
+	public const COMMENT_EDITED = 'comment_edited';
+	public const COMMENT_DELETED = 'comment_deleted';
 
 	protected ?int $ticketId = null;
 	protected ?string $actorUserId = null;

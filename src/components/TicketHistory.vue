@@ -209,6 +209,10 @@ export default defineComponent({
 					return t('projektwerk', 'hat den Anhang „{file}“ hinzugefügt', { file: subject }, undefined, RAW)
 				case 'attachment_removed':
 					return t('projektwerk', 'hat den Anhang „{file}“ entfernt', { file: subject }, undefined, RAW)
+				case 'comment_edited':
+					return t('projektwerk', 'hat einen Kommentar geändert')
+				case 'comment_deleted':
+					return t('projektwerk', 'hat einen Kommentar gelöscht')
 				default:
 					return t('projektwerk', 'hat den Vorgang geändert')
 			}

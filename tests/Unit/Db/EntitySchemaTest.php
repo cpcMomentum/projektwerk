@@ -18,6 +18,7 @@ use OCA\Projektwerk\Db\MailOutbox;
 use OCA\Projektwerk\Db\Member;
 use OCA\Projektwerk\Db\NotifyPref;
 use OCA\Projektwerk\Db\Project;
+use OCA\Projektwerk\Db\ProjectLog;
 use OCA\Projektwerk\Db\Step;
 use OCA\Projektwerk\Db\Ticket;
 use OCA\Projektwerk\Db\TicketDep;
@@ -78,6 +79,7 @@ class EntitySchemaTest extends TestCase {
 			'pwerk_idem' => IdemKey::class,
 			'pwerk_ticket_deps' => TicketDep::class,
 			'pwerk_ticket_log' => TicketLog::class,
+			'pwerk_project_log' => ProjectLog::class,
 		];
 	}
 
@@ -103,7 +105,7 @@ class EntitySchemaTest extends TestCase {
 			array_diff($tables, array_keys(self::entitiesByTable())),
 			'Migration legt eine Tabelle an, zu der kein Entity registriert ist.',
 		);
-		$this->assertCount(15, $tables, 'Zehn Tabellen aus Migration 1, pwerk_reads aus Migration 7 (#79), pwerk_projects aus Migration 13 (#246), pwerk_idem aus Migration 25 (#400), pwerk_ticket_deps aus Migration 26 (#346), pwerk_ticket_log aus Migration 27 (#397).');
+		$this->assertCount(16, $tables, 'Zehn Tabellen aus Migration 1, pwerk_reads aus Migration 7 (#79), pwerk_projects aus Migration 13 (#246), pwerk_idem aus Migration 25 (#400), pwerk_ticket_deps aus Migration 26 (#346), pwerk_ticket_log aus Migration 27 (#397), pwerk_project_log aus Migration 30.');
 	}
 
 	public function testEntityFieldsMatchMigrationColumns(): void {

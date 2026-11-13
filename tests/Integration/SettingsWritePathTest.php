@@ -23,6 +23,7 @@ use OCA\Projektwerk\Service\BoardService;
 use OCA\Projektwerk\Service\ColumnService;
 use OCA\Projektwerk\Service\EntitlementService;
 use OCA\Projektwerk\Service\MemberService;
+use OCA\Projektwerk\Service\ProjectLogService;
 use OCA\Projektwerk\Service\NotManagerException;
 use OCA\Projektwerk\Service\NotOwnerException;
 use OCA\Projektwerk\Service\TicketService;
@@ -898,6 +899,7 @@ class SettingsWritePathTest extends IntegrationTestCase {
 			$this->boardService,
 			$this->columnService,
 			$this->memberService,
+			Server::get(ProjectLogService::class),
 			Server::get(BoardAccess::class),
 			$userId,
 		);
