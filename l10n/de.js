@@ -644,6 +644,10 @@ OC.L10N.register(
     "GitHub hat mit einem Fehler geantwortet (HTTP %s)." : "GitHub hat mit einem Fehler geantwortet (HTTP %s).",
     "Der persönliche Ordner muss in den eigenen Dateien liegen. Ein freigegebener Ordner oder ein Team-Ordner ist dafür nicht zulässig." : "Der persönliche Ordner muss in den eigenen Dateien liegen. Ein freigegebener Ordner oder ein Team-Ordner ist dafür nicht zulässig.",
     "Der persönliche Ordner ist für andere freigegeben. Private Anhänge brauchen einen Ordner ohne Freigabe." : "Der persönliche Ordner ist für andere freigegeben. Private Anhänge brauchen einen Ordner ohne Freigabe.",
-    "Server, Port, Verschlüsselung oder Konto weichen von den gespeicherten Daten ab. Bitte das Passwort neu eingeben." : "Server, Port, Verschlüsselung oder Konto weichen von den gespeicherten Daten ab. Bitte das Passwort neu eingeben."
+    "Server, Port, Verschlüsselung oder Konto weichen von den gespeicherten Daten ab. Bitte das Passwort neu eingeben." : "Server, Port, Verschlüsselung oder Konto weichen von den gespeicherten Daten ab. Bitte das Passwort neu eingeben.",
+    "Ein Vorgang kann höchstens %s Arbeitsschritte haben." : "Ein Vorgang kann höchstens %s Arbeitsschritte haben.",
+    "Der Titel darf höchstens %s Zeichen lang sein." : "Der Titel darf höchstens %s Zeichen lang sein.",
+    "Beschreibung und Ergebnis dürfen je höchstens %s Zeichen lang sein." : "Beschreibung und Ergebnis dürfen je höchstens %s Zeichen lang sein.",
+    "Die Beschreibung darf höchstens %s Zeichen lang sein." : "Die Beschreibung darf höchstens %s Zeichen lang sein."
 },
 "nplurals=2; plural=(n != 1);");

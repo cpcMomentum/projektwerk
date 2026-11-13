@@ -18,6 +18,7 @@ use OCA\Projektwerk\Mcp\McpAudit;
 use OCA\Projektwerk\Mcp\McpRateLimiter;
 use OCA\Projektwerk\Mcp\PublicGuard;
 use OCA\Projektwerk\Mcp\ToolResult;
+use OCA\Projektwerk\Service\ContentLimits;
 use OCA\Projektwerk\Service\StepService;
 
 class UpdateStep extends WriteTool {
@@ -64,9 +65,9 @@ class UpdateStep extends WriteTool {
 				'board_id' => ['type' => 'integer', 'minimum' => 1, 'description' => 'Board id from list_boards.'],
 				'ticket_id' => ['type' => 'integer', 'minimum' => 1, 'description' => 'Ticket id from list_tickets or get_ticket.'],
 				'step_id' => ['type' => 'integer', 'minimum' => 1, 'description' => 'Step id from get_ticket.'],
-				'title' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 255, 'description' => 'Title.'],
-				'description' => ['type' => 'string', 'maxLength' => 20000, 'description' => 'Markdown text.'],
-				'result' => ['type' => 'string', 'maxLength' => 20000, 'description' => 'Result of the step, Markdown.'],
+				'title' => ['type' => 'string', 'minLength' => 1, 'maxLength' => ContentLimits::STEP_TITLE, 'description' => 'Title.'],
+				'description' => ['type' => 'string', 'maxLength' => ContentLimits::STEP_TEXT, 'description' => 'Markdown text.'],
+				'result' => ['type' => 'string', 'maxLength' => ContentLimits::STEP_TEXT, 'description' => 'Result of the step, Markdown.'],
 				'assigned_user_id' => ['type' => 'string', 'maxLength' => 64, 'description' => 'User id from list_members, or "" to clear.'],
 				'due_date' => ['type' => 'string', 'maxLength' => 10, 'description' => 'YYYY-MM-DD, or "" to clear.'],
 				'done' => ['type' => 'boolean', 'description' => 'true = ticked off, false = open again.'],
