@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OCA\Projektwerk\AppInfo;
 
 use OCA\Projektwerk\Listener\LoadReferenceWidgetListener;
+use OCA\Projektwerk\Listener\UserCreatedListener;
 use OCA\Projektwerk\Listener\UserDeletedListener;
 use OCA\Projektwerk\Mcp\OidcTokenValidator;
 use OCA\Projektwerk\Mcp\TokenValidator;
@@ -24,6 +25,7 @@ use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
 use OCP\AppFramework\Bootstrap\IRegistrationContext;
 use OCP\Collaboration\Reference\RenderReferenceEvent;
+use OCP\User\Events\UserCreatedEvent;
 use OCP\User\Events\UserDeletedEvent;
 
 class Application extends App implements IBootstrap {
@@ -67,6 +69,7 @@ class Application extends App implements IBootstrap {
 		// das blieben unsichtbare private Vorgaenge und ein ewiges „wartet auf
 		// Kunde" stehen — mangels Admin-Ausnahme fuer immer.
 		$context->registerEventListener(UserDeletedEvent::class, UserDeletedListener::class);
+		$context->registerEventListener(UserCreatedEvent::class, UserCreatedListener::class);
 
 		$context->registerReferenceProvider(TicketReferenceProvider::class);
 		$context->registerSearchProvider(TicketSearchProvider::class);

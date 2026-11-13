@@ -12,11 +12,21 @@ namespace OCA\Projektwerk\Tests\Integration;
 use OCA\Projektwerk\Access\BoardAccess;
 use OCA\Projektwerk\Access\NotAMemberException;
 use OCA\Projektwerk\Access\TicketScope;
+use OCA\Projektwerk\Command\ProjectSetManager;
+use OCA\Projektwerk\Listener\UserCreatedListener;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Service\BoardService;
 use OCA\Projektwerk\Service\MemberLifecycleService;
 use OCA\Projektwerk\Service\MemberService;
+use OCP\IAppConfig;
+use OCP\IDBConnection;
+use OCP\IUser;
+use OCP\IUserManager;
 use OCP\Server;
+use OCP\User\Events\UserCreatedEvent;
+use Psr\Log\NullLogger;
+use OCA\Projektwerk\Service\TicketLogService;
+use Symfony\Component\Console\Tester\CommandTester;
 
 /**
  * Was zurueckbleibt, wenn eine Person geht.
@@ -291,5 +301,114 @@ class MemberLifecycleTest extends IntegrationTestCase {
 			->where($qb->expr()->eq('user_id', $qb->createNamedParameter(LeakMatrixFixture::BERT)))
 			->andWhere($qb->expr()->eq('board_id', $qb->createNamedParameter($this->fixture->boardId)));
 		$this->assertSame(0, (int)$qb->executeQuery()->fetchOne(), 'Hier ist Bert kein Mitglied mehr.');
+	}
+
+	protected function tearDown(): void {
+		Server::get(IAppConfig::class)->deleteKey('projektwerk', MemberLifecycleService::KEY_PENDING);
+		parent::tearDown();
+	}
+
+	public function testTheProjectGoesToTheLongestServingInternalManager(): void {
+		$this->setzeMitglied(LeakMatrixFixture::BERT, ['is_manager' => 1]);
+		$this->setzeBoard(['created_by' => LeakMatrixFixture::ANNA]);
+
+		$this->lifecycle->forget(LeakMatrixFixture::ANNA);
+
+		$this->assertSame(LeakMatrixFixture::BERT, $this->eigentuemer('pwerk_projects', 'id'));
+		$this->assertSame(LeakMatrixFixture::BERT, $this->eigentuemer('pwerk_boards', 'project_id'));
+		$this->assertNull($this->boardSpalte('created_by'), 'Das Ersteller-Recht geht nicht über.');
+	}
+
+	public function testAPersonStillWaitingForCleanupDoesNotInheritTheProject(): void {
+		$this->setzeMitglied(LeakMatrixFixture::BERT, ['is_manager' => 1]);
+		Server::get(IAppConfig::class)->setValueArray('projektwerk', MemberLifecycleService::KEY_PENDING, [LeakMatrixFixture::BERT], true);
+
+		$this->lifecycle->forget(LeakMatrixFixture::ANNA);
+
+		$this->assertSame('', $this->eigentuemer('pwerk_projects', 'id'));
+	}
+
+	public function testABoardWithItsOwnOwnerFollowsItsProject(): void {
+		$this->setzeMitglied(LeakMatrixFixture::BERT, ['is_manager' => 1]);
+		$qb = $this->db->getQueryBuilder();
+		$qb->update('pwerk_projects')->set('owner_user_id', $qb->createNamedParameter(LeakMatrixFixture::BERT))
+			->where($qb->expr()->eq('id', $qb->createNamedParameter($this->fixture->projectId)));
+		$qb->executeStatement();
+
+		$this->lifecycle->forget(LeakMatrixFixture::ANNA);
+
+		$this->assertSame(LeakMatrixFixture::BERT, $this->eigentuemer('pwerk_boards', 'project_id'));
+	}
+
+	public function testWithoutAnotherInternalManagerTheProjectStaysWithoutOwnerUntilAnAdminSetsOne(): void {
+		$this->lifecycle->forget(LeakMatrixFixture::ANNA);
+		$this->assertSame('', $this->eigentuemer('pwerk_projects', 'id'));
+
+		$users = $this->createStub(IUserManager::class);
+		$users->method('userExists')->willReturn(true);
+		$tester = new CommandTester(new ProjectSetManager($this->db, $users, $this->lifecycle));
+		$this->assertSame(1, $tester->execute(['projectId' => (string)$this->fixture->projectId, 'userId' => LeakMatrixFixture::CARLA]), 'Nur die Dienstleisterseite.');
+		$this->assertSame(1, $tester->execute(['projectId' => 'abc', 'userId' => LeakMatrixFixture::BERT]));
+		$this->assertSame(0, $tester->execute(['projectId' => (string)$this->fixture->projectId, 'userId' => LeakMatrixFixture::BERT]));
+
+		$this->assertSame(LeakMatrixFixture::BERT, $this->eigentuemer('pwerk_projects', 'id'));
+		$this->assertSame(LeakMatrixFixture::BERT, $this->eigentuemer('pwerk_boards', 'project_id'));
+	}
+
+	public function testAFailedCleanupIsRememberedAndANewAccountWithThatIdStartsClean(): void {
+		$kaputt = $this->createStub(IDBConnection::class);
+		$kaputt->method('getQueryBuilder')->willThrowException(new \RuntimeException('DB weg'));
+		(new MemberLifecycleService($kaputt, new NullLogger(), Server::get(TicketLogService::class), Server::get(IAppConfig::class)))
+			->forget(LeakMatrixFixture::ANNA);
+		$this->assertSame([LeakMatrixFixture::ANNA], $this->lifecycle->pending());
+
+		$user = $this->createStub(IUser::class);
+		$user->method('getUID')->willReturn(LeakMatrixFixture::ANNA);
+		Server::get(UserCreatedListener::class)->handle(new UserCreatedEvent($user, 'geheim'));
+
+		$this->assertSame([], $this->lifecycle->pending());
+		$qb = $this->db->getQueryBuilder();
+		$qb->select($qb->func()->count('*', 'anzahl'))
+			->from('pwerk_members')
+			->where($qb->expr()->eq('user_id', $qb->createNamedParameter(LeakMatrixFixture::ANNA)));
+		$this->assertSame(0, (int)$qb->executeQuery()->fetchOne(), 'Das neue Konto erbt keine Mitgliedschaft.');
+	}
+
+	/** @param array<string, int|string> $werte */
+	private function setzeMitglied(string $userId, array $werte): void {
+		$qb = $this->db->getQueryBuilder();
+		$qb->update('pwerk_members')->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+			->andWhere($qb->expr()->eq('project_id', $qb->createNamedParameter($this->fixture->projectId)));
+		foreach ($werte as $spalte => $wert) {
+			$qb->set($spalte, $qb->createNamedParameter($wert));
+		}
+		$qb->executeStatement();
+	}
+
+	/** @param array<string, string> $werte */
+	private function setzeBoard(array $werte): void {
+		$qb = $this->db->getQueryBuilder();
+		$qb->update('pwerk_boards')->where($qb->expr()->eq('id', $qb->createNamedParameter($this->fixture->boardId)));
+		foreach ($werte as $spalte => $wert) {
+			$qb->set($spalte, $qb->createNamedParameter($wert));
+		}
+		$qb->executeStatement();
+	}
+
+	private function eigentuemer(string $tabelle, string $spalte): string {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('owner_user_id')->from($tabelle)
+			->where($qb->expr()->eq($spalte, $qb->createNamedParameter($this->fixture->projectId)))
+			->setMaxResults(1);
+
+		return (string)$qb->executeQuery()->fetchOne();
+	}
+
+	private function boardSpalte(string $spalte): ?string {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select($spalte)->from('pwerk_boards')->where($qb->expr()->eq('id', $qb->createNamedParameter($this->fixture->boardId)));
+		$wert = $qb->executeQuery()->fetchOne();
+
+		return $wert === null || $wert === false ? null : (string)$wert;
 	}
 }
