@@ -1,4 +1,40 @@
 {
+	"0.4.26": [
+		{
+			"title": {
+				"de": "Protokoll je Projekt",
+				"en": "Log per project"
+			},
+			"text": {
+				"de": "Wer Mitglieder, Rollen, Verwaltungsrechte und Boards geändert hat, steht jetzt im Protokoll des Projekts. Sichtbar nur für interne Mitglieder mit Verwaltungsrecht.",
+				"en": "Who changed members, roles, management rights and boards is now listed in the project log. Visible only to internal members with management rights."
+			},
+			"icon": "file-document",
+			"where": {
+				"de": "Einstellungen › Projekt › Protokoll",
+				"en": "Settings › Project › Log"
+			},
+			"adminOnly": false,
+			"plus": false
+		},
+		{
+			"title": {
+				"de": "KI-Zugriff festlegen",
+				"en": "Set AI access"
+			},
+			"text": {
+				"de": "Ein Schalter legt fest, ob Claude über den KI-Zugang in Vorgänge schreiben darf, die der Kunde sieht. Ab Werk ist er aus; interne und private Vorgänge sind immer erlaubt.",
+				"en": "A switch decides whether Claude may write to tickets the customer sees through the AI access. It is off by default; internal and private tickets are always allowed."
+			},
+			"icon": "cog",
+			"where": {
+				"de": "Verwaltung › KI-Zugriff",
+				"en": "Management › AI access"
+			},
+			"adminOnly": true,
+			"plus": false
+		}
+	],
 	"0.4.25": [
 		{
 			"title": {

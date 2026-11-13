@@ -6,6 +6,41 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.4.26] - 2026-11-13
+
+### Added
+
+- **Projekt-Protokoll** (Einstellungen › Projekt › Protokoll): Wer Mitglieder hinzugefügt oder
+  entfernt, Rollen und Verwaltungsrechte geändert und Boards angelegt, archiviert oder gelöscht hat,
+  mit Zeit und „über KI-Werkzeug“. Sichtbar nur für interne Mitglieder mit Verwaltungsrecht; jeder
+  Eintrag geht zusätzlich ins Nextcloud-Admin-Log (App „Auditing / Logging“).
+- **KI-Zugriff in der Verwaltung**: Schalter „KI darf in kundensichtbare Vorgänge schreiben“, ab Werk
+  aus. Ist er aus, ändert der KI-Zugang (MCP) nur interne und private Vorgänge.
+- **`occ projektwerk:project:set-manager <projekt> <konto>`**: setzt ein internes Mitglied als
+  Verwalter ein und, wenn das Projekt keinen Eigentümer mehr hat, als Eigentümer.
+
+### Changed
+
+- **Antworten per E-Mail**: Kommentare aus dem Antwort-Postfach tragen „per E-Mail“. Eine Antwort
+  wird nur bis 7 Tage nach der Benachrichtigung übernommen.
+- **Vorgangsverlauf**: „hat einen Kommentar geändert/gelöscht“ wird vermerkt, ohne den Text.
+- **Mitglieder hinzufügen**: Die Kontensuche folgt den Nextcloud-Einstellungen zur Nutzerauflistung;
+  ist sie eingeschränkt, finden der volle Name, die Kennung oder die E-Mail-Adresse. Deaktivierte
+  Konten erscheinen nicht mehr.
+- **Konto gelöscht**: Projekte gehen an das dienstälteste interne Mitglied mit Verwaltungsrecht.
+  Scheitert das Aufräumen, wiederholt es ein Hintergrundjob.
+- **Grenzen**: Titel bis 255 Zeichen, Vorgangsbeschreibung bis 50.000, Beschreibung und Ergebnis eines
+  Arbeitsschritts bis je 10.000, höchstens 100 Arbeitsschritte je Vorgang.
+
+### Security
+
+- Härtungen aus einer internen Prüfung (Drosselung, Grenzen, Protokollierung, Rechteprüfungen).
+
+### Notes
+
+- **Nach dem Update**: Soll Claude weiter in kundensichtbare Vorgänge schreiben, unter Verwaltung ›
+  KI-Zugriff einschalten. Migration 30 legt die Tabelle `pwerk_project_log` an.
+
 ## [0.4.25] - 2026-11-12
 
 ### Added
