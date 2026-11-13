@@ -691,7 +691,9 @@
 		"GitHub hat mit einem Fehler geantwortet (HTTP %s).": "GitHub hat mit einem Fehler geantwortet (HTTP %s).",
 		"Der persönliche Ordner muss in den eigenen Dateien liegen. Ein freigegebener Ordner oder ein Team-Ordner ist dafür nicht zulässig.": "Der persönliche Ordner muss in den eigenen Dateien liegen. Ein freigegebener Ordner oder ein Team-Ordner ist dafür nicht zulässig.",
 		"Der persönliche Ordner ist für andere freigegeben. Private Anhänge brauchen einen Ordner ohne Freigabe.": "Der persönliche Ordner ist für andere freigegeben. Private Anhänge brauchen einen Ordner ohne Freigabe.",
-		"Server, Port, Verschlüsselung oder Konto weichen von den gespeicherten Daten ab. Bitte das Passwort neu eingeben.": "Server, Port, Verschlüsselung oder Konto weichen von den gespeicherten Daten ab. Bitte das Passwort neu eingeben."
+		"Server, Port, Verschlüsselung oder Konto weichen von den gespeicherten Daten ab. Bitte das Passwort neu eingeben.": "Server, Port, Verschlüsselung oder Konto weichen von den gespeicherten Daten ab. Bitte das Passwort neu eingeben.",
+		"per E-Mail": "per E-Mail",
+		"%1$s (per E-Mail)": "%1$s (per E-Mail)"
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }

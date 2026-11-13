@@ -22,8 +22,8 @@ use Psr\Log\LoggerInterface;
  * Antworten liest.
  *
  * **DIY, nichts verlässt die Instanz.** Der Betreiber trägt sein eigenes
- * Postfach ein; ein gehosteter Zustell-/Antwortdienst kommt später als
- * Plus-Komfort und ist hier nicht gebaut. Vorlage ist RechnungsWerk (gleicher
+ * Postfach ein; ein gehosteter Antwortdienst existiert nicht und ist nicht
+ * geplant. Vorlage ist RechnungsWerk (gleicher
  * Autor, gleiche Lizenz): dortiger `SettingsService::getImapConfig()` + der
  * socket-basierte `ImapClient`.
  *
