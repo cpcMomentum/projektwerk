@@ -95,7 +95,7 @@ describe('Einstellungen mit Gruppen Projekt und Board', () => {
 		const wrapper = await mountView()
 
 		expect(itemKeys(wrapper)).toEqual({
-			projekt: ['projekt', 'mitglieder', 'dateiablage', 'projekt-archiv'],
+			projekt: ['projekt', 'mitglieder', 'dateiablage', 'projekt-archiv', 'protokoll'],
 			board: ['spalten', 'github'],
 		})
 		expect(wrapper.find('#pw-set-boardpick').exists()).toBe(false)

@@ -24,6 +24,7 @@ use OCA\Projektwerk\Service\EntitlementService;
 use OCA\Projektwerk\Service\GuestNotAllowedException;
 use OCA\Projektwerk\Service\NotManagerException;
 use OCA\Projektwerk\Service\OwnCompanySettings;
+use OCA\Projektwerk\Service\ProjectLogService;
 use OCA\Projektwerk\Service\ProjectFolderService;
 use OCA\Projektwerk\Service\WerkPlusLimitException;
 use OCP\IDBConnection;
@@ -64,6 +65,7 @@ class BoardServiceTest extends TestCase {
 			$this->createStub(EntitlementService::class),
 			$this->createStub(OwnCompanySettings::class),
 			$this->createStub(TicketMapper::class),
+			$this->createStub(ProjectLogService::class),
 		);
 
 		$this->expectException(GuestNotAllowedException::class);
@@ -108,6 +110,7 @@ class BoardServiceTest extends TestCase {
 			$this->createStub(EntitlementService::class),
 			$this->createStub(OwnCompanySettings::class),
 			$this->createStub(TicketMapper::class),
+			$this->createStub(ProjectLogService::class),
 		);
 
 		// Externes Mitglied ohne Verwaltungsrecht.
@@ -150,6 +153,7 @@ class BoardServiceTest extends TestCase {
 			$this->createStub(EntitlementService::class),
 			$this->createStub(OwnCompanySettings::class),
 			$this->createStub(TicketMapper::class),
+			$this->createStub(ProjectLogService::class),
 		);
 
 		$viewer = ViewerContext::forMember('carla', 1, 9, ViewerContext::ROLE_EXTERNAL, false);
@@ -183,6 +187,7 @@ class BoardServiceTest extends TestCase {
 			$this->createStub(EntitlementService::class),
 			$this->createStub(OwnCompanySettings::class),
 			$this->createStub(TicketMapper::class),
+			$this->createStub(ProjectLogService::class),
 		);
 
 		// Externer Ersteller: kein Manager, aber isBoardCreator.
@@ -214,6 +219,7 @@ class BoardServiceTest extends TestCase {
 			$this->createStub(EntitlementService::class),
 			$this->createStub(OwnCompanySettings::class),
 			$this->createStub(TicketMapper::class),
+			$this->createStub(ProjectLogService::class),
 		);
 
 		$viewer = ViewerContext::forMember('carla', 1, 9, ViewerContext::ROLE_EXTERNAL, false, true);
@@ -274,6 +280,7 @@ class BoardServiceTest extends TestCase {
 			$entitlement,
 			$this->createStub(OwnCompanySettings::class),
 			$this->createStub(TicketMapper::class),
+			$this->createStub(ProjectLogService::class),
 		);
 	}
 }

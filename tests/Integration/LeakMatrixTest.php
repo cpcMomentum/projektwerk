@@ -32,6 +32,7 @@ use OCA\Projektwerk\Db\MailOutboxMapper;
 use OCA\Projektwerk\Db\MemberMapper;
 use OCA\Projektwerk\Db\NotifyPref;
 use OCA\Projektwerk\Db\NotifyPrefMapper;
+use OCA\Projektwerk\Db\ProjectLog;
 use OCA\Projektwerk\Db\ProjectMapper;
 use OCA\Projektwerk\Db\StepMapper;
 use OCA\Projektwerk\Db\TaskFilter;
@@ -55,6 +56,7 @@ use OCA\Projektwerk\Service\ColumnService;
 use OCA\Projektwerk\Service\GithubService;
 use OCA\Projektwerk\Service\IdempotencyService;
 use OCA\Projektwerk\Service\MemberService;
+use OCA\Projektwerk\Service\ProjectLogService;
 use OCA\Projektwerk\Service\NotifyPrefService;
 use OCA\Projektwerk\Service\ProjectFolderService;
 use OCA\Projektwerk\Service\StepService;
@@ -289,6 +291,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'TicketUserMapper::findForTickets' => 'testChildrenFollowTheFilteredTicketSet',
 		'TicketUserMapper::countForTickets' => 'testChildCountersFollowTheFilteredTicketSet',
 		'TicketLogMapper::findForTickets' => 'testChildrenFollowTheFilteredTicketSet',
+		'ProjectLogMapper::findForProject' => 'testTheProjectLogShowsOnlyTheViewersProject',
 		'TicketLogMapper::countForTickets' => 'testChildCountersFollowTheFilteredTicketSet',
 		// **Zwei Pfade ohne Betrachter.** Ihre Erwartung ist eine andere Art von
 		// Zusage — die Begruendung steht bei den Eintraegen in der Registry und
@@ -319,6 +322,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'step#assignableForNew' => 'testAssignableForNewFollowsTheChosenVisibility',
 		'memberSearch#search' => 'testMemberSearchRefusesEveryoneWithoutManagementRights',
 		'settings#memberRemovalImpact' => 'testRemovalImpactRefusesEveryoneWithoutManagementRights',
+		'settings#projectLog' => 'testTheProjectLogShowsOnlyTheViewersProject',
 		'notifyPref#index' => 'testEveryViewerSeesOnlyTheirOwnChannelSwitches',
 		'privateFolder#index' => 'testThePrivateFolderPathIsScopedToItsOwner',
 		'githubToken#index' => 'testTheGithubTokenPresenceIsScopedToItsOwner',
@@ -1905,6 +1909,27 @@ class LeakMatrixTest extends IntegrationTestCase {
 		}
 	}
 
+	public function testTheProjectLogShowsOnlyTheViewersProject(): void {
+		$log = Server::get(ProjectLogService::class);
+		$log->recordFor($this->fixture->projectId, self::ANNA, null, ProjectLog::BOARD_CREATED, null, 'hier');
+		$log->recordFor($this->fixture->otherProjectId, LeakMatrixFixture::ERNA, null, ProjectLog::BOARD_CREATED, null, 'dort');
+
+		$erwartet = [
+			self::ANNA => Http::STATUS_OK,
+			self::BERT => Http::STATUS_FORBIDDEN,
+			self::CARLA => Http::STATUS_FORBIDDEN,
+			self::DIRK => Http::STATUS_FORBIDDEN,
+			self::FREMD => Http::STATUS_NOT_FOUND,
+		];
+		foreach ($erwartet as $userId => $status) {
+			$response = $this->settingsController($userId)->projectLog($this->fixture->boardId);
+			$this->assertSame($status, $response->getStatus(), $userId . ' beim Protokoll');
+			if ($status === Http::STATUS_OK) {
+				$this->assertSame(['hier'], array_column($response->getData()['entries'], 'subject'));
+			}
+		}
+	}
+
 	/**
 	 * **Wem ein Schritt gegeben werden darf, deckt sich mit „wer das Ticket
 	 * sieht".**
@@ -2327,6 +2352,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 			Server::get(BoardService::class),
 			Server::get(ColumnService::class),
 			Server::get(MemberService::class),
+			Server::get(ProjectLogService::class),
 			Server::get(BoardAccess::class),
 			$userId,
 		);

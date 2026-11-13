@@ -598,6 +598,16 @@
 					</div>
 				</section>
 
+				<section v-if="mayManage && activeSection === 'protokoll'" class="pw-settings__block">
+					<h3 class="pw-col__head">
+						{{ t('projektwerk', 'Protokoll') }}
+					</h3>
+					<p class="pw-settings__hint">
+						{{ t('projektwerk', 'Wer Mitglieder, Rollen, Verwaltungsrechte und Boards dieses Projekts geändert hat. Sichtbar nur für interne Mitglieder mit Verwaltungsrecht.') }}
+					</p>
+					<ProjectLogList :boardId="boardId" />
+				</section>
+
 				<section v-if="showBoardArchive" v-show="activeSection === 'board-archiv'" class="pw-settings__block">
 					<h3 class="pw-col__head">
 						{{ t('projektwerk', 'Board archivieren') }}
@@ -765,6 +775,7 @@ import DeleteIcon from 'vue-material-design-icons/DeleteOutline.vue'
 import FolderIcon from 'vue-material-design-icons/Folder.vue'
 import LockIcon from 'vue-material-design-icons/Lock.vue'
 import FolderPicker from '@/components/FolderPicker.vue'
+import ProjectLogList from '@/components/ProjectLogList.vue'
 import PwSettingsNav from '@/components/PwSettingsNav.vue'
 import { searchGithubRepos } from '@/services/github'
 import {
@@ -811,7 +822,7 @@ function parentPath(path: string): string {
 export default defineComponent({
 	name: 'BoardSettingsView',
 
-	components: { ArrowDownIcon, ArrowUpIcon, ChevronLeftIcon, DeleteIcon, FolderIcon, FolderPicker, LockIcon, NcAvatar, NcButton, NcCheckboxRadioSwitch, NcDialog, NcEmptyContent, NcSelect, NcTextField, PwSettingsNav },
+	components: { ArrowDownIcon, ArrowUpIcon, ChevronLeftIcon, DeleteIcon, FolderIcon, FolderPicker, LockIcon, NcAvatar, NcButton, NcCheckboxRadioSwitch, NcDialog, NcEmptyContent, NcSelect, NcTextField, ProjectLogList, PwSettingsNav },
 
 	setup() {
 		return { store: useBoardStore() }
@@ -942,6 +953,7 @@ export default defineComponent({
 						{ key: 'mitglieder', label: t('projektwerk', 'Mitglieder') },
 						{ key: 'dateiablage', label: t('projektwerk', 'Dateiablage') },
 						{ key: 'projekt-archiv', label: t('projektwerk', 'Archiv') },
+						{ key: 'protokoll', label: t('projektwerk', 'Protokoll') },
 					],
 				},
 				board,

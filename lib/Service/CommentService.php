@@ -14,6 +14,7 @@ use OCA\Projektwerk\Db\Comment;
 use OCA\Projektwerk\Db\CommentMapper;
 use OCA\Projektwerk\Db\MailOutbox;
 use OCA\Projektwerk\Db\Ticket;
+use OCA\Projektwerk\Db\TicketLog;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\IL10N;
@@ -60,6 +61,7 @@ class CommentService {
 		// müsste — und der, der irgendwann nicht mehr stimmt.
 		private StepService $steps,
 		private IL10N $l10n,
+		private TicketLogService $log,
 	) {
 	}
 
@@ -168,8 +170,10 @@ class CommentService {
 
 		$comment->setBody($this->clean($body));
 		$comment->setUpdatedAt(new \DateTime());
+		$gespeichert = $this->comments->update($comment);
+		$this->log->record($viewer, $this->tickets->findVisible($viewer, (int)$comment->getTicketId()), TicketLog::COMMENT_EDITED);
 
-		return $this->comments->update($comment);
+		return $gespeichert;
 	}
 
 	/**
@@ -185,8 +189,12 @@ class CommentService {
 	public function delete(ViewerContext $viewer, int $commentId): Comment {
 		$comment = $this->findVisibleComment($viewer, $commentId);
 		$this->requireAuthor($viewer, $comment);
+		$ticket = $this->tickets->findVisible($viewer, (int)$comment->getTicketId());
+		$geloescht = $this->comments->delete($comment);
+		// Ohne den alten Text: Der Verlauf soll nicht aufheben, was jemand bewusst gelöscht hat.
+		$this->log->record($viewer, $ticket, TicketLog::COMMENT_DELETED);
 
-		return $this->comments->delete($comment);
+		return $geloescht;
 	}
 
 	/**

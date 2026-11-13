@@ -143,6 +143,8 @@ final class ReadPathRegistry {
 		'TicketUserMapper::countForTickets',
 		'TicketLogMapper::findForTickets',
 		'TicketLogMapper::countForTickets',
+		// Das Projekt-Protokoll: nur das Projekt des Betrachters; das Verwaltungsrecht prüft der Dienst.
+		'ProjectLogMapper::findForProject',
 
 		// **Zwei Lesepfade ohne Betrachter — und das ist die Erwartung.**
 		//
@@ -249,6 +251,7 @@ final class ReadPathRegistry {
 		// offen — dieselbe Rechtegrenze wie die Kontensuche, deshalb ebenfalls in
 		// der Matrix. Erwartung: `testRemovalImpactRefusesEveryoneWithoutManagementRights`.
 		'settings#memberRemovalImpact',
+		'settings#projectLog',
 		// **Kein Board im Pfad — und trotzdem in der Matrix.** Die Route
 		// liefert keine Projektdaten, sondern die eigenen Kanalschalter. Die
 		// Erwartung ist deshalb eine andere als sonst und trotzdem eine echte:

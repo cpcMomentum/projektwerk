@@ -144,6 +144,7 @@ return [
 		// Mitgliedschaft, nicht am Nextcloud-Konto.
 		['name' => 'settings#addMember', 'url' => '/api/v1/boards/{boardId}/members', 'verb' => 'POST'],
 		['name' => 'settings#updateMember', 'url' => '/api/v1/boards/{boardId}/members/{userId}', 'verb' => 'PATCH'],
+		['name' => 'settings#projectLog', 'url' => '/api/v1/boards/{boardId}/project-log', 'verb' => 'GET'],
 		// Entfernen (§5.29): erst die bezifferte Vorschau (GET), dann das
 		// Entfernen selbst (DELETE). Die Vorschau nennt, wie viele private
 		// Vorgaenge der Person dabei geloescht wuerden.
