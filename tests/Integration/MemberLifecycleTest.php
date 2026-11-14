@@ -14,10 +14,13 @@ use OCA\Projektwerk\Access\NotAMemberException;
 use OCA\Projektwerk\Access\TicketScope;
 use OCA\Projektwerk\Command\ProjectSetManager;
 use OCA\Projektwerk\Listener\UserCreatedListener;
+use OCA\Projektwerk\Db\ProjectLog;
+use OCA\Projektwerk\Db\TicketLog;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Service\BoardService;
 use OCA\Projektwerk\Service\MemberLifecycleService;
 use OCA\Projektwerk\Service\MemberService;
+use OCA\Projektwerk\Service\ProjectLogService;
 use OCP\IAppConfig;
 use OCP\IDBConnection;
 use OCP\IUser;
@@ -319,6 +322,17 @@ class MemberLifecycleTest extends IntegrationTestCase {
 		$this->assertNull($this->boardSpalte('created_by'), 'Das Ersteller-Recht geht nicht über.');
 	}
 
+	public function testTheProjectLogRecordsTheRemovalAndTheHandover(): void {
+		$this->setzeMitglied(LeakMatrixFixture::BERT, ['is_manager' => 1]);
+
+		$this->lifecycle->forget(LeakMatrixFixture::ANNA);
+
+		$this->assertSame([
+			[TicketLog::ACTOR_SYSTEM, null, ProjectLog::MEMBER_REMOVED, LeakMatrixFixture::ANNA, ProjectLog::REASON_ACCOUNT_DELETED],
+			[TicketLog::ACTOR_SYSTEM, null, ProjectLog::OWNER_CHANGED, LeakMatrixFixture::ANNA, LeakMatrixFixture::BERT],
+		], $this->protokoll());
+	}
+
 	public function testAPersonStillWaitingForCleanupDoesNotInheritTheProject(): void {
 		$this->setzeMitglied(LeakMatrixFixture::BERT, ['is_manager' => 1]);
 		Server::get(IAppConfig::class)->setValueArray('projektwerk', MemberLifecycleService::KEY_PENDING, [LeakMatrixFixture::BERT], true);
@@ -346,21 +360,32 @@ class MemberLifecycleTest extends IntegrationTestCase {
 
 		$users = $this->createStub(IUserManager::class);
 		$users->method('userExists')->willReturn(true);
-		$tester = new CommandTester(new ProjectSetManager($this->db, $users, $this->lifecycle));
+		$tester = new CommandTester(new ProjectSetManager($this->db, $users, $this->lifecycle, Server::get(ProjectLogService::class)));
 		$this->assertSame(1, $tester->execute(['projectId' => (string)$this->fixture->projectId, 'userId' => LeakMatrixFixture::CARLA]), 'Nur die Dienstleisterseite.');
 		$this->assertSame(1, $tester->execute(['projectId' => 'abc', 'userId' => LeakMatrixFixture::BERT]));
 		$this->assertSame(0, $tester->execute(['projectId' => (string)$this->fixture->projectId, 'userId' => LeakMatrixFixture::BERT]));
 
 		$this->assertSame(LeakMatrixFixture::BERT, $this->eigentuemer('pwerk_projects', 'id'));
 		$this->assertSame(LeakMatrixFixture::BERT, $this->eigentuemer('pwerk_boards', 'project_id'));
+
+		$this->assertSame([
+			[TicketLog::ACTOR_SYSTEM, null, ProjectLog::MEMBER_REMOVED, LeakMatrixFixture::ANNA, ProjectLog::REASON_ACCOUNT_DELETED],
+			[TicketLog::ACTOR_SYSTEM, null, ProjectLog::OWNER_CHANGED, LeakMatrixFixture::ANNA, null],
+			[TicketLog::ACTOR_SYSTEM, ProjectLog::VIA_CONSOLE, ProjectLog::MANAGER_GRANTED, LeakMatrixFixture::BERT, null],
+			[TicketLog::ACTOR_SYSTEM, ProjectLog::VIA_CONSOLE, ProjectLog::OWNER_CHANGED, null, LeakMatrixFixture::BERT],
+		], $this->protokoll(), 'Die abgelehnten Aufrufe schreiben nichts.');
+
+		$this->assertSame(0, $tester->execute(['projectId' => (string)$this->fixture->projectId, 'userId' => LeakMatrixFixture::BERT]));
+		$this->assertCount(4, $this->protokoll(), 'Ein zweiter Aufruf ändert nichts und schreibt nichts.');
 	}
 
 	public function testAFailedCleanupIsRememberedAndANewAccountWithThatIdStartsClean(): void {
 		$kaputt = $this->createStub(IDBConnection::class);
 		$kaputt->method('getQueryBuilder')->willThrowException(new \RuntimeException('DB weg'));
-		(new MemberLifecycleService($kaputt, new NullLogger(), Server::get(TicketLogService::class), Server::get(IAppConfig::class)))
+		(new MemberLifecycleService($kaputt, new NullLogger(), Server::get(TicketLogService::class), Server::get(IAppConfig::class), Server::get(ProjectLogService::class)))
 			->forget(LeakMatrixFixture::ANNA);
 		$this->assertSame([LeakMatrixFixture::ANNA], $this->lifecycle->pending());
+		$this->assertSame([], $this->protokoll(), 'Ohne Aufräumen kein Protokolleintrag.');
 
 		$user = $this->createStub(IUser::class);
 		$user->method('getUID')->willReturn(LeakMatrixFixture::ANNA);
@@ -402,6 +427,16 @@ class MemberLifecycleTest extends IntegrationTestCase {
 			->setMaxResults(1);
 
 		return (string)$qb->executeQuery()->fetchOne();
+	}
+
+	/** @return list<array{0: string, 1: ?string, 2: string, 3: ?string, 4: ?string}> */
+	private function protokoll(): array {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('actor_user_id', 'via', 'action', 'target_user_id', 'new_value')->from('pwerk_project_log')
+			->where($qb->expr()->eq('project_id', $qb->createNamedParameter($this->fixture->projectId)))
+			->orderBy('id', 'ASC');
+
+		return array_map(static fn (array $z): array => [$z['actor_user_id'], $z['via'], $z['action'], $z['target_user_id'], $z['new_value']], $qb->executeQuery()->fetchAll());
 	}
 
 	private function boardSpalte(string $spalte): ?string {

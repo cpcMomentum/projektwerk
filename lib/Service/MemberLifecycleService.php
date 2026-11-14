@@ -12,8 +12,9 @@ namespace OCA\Projektwerk\Service;
 use OCA\Projektwerk\Access\TicketScope;
 use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\AppInfo\Application;
-use OCP\DB\QueryBuilder\IQueryBuilder;
+use OCA\Projektwerk\Db\ProjectLog;
 use OCA\Projektwerk\Db\TicketLog;
+use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IAppConfig;
 use OCP\IDBConnection;
 use Psr\Log\LoggerInterface;
@@ -49,6 +50,7 @@ class MemberLifecycleService {
 		private LoggerInterface $logger,
 		private TicketLogService $log,
 		private IAppConfig $config,
+		private ProjectLogService $projectLog,
 	) {
 	}
 
@@ -76,6 +78,7 @@ class MemberLifecycleService {
 			$geloest = $this->loeseZuweisungen($userId);
 			$geloescht = $this->loeschePrivateTickets($userId);
 			$uebergeben = $this->uebergebeEigentum($userId);
+			$projekte = $this->projekteVon($userId);
 			$this->entferneMitgliedschaften($userId);
 			$this->entferneEinstellungen($userId);
 
@@ -86,7 +89,7 @@ class MemberLifecycleService {
 				$userId,
 				$geloest,
 				$geloescht,
-				$uebergeben,
+				count($uebergeben),
 			));
 		} catch (\Throwable $e) {
 			$this->db->rollBack();
@@ -105,23 +108,38 @@ class MemberLifecycleService {
 		}
 
 		$this->merke($userId, false);
+
+		foreach ($projekte as $projectId) {
+			$this->projectLog->recordFor($projectId, TicketLog::ACTOR_SYSTEM, null, ProjectLog::MEMBER_REMOVED, $userId, null, null, ProjectLog::REASON_ACCOUNT_DELETED);
+		}
+		foreach ($uebergeben as $projectId => $neu) {
+			$this->projectLog->recordFor($projectId, TicketLog::ACTOR_SYSTEM, null, ProjectLog::OWNER_CHANGED, $userId, null, null, $neu === '' ? null : $neu);
+		}
 	}
 
-	/**
-	 * @return bool ob sich etwas geändert hat
-	 */
+	/** @return list<int> */
+	private function projekteVon(string $userId): array {
+		$qb = $this->db->getQueryBuilder();
+		$qb->selectDistinct('project_id')
+			->from('pwerk_members')
+			->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+
+		return array_map(static fn (array $zeile): int => (int)$zeile['project_id'], $qb->executeQuery()->fetchAll());
+	}
+
+	/** @return bool ob das Projekt selbst den Eigentümer gewechselt hat; die Boards folgen nur */
 	public function setzeEigentuemer(int $projectId, string $von, string $nach): bool {
-		$geaendert = false;
+		$geaendert = [];
 		foreach (['pwerk_projects' => 'id', 'pwerk_boards' => 'project_id'] as $tabelle => $spalte) {
 			$qb = $this->db->getQueryBuilder();
 			$qb->update($tabelle)
 				->set('owner_user_id', $qb->createNamedParameter($nach))
 				->where($qb->expr()->eq($spalte, $qb->createNamedParameter($projectId, IQueryBuilder::PARAM_INT)))
 				->andWhere($qb->expr()->eq('owner_user_id', $qb->createNamedParameter($von)));
-			$geaendert = $qb->executeStatement() > 0 || $geaendert;
+			$geaendert[$tabelle] = $qb->executeStatement() > 0;
 		}
 
-		return $geaendert;
+		return $geaendert['pwerk_projects'];
 	}
 
 	private function merke(string $userId, bool $offen): void {
@@ -141,14 +159,15 @@ class MemberLifecycleService {
 		}
 	}
 
-	/** Projekte gehen an das dienstälteste interne Mitglied mit Verwaltungsrecht, sonst bleiben sie ohne Eigentümer. */
-	private function uebergebeEigentum(string $userId): int {
+	/** @return array<int, string> neuer Eigentümer je Projekt: das dienstälteste interne Mitglied mit Verwaltungsrecht, sonst '' */
+	private function uebergebeEigentum(string $userId): array {
 		$qb = $this->db->getQueryBuilder();
 		$qb->select('id')
 			->from('pwerk_projects')
 			->where($qb->expr()->eq('owner_user_id', $qb->createNamedParameter($userId)));
 		$projekte = array_map(static fn (array $zeile): int => (int)$zeile['id'], $qb->executeQuery()->fetchAll());
 
+		$uebergeben = [];
 		foreach ($projekte as $projectId) {
 			$qb = $this->db->getQueryBuilder();
 			$qb->select('user_id')
@@ -160,7 +179,10 @@ class MemberLifecycleService {
 				->orderBy('added_at', 'ASC')
 				->addOrderBy('id', 'ASC')
 				->setMaxResults(1);
-			$this->setzeEigentuemer($projectId, $userId, (string)($qb->executeQuery()->fetchOne() ?: ''));
+			$neu = (string)($qb->executeQuery()->fetchOne() ?: '');
+			if ($this->setzeEigentuemer($projectId, $userId, $neu)) {
+				$uebergeben[$projectId] = $neu;
+			}
 		}
 
 		// Boards mit abweichendem Eigentümer folgen ihrem Projekt.
@@ -183,7 +205,7 @@ class MemberLifecycleService {
 			->where($qb->expr()->eq('created_by', $qb->createNamedParameter($userId)));
 		$qb->executeStatement();
 
-		return count($projekte);
+		return $uebergeben;
 	}
 
 	/**

@@ -675,6 +675,11 @@ OC.L10N.register(
     "Ein Vorgang kann höchstens %s Arbeitsschritte haben." : "A ticket can have at most %s work steps.",
     "Der Titel darf höchstens %s Zeichen lang sein." : "The title may be at most %s characters long.",
     "Beschreibung und Ergebnis dürfen je höchstens %s Zeichen lang sein." : "Description and result may each be at most %s characters long.",
-    "Die Beschreibung darf höchstens %s Zeichen lang sein." : "The description may be at most %s characters long."
+    "Die Beschreibung darf höchstens %s Zeichen lang sein." : "The description may be at most %s characters long.",
+    "über die Kommandozeile" : "via the command line",
+    "hat {name} aus dem Projekt entfernt, weil das Konto gelöscht wurde" : "removed {name} from the project because the account was deleted",
+    "hat {name} als Eigentümer entfernt, das Projekt hat jetzt keinen Eigentümer" : "removed {name} as owner, the project now has no owner",
+    "hat {to} zum Eigentümer gemacht" : "made {to} the owner",
+    "hat den Eigentümer geändert: {from} → {to}" : "changed the owner: {from} → {to}"
 },
 "nplurals=2; plural=(n != 1);");
