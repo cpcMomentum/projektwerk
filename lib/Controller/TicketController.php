@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace OCA\Projektwerk\Controller;
 
+use OCA\Projektwerk\Access\AllowedInArchive;
 use OCA\Projektwerk\Access\BoardAccess;
 use OCA\Projektwerk\Access\NotAMemberException;
 use OCA\Projektwerk\Access\ViewerContext;
@@ -107,6 +108,7 @@ class TicketController extends Controller {
 	 * CSRF-Prüfung. Der Rumpf ist leer; die Antwort ist der Erfolg selbst.
 	 */
 	#[NoAdminRequired]
+	#[AllowedInArchive]
 	public function read(int $boardId, int $ticketId): JSONResponse {
 		return $this->withViewer($boardId, function (ViewerContext $viewer) use ($ticketId): JSONResponse {
 			try {

@@ -148,6 +148,7 @@
 			nachgerüstet.
 		-->
 		<NcActions
+			v-if="!readOnly"
 			class="pw-card__menu"
 			:forceMenu="true"
 			:ariaLabel="menuLabel">
@@ -319,6 +320,8 @@ export default defineComponent({
 		highlighted: { type: Boolean, default: false },
 		/** Aus Sicht der Kundenseite formuliert. */
 		fromClientSide: { type: Boolean, default: false },
+		/** Archiviertes Board: kein Menü zum Ändern. */
+		readOnly: { type: Boolean, default: false },
 	},
 
 	emits: ['open', 'move', 'toggleclosed', 'togglearchived', 'delete'],

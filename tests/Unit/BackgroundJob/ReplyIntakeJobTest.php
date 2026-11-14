@@ -55,6 +55,8 @@ class ReplyIntakeJobTest extends TestCase {
 	/** 32 Hex-Zeichen, berechnet statt als Literal (Secret-Check). */
 	private string $token;
 
+	private bool $archiviert = false;
+
 	protected function setUp(): void {
 		parent::setUp();
 
@@ -93,8 +95,8 @@ class ReplyIntakeJobTest extends TestCase {
 
 		// ViewerContext über BoardAccess (final readonly → echt gebaut, nicht gemockt).
 		$access = $this->createMock(BoardAccess::class);
-		$access->method('contextFor')->willReturn(
-			ViewerContext::forMember(self::RECIPIENT, self::BOARD_ID, 99, ViewerContext::ROLE_EXTERNAL, false),
+		$access->method('contextFor')->willReturnCallback(
+			fn (): ViewerContext => ViewerContext::forMember(self::RECIPIENT, self::BOARD_ID, 99, ViewerContext::ROLE_EXTERNAL, false, false, $this->archiviert),
 		);
 
 		$l10n = $this->createMock(IL10N::class);
@@ -246,6 +248,18 @@ class ReplyIntakeJobTest extends TestCase {
 			$this->raw('projekte@firma.de', $this->betreff(), 'Schleife.'),
 			$counter,
 		);
+	}
+
+	public function testAReplyToAnArchivedBoardIsNotTakenOver(): void {
+		$this->archiviert = true;
+		$this->comments->expects($this->never())->method('create');
+
+		$counter = [];
+		$client = $this->verarbeiten(
+			$this->raw(self::RECIPIENT_MAIL, $this->betreff(), 'Ja, bitte umsetzen.'),
+			$counter,
+		);
+		$this->assertInstanceOf(ImapClient::class, $client);
 	}
 
 	public function testMissingTokenIsUnmatched(): void {

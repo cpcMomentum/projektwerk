@@ -31,12 +31,13 @@ class EntitlementServiceTest extends TestCase {
 	 * Vorgabewert zurück (wie das echte {@see IAppConfig}), und die Grenze gilt
 	 * als unbegrenzt.
 	 */
-	private function service(?int $maxCustomer = null, ?int $maxBoards = null): EntitlementService {
+	private function service(?int $maxCustomer = null, ?int $maxBoards = null, ?int $maxProjects = null): EntitlementService {
 		$config = $this->createMock(IAppConfig::class);
 		$config->method('getValueInt')->willReturnCallback(
 			static fn (string $app, string $key, int $default = 0): int => match ($key) {
 				'plus_max_customer_projects' => $maxCustomer ?? $default,
 				'plus_max_boards_per_project' => $maxBoards ?? $default,
+				'plus_max_projects' => $maxProjects ?? $default,
 				default => $default,
 			},
 		);
@@ -104,5 +105,15 @@ class EntitlementServiceTest extends TestCase {
 
 	public function testRaisedBoardLimitAllowsSecond(): void {
 		$this->assertFalse($this->service(maxBoards: 2)->blocksAdditionalBoard(1));
+	}
+
+	public function testUnconfiguredProjectLimitNeverBlocks(): void {
+		$this->assertSame(PHP_INT_MAX, $this->service()->maxActiveProjects());
+		$this->assertFalse($this->service()->blocksAdditionalProject(999));
+	}
+
+	public function testTheEleventhProjectIsBlocked(): void {
+		$this->assertFalse($this->service(maxProjects: 10)->blocksAdditionalProject(9));
+		$this->assertTrue($this->service(maxProjects: 10)->blocksAdditionalProject(10));
 	}
 }

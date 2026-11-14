@@ -1269,6 +1269,15 @@ body .modal-wrapper:has(.pw-detail) > .modal-container {
 	box-shadow: 0 -1px 0 var(--color-border);
 }
 
+/* Hülle für den Archivzustand: sperrt die Bedienelemente, ohne das Layout zu ändern. */
+.app-projektwerk .pw-nurlesen {
+	display: contents;
+	min-width: 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
 /* „Zurück" links, die Ausgänge und Löschen rechts. */
 .app-projektwerk .pw-detail__fuss-aktionen {
 	display: flex;

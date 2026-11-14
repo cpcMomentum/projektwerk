@@ -46,6 +46,8 @@ final readonly class ViewerContext {
 		 * board-bezogene (statt projektweite) Berechtigung der App.
 		 */
 		public bool $isBoardCreator,
+		/** Board oder Projekt archiviert: dann ist nichts mehr änderbar. */
+		public bool $readOnly = false,
 		/** Herkunft: `null` = Browser, {@see VIA_TOOL} = KI-Werkzeug über MCP, {@see VIA_MAIL} = Antwort per E-Mail. */
 		public ?string $via = null,
 	) {
@@ -60,7 +62,7 @@ final readonly class ViewerContext {
 	 *
 	 * @internal
 	 */
-	public static function forMember(string $userId, int $boardId, int $projectId, string $role, bool $isManager, bool $isBoardCreator = false): self {
+	public static function forMember(string $userId, int $boardId, int $projectId, string $role, bool $isManager, bool $isBoardCreator = false, bool $readOnly = false): self {
 		if ($role !== self::ROLE_INTERNAL && $role !== self::ROLE_EXTERNAL) {
 			// Ein unbekannter Rollenwert darf nicht als "irgendwas" durchgehen:
 			// Die Sichtbarkeitsregel vergleicht creator_role mit genau diesem
@@ -74,18 +76,18 @@ final readonly class ViewerContext {
 		//
 		// isBoardCreator bleibt davon unberuehrt: Ein externes Mitglied DARF sein
 		// selbst angelegtes Board einrichten (#281) — das ist der Sinn des Rechts.
-		return new self($userId, $boardId, $projectId, $role, $isManager && $role === self::ROLE_INTERNAL, $isBoardCreator);
+		return new self($userId, $boardId, $projectId, $role, $isManager && $role === self::ROLE_INTERNAL, $isBoardCreator, $readOnly);
 	}
 
 	/**
 	 * Derselbe geprüfte Betrachter, gekennzeichnet als Handeln über ein KI-Werkzeug.
 	 */
 	public function viaTool(): self {
-		return new self($this->userId, $this->boardId, $this->projectId, $this->role, $this->isManager, $this->isBoardCreator, self::VIA_TOOL);
+		return new self($this->userId, $this->boardId, $this->projectId, $this->role, $this->isManager, $this->isBoardCreator, $this->readOnly, self::VIA_TOOL);
 	}
 
 	public function viaMail(): self {
-		return new self($this->userId, $this->boardId, $this->projectId, $this->role, $this->isManager, $this->isBoardCreator, self::VIA_MAIL);
+		return new self($this->userId, $this->boardId, $this->projectId, $this->role, $this->isManager, $this->isBoardCreator, $this->readOnly, self::VIA_MAIL);
 	}
 
 	public function isInternal(): bool {

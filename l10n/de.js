@@ -680,6 +680,10 @@ OC.L10N.register(
     "hat {name} aus dem Projekt entfernt, weil das Konto gelöscht wurde" : "hat {name} aus dem Projekt entfernt, weil das Konto gelöscht wurde",
     "hat {name} als Eigentümer entfernt, das Projekt hat jetzt keinen Eigentümer" : "hat {name} als Eigentümer entfernt, das Projekt hat jetzt keinen Eigentümer",
     "hat {to} zum Eigentümer gemacht" : "hat {to} zum Eigentümer gemacht",
-    "hat den Eigentümer geändert: {from} → {to}" : "hat den Eigentümer geändert: {from} → {to}"
+    "hat den Eigentümer geändert: {from} → {to}" : "hat den Eigentümer geändert: {from} → {to}",
+    "Dieses Board ist archiviert und kann nur gelesen werden." : "Dieses Board ist archiviert und kann nur gelesen werden.",
+    "Im freien Umfang sind %s aktive Projekte enthalten. WerkPlus schaltet weitere frei." : "Im freien Umfang sind %s aktive Projekte enthalten. WerkPlus schaltet weitere frei.",
+    "Archiviert: Nur Zurückholen und das Entfernen von Mitgliedern sind möglich." : "Archiviert: Nur Zurückholen und das Entfernen von Mitgliedern sind möglich.",
+    "Dieses Projekt ist archiviert und kann nur gelesen werden." : "Dieses Projekt ist archiviert und kann nur gelesen werden."
 },
 "nplurals=2; plural=(n != 1);");

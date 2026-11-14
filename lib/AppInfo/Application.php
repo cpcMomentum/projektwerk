@@ -14,6 +14,7 @@ use OCA\Projektwerk\Listener\UserCreatedListener;
 use OCA\Projektwerk\Listener\UserDeletedListener;
 use OCA\Projektwerk\Mcp\OidcTokenValidator;
 use OCA\Projektwerk\Mcp\TokenValidator;
+use OCA\Projektwerk\Middleware\ArchiveMiddleware;
 use OCA\Projektwerk\Notification\Notifier;
 use OCA\Projektwerk\Reference\TicketReferenceProvider;
 use OCA\Projektwerk\Search\TicketSearchProvider;
@@ -46,6 +47,8 @@ class Application extends App implements IBootstrap {
 
 		// Tokens fuer den MCP-Endpunkt prueft die App `oidc`; ProjektWerk stellt keine aus.
 		$context->registerServiceAlias(TokenValidator::class, OidcTokenValidator::class);
+
+		$context->registerMiddleware(ArchiveMiddleware::class);
 
 		// Die Glocke. Der Notifier loest **erst beim Anzeigen** auf — gespeichert
 		// wird nur die Ticketkennung. Ist der Vorgang fuer die empfangende

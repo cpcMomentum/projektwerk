@@ -66,12 +66,14 @@
 							selbst — die Frage „wer darf aendern" gehoert an genau
 							eine Stelle.
 						-->
-						<VisibilityControl
-							v-if="!pending"
-							:ticket="ticket"
-							:viewer="viewer"
-							:showChip="showVisibility"
-							@changed="$emit('changed', $event)" />
+						<fieldset class="pw-nurlesen" :disabled="nurLesen">
+							<VisibilityControl
+								v-if="!pending"
+								:ticket="ticket"
+								:viewer="viewer"
+								:showChip="showVisibility"
+								@changed="$emit('changed', $event)" />
+						</fieldset>
 
 						<!--
 							Im Kopf bleibt nur noch der GitHub-Bezug (#331): die
@@ -150,6 +152,7 @@
 								{{ ticket.title }}
 							</h2>
 							<NcButton
+								v-if="!nurLesen"
 								variant="tertiary"
 								class="pw-detail__title-stift"
 								:ariaLabel="t('projektwerk', 'Titel bearbeiten')"
@@ -239,7 +242,7 @@
 									den Weg an, statt nur festzustellen, dass nichts da
 									ist.
 								-->
-								<NcButton v-else variant="tertiary" @click="startEditText">
+								<NcButton v-else-if="!nurLesen" variant="tertiary" @click="startEditText">
 									<template #icon>
 										<PlusIcon :size="20" />
 									</template>
@@ -256,7 +259,7 @@
 							</div>
 
 							<NcButton
-								v-if="ticket.description"
+								v-if="ticket.description && !nurLesen"
 								variant="tertiary"
 								class="pw-beschreibung__stift"
 								:ariaLabel="t('projektwerk', 'Beschreibung bearbeiten')"
@@ -358,8 +361,8 @@
 						</div>
 					</div>
 				</div>
-
-				<!--
+				<fieldset class="pw-nurlesen" :disabled="nurLesen">
+					<!--
 					Zwei Personen, nebeneinander in einer Zeile. Mehr koennen es
 					nicht werden: Nach der Entscheidung zu #97 traegt der Vorgang
 					genau zwei Rollen — die anlegende Person und die zustaendige.
@@ -368,149 +371,150 @@
 					Die sichtbare Ueberschrift entfaellt (#99); zwei Namen mit
 					Avatar erklaeren sich. Fuer Screenreader bleibt sie stehen.
 				-->
-				<!--
+					<!--
 					**Eckdaten, Variante B** (#345): Ersteller, Zuständigkeit und
 					Fälligkeit werden gelesen; **ein** Stift öffnet Zuständig und Frist
 					gemeinsam, mit Beschriftung über dem Feld und „Fertig" darunter —
 					dasselbe Muster wie am Arbeitsschritt. Beide Felder speichern
 					sofort; „Fertig" schließt nur.
 				-->
-				<div class="pw-personen">
-					<h3 class="hidden-visually">
-						{{ t('projektwerk', 'Personen') }}
-					</h3>
+					<div class="pw-personen">
+						<h3 class="hidden-visually">
+							{{ t('projektwerk', 'Personen') }}
+						</h3>
 
-					<div class="pw-person">
-						<NcAvatar
-							:user="ticket.creatorUserId"
-							:displayName="nameOf(ticket.creatorUserId)"
-							:size="32"
-							:disableMenu="true"
-							:hideStatus="true" />
-						<span class="pw-person__body">
-							<span class="pw-person__name">{{ nameOf(ticket.creatorUserId) }}</span>
-							<span class="pw-person__org">{{ orgLine(ticket.creatorUserId, ticket.creatorRole, ticket.createdVia === 'tool' ? t('projektwerk', 'angelegt über KI-Werkzeug') : t('projektwerk', 'angelegt')) }}</span>
-						</span>
-					</div>
-
-					<div v-if="!editingResponsible" class="pw-person">
-						<template v-if="ticket.responsibleUserId">
+						<div class="pw-person">
 							<NcAvatar
-								:user="ticket.responsibleUserId"
-								:displayName="nameOf(ticket.responsibleUserId)"
+								:user="ticket.creatorUserId"
+								:displayName="nameOf(ticket.creatorUserId)"
 								:size="32"
 								:disableMenu="true"
 								:hideStatus="true" />
 							<span class="pw-person__body">
-								<span class="pw-person__name">{{ nameOf(ticket.responsibleUserId) }}</span>
-								<span class="pw-person__org">{{ orgLine(ticket.responsibleUserId, roleOf(ticket.responsibleUserId), t('projektwerk', 'zuständig')) }}</span>
+								<span class="pw-person__name">{{ nameOf(ticket.creatorUserId) }}</span>
+								<span class="pw-person__org">{{ orgLine(ticket.creatorUserId, ticket.creatorRole, ticket.createdVia === 'tool' ? t('projektwerk', 'angelegt über KI-Werkzeug') : t('projektwerk', 'angelegt')) }}</span>
 							</span>
-						</template>
-						<span v-else class="pw-person__body">
-							<span class="pw-person__name pw-person__name--leer">{{ t('projektwerk', 'Niemand zuständig') }}</span>
-						</span>
-					</div>
-				</div>
-
-				<div v-if="!editingResponsible" class="pw-frist" :class="{ 'pw-frist--overdue': dueOverdue }">
-					<span class="pw-frist__label">
-						<CalendarAlertIcon v-if="dueOverdue" :size="18" />
-						<CalendarIcon v-else :size="18" />
-						{{ t('projektwerk', 'Fällig bis') }}
-					</span>
-					<span class="pw-frist__wert">{{ dueText }}</span>
-					<span v-if="dueOverdue" class="pw-frist__marke">
-						{{ t('projektwerk', 'überfällig') }}
-					</span>
-					<NcButton
-						class="pw-eckdaten__stift"
-						variant="tertiary"
-						:ariaLabel="t('projektwerk', 'Zuständigkeit und Fälligkeit ändern')"
-						:title="t('projektwerk', 'Bearbeiten')"
-						@click="startEditResponsible">
-						<template #icon>
-							<PencilOutlineIcon :size="20" />
-						</template>
-					</NcButton>
-				</div>
-
-				<div v-else class="pw-eckdaten__edit">
-					<div class="pw-eckdaten__felder">
-						<div class="pw-field pw-eckdaten__person">
-							<label :for="responsibleInputId">{{ t('projektwerk', 'Zuständig') }}</label>
-							<NcSelectUsers
-								class="pw-person__picker"
-								:options="assignableOptions"
-								:modelValue="responsibleOption"
-								:inputId="responsibleInputId"
-								:labelOutside="true"
-								:disabled="busy"
-								:placeholder="t('projektwerk', 'Niemand')"
-								@update:modelValue="setResponsible" />
 						</div>
-						<div class="pw-field pw-eckdaten__frist">
-							<label>{{ t('projektwerk', 'Fällig bis') }}</label>
-							<NcDateTimePicker
-								:modelValue="dueValue"
-								type="date"
-								class="pw-frist__picker"
-								:clearable="true"
-								:appendToBody="true"
-								:disabled="busy"
-								:ariaLabel="t('projektwerk', 'Fällig bis')"
-								:placeholder="t('projektwerk', 'Keine Frist')"
-								@update:modelValue="setDue" />
-						</div>
-					</div>
-					<div class="pw-step__felder-aktionen">
-						<NcButton
-							variant="primary"
-							:ariaLabel="t('projektwerk', 'Fertig')"
-							:disabled="busy"
-							@click="editingResponsible = false">
-							<template #icon>
-								<CheckIcon :size="20" />
+
+						<div v-if="!editingResponsible" class="pw-person">
+							<template v-if="ticket.responsibleUserId">
+								<NcAvatar
+									:user="ticket.responsibleUserId"
+									:displayName="nameOf(ticket.responsibleUserId)"
+									:size="32"
+									:disableMenu="true"
+									:hideStatus="true" />
+								<span class="pw-person__body">
+									<span class="pw-person__name">{{ nameOf(ticket.responsibleUserId) }}</span>
+									<span class="pw-person__org">{{ orgLine(ticket.responsibleUserId, roleOf(ticket.responsibleUserId), t('projektwerk', 'zuständig')) }}</span>
+								</span>
 							</template>
-							{{ t('projektwerk', 'Fertig') }}
+							<span v-else class="pw-person__body">
+								<span class="pw-person__name pw-person__name--leer">{{ t('projektwerk', 'Niemand zuständig') }}</span>
+							</span>
+						</div>
+					</div>
+
+					<div v-if="!editingResponsible" class="pw-frist" :class="{ 'pw-frist--overdue': dueOverdue }">
+						<span class="pw-frist__label">
+							<CalendarAlertIcon v-if="dueOverdue" :size="18" />
+							<CalendarIcon v-else :size="18" />
+							{{ t('projektwerk', 'Fällig bis') }}
+						</span>
+						<span class="pw-frist__wert">{{ dueText }}</span>
+						<span v-if="dueOverdue" class="pw-frist__marke">
+							{{ t('projektwerk', 'überfällig') }}
+						</span>
+						<NcButton
+							class="pw-eckdaten__stift"
+							variant="tertiary"
+							:ariaLabel="t('projektwerk', 'Zuständigkeit und Fälligkeit ändern')"
+							:title="t('projektwerk', 'Bearbeiten')"
+							@click="startEditResponsible">
+							<template #icon>
+								<PencilOutlineIcon :size="20" />
+							</template>
 						</NcButton>
 					</div>
-				</div>
 
-				<DependencyList
-					v-if="!pending"
-					:boardId="ticket.boardId"
-					:ticketId="ticket.id"
-					:dependsOn="dependsOn"
-					:neededBy="neededBy"
-					:boardTickets="boardTickets"
-					:columns="columns"
-					@open="$emit('openTicket', $event)"
-					@changed="$emit('linksChanged', $event)" />
+					<div v-else class="pw-eckdaten__edit">
+						<div class="pw-eckdaten__felder">
+							<div class="pw-field pw-eckdaten__person">
+								<label :for="responsibleInputId">{{ t('projektwerk', 'Zuständig') }}</label>
+								<NcSelectUsers
+									class="pw-person__picker"
+									:options="assignableOptions"
+									:modelValue="responsibleOption"
+									:inputId="responsibleInputId"
+									:labelOutside="true"
+									:disabled="busy"
+									:placeholder="t('projektwerk', 'Niemand')"
+									@update:modelValue="setResponsible" />
+							</div>
+							<div class="pw-field pw-eckdaten__frist">
+								<label>{{ t('projektwerk', 'Fällig bis') }}</label>
+								<NcDateTimePicker
+									:modelValue="dueValue"
+									type="date"
+									class="pw-frist__picker"
+									:clearable="true"
+									:appendToBody="true"
+									:disabled="busy"
+									:ariaLabel="t('projektwerk', 'Fällig bis')"
+									:placeholder="t('projektwerk', 'Keine Frist')"
+									@update:modelValue="setDue" />
+							</div>
+						</div>
+						<div class="pw-step__felder-aktionen">
+							<NcButton
+								variant="primary"
+								:ariaLabel="t('projektwerk', 'Fertig')"
+								:disabled="busy"
+								@click="editingResponsible = false">
+								<template #icon>
+									<CheckIcon :size="20" />
+								</template>
+								{{ t('projektwerk', 'Fertig') }}
+							</NcButton>
+						</div>
+					</div>
 
-				<StepList
-					ref="steps"
-					:boardId="ticket.boardId"
-					:ticketId="ticket.id"
-					:steps="steps"
-					:members="members"
-					:visibility="ticket.visibility"
-					:orgInternal="orgInternal"
-					:customer="customer"
-					@changed="$emit('stepsChanged')" />
+					<DependencyList
+						v-if="!pending"
+						:boardId="ticket.boardId"
+						:ticketId="ticket.id"
+						:dependsOn="dependsOn"
+						:neededBy="neededBy"
+						:boardTickets="boardTickets"
+						:columns="columns"
+						@open="$emit('openTicket', $event)"
+						@changed="$emit('linksChanged', $event)" />
 
-				<!--
+					<StepList
+						ref="steps"
+						:boardId="ticket.boardId"
+						:ticketId="ticket.id"
+						:steps="steps"
+						:members="members"
+						:visibility="ticket.visibility"
+						:orgInternal="orgInternal"
+						:customer="customer"
+						@changed="$emit('stepsChanged')" />
+
+					<!--
 					**Anhaenge vor Kommentaren** — so gibt §9 die Reihenfolge vor,
 					und der Code hielt sie bis #99 umgekehrt. Kommentare sind die
 					einzige Liste, die unbegrenzt waechst; zuletzt behaelt alles
 					darueber eine feste Position.
 				-->
-				<AttachmentList
-					v-if="!pending"
-					:boardId="ticket.boardId"
-					:ticketId="ticket.id"
-					:attachments="attachments"
-					:members="members"
-					@changed="$emit('attachmentsChanged')" />
+					<AttachmentList
+						v-if="!pending"
+						:boardId="ticket.boardId"
+						:ticketId="ticket.id"
+						:attachments="attachments"
+						:members="members"
+						@changed="$emit('attachmentsChanged')" />
+				</fieldset>
 
 				<section :class="{ 'pw-abschnitt': !pending }">
 					<div
@@ -542,17 +546,18 @@
 						:version="ticket.version"
 						:changeKey="historyKey"
 						:members="members" />
-					<CommentList
-						v-else
-						:boardId="ticket.boardId"
-						:ticketId="ticket.id"
-						:comments="comments"
-						:members="members"
-						:viewer="viewer"
-						:orgInternal="orgInternal"
-						:customer="customer"
-						:embedded="!pending"
-						@changed="$emit('commentsChanged')" />
+					<fieldset v-else class="pw-nurlesen" :disabled="nurLesen">
+						<CommentList
+							:boardId="ticket.boardId"
+							:ticketId="ticket.id"
+							:comments="comments"
+							:members="members"
+							:viewer="viewer"
+							:orgInternal="orgInternal"
+							:customer="customer"
+							:embedded="!pending"
+							@changed="$emit('commentsChanged')" />
+					</fieldset>
 				</section>
 
 				<!--
@@ -562,7 +567,7 @@
 					den Vorgang statt des Fensters.
 				-->
 				<footer class="pw-detail__fuss">
-					<div class="pw-detail__fuss-aktionen">
+					<fieldset class="pw-detail__fuss-aktionen pw-nurlesen" :disabled="nurLesen">
 						<NcButton
 							class="pw-detail__loeschen"
 							variant="error"
@@ -621,7 +626,7 @@
 							</template>
 							{{ ticket.archivedAt ? t('projektwerk', 'Aus dem Archiv holen') : t('projektwerk', 'Archivieren') }}
 						</NcButton>
-					</div>
+					</fieldset>
 
 					<NcButton
 						class="pw-detail__ausgang"
@@ -795,8 +800,13 @@ export default defineComponent({
 		 * Gäste) sehen sie nie — die serverseitige Grenze steht zusätzlich im
 		 * TicketService.
 		 */
+		nurLesen(): boolean {
+			return this.viewer?.readOnly === true
+		},
+
 		canTransferToGithub(): boolean {
 			return this.viewer?.role === 'internal'
+				&& !this.nurLesen
 				&& !this.pending
 				&& this.githubEnabled
 				&& this.githubRepo.trim() !== ''
@@ -1147,6 +1157,9 @@ export default defineComponent({
 		},
 
 		startEditTitle(): void {
+			if (this.nurLesen) {
+				return
+			}
 			this.titleEntwurf = this.ticket?.title ?? ''
 			this.editingTitle = true
 		},
@@ -1181,6 +1194,9 @@ export default defineComponent({
 		},
 
 		startEditText(): void {
+			if (this.nurLesen) {
+				return
+			}
 			this.textEntwurf = this.ticket?.description ?? ''
 			this.editingText = true
 

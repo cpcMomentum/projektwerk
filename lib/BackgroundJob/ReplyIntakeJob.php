@@ -249,6 +249,11 @@ class ReplyIntakeJob extends TimedJob {
 
 		// 5. Kommentar über den regulären Weg — ViewerContext NUR über BoardAccess.
 		$viewer = $this->access->contextFor($recipientUid, $boardId)->viaMail();
+		if ($viewer->readOnly) {
+			$this->unmatched($client, $uid, 'Board archiviert');
+
+			return;
+		}
 		$this->comments->create($viewer, $ticketId, $body);
 
 		// **Erst der Kommentar, dann `markSeen` — bewusst diese Richtung** (PR-Review

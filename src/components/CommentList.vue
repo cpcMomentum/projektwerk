@@ -206,7 +206,7 @@
 				:autoComplete="mentionAutoComplete"
 				:userData="mentionUserData"
 				:menuContainer="menuContainer"
-				:disabled="busy"
+				:disabled="busy || viewer?.readOnly === true"
 				@submit="add" />
 			<div v-if="fokusImFeld || newBody !== ''" class="pw-comment__actions">
 				<NcButton

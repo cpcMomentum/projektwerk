@@ -50,6 +50,11 @@ afterEach(() => {
 })
 
 describe('TicketCard', () => {
+	it('zeigt im Archiv kein Menü zum Ändern', () => {
+		expect(mount(TicketCard, { props: { ticket: vorgang(1) } }).find('.pw-card__menu').exists()).toBe(true)
+		expect(mount(TicketCard, { props: { ticket: vorgang(1), readOnly: true } }).find('.pw-card__menu').exists()).toBe(false)
+	})
+
 	it('öffnet per Mittelklick den Direktlink in einem neuen Tab', async () => {
 		const w = mount(TicketCard, { props: { ticket: vorgang(219489) } })
 		await w.find('.pw-card__open').trigger('auxclick', { button: 1 })
