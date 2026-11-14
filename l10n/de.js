@@ -675,6 +675,11 @@ OC.L10N.register(
     "Ein Vorgang kann höchstens %s Arbeitsschritte haben." : "Ein Vorgang kann höchstens %s Arbeitsschritte haben.",
     "Der Titel darf höchstens %s Zeichen lang sein." : "Der Titel darf höchstens %s Zeichen lang sein.",
     "Beschreibung und Ergebnis dürfen je höchstens %s Zeichen lang sein." : "Beschreibung und Ergebnis dürfen je höchstens %s Zeichen lang sein.",
-    "Die Beschreibung darf höchstens %s Zeichen lang sein." : "Die Beschreibung darf höchstens %s Zeichen lang sein."
+    "Die Beschreibung darf höchstens %s Zeichen lang sein." : "Die Beschreibung darf höchstens %s Zeichen lang sein.",
+    "über die Kommandozeile" : "über die Kommandozeile",
+    "hat {name} aus dem Projekt entfernt, weil das Konto gelöscht wurde" : "hat {name} aus dem Projekt entfernt, weil das Konto gelöscht wurde",
+    "hat {name} als Eigentümer entfernt, das Projekt hat jetzt keinen Eigentümer" : "hat {name} als Eigentümer entfernt, das Projekt hat jetzt keinen Eigentümer",
+    "hat {to} zum Eigentümer gemacht" : "hat {to} zum Eigentümer gemacht",
+    "hat den Eigentümer geändert: {from} → {to}" : "hat den Eigentümer geändert: {from} → {to}"
 },
 "nplurals=2; plural=(n != 1);");
