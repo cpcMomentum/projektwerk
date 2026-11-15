@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace OCA\Projektwerk\Controller;
 
+use OCA\Projektwerk\Access\AllowedInArchive;
 use OCA\Projektwerk\Access\BoardAccess;
 use OCA\Projektwerk\Access\NotAMemberException;
 use OCA\Projektwerk\Access\ViewerContext;
@@ -79,6 +80,8 @@ class SettingsController extends Controller {
 			// Gäste dürfen keine eigenständigen Projekte anlegen (#280). 403, nicht
 			// 404: Der Gast ist angemeldet, es gibt nichts zu verbergen.
 			return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_FORBIDDEN);
+		} catch (WerkPlusLimitException $e) {
+			return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_PAYMENT_REQUIRED);
 		} catch (\InvalidArgumentException $e) {
 			return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
 		}
@@ -151,18 +154,21 @@ class SettingsController extends Controller {
 	}
 
 	#[NoAdminRequired]
+	#[AllowedInArchive]
 	public function archiveBoard(int $boardId, bool $archived): JSONResponse {
 		return $this->write($boardId, fn (ViewerContext $viewer): mixed
 			=> $this->boardService->setArchived($viewer, $archived));
 	}
 
 	#[NoAdminRequired]
+	#[AllowedInArchive]
 	public function archiveProject(int $boardId, bool $archived): JSONResponse {
 		return $this->write($boardId, fn (ViewerContext $viewer): mixed
 			=> $this->boardService->setProjectArchived($viewer, $archived));
 	}
 
 	#[NoAdminRequired]
+	#[AllowedInArchive]
 	public function deleteBoard(int $boardId): JSONResponse {
 		return $this->write($boardId, fn (ViewerContext $viewer): mixed
 			=> $this->boardService->delete($viewer));
@@ -277,6 +283,7 @@ class SettingsController extends Controller {
 	 * sich nicht entfernen — der Dienst weist das mit 400 ab.
 	 */
 	#[NoAdminRequired]
+	#[AllowedInArchive]
 	public function removeMember(int $boardId, string $userId): JSONResponse {
 		return $this->write($boardId, function (ViewerContext $viewer) use ($userId): mixed {
 			$this->memberService->remove($viewer, $userId);

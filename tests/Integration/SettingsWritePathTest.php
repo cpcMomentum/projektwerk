@@ -228,15 +228,15 @@ class SettingsWritePathTest extends IntegrationTestCase {
 		$this->assertSame(14, $refused);
 	}
 
-	public function testAnArchivedCustomerProjectStillCountsAgainstTheFreeLimit(): void {
+	public function testAnArchivedCustomerProjectNoLongerCountsAgainstTheFreeLimit(): void {
 		$config = Server::get(IAppConfig::class);
 		$this->boardService->setProjectArchived($this->manager(), true);
 
-		$config->setValueInt('projektwerk', 'plus_max_customer_projects', $this->customerProjectCount());
+		$config->setValueInt('projektwerk', 'plus_max_customer_projects', $this->customerProjectCount() + 1);
 		try {
 			$neu = $this->boardService->create(LeakMatrixFixture::ANNA, 'Zweites Kundenprojekt');
-			$this->expectException(WerkPlusLimitException::class);
 			Server::get(EntitlementService::class)->assertMayAddExternalMember((int)$neu->getProjectId());
+			$this->addToAssertionCount(1);
 		} finally {
 			$config->deleteKey('projektwerk', 'plus_max_customer_projects');
 		}
@@ -292,7 +292,8 @@ class SettingsWritePathTest extends IntegrationTestCase {
 		$qb->select($qb->createFunction('COUNT(DISTINCT p.id)'))
 			->from('pwerk_projects', 'p')
 			->innerJoin('p', 'pwerk_members', 'm', $qb->expr()->eq('m.project_id', 'p.id'))
-			->where($qb->expr()->eq('m.role', $qb->createNamedParameter(ViewerContext::ROLE_EXTERNAL)));
+			->where($qb->expr()->eq('m.role', $qb->createNamedParameter(ViewerContext::ROLE_EXTERNAL)))
+			->andWhere($qb->expr()->eq('p.archived', $qb->createNamedParameter(0, IQueryBuilder::PARAM_INT)));
 		$result = $qb->executeQuery();
 		$count = (int)$result->fetchOne();
 		$result->closeCursor();

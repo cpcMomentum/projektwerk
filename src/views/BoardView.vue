@@ -14,7 +14,11 @@
 			</div>
 
 			<div class="pw-view__actions">
-				<NcButton variant="primary" :disabled="store.columns.length === 0" @click="neuerVorgang(null)">
+				<NcButton
+					v-if="!store.readOnly"
+					variant="primary"
+					:disabled="store.columns.length === 0"
+					@click="neuerVorgang(null)">
 					<template #icon>
 						<PlusIcon :size="20" />
 					</template>
@@ -103,6 +107,12 @@
 				</NcTextField>
 			</div>
 		</div>
+
+		<NcNoteCard v-if="store.readOnly" type="info">
+			{{ store.projectArchived
+				? t('projektwerk', 'Dieses Projekt ist archiviert und kann nur gelesen werden.')
+				: t('projektwerk', 'Dieses Board ist archiviert und kann nur gelesen werden.') }}
+		</NcNoteCard>
 
 		<div class="pw-boardtabs">
 			<!-- Wer ein Board anlegen darf, sieht die Reiter schon bei einem Board, damit das „+" erreichbar bleibt. -->
@@ -247,7 +257,7 @@
 					<span class="pw-n">{{ view.total }}</span>
 					<!-- Endspalten bekommen keins: Dort landet ein Vorgang durch Abschließen, nicht durch Anlegen. -->
 					<NcButton
-						v-if="!view.column.finalOutcome"
+						v-if="!view.column.finalOutcome && !store.readOnly"
 						class="pw-col__neu"
 						variant="tertiary"
 						:ariaLabel="t('projektwerk', 'Neuer Vorgang in „{spalte}“', { spalte: view.column.title }, undefined, { escape: false })"
@@ -466,6 +476,7 @@ import NcActions from '@nextcloud/vue/components/NcActions'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcDialog from '@nextcloud/vue/components/NcDialog'
 import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
+import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import NcRadioGroup from '@nextcloud/vue/components/NcRadioGroup'
 import NcRadioGroupButton from '@nextcloud/vue/components/NcRadioGroupButton'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
@@ -508,7 +519,7 @@ interface ColumnView {
 export default defineComponent({
 	name: 'BoardView',
 
-	components: { ArchiveIcon, BoardDragLayer, ChartDonutIcon, ChevronLeftIcon, ClockAlertIcon, CogIcon, CreateTicketDialog, DeleteOutlineIcon, FolderMultipleIcon, FolderOpenIcon, MagnifyIcon, NcActionButton, NcActions, NcButton, NcDialog, NcEmptyContent, NcRadioGroup, NcRadioGroupButton, NcTextField, PendingTicketCard, PlusIcon, ProjectOverview, TicketDetail, ViewColumnIcon },
+	components: { ArchiveIcon, BoardDragLayer, ChartDonutIcon, ChevronLeftIcon, ClockAlertIcon, CogIcon, CreateTicketDialog, DeleteOutlineIcon, FolderMultipleIcon, FolderOpenIcon, MagnifyIcon, NcActionButton, NcActions, NcButton, NcDialog, NcEmptyContent, NcNoteCard, NcRadioGroup, NcRadioGroupButton, NcTextField, PendingTicketCard, PlusIcon, ProjectOverview, TicketDetail, ViewColumnIcon },
 
 	setup() {
 		return { store: useBoardStore(), outbox: useOutboxStore() }

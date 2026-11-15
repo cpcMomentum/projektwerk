@@ -95,6 +95,7 @@ class BoardReadModel {
 				'role' => $viewer->role,
 				'isManager' => $viewer->isManager,
 				'isBoardCreator' => $viewer->isBoardCreator,
+				'readOnly' => $viewer->readOnly,
 			],
 			'deletable' => $this->boardService->isDeletable($viewer),
 			'memberBoardsAllowed' => $this->boardService->projectAllowsMemberBoards($viewer),

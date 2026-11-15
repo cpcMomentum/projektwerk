@@ -66,6 +66,9 @@ abstract class WriteTool implements Tool {
 
 		try {
 			$viewer = $this->access->contextFor($caller->userId, $arguments['board_id'])->viaTool();
+			if ($viewer->readOnly) {
+				return ToolResult::error('This board is archived and read-only.');
+			}
 			[$result, $ticketId] = $this->write($caller, $viewer, $arguments);
 		} catch (NotAMemberException|DoesNotExistException) {
 			return ToolResult::notFound();

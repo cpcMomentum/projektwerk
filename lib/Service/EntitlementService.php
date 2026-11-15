@@ -19,7 +19,7 @@ use OCP\IL10N;
 /**
  * WerkPlus-Grenzen (#288) — ein **Stub**, kein Key-System.
  *
- * Zwei Grenzen, mit Axel am 2026-09-14 festgelegt (die Anweisung kannte nur
+ * Drei Grenzen, A und B mit Axel am 2026-09-14 festgelegt, C am 2026-11-14 (die Anweisung kannte nur
  * eine, von vor dem Mehr-Board-Modell #246):
  *
  * - **A · Kundenprojekte** = nicht archivierte Projekte mit ≥1 Mitglied der
@@ -31,6 +31,9 @@ use OCP\IL10N;
  *   Durchgesetzt in {@see \OCA\Projektwerk\Service\BoardService::createInProject()},
  *   dem einzigen Zweitboard-Pfad; deckt den Manager-Weg **und** den
  *   #281-Mitglieder-Weg ab.
+ *
+ * - **C · Aktive Projekte**: frei **10**, geprüft beim Anlegen und beim Zurückholen aus dem Archiv.
+ *   Archivierte Projekte zählen bei keiner Grenze, sie sind nur noch lesbar.
  *
  * **Bestandsschutz:** Nur *Neues* wird verhindert; bestehende Projekte/Boards
  * über dem Limit bleiben unangetastet.
@@ -69,6 +72,10 @@ class EntitlementService {
 	 */
 	public function maxCustomerProjects(): int {
 		return $this->limit('plus_max_customer_projects');
+	}
+
+	public function maxActiveProjects(): int {
+		return $this->limit('plus_max_projects');
 	}
 
 	/**
@@ -119,6 +126,31 @@ class EntitlementService {
 		return $activeBoardsInProject >= $this->maxBoardsPerProject();
 	}
 
+	public function blocksAdditionalProject(int $activeProjects): bool {
+		return $activeProjects >= $this->maxActiveProjects();
+	}
+
+	/**
+	 * @throws WerkPlusLimitException Wenn bereits so viele aktive Projekte bestehen wie erlaubt.
+	 */
+	public function assertMayCreateProject(): void {
+		if ($this->blocksAdditionalProject($this->countActiveProjects())) {
+			throw new WerkPlusLimitException(
+				$this->l10n->t('Im freien Umfang sind %s aktive Projekte enthalten. WerkPlus schaltet weitere frei.', [$this->maxActiveProjects()]),
+			);
+		}
+	}
+
+	/** Zurückholen zählt wie ein neues Projekt und, mit Externen, wie ein neues Kundenprojekt. */
+	public function assertMayUnarchiveProject(int $projectId): void {
+		$this->assertMayCreateProject();
+		if ($this->countExternalMembersInProject($projectId) > 0 && $this->countCustomerProjects() >= $this->maxCustomerProjects()) {
+			throw new WerkPlusLimitException(
+				$this->l10n->t('Im freien Umfang ist ein Kundenprojekt enthalten — WerkPlus schaltet weitere frei.'),
+			);
+		}
+	}
+
 	/**
 	 * Regel A durchsetzen: vor dem Hinzufügen eines externen Mitglieds.
 	 *
@@ -147,13 +179,23 @@ class EntitlementService {
 		}
 	}
 
-	/** Archivierte zählen mit: Sie bleiben über Direktlinks beschreibbar, sonst gäbe Archivieren einen Platz frei. */
+	/** Archivierte zählen nicht: Sie sind nur noch lesbar. */
 	private function countCustomerProjects(): int {
 		$qb = $this->db->getQueryBuilder();
 		$qb->select($qb->createFunction('COUNT(DISTINCT p.id)'))
 			->from('pwerk_projects', 'p')
 			->innerJoin('p', 'pwerk_members', 'm', $qb->expr()->eq('m.project_id', 'p.id'))
-			->where($qb->expr()->eq('m.role', $qb->createNamedParameter(ViewerContext::ROLE_EXTERNAL)));
+			->where($qb->expr()->eq('m.role', $qb->createNamedParameter(ViewerContext::ROLE_EXTERNAL)))
+			->andWhere($qb->expr()->eq('p.archived', $qb->createNamedParameter(0, IQueryBuilder::PARAM_INT)));
+
+		return $this->fetchCount($qb);
+	}
+
+	private function countActiveProjects(): int {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select($qb->func()->count('*'))
+			->from('pwerk_projects')
+			->where($qb->expr()->eq('archived', $qb->createNamedParameter(0, IQueryBuilder::PARAM_INT)));
 
 		return $this->fetchCount($qb);
 	}
