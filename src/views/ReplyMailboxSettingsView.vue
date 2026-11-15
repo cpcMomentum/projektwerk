@@ -42,11 +42,16 @@
 					</section>
 				</div>
 
+				<div v-show="activeSection === 'werkplus'">
+					<WerkPlusSettings @changed="lizenzGeaendert" />
+				</div>
+
 				<div v-show="activeSection === 'ki'">
 					<section class="pw-form-section">
 						<h3>
 							{{ t('projektwerk', 'KI-Zugriff') }}
 						</h3>
+						<NcNoteCard v-if="!aiWerkplus" type="info" :text="t('projektwerk', 'Der KI-Zugriff über MCP ist Teil von WerkPlus. Ohne WerkPlus-Lizenz weist ProjektWerk jede Anfrage von Claude ab, die Einstellungen bleiben gespeichert.')" />
 						<p class="pw-settings__hint">
 							{{ t('projektwerk', 'Über den KI-Zugang (MCP) kann Claude im Namen einer Person Vorgänge anlegen und ändern. Interne und private Vorgänge sind immer erlaubt.') }}
 						</p>
@@ -54,7 +59,7 @@
 							<NcCheckboxRadioSwitch
 								:modelValue="aiPublicWrite"
 								type="switch"
-								:disabled="aiBusy"
+								:disabled="aiBusy || (!aiWerkplus && !aiPublicWrite)"
 								@update:modelValue="kiSchalten">
 								{{ t('projektwerk', 'KI darf in kundensichtbare Vorgänge schreiben') }}
 							</NcCheckboxRadioSwitch>
@@ -74,11 +79,12 @@
 							{{ t('projektwerk', 'Antworten auf Benachrichtigungs-E-Mails werden als Kommentar am Vorgang eingetragen. Dazu liest ProjektWerk ein IMAP-Postfach, das Sie hier hinterlegen. Es verlässt nichts die Instanz — das Postfach gehört Ihnen.') }}
 						</p>
 
+						<NcNoteCard v-if="form.werkplus === false" type="info" :text="t('projektwerk', 'Antworten per E-Mail sind Teil von WerkPlus. Ohne WerkPlus-Lizenz lässt sich das Postfach nicht einschalten, und ProjektWerk liest keine Antworten ein. Gespeicherte Zugangsdaten bleiben erhalten.')" />
 						<label class="pw-settings__check pw-replymail__switch">
 							<NcCheckboxRadioSwitch
 								v-model="form.replyEnabled"
 								type="switch"
-								:disabled="busy">
+								:disabled="busy || (form.werkplus === false && !form.replyEnabled)">
 								{{ t('projektwerk', 'Antworten per E-Mail aktivieren') }}
 							</NcCheckboxRadioSwitch>
 						</label>
@@ -231,11 +237,13 @@ import { defineComponent } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
+import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
 import AlertIcon from 'vue-material-design-icons/AlertCircleOutline.vue'
 import CheckIcon from 'vue-material-design-icons/CheckCircleOutline.vue'
 import LanConnectIcon from 'vue-material-design-icons/LanConnect.vue'
 import PwSettingsNav from '@/components/PwSettingsNav.vue'
+import WerkPlusSettings from '@/components/WerkPlusSettings.vue'
 import { fetchAiAccess, saveAiAccess } from '@/services/aiAccess'
 import { ownCompany, saveOwnCompany } from '@/services/ownCompany'
 import { fetchReplyMailbox, saveReplyMailbox, testReplyMailbox } from '@/services/replyMailbox'
@@ -256,12 +264,13 @@ import { showError, showSuccess } from '@/services/toast'
 export default defineComponent({
 	name: 'ReplyMailboxSettingsView',
 
-	components: { AlertIcon, CheckIcon, LanConnectIcon, NcButton, NcCheckboxRadioSwitch, NcLoadingIcon, NcTextField, PwSettingsNav },
+	components: { AlertIcon, CheckIcon, LanConnectIcon, NcButton, NcCheckboxRadioSwitch, NcLoadingIcon, NcNoteCard, NcTextField, PwSettingsNav, WerkPlusSettings },
 
 	data() {
 		return {
 			activeSection: 'firma',
 			aiPublicWrite: false,
+			aiWerkplus: true,
 			aiBusy: false,
 			/** Das Eingabefeld der eigenen Firma, bis es gespeichert wird. */
 			firmaEntwurf: ownCompany.value,
@@ -296,6 +305,7 @@ export default defineComponent({
 				{ key: 'firma', label: t('projektwerk', 'Eigene Firma') },
 				{ key: 'antworten', label: t('projektwerk', 'Antworten per E-Mail') },
 				{ key: 'ki', label: t('projektwerk', 'KI-Zugriff') },
+				{ key: 'werkplus', label: t('projektwerk', 'WerkPlus') },
 			]
 		},
 
@@ -356,9 +366,22 @@ export default defineComponent({
 			}
 		},
 
+		/** Nach einer Lizenzänderung nur die Freischaltung nachladen, ungespeicherte Eingaben bleiben. */
+		async lizenzGeaendert(): Promise<void> {
+			try {
+				const [mail, ki] = await Promise.all([fetchReplyMailbox(), fetchAiAccess()])
+				this.form.werkplus = mail.werkplus
+				this.aiWerkplus = ki.werkplus !== false
+			} catch {
+				// Die Hinweise bleiben dann bis zum nächsten Laden stehen.
+			}
+		},
+
 		async kiLaden(): Promise<void> {
 			try {
-				this.aiPublicWrite = (await fetchAiAccess()).publicWrite
+				const ai = await fetchAiAccess()
+				this.aiPublicWrite = ai.publicWrite
+				this.aiWerkplus = ai.werkplus !== false
 			} catch (e) {
 				showError((e as { message?: string }).message ?? t('projektwerk', 'Einstellungen konnten nicht geladen werden'))
 			}

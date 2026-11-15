@@ -13,6 +13,7 @@ use OCA\Projektwerk\AppInfo\Application;
 use OCA\Projektwerk\Imap\ImapException;
 use OCA\Projektwerk\Imap\ImapPasswordRequiredException;
 use OCA\Projektwerk\Service\ReplyMailboxSettings;
+use OCA\Projektwerk\Service\WerkPlusLimitException;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\JSONResponse;
@@ -67,17 +68,21 @@ class ReplyMailboxController extends Controller {
 		#[\SensitiveParameter] string $imapPassword = '',
 		bool $imapPasswordClear = false,
 	): JSONResponse {
-		$this->settings->save([
-			'replyEnabled' => $replyEnabled,
-			'replyAddress' => $replyAddress,
-			'imapHost' => $imapHost,
-			'imapPort' => $imapPort,
-			'imapSecurity' => $imapSecurity,
-			'imapUser' => $imapUser,
-			'imapFolder' => $imapFolder,
-			'imapPassword' => $imapPassword,
-			'imapPasswordClear' => $imapPasswordClear,
-		]);
+		try {
+			$this->settings->save([
+				'replyEnabled' => $replyEnabled,
+				'replyAddress' => $replyAddress,
+				'imapHost' => $imapHost,
+				'imapPort' => $imapPort,
+				'imapSecurity' => $imapSecurity,
+				'imapUser' => $imapUser,
+				'imapFolder' => $imapFolder,
+				'imapPassword' => $imapPassword,
+				'imapPasswordClear' => $imapPasswordClear,
+			]);
+		} catch (WerkPlusLimitException $e) {
+			return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_PAYMENT_REQUIRED);
+		}
 
 		return new JSONResponse($this->settings->getPublicConfig());
 	}

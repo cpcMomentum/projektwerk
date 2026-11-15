@@ -45,6 +45,9 @@ abstract class IntegrationTestCase extends TestCase {
 
 	protected IDBConnection $db;
 
+	/** @var array<string, ?string> */
+	private array $licenseSnapshot;
+
 	protected function setUp(): void {
 		parent::setUp();
 
@@ -70,15 +73,18 @@ abstract class IntegrationTestCase extends TestCase {
 		$this->db = Server::get(IDBConnection::class);
 		$this->db->beginTransaction();
 
-		// Kein Aufheben der WerkPlus-Grenzen mehr nötig (#288): Ohne
-		// konfigurierten Wert greift die Durchsetzung standardmäßig nicht, die
-		// Feature-Tests laufen also ohnehin unbegrenzt. Die Enforcement-Logik
-		// selbst hütet EntitlementServiceTest.
+		// Feature-Tests laufen mit allen WerkPlus-Flags; wer den freien Umfang prüft, nimmt sie wieder weg.
+		$this->licenseSnapshot = WerkPlusTestLicense::snapshot();
+		WerkPlusTestLicense::grant();
 	}
 
 	protected function tearDown(): void {
 		if (isset($this->db) && $this->db->inTransaction()) {
 			$this->db->rollBack();
+		}
+		// Nach dem Rollback, sonst scheitert es an einer abgebrochenen Transaktion; der Config-Cache überlebt den Rollback.
+		if (isset($this->licenseSnapshot)) {
+			WerkPlusTestLicense::restore($this->licenseSnapshot);
 		}
 
 		parent::tearDown();
@@ -118,5 +124,21 @@ abstract class IntegrationTestCase extends TestCase {
 		$board->setProjectId($projectId);
 
 		return $projectId;
+	}
+
+	/** Freier Umfang für genau diese Grenzen, alle anderen Flags bleiben. */
+	protected function withoutWerkPlus(string ...$flags): void {
+		WerkPlusTestLicense::grant(array_values(array_diff(\OCA\Projektwerk\License\LicenseService::FLAGS, $flags)));
+	}
+
+	/** Die festen Grenzen zählen instanzweit; alles andere wird in der Transaktion archiviert. */
+	protected function onlyTheseProjectsActive(int ...$projectIds): void {
+		$qb = $this->db->getQueryBuilder();
+		$qb->update('pwerk_projects')
+			->set('archived', $qb->createNamedParameter(1, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT));
+		if ($projectIds !== []) {
+			$qb->where($qb->expr()->notIn('id', $qb->createNamedParameter($projectIds, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT_ARRAY)));
+		}
+		$qb->executeStatement();
 	}
 }

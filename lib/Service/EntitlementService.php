@@ -10,94 +10,55 @@ declare(strict_types=1);
 namespace OCA\Projektwerk\Service;
 
 use OCA\Projektwerk\Access\ViewerContext;
-use OCA\Projektwerk\AppInfo\Application;
+use OCA\Projektwerk\License\LicenseService;
 use OCP\DB\QueryBuilder\IQueryBuilder;
-use OCP\IAppConfig;
 use OCP\IDBConnection;
 use OCP\IL10N;
 
 /**
- * WerkPlus-Grenzen (#288) — ein **Stub**, kein Key-System.
+ * WerkPlus-Grenzen. Der freie Umfang ist fest, ein Flag im Lizenz-Token (entitlement-v1) hebt die jeweilige
+ * Grenze auf; Zahlen kommen nie aus dem Token oder der Config.
  *
- * Drei Grenzen, A und B mit Axel am 2026-09-14 festgelegt, C am 2026-11-14 (die Anweisung kannte nur
- * eine, von vor dem Mehr-Board-Modell #246):
+ * - **A · Kundenprojekte** (`pw_customer_projects`, frei 1): nicht archivierte Projekte mit ≥1 externem
+ *   Mitglied, geprüft beim ersten externen Mitglied und beim Rollenwechsel auf extern.
+ * - **B · Boards je Projekt** (`pw_multi_board`, frei 1), geprüft in {@see BoardService::createInProject()}.
+ * - **C · Aktive Projekte** (`pw_projects`, frei 10), geprüft beim Anlegen und beim Zurückholen aus dem Archiv.
+ * - Antworten per E-Mail (`pw_mail_reply`) und KI-Zugriff über MCP (`pw_mcp`) sind ganze Funktionen.
  *
- * - **A · Kundenprojekte** = nicht archivierte Projekte mit ≥1 Mitglied der
- *   Rolle `external`: frei **1**, mehr = WerkPlus. Durchgesetzt beim Hinzufügen
- *   des **ersten** externen Mitglieds (nicht beim Anlegen des Boards): Wer sein
- *   zweites Projekt erst intern aufsetzt, darf das; die Grenze greift, wenn es
- *   zum zweiten *Kunden*projekt würde.
- * - **B · Boards pro Projekt**: frei genau **1** — für **alle** Projekte.
- *   Durchgesetzt in {@see \OCA\Projektwerk\Service\BoardService::createInProject()},
- *   dem einzigen Zweitboard-Pfad; deckt den Manager-Weg **und** den
- *   #281-Mitglieder-Weg ab.
- *
- * - **C · Aktive Projekte**: frei **10**, geprüft beim Anlegen und beim Zurückholen aus dem Archiv.
- *   Archivierte Projekte zählen bei keiner Grenze, sie sind nur noch lesbar.
- *
- * **Bestandsschutz:** Nur *Neues* wird verhindert; bestehende Projekte/Boards
- * über dem Limit bleiben unangetastet.
- *
- * **Standardmäßig greift nichts** (Entscheidung mit Axel, 2026-09-15): Solange
- * **kein** Wert konfiguriert ist, gelten beide Grenzen als **unbegrenzt** — die
- * Durchsetzung schläft, bis das Entitlement-Backend die Grenzen setzt. „WerkPlus
- * darf erst kommen, wenn das Backend dazu da ist." Sonst sperrte jede frische
- * Installation lautlos ein Paywall, das niemand freischalten kann. Erst ein
- * **positiver** Config-Wert (den der Backend-Client setzt) macht die Grenze
- * scharf — dann ist `1` der freie Umfang. `0`/leer = unbegrenzt.
- *
- * **Viewerlos und instanzweit.** Die Zählungen fragen keinen Betrachter — es
- * geht um den Umfang der Instanz, nicht darum, was jemand sehen darf. Deshalb
- * liegen sie hier im Service über den QueryBuilder und nicht als
- * betrachterabhängiger Lesepfad in einem Mapper (der stünde sonst in der
- * Leak-Matrix mit einer Erwartung, die es hier nicht gibt).
- *
- * Der echte, app-übergreifende Entitlement-Client (JWT) kommt später; hier nur
- * Stub + Enforcement + verständliche Meldung.
+ * Archiviertes zählt nicht, es ist nur lesbar. Bestand über einer Grenze bleibt unangetastet.
+ * Die Zählungen sind instanzweit und betrachterlos, deshalb hier und nicht in einem Mapper.
  */
 class EntitlementService {
 
-	private const APP = Application::APP_ID;
+	public const FREE_PROJECTS = 10;
+	public const FREE_CUSTOMER_PROJECTS = 1;
+	public const FREE_BOARDS_PER_PROJECT = 1;
 
 	public function __construct(
-		private IAppConfig $config,
+		private LicenseService $license,
 		private IDBConnection $db,
 		private IL10N $l10n,
 	) {
 	}
 
-	/**
-	 * Wie viele Kundenprojekte im freien Umfang enthalten sind — oder
-	 * {@see PHP_INT_MAX}, solange nichts konfiguriert ist (dann greift nichts).
-	 */
 	public function maxCustomerProjects(): int {
-		return $this->limit('plus_max_customer_projects');
+		return $this->license->hasFeature('pw_customer_projects') ? PHP_INT_MAX : self::FREE_CUSTOMER_PROJECTS;
 	}
 
 	public function maxActiveProjects(): int {
-		return $this->limit('plus_max_projects');
+		return $this->license->hasFeature('pw_projects') ? PHP_INT_MAX : self::FREE_PROJECTS;
 	}
 
-	/**
-	 * Wie viele Boards je Projekt im freien Umfang enthalten sind — oder
-	 * {@see PHP_INT_MAX}, solange nichts konfiguriert ist.
-	 */
 	public function maxBoardsPerProject(): int {
-		return $this->limit('plus_max_boards_per_project');
+		return $this->license->hasFeature('pw_multi_board') ? PHP_INT_MAX : self::FREE_BOARDS_PER_PROJECT;
 	}
 
-	/**
-	 * Der konfigurierte Grenzwert, oder {@see PHP_INT_MAX} als „unbegrenzt".
-	 *
-	 * Nur ein **positiver** Wert (den das Entitlement-Backend setzt) macht die
-	 * Grenze scharf; ohne Eintrag (Vorgabe `0`) schläft die Durchsetzung.
-	 *
-	 * @param string $key App-Config-Schlüssel.
-	 */
-	private function limit(string $key): int {
-		$configured = $this->config->getValueInt(self::APP, $key, 0);
+	public function mailReplyAllowed(): bool {
+		return $this->license->hasFeature('pw_mail_reply');
+	}
 
-		return $configured > 0 ? $configured : PHP_INT_MAX;
+	public function mcpAllowed(): bool {
+		return $this->license->hasFeature('pw_mcp');
 	}
 
 	/**

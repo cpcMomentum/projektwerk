@@ -24,6 +24,7 @@ use OCA\Projektwerk\Mcp\Tools\AddComment;
 use OCA\Projektwerk\Middleware\ArchiveMiddleware;
 use OCA\Projektwerk\Middleware\ArchivedBoardException;
 use OCA\Projektwerk\Service\BoardService;
+use OCA\Projektwerk\Service\EntitlementService;
 use OCA\Projektwerk\Service\WerkPlusLimitException;
 use OCP\AppFramework\Http;
 use OCP\DB\QueryBuilder\IQueryBuilder;
@@ -46,9 +47,7 @@ class ArchiveReadOnlyTest extends IntegrationTestCase {
 
 	protected function tearDown(): void {
 		$config = Server::get(IAppConfig::class);
-		foreach (['plus_max_projects', 'plus_max_customer_projects', McpConfig::KEY_PUBLIC_WRITE] as $key) {
-			$config->deleteKey('projektwerk', $key);
-		}
+		$config->deleteKey('projektwerk', McpConfig::KEY_PUBLIC_WRITE);
 		parent::tearDown();
 	}
 
@@ -119,17 +118,17 @@ class ArchiveReadOnlyTest extends IntegrationTestCase {
 		$this->assertStringContainsString('archived', (string)$result->toArray()['content'][0]['text']);
 	}
 
-	public function testTheProjectLimitBlocksANewProjectButArchivedOnesDoNotCount(): void {
+	public function testTheProjectLimitBlocksTheEleventhProjectButArchivedOnesDoNotCount(): void {
+		$this->onlyTheseProjectsActive($this->fixture->projectId);
+		$this->addBareProjects(EntitlementService::FREE_PROJECTS - 1);
+		$this->withoutWerkPlus('pw_projects');
 		$service = Server::get(BoardService::class);
-		$limit = $this->activeProjects() + 1;
-		$this->setLimit('plus_max_projects', $limit);
 
-		$service->create(LeakMatrixFixture::ANNA, 'Erlaubt');
 		try {
-			$service->create(LeakMatrixFixture::ANNA, 'Zu viel');
-			$this->fail('Das Projekt über der Grenze hätte geblockt werden müssen.');
+			$service->create(LeakMatrixFixture::ANNA, 'Das elfte');
+			$this->fail('Das elfte aktive Projekt hätte geblockt werden müssen.');
 		} catch (WerkPlusLimitException $e) {
-			$this->assertStringContainsString((string)$limit, $e->getMessage());
+			$this->assertStringContainsString('10', $e->getMessage());
 		}
 
 		$this->archiveProject($this->fixture->projectId);
@@ -137,17 +136,27 @@ class ArchiveReadOnlyTest extends IntegrationTestCase {
 		$this->addToAssertionCount(1);
 	}
 
+	public function testWithPwProjectsTheEleventhProjectIsCreated(): void {
+		$this->onlyTheseProjectsActive($this->fixture->projectId);
+		$this->addBareProjects(EntitlementService::FREE_PROJECTS - 1);
+
+		Server::get(BoardService::class)->create(LeakMatrixFixture::ANNA, 'Das elfte');
+		$this->addToAssertionCount(1);
+	}
+
 	public function testUnarchivingAProjectAboveTheLimitIsBlocked(): void {
-		$this->archiveProject($this->fixture->projectId);
-		$this->setLimit('plus_max_projects', $this->activeProjects());
+		$this->onlyTheseProjectsActive();
+		$this->addBareProjects(EntitlementService::FREE_PROJECTS);
+		$this->withoutWerkPlus('pw_projects');
 
 		$this->expectException(WerkPlusLimitException::class);
 		Server::get(BoardService::class)->setProjectArchived($this->viewer(), false);
 	}
 
 	public function testAnArchivedCustomerProjectDoesNotCount(): void {
+		$this->onlyTheseProjectsActive($this->fixture->projectId);
 		$this->archiveProject($this->fixture->projectId);
-		$this->setLimit('plus_max_customer_projects', $this->activeCustomerProjects() + 1);
+		$this->withoutWerkPlus('pw_customer_projects');
 
 		$board = Server::get(BoardService::class)->create(LeakMatrixFixture::ANNA, 'Neuer Kunde');
 		$member = new Member();
@@ -189,8 +198,16 @@ class ArchiveReadOnlyTest extends IntegrationTestCase {
 		return $tool->call(new AuthenticatedCaller(LeakMatrixFixture::ANNA, 'test-client'), ['board_id' => $this->fixture->boardId] + $arguments);
 	}
 
-	private function setLimit(string $key, int $value): void {
-		Server::get(IAppConfig::class)->setValueInt('projektwerk', $key, $value);
+	private function addBareProjects(int $count): void {
+		for ($i = 0; $i < $count; $i++) {
+			$qb = $this->db->getQueryBuilder();
+			$qb->insert('pwerk_projects')->values([
+				'title' => $qb->createNamedParameter('Füllprojekt ' . $i),
+				'owner_user_id' => $qb->createNamedParameter(LeakMatrixFixture::ANNA),
+				'created_at' => $qb->createNamedParameter(new \DateTime(), IQueryBuilder::PARAM_DATETIME_MUTABLE),
+				'updated_at' => $qb->createNamedParameter(new \DateTime(), IQueryBuilder::PARAM_DATETIME_MUTABLE),
+			])->executeStatement();
+		}
 	}
 
 	private function archiveBoard(int $boardId, bool $archived = true): void {
@@ -207,24 +224,5 @@ class ArchiveReadOnlyTest extends IntegrationTestCase {
 			->set('archived', $qb->createNamedParameter($archived ? 1 : 0, IQueryBuilder::PARAM_INT))
 			->where($qb->expr()->eq('id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)))
 			->executeStatement();
-	}
-
-	private function activeProjects(): int {
-		$qb = $this->db->getQueryBuilder();
-		$qb->select($qb->func()->count('*'))->from('pwerk_projects')
-			->where($qb->expr()->eq('archived', $qb->createNamedParameter(0, IQueryBuilder::PARAM_INT)));
-
-		return (int)$qb->executeQuery()->fetchOne();
-	}
-
-	private function activeCustomerProjects(): int {
-		$qb = $this->db->getQueryBuilder();
-		$qb->select($qb->createFunction('COUNT(DISTINCT p.id)'))
-			->from('pwerk_projects', 'p')
-			->innerJoin('p', 'pwerk_members', 'm', $qb->expr()->eq('m.project_id', 'p.id'))
-			->where($qb->expr()->eq('m.role', $qb->createNamedParameter('external')))
-			->andWhere($qb->expr()->eq('p.archived', $qb->createNamedParameter(0, IQueryBuilder::PARAM_INT)));
-
-		return (int)$qb->executeQuery()->fetchOne();
 	}
 }
