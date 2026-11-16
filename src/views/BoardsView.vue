@@ -37,7 +37,7 @@
 		<NcEmptyContent
 			v-else-if="sourceBoards.length === 0"
 			:name="t('projektwerk', 'Noch kein Projekt')"
-			:description="t('projektwerk', 'Legen Sie Ihr erstes Projekt an, oder warten Sie, bis Sie zu einem hinzugefügt werden.')">
+			:description="t('projektwerk', 'Lege dein erstes Projekt an, oder warte, bis du zu einem hinzugefügt wirst.')">
 			<template #icon>
 				<FolderMultipleIcon :size="20" />
 			</template>

@@ -54,7 +54,7 @@ class LicenseControllerTrialTest extends TestCase {
 		$response = $this->controller()->destroy();
 
 		$this->assertSame(Http::STATUS_BAD_REQUEST, $response->getStatus());
-		$this->assertStringContainsString('Bitte aktualisieren Sie ProjektWerk', $response->getData()['error']);
+		$this->assertStringContainsString('Bitte aktualisiere ProjektWerk', $response->getData()['error']);
 	}
 
 	public function testStoredKeyBlocksTheTrial(): void {

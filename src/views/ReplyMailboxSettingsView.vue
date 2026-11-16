@@ -21,7 +21,7 @@
 							{{ t('projektwerk', 'Eigene Firma') }}
 						</h3>
 						<p class="pw-settings__hint">
-							{{ t('projektwerk', 'Der Name Ihrer Firma. Neue Projekte übernehmen ihn als „Eigene Firma"; im einzelnen Projekt lässt er sich ändern. Bestehende Projekte bleiben unverändert.') }}
+							{{ t('projektwerk', 'Der Name deiner Firma. Neue Projekte übernehmen ihn als „Eigene Firma"; im einzelnen Projekt lässt er sich ändern. Bestehende Projekte bleiben unverändert.') }}
 						</p>
 						<div class="pw-feld">
 							<label class="pw-feld__label" for="pw-my-company">{{ t('projektwerk', 'Eigene Firma') }}</label>
@@ -76,7 +76,7 @@
 							{{ t('projektwerk', 'Antworten per E-Mail') }}
 						</h3>
 						<p class="pw-settings__hint">
-							{{ t('projektwerk', 'Antworten auf Benachrichtigungs-E-Mails werden als Kommentar am Vorgang eingetragen. Dazu liest ProjektWerk ein IMAP-Postfach, das Sie hier hinterlegen. Es verlässt nichts die Instanz — das Postfach gehört Ihnen.') }}
+							{{ t('projektwerk', 'Antworten auf Benachrichtigungs-E-Mails werden als Kommentar am Vorgang eingetragen. Dazu liest ProjektWerk ein IMAP-Postfach, das du hier hinterlegst. Es verlässt nichts die Instanz — das Postfach gehört dir.') }}
 						</p>
 
 						<NcNoteCard v-if="form.werkplus === false" type="info" :text="t('projektwerk', 'Antworten per E-Mail sind Teil von WerkPlus. Ohne WerkPlus-Lizenz lässt sich das Postfach nicht einschalten, und ProjektWerk liest keine Antworten ein. Gespeicherte Zugangsdaten bleiben erhalten.')" />
@@ -98,7 +98,7 @@
 							{{ t('projektwerk', 'Antwortadresse') }}
 						</h3>
 						<p class="pw-settings__hint">
-							{{ t('projektwerk', 'Die Adresse, an die Kunden antworten (z. B. projekte@ihre-firma.de). Sie wird als Reply-To gesetzt und gehört zu dem Postfach unten.') }}
+							{{ t('projektwerk', 'Die Adresse, an die Kunden antworten (z. B. projekte@deine-firma.de). Sie wird als Reply-To gesetzt und gehört zu dem Postfach unten.') }}
 						</p>
 						<div class="pw-feld">
 							<label class="pw-feld__label" for="pw-reply-address">{{ t('projektwerk', 'Antwortadresse (Reply-To)') }}</label>

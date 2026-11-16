@@ -29,7 +29,7 @@
 							{{ t('projektwerk', 'Ordner für private Anhänge') }}
 						</h3>
 						<p class="pw-settings__hint">
-							{{ t('projektwerk', 'Dateien an „Nur ich"-Vorgängen liegen in diesem Ordner Ihrer eigenen Dateien. Ohne Wahl wird „ProjektWerk" verwendet und beim ersten Anhang angelegt.') }}
+							{{ t('projektwerk', 'Dateien an „Nur ich"-Vorgängen liegen in diesem Ordner deiner eigenen Dateien. Ohne Wahl wird „ProjektWerk" verwendet und beim ersten Anhang angelegt.') }}
 						</p>
 
 						<div class="pw-feld">
@@ -116,7 +116,7 @@
 				<div v-show="activeSection === 'benachrichtigungen'">
 					<section class="pw-form-section">
 						<h3>
-							{{ t('projektwerk', 'Wie möchten Sie benachrichtigt werden?') }}
+							{{ t('projektwerk', 'Wie möchtest du benachrichtigt werden?') }}
 						</h3>
 						<p class="pw-settings__hint">
 							{{ t('projektwerk', 'Gilt für alle Projekte.') }}
@@ -136,7 +136,7 @@
 
 					<section class="pw-form-section">
 						<h3>
-							{{ t('projektwerk', 'Wovon möchten Sie benachrichtigt werden?') }}
+							{{ t('projektwerk', 'Wovon möchtest du benachrichtigt werden?') }}
 						</h3>
 						<p class="pw-settings__hint">
 							{{ t('projektwerk', 'Die erste Zeile gilt für alle Projekte — auch für die, die später dazukommen. Darunter weichen einzelne Projekte davon ab.') }}
@@ -311,7 +311,7 @@ export default defineComponent({
 		 * und sie fing an, waagerecht zu scrollen — der Projektname stand dann
 		 * ausserhalb des Bildes, und die Zeile war nicht mehr zuzuordnen. Die
 		 * ganze Bedeutung steht in `beschriftung()` und in der Überschrift
-		 * darüber („Wovon möchten Sie benachrichtigt werden?").
+		 * darüber („Wovon möchtest du benachrichtigt werden?").
 		 */
 		anlaesse(): { key: NotifyEvent, label: string, lang: string }[] {
 			return [

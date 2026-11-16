@@ -111,7 +111,7 @@ class BoardService {
 		?string $customer = null,
 	): Board {
 		if ($this->accountType->isGuest($userId)) {
-			throw new GuestNotAllowedException($this->l10n->t('Als Gast können Sie keine Projekte anlegen.'));
+			throw new GuestNotAllowedException($this->l10n->t('Als Gast kannst du keine Projekte anlegen.'));
 		}
 		$this->assertTitle($title);
 		$this->entitlement->assertMayCreateProject();
