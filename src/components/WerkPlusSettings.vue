@@ -10,10 +10,17 @@
 		<p class="pw-settings__hint">
 			{{ t('projektwerk', 'Frei enthalten sind zehn aktive Projekte mit je einem Board und ein Kundenprojekt. Mit einem WerkPlus-Schlüssel schaltet ProjektWerk weitere Projekte, Kundenprojekte und Boards frei, dazu Antworten per E-Mail und den KI-Zugriff über MCP.') }}
 		</p>
+		<p class="pw-settings__hint">
+			{{ t('projektwerk', 'Ein Schlüssel gilt für alle Werk-Apps dieser Nextcloud. Ist er schon in einer anderen Werk-App hinterlegt, ist hier nichts weiter zu tun.') }}
+		</p>
 
 		<NcNoteCard v-if="loadError" type="error" :text="loadError" />
 
 		<template v-if="status">
+			<NcNoteCard
+				v-if="status.storeOutdated"
+				type="warning"
+				:text="t('projektwerk', 'Eine neuere Werk-App hat die Lizenzablage umgestellt. Bitte aktualisieren Sie ProjektWerk. Bis dahin lässt sich die Lizenz hier nicht ändern.')" />
 			<NcNoteCard v-if="stateNote" :type="stateNote.type" :text="stateNote.text" />
 			<NcNoteCard v-if="trialKey" type="success">
 				<p v-if="licenseActive">
@@ -46,7 +53,7 @@
 				<dd>{{ status.keyHint }}</dd>
 			</dl>
 
-			<div class="pw-feld">
+			<div v-if="!status.storeOutdated" class="pw-feld">
 				<label class="pw-feld__label" for="pw-werkplus-key">{{ t('projektwerk', 'WerkPlus-Schlüssel') }}</label>
 				<NcTextField
 					id="pw-werkplus-key"
@@ -59,7 +66,7 @@
 					:placeholder="status.keySet ? t('projektwerk', 'gespeichert, leer lassen') : 'wp_…'" />
 			</div>
 
-			<div class="pw-werkplus__actions">
+			<div v-if="!status.storeOutdated" class="pw-werkplus__actions">
 				<NcButton variant="primary" :disabled="busy || (!keyInput.trim() && !status.keySet)" @click="onActivate">
 					{{ status.keySet ? t('projektwerk', 'Speichern und prüfen') : t('projektwerk', 'Schlüssel prüfen und speichern') }}
 				</NcButton>
@@ -82,13 +89,13 @@
 				{{ t('projektwerk', 'Was an WerkPlus übertragen wird') }}
 			</h3>
 			<p class="pw-settings__hint">
-				{{ t('projektwerk', 'Die Kennung dieser Installation, die Version von ProjektWerk und, sobald vorhanden, der Schlüssel. Nicht übertragen werden Vorgänge, Kommentare, Dateien, Namen, Adressen, Nextcloud-Benutzer oder Datei-IDs.') }}
+				{{ t('projektwerk', 'Eine aus dieser Nextcloud abgeleitete Kennung, die Versionen der aktivierten Werk-Apps und, sobald vorhanden, der Schlüssel. Nicht übertragen werden Vorgänge, Kommentare, Dateien, Namen, Adressen, Nextcloud-Benutzer oder Datei-IDs.') }}
 			</p>
 			<p class="pw-settings__hint">
 				{{ t('projektwerk', 'Die Lizenz wird auf diesem Server geprüft. Ist WerkPlus nicht erreichbar, arbeitet ProjektWerk normal weiter.') }}
 			</p>
 			<p class="pw-settings__hint">
-				{{ t('projektwerk', 'Kennung dieser Installation:') }} <code>{{ status.instanceUuid }}</code>
+				{{ t('projektwerk', 'Kennung dieser Nextcloud:') }} <code>{{ status.instanceUuid }}</code>
 			</p>
 		</template>
 
@@ -98,7 +105,7 @@
 			size="normal"
 			@update:open="confirmTrial = false">
 			<div class="app-projektwerk">
-				<p>{{ t('projektwerk', 'Der Testzeitraum läuft 30 Tage, braucht keine Zahlungsdaten und ist je Installation nur einmal möglich.') }}</p>
+				<p>{{ t('projektwerk', 'Der Testzeitraum läuft 30 Tage, braucht keine Zahlungsdaten und ist je Nextcloud nur einmal möglich. Er gilt für alle Werk-Apps dieser Nextcloud.') }}</p>
 			</div>
 			<template #actions>
 				<NcButton @click="confirmTrial = false">
@@ -116,7 +123,7 @@
 			size="normal"
 			@update:open="confirmRemove = false">
 			<div class="app-projektwerk">
-				<p>{{ t('projektwerk', 'ProjektWerk arbeitet danach im freien Umfang. Bestehende Projekte und Boards bleiben erhalten. Den Schlüssel können Sie jederzeit wieder eintragen.') }}</p>
+				<p>{{ t('projektwerk', 'Der Schlüssel wird für alle Werk-Apps dieser Nextcloud entfernt, nicht nur für ProjektWerk. Sie arbeiten danach im freien Umfang. Bestehende Projekte und Boards bleiben erhalten. Den Schlüssel können Sie jederzeit wieder eintragen.') }}</p>
 			</div>
 			<template #actions>
 				<NcButton @click="confirmRemove = false">

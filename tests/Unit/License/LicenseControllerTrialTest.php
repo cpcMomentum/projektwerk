@@ -49,6 +49,14 @@ class LicenseControllerTrialTest extends TestCase {
 		}
 	}
 
+	public function testANewerSharedStoreBlocksRemovalWithAMessageInsteadOfAServerError(): void {
+		$this->entitlement->method('removeKey')->willThrowException(new \InvalidArgumentException('storeOutdated'));
+		$response = $this->controller()->destroy();
+
+		$this->assertSame(Http::STATUS_BAD_REQUEST, $response->getStatus());
+		$this->assertStringContainsString('Bitte aktualisieren Sie ProjektWerk', $response->getData()['error']);
+	}
+
 	public function testStoredKeyBlocksTheTrial(): void {
 		$this->entitlement->method('startTrial')->willThrowException(new \InvalidArgumentException('keySet'));
 		$response = $this->controller()->trial();
@@ -62,7 +70,7 @@ class LicenseControllerTrialTest extends TestCase {
 	 */
 	public static function trialErrors(): array {
 		return [
-			'schon genutzt' => ['TRIAL_ALREADY_USED', 'bereits genutzt'],
+			'schon genutzt' => ['TRIAL_ALREADY_USED', 'bereits ein Testzeitraum genutzt'],
 			'abgeschaltet' => ['TRIAL_UNAVAILABLE', 'werkwolke.de/testen'],
 			'gebremst' => ['RATE_LIMITED', 'später erneut'],
 		];

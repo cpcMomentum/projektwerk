@@ -69,7 +69,11 @@ class LicenseController extends Controller {
 	}
 
 	public function destroy(): DataResponse {
-		$this->license->removeKey();
+		try {
+			$this->license->removeKey();
+		} catch (\InvalidArgumentException $e) {
+			return $this->invalidInput($e->getMessage());
+		}
 		return new DataResponse($this->status());
 	}
 
@@ -98,6 +102,7 @@ class LicenseController extends Controller {
 	private function invalidInput(string $field): DataResponse {
 		$message = match ($field) {
 			'keySet' => $this->l10n->t('Es ist bereits ein WerkPlus-Schlüssel hinterlegt. Ein Testzeitraum ist nur ohne Schlüssel möglich.'),
+			'storeOutdated' => $this->l10n->t('Eine neuere Werk-App hat die Lizenzablage umgestellt. Bitte aktualisieren Sie ProjektWerk, bevor Sie die Lizenz ändern.'),
 			default => $this->l10n->t('Bitte geben Sie einen gültigen WerkPlus-Schlüssel ein.'),
 		};
 		return new DataResponse(['error' => $message, 'code' => 'INPUT_INVALID'], Http::STATUS_BAD_REQUEST);
@@ -110,8 +115,8 @@ class LicenseController extends Controller {
 			'KEY_UNKNOWN' => $this->l10n->t('Dieser Schlüssel ist nicht bekannt. Bitte prüfen Sie die Schreibweise.'),
 			'KEY_REVOKED' => $this->l10n->t('Dieser Schlüssel wurde gesperrt. ProjektWerk arbeitet im freien Umfang weiter.'),
 			'KEY_EXPIRED' => $this->l10n->t('Die Lizenz ist abgelaufen. ProjektWerk arbeitet im freien Umfang weiter.'),
-			'INSTANCE_LIMIT_REACHED' => $this->l10n->t('Dieser Schlüssel gehört bereits zu einer anderen Installation. Ein Umzug wird vom Anbieter freigeschaltet.'),
-			'TRIAL_ALREADY_USED' => $this->l10n->t('Diese Installation hat den Testzeitraum bereits genutzt. Für WerkPlus brauchen Sie einen Schlüssel.'),
+			'INSTANCE_LIMIT_REACHED' => $this->l10n->t('Diese Lizenz ist einer anderen Nextcloud zugeordnet. Umzug im Kundenportal.'),
+			'TRIAL_ALREADY_USED' => $this->l10n->t('Für diese Nextcloud wurde bereits ein Testzeitraum genutzt.'),
 			'TRIAL_UNAVAILABLE' => $this->l10n->t('Der Testzeitraum lässt sich gerade nicht in der App starten. Unter werkwolke.de/testen steht, wie Sie ihn trotzdem bekommen.'),
 			'RATE_LIMITED' => $this->l10n->t('Zu viele Versuche. Bitte versuchen Sie es später erneut.'),
 			WerkPlusClient::UNREACHABLE => $this->l10n->t('WerkPlus ist gerade nicht erreichbar. Bitte versuchen Sie es später erneut.'),

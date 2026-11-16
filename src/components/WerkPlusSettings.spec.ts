@@ -62,6 +62,7 @@ function status(teil: Partial<LicenseStatus> = {}): LicenseStatus {
 		graceUntil: null,
 		lastCheckAt: null,
 		lastError: null,
+		storeOutdated: false,
 		...teil,
 	}
 }
@@ -114,6 +115,15 @@ describe('WerkPlusSettings', () => {
 		expect(wrapper.find('dl').text()).toContain('…69B6')
 		expect(wrapper.find('dl').text()).toContain('12 Mitarbeitende')
 		expect(knoepfe(wrapper)).toEqual(['Speichern und prüfen', 'Jetzt prüfen', 'Schlüssel entfernen'])
+	})
+
+	it('eine neuere Lizenzablage: Hinweis auf ein Update, nichts lässt sich ändern', async () => {
+		const wrapper = await laden(aktiv({ storeOutdated: true }))
+
+		expect(wrapper.find('.stub-note--warning').text()).toContain('Bitte aktualisieren Sie ProjektWerk.')
+		expect(knoepfe(wrapper)).toEqual([])
+		expect(wrapper.find('.stub-key').exists()).toBe(false)
+		expect(wrapper.find('dl').text()).toContain('…69B6')
 	})
 
 	it('in der Nachfrist: Warnung statt Fehler', async () => {

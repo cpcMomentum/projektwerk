@@ -10,14 +10,16 @@ declare(strict_types=1);
 // Nur für die Wegwerf-Instanz der CI: ergänzt einen Prüfschlüssel in der ausgecheckten App und gibt ein dazu signiertes Token aus.
 
 $appDir = $argv[1] ?? '';
+$instanceId = $argv[2] ?? '';
 $keysFile = $appDir . '/lib/License/EntitlementKeys.php';
 $serviceFile = $appDir . '/lib/License/LicenseService.php';
-if (!is_file($keysFile) || !is_file($serviceFile)) {
-	fwrite(STDERR, "Aufruf: php werkplus-lizenz.php <App-Verzeichnis>\n");
+if (!is_file($keysFile) || !is_file($serviceFile) || $instanceId === '') {
+	fwrite(STDERR, "Aufruf: php werkplus-lizenz.php <App-Verzeichnis> <instanceid>\n");
 	exit(1);
 }
 
-$uuid = '0b6f4c1e-7d2a-4f3b-9e8c-5a1d2b3c4d5e';
+require $appDir . '/lib/License/InstanceId.php';
+$uuid = \OCA\Projektwerk\License\InstanceId::derive($instanceId);
 $kid = 'e2e-ci';
 
 $key = openssl_pkey_new(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA]);
@@ -53,4 +55,4 @@ $input = $b64(json_encode(['alg' => 'RS256', 'typ' => 'JWT', 'kid' => $kid])) . 
 ]));
 openssl_sign($input, $signature, $key, OPENSSL_ALGO_SHA256);
 
-echo $uuid . "\n" . $input . '.' . $b64($signature) . "\n";
+echo $input . '.' . $b64($signature) . "\n";

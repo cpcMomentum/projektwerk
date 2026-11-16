@@ -19,6 +19,7 @@ export interface LicenseStatus {
 	graceUntil: string | null
 	lastCheckAt: string | null
 	lastError: { code: string, message: string, at: string | null } | null
+	storeOutdated: boolean
 }
 
 /** Der Lizenzstand (nur Administration). */

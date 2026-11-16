@@ -36,21 +36,27 @@ class LicenseService {
 	/** Nach diesen Codes hilft sofortiges Wiederholen nicht; einmal taeglich, damit eine Verlaengerung von selbst greift. */
 	private const SLOW_RETRY = ['REQUEST_INVALID', 'KEY_UNKNOWN', 'KEY_REVOKED', 'KEY_EXPIRED', 'INSTANCE_LIMIT_REACHED'];
 	private const SLOW_RETRY_AFTER = 86400;
-	/** Nach diesen Codes faellt die Instanz auf Free, das Token wird verworfen. */
+	/** Nach diesen Codes faellt diese App auf Free, bis ein neueres Token kommt. */
 	private const DROP_TOKEN = ['KEY_REVOKED', 'KEY_EXPIRED'];
 
-	private const K_UUID = 'werkplus_instance_uuid';
-	private const K_KEY = 'werkplus_key';
-	private const K_TOKEN = 'werkplus_token';
-	private const K_LAST_CHECK = 'werkplus_last_check_at';
+	/** Nextcloud-App-IDs der Werk-Apps; ihre Versionen gehen bei jeder Prüfung mit. */
+	private const WERK_APPS = ['rechnungswerk', 'projektwerk', 'worktime', 'contractmanager'];
+
 	private const K_LAST_ATTEMPT = 'werkplus_last_attempt_at';
 	private const K_LAST_ERROR = 'werkplus_last_error';
+	/** Ablage bis 0.4.26, vor der gemeinsamen Lizenz aller Werk-Apps. */
+	private const LEGACY_KEY = 'werkplus_key';
+	private const LEGACY = [self::LEGACY_KEY, 'werkplus_token', 'werkplus_instance_uuid', 'werkplus_last_check_at'];
 
-	/** @var array{jwt: string, token: ?EntitlementToken, state: string}|null */
+	/** @var array{jwt: string, token: ?EntitlementToken}|null */
 	private ?array $current = null;
+	private ?string $instanceUuid = null;
+	private bool $migrated = false;
 
 	public function __construct(
 		private readonly IAppConfig $appConfig,
+		private readonly SharedStore $store,
+		private readonly InstanceId $instanceId,
 		private readonly ITimeFactory $timeFactory,
 		private readonly WerkPlusClient $client,
 		private readonly EntitlementTokenVerifier $verifier,
@@ -76,42 +82,41 @@ class LicenseService {
 	}
 
 	public function getInstanceUuid(): string {
-		$uuid = $this->get(self::K_UUID);
-		if ($uuid === '') {
-			$uuid = $this->newUuid();
-			$this->appConfig->setValueString(Application::APP_ID, self::K_UUID, $uuid);
-		}
-		return $uuid;
+		return $this->instanceUuid ??= $this->instanceId->uuid();
 	}
 
 	/** Ein leerer Schluessel nimmt den gespeicherten. */
 	public function activate(#[\SensitiveParameter] string $key): void {
 		$key = self::normalizeKey($key);
 		if ($key === '') {
-			$key = $this->get(self::K_KEY);
+			$key = $this->store()->key();
 		}
 		if ($key === '' || strlen($key) > 128 || preg_match('/^[A-Za-z0-9_]+$/', $key) !== 1) {
 			throw new \InvalidArgumentException('key');
 		}
-		$this->fetchToken($key);
-		$this->appConfig->setValueString(Application::APP_ID, self::K_KEY, $key, sensitive: true);
+		$this->assertWritable();
+		[$jwt, $token] = $this->fetchToken($key);
+		if ($key === $this->store()->key()) {
+			$this->keepNewer($key, $jwt, $token);
+		} else {
+			$this->store->setKey($key, $jwt);
+		}
+		$this->succeeded();
 	}
 
 	/** @throws WerkPlusApiException */
 	public function startTrial(): string {
-		if ($this->get(self::K_KEY) !== '') {
+		if ($this->store()->key() !== '') {
 			throw new \InvalidArgumentException('keySet');
 		}
+		$this->assertWritable();
 		$now = $this->now();
 		$this->appConfig->setValueString(Application::APP_ID, self::K_LAST_ATTEMPT, (string)$now);
-		$response = $this->client->trial(
-			strtolower($this->getInstanceUuid()),
-			[Application::APP_ID => $this->appManager->getAppVersion(Application::APP_ID)],
-		);
+		$response = $this->client->trial($this->getInstanceUuid(), $this->appVersions());
 
 		// Vor der Pruefung sichern: Der Server schickt den Schluessel nur dieses eine Mal.
 		$key = self::normalizeKey($response['key']);
-		$this->appConfig->setValueString(Application::APP_ID, self::K_KEY, $key, sensitive: true);
+		$this->store->setKey($key, '');
 		try {
 			$this->verifier->verify($response['token'], $this->getInstanceUuid(), $now);
 		} catch (InvalidTokenException $e) {
@@ -122,21 +127,27 @@ class LicenseService {
 			$this->appConfig->deleteKey(Application::APP_ID, self::K_LAST_ATTEMPT);
 			return $key;
 		}
-		$this->storeToken($response['token'], $now);
+		$this->store->setToken($response['token']);
+		$this->succeeded();
 		return $key;
 	}
 
 	/** @throws \InvalidArgumentException wenn kein Schluessel hinterlegt ist */
 	public function refresh(): void {
-		$key = $this->get(self::K_KEY);
+		$key = $this->store()->key();
 		if ($key === '') {
 			throw new \InvalidArgumentException('key');
 		}
-		$this->fetchToken($key);
+		$this->assertWritable();
+		[$jwt, $token] = $this->fetchToken($key);
+		$this->keepNewer($key, $jwt, $token);
+		$this->succeeded();
 	}
 
 	/** Fuer den Hintergrundjob: erneuert nur, wenn faellig, und wirft nie. */
 	public function refreshIfDue(): void {
+		// Hat eine andere Werk-App schon erneuert, entfällt der Abruf.
+		$this->store->reload();
 		if (!$this->isRefreshDue()) {
 			return;
 		}
@@ -148,7 +159,7 @@ class LicenseService {
 	}
 
 	public function isRefreshDue(): bool {
-		if ($this->get(self::K_KEY) === '') {
+		if ($this->store()->key() === '' || $this->store->isOutdated()) {
 			return false;
 		}
 		$now = $this->now();
@@ -169,8 +180,11 @@ class LicenseService {
 			|| $token->expiresAt - $now < self::RENEW_BEFORE_EXPIRY;
 	}
 
+	/** Gilt für alle Werk-Apps dieser Nextcloud. */
 	public function removeKey(): void {
-		foreach ([self::K_KEY, self::K_TOKEN, self::K_LAST_CHECK, self::K_LAST_ATTEMPT, self::K_LAST_ERROR] as $configKey) {
+		$this->assertWritable();
+		$this->store()->remove();
+		foreach ([self::K_LAST_ATTEMPT, self::K_LAST_ERROR] as $configKey) {
 			$this->appConfig->deleteKey(Application::APP_ID, $configKey);
 		}
 		$this->current = null;
@@ -183,8 +197,7 @@ class LicenseService {
 		$current = $this->current();
 		$token = $current['token'];
 		$active = $this->activeToken();
-		$key = $this->get(self::K_KEY);
-		$lastCheck = (int)$this->get(self::K_LAST_CHECK);
+		$key = $this->store()->key();
 		return [
 			'instanceUuid' => $this->getInstanceUuid(),
 			'keySet' => $key !== '',
@@ -195,9 +208,11 @@ class LicenseService {
 			'licensedEmployees' => $active?->licensedEmployees,
 			'expiresAt' => $token !== null ? $this->iso($token->expiresAt) : null,
 			'graceUntil' => $token !== null ? $this->iso($token->graceUntil) : null,
-			'lastCheckAt' => $lastCheck > 0 ? $this->iso($lastCheck) : null,
+			// Das Token stammt aus der letzten erfolgreichen Prüfung, egal welche Werk-App sie ausgelöst hat.
+			'lastCheckAt' => $token !== null ? $this->iso($token->issuedAt) : null,
 			// Ohne hinterlegten Schluessel waere ein alter Fehlversuch nur noch Rauschen.
 			'lastError' => $key !== '' ? $this->lastError() : null,
+			'storeOutdated' => $this->store->isOutdated(),
 		];
 	}
 
@@ -217,36 +232,45 @@ class LicenseService {
 	}
 
 	/**
+	 * @return array{string, EntitlementToken}
 	 * @throws WerkPlusApiException
 	 */
-	private function fetchToken(#[\SensitiveParameter] string $key): void {
+	private function fetchToken(#[\SensitiveParameter] string $key): array {
 		$now = $this->now();
+		$isStoredKey = $key === $this->store()->key();
 		// Ein Versuch mit einem neuen Schlüssel darf die Erneuerung des gespeicherten nicht aufschieben.
-		if ($key === $this->get(self::K_KEY)) {
+		if ($isStoredKey) {
 			$this->appConfig->setValueString(Application::APP_ID, self::K_LAST_ATTEMPT, (string)$now);
 		}
 		try {
-			$response = $this->client->validate(
-				$key,
-				strtolower($this->getInstanceUuid()),
-				[Application::APP_ID => $this->appManager->getAppVersion(Application::APP_ID)],
-			);
+			$response = $this->client->validate($key, $this->getInstanceUuid(), $this->appVersions());
 			try {
-				$this->verifier->verify($response['token'], $this->getInstanceUuid(), $now);
+				$token = $this->verifier->verify($response['token'], $this->getInstanceUuid(), $now);
 			} catch (InvalidTokenException $e) {
 				$this->logger->warning('ProjektWerk: WerkPlus-Token abgelehnt', ['exception' => $e]);
 				throw new WerkPlusApiException(self::TOKEN_REJECTED, '', $e);
 			}
 		} catch (WerkPlusApiException $e) {
-			$this->recordError($e, $now, $key === $this->get(self::K_KEY));
+			$this->recordError($e, $now, $isStoredKey);
 			throw $e;
 		}
-		$this->storeToken($response['token'], $now);
+		return [$response['token'], $token];
 	}
 
-	private function storeToken(string $jwt, int $now): void {
-		$this->appConfig->setValueString(Application::APP_ID, self::K_TOKEN, $jwt, sensitive: true);
-		$this->appConfig->setValueString(Application::APP_ID, self::K_LAST_CHECK, (string)$now);
+	/** Erneuern mehrere Werk-Apps gleichzeitig, darf nie ein älteres Token gewinnen. */
+	private function keepNewer(#[\SensitiveParameter] string $key, string $jwt, EntitlementToken $token): void {
+		$this->store->reload();
+		// Hat eine andere Werk-App inzwischen einen neuen Schlüssel eingetragen, gehört das Token nicht mehr dazu.
+		if ($this->store->key() !== $key) {
+			return;
+		}
+		$stored = $this->verifyQuietly($this->store->token());
+		if ($stored === null || $token->issuedAt > $stored->issuedAt) {
+			$this->store->setToken($jwt);
+		}
+	}
+
+	private function succeeded(): void {
 		$this->appConfig->deleteKey(Application::APP_ID, self::K_LAST_ERROR);
 		$this->current = null;
 	}
@@ -260,11 +284,16 @@ class LicenseService {
 			'code' => $e->getErrorCode(),
 			'serverMessage' => $e->getServerMessage(),
 			'at' => $now,
+			// Die Sperre gilt bis zum nächsten Token; verglichen wird Server- mit Serverzeit.
+			'tokenIat' => $this->verifyQuietly($this->store->token())?->issuedAt ?? 0,
 		], JSON_THROW_ON_ERROR));
-		if (in_array($e->getErrorCode(), self::DROP_TOKEN, true)) {
-			$this->appConfig->deleteKey(Application::APP_ID, self::K_TOKEN);
-		}
 		$this->current = null;
+	}
+
+	private function assertWritable(): void {
+		if ($this->store()->isOutdated()) {
+			throw new \InvalidArgumentException('storeOutdated');
+		}
 	}
 
 	private function activeToken(): ?EntitlementToken {
@@ -275,28 +304,78 @@ class LicenseService {
 	}
 
 	/**
-	 * @return array{jwt: string, token: ?EntitlementToken, state: string}
+	 * @return array{token: ?EntitlementToken, state: string}
 	 */
 	private function current(): array {
-		$jwt = $this->get(self::K_TOKEN);
-		// Langlaufende Prozesse wie Hintergrundjobs sehen ein neu gespeichertes Token sofort.
-		if ($this->current !== null && $this->current['jwt'] === $jwt) {
-			$token = $this->current['token'];
-			// Ablauf und Nachfrist hängen an der Uhr, nicht am Token.
-			return $token === null ? $this->current : ['state' => $token->stateAt($this->now())] + $this->current;
+		$jwt = $this->store()->token();
+		// Nur das geprüfte Token wird gehalten; den Zustand bestimmt bei jeder Abfrage die Uhr.
+		if ($this->current === null || $this->current['jwt'] !== $jwt) {
+			$this->current = ['jwt' => $jwt, 'token' => $this->verifyQuietly($jwt)];
 		}
+		$token = $this->current['token'];
+		if ($token === null) {
+			return ['token' => null, 'state' => $jwt === '' ? self::STATE_NONE : self::STATE_INVALID];
+		}
+		if ($this->revokedSince($token)) {
+			return ['token' => null, 'state' => self::STATE_NONE];
+		}
+		return ['token' => $token, 'state' => $token->stateAt($this->now())];
+	}
+
+	// Das Token bleibt für die anderen Werk-Apps liegen; diese App wartet auf ein neueres.
+	private function revokedSince(EntitlementToken $token): bool {
+		$data = json_decode($this->get(self::K_LAST_ERROR), true);
+		return is_array($data)
+			&& in_array($data['code'] ?? null, self::DROP_TOKEN, true)
+			&& $token->issuedAt <= (is_int($data['tokenIat'] ?? null) ? $data['tokenIat'] : PHP_INT_MAX);
+	}
+
+	private function verifyQuietly(string $jwt): ?EntitlementToken {
 		if ($jwt === '') {
-			return $this->current = ['jwt' => $jwt, 'token' => null, 'state' => self::STATE_NONE];
+			return null;
 		}
-		$now = $this->now();
 		try {
-			$token = $this->verifier->verify($jwt, $this->get(self::K_UUID), $now);
+			return $this->verifier->verify($jwt, $this->getInstanceUuid(), $this->now());
 		} catch (InvalidTokenException $e) {
 			$this->logger->debug('ProjektWerk: gespeichertes WerkPlus-Token ungueltig', ['exception' => $e]);
-			return $this->current = ['jwt' => $jwt, 'token' => null, 'state' => self::STATE_INVALID];
+			return null;
 		}
-		$this->current = ['jwt' => $jwt, 'token' => $token, 'state' => $token->stateAt($now)];
-		return $this->current;
+	}
+
+	private function store(): SharedStore {
+		if (!$this->migrated) {
+			$this->migrated = true;
+			$this->migrateLegacy();
+		}
+		return $this->store;
+	}
+
+	/** Ein Schlüssel aus der eigenen Ablage wird einmalig übernommen, wenn die gemeinsame leer ist. */
+	private function migrateLegacy(): void {
+		$legacyKey = $this->get(self::LEGACY_KEY);
+		if ($legacyKey === '' || $this->store->isOutdated()) {
+			return;
+		}
+		if ($this->store->key() === '' && $this->store->token() === '') {
+			// Das alte Token gehört zur alten Kennung und wird neu geholt.
+			$this->store->setKey($legacyKey, '');
+			$this->appConfig->deleteKey(Application::APP_ID, self::K_LAST_ATTEMPT);
+			$this->appConfig->deleteKey(Application::APP_ID, self::K_LAST_ERROR);
+		}
+		foreach (self::LEGACY as $configKey) {
+			$this->appConfig->deleteKey(Application::APP_ID, $configKey);
+		}
+	}
+
+	/** @return array<string, string> */
+	private function appVersions(): array {
+		$versions = [];
+		foreach (self::WERK_APPS as $appId) {
+			if ($this->appManager->isEnabledForAnyone($appId)) {
+				$versions[$appId] = $this->appManager->getAppVersion($appId);
+			}
+		}
+		return $versions;
 	}
 
 	// Wie der Server: Leerraum und Bindestriche weg, Koerper und Pruefsumme gross, Praefix klein.
@@ -318,12 +397,5 @@ class LicenseService {
 
 	private function iso(int $timestamp): string {
 		return gmdate('Y-m-d\TH:i:s\Z', $timestamp);
-	}
-
-	private function newUuid(): string {
-		$bytes = random_bytes(16);
-		$bytes[6] = chr((ord($bytes[6]) & 0x0f) | 0x40);
-		$bytes[8] = chr((ord($bytes[8]) & 0x3f) | 0x80);
-		return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($bytes), 4));
 	}
 }
