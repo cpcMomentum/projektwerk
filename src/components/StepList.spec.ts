@@ -27,12 +27,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const createStep = vi.fn()
 const updateStep = vi.fn()
+const deleteStep = vi.fn()
 const fetchAssignable = vi.fn()
 const showError = vi.fn()
 
 vi.mock('@/services/steps', () => ({
 	createStep: (...args: unknown[]) => createStep(...args),
 	updateStep: (...args: unknown[]) => updateStep(...args),
+	deleteStep: (...args: unknown[]) => deleteStep(...args),
 	fetchAssignable: (...args: unknown[]) => fetchAssignable(...args),
 }))
 vi.mock('@/services/toast', () => ({
@@ -209,6 +211,7 @@ beforeEach(() => {
 	fetchAssignable.mockResolvedValue(['anna', 'carla'])
 	createStep.mockResolvedValue({})
 	updateStep.mockResolvedValue({})
+	deleteStep.mockResolvedValue(undefined)
 })
 
 describe('StepList', () => {
@@ -554,5 +557,63 @@ describe('StepList', () => {
 		await klickeHinzufuegen(wrapper)
 
 		expect(createStep).toHaveBeenCalledWith(7, 42, { title: 'Ohne Person' }, expect.anything())
+	})
+
+	describe('Fokus bleibt bei den Arbeitsschritten (#484)', () => {
+		function montiert() {
+			return mount(StepList, {
+				props: { boardId: 7, ticketId: 42, steps: [mitFrist('2026-08-11')], members: MEMBERS },
+				attachTo: document.body,
+			})
+		}
+
+		it('nach der Personenwahl im Titelfeld der neuen Zeile', async () => {
+			const wrapper = montiert()
+			wrapper.findComponent({ name: 'NcActions' }).vm.$emit('closed')
+			await wrapper.vm.$nextTick()
+
+			expect(document.activeElement).toBe(wrapper.find('.pw-step--new input[type="text"]').element)
+			wrapper.unmount()
+		})
+
+		it('beim Papierkorb auf „Abbrechen“ der Rückfrage, danach zurück auf den Papierkorb', async () => {
+			const wrapper = montiert()
+			await wrapper.find('.pw-step__loeschen').trigger('click')
+			await wrapper.vm.$nextTick()
+			expect(document.activeElement).toBe(wrapper.find('.pw-step__nicht-loeschen').element)
+
+			await wrapper.find('.pw-step__nicht-loeschen').trigger('click')
+			await wrapper.vm.$nextTick()
+			expect(document.activeElement).toBe(wrapper.find('.pw-step__loeschen').element)
+			wrapper.unmount()
+		})
+
+		it('nach gescheitertem Löschen zurück auf den Papierkorb, ohne späteren Sprung', async () => {
+			deleteStep.mockRejectedValueOnce(new Error('nein'))
+			const wrapper = montiert()
+			await wrapper.find('.pw-step__loeschen').trigger('click')
+			await wrapper.findAll('.pw-step__rechts button').find((b) => b.text() === 'Löschen')!.trigger('click')
+			await new Promise((resolve) => setTimeout(resolve, 0))
+			await wrapper.vm.$nextTick()
+			expect(document.activeElement).toBe(wrapper.find('.pw-step__loeschen').element)
+
+			await wrapper.setProps({ steps: [mitFrist('2026-08-12')] } as Record<string, unknown>)
+			await wrapper.vm.$nextTick()
+			expect(document.activeElement).toBe(wrapper.find('.pw-step__loeschen').element)
+			wrapper.unmount()
+		})
+
+		it('nach dem Löschen im Titelfeld der neuen Zeile', async () => {
+			const wrapper = montiert()
+			await wrapper.find('.pw-step__loeschen').trigger('click')
+			await wrapper.findAll('.pw-step__rechts button').find((b) => b.text() === 'Löschen')!.trigger('click')
+			await new Promise((resolve) => setTimeout(resolve, 0))
+			await wrapper.setProps({ steps: [] } as Record<string, unknown>)
+			await wrapper.vm.$nextTick()
+
+			expect(deleteStep).toHaveBeenCalledWith(7, expect.anything())
+			expect(document.activeElement).toBe(wrapper.find('.pw-step--new input[type="text"]').element)
+			wrapper.unmount()
+		})
 	})
 })
