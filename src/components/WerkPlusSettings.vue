@@ -20,17 +20,17 @@
 			<NcNoteCard
 				v-if="status.storeOutdated"
 				type="warning"
-				:text="t('projektwerk', 'Eine neuere Werk-App hat die Lizenzablage umgestellt. Bitte aktualisieren Sie ProjektWerk. Bis dahin lässt sich die Lizenz hier nicht ändern.')" />
+				:text="t('projektwerk', 'Eine neuere Werk-App hat die Lizenzablage umgestellt. Bitte aktualisiere ProjektWerk. Bis dahin lässt sich die Lizenz hier nicht ändern.')" />
 			<NcNoteCard v-if="stateNote" :type="stateNote.type" :text="stateNote.text" />
 			<NcNoteCard v-if="trialKey" type="success">
 				<p v-if="licenseActive">
-					{{ t('projektwerk', 'Der Testzeitraum läuft. Das ist Ihr WerkPlus-Schlüssel:') }}
+					{{ t('projektwerk', 'Der Testzeitraum läuft. Das ist dein WerkPlus-Schlüssel:') }}
 				</p>
 				<p v-else>
-					{{ t('projektwerk', 'Der Testzeitraum ist gestartet, die Lizenz konnte aber noch nicht geprüft werden. Mit „Jetzt prüfen“ versuchen Sie es erneut. Das ist Ihr WerkPlus-Schlüssel:') }}
+					{{ t('projektwerk', 'Der Testzeitraum ist gestartet, die Lizenz konnte aber noch nicht geprüft werden. Mit „Jetzt prüfen“ versuchst du es erneut. Das ist dein WerkPlus-Schlüssel:') }}
 				</p>
 				<p><code>{{ trialKey }}</code></p>
-				<p>{{ t('projektwerk', 'Bitte bewahren Sie ihn sicher auf. Er ist hinterlegt, wird aber nur jetzt vollständig angezeigt.') }}</p>
+				<p>{{ t('projektwerk', 'Bitte bewahre ihn sicher auf. Er ist hinterlegt, wird aber nur jetzt vollständig angezeigt.') }}</p>
 			</NcNoteCard>
 			<NcNoteCard v-if="actionInfo" type="info" :text="actionInfo" />
 			<NcNoteCard v-if="actionError" type="error" :text="actionError" />
@@ -123,7 +123,7 @@
 			size="normal"
 			@update:open="confirmRemove = false">
 			<div class="app-projektwerk">
-				<p>{{ t('projektwerk', 'Der Schlüssel wird für alle Werk-Apps dieser Nextcloud entfernt, nicht nur für ProjektWerk. Sie arbeiten danach im freien Umfang. Bestehende Projekte und Boards bleiben erhalten. Den Schlüssel können Sie jederzeit wieder eintragen.') }}</p>
+				<p>{{ t('projektwerk', 'Der Schlüssel wird für alle Werk-Apps dieser Nextcloud entfernt, nicht nur für ProjektWerk. Sie arbeiten danach im freien Umfang. Bestehende Projekte und Boards bleiben erhalten. Den Schlüssel kannst du jederzeit wieder eintragen.') }}</p>
 			</div>
 			<template #actions>
 				<NcButton @click="confirmRemove = false">
@@ -183,7 +183,7 @@ const stateNote = computed<{ type: 'success' | 'warning' | 'error', text: string
 		case 'expired':
 			return { type: 'error', text: t('projektwerk', 'Die Lizenz ist abgelaufen. ProjektWerk arbeitet im freien Umfang weiter.') }
 		case 'invalid':
-			return { type: 'error', text: t('projektwerk', 'Der gespeicherte Lizenznachweis ist ungültig. Bitte prüfen Sie die Lizenz erneut.') }
+			return { type: 'error', text: t('projektwerk', 'Der gespeicherte Lizenznachweis ist ungültig. Bitte prüfe die Lizenz erneut.') }
 		default:
 			return null
 	}
@@ -223,7 +223,7 @@ async function run(action: () => Promise<LicenseStatus>): Promise<void> {
 		keyInput.value = ''
 	} catch (e) {
 		const { message, data } = e as { message?: string, data?: Record<string, unknown> }
-		const text = message ?? t('projektwerk', 'WerkPlus hat einen Fehler gemeldet. Bitte versuchen Sie es später erneut.')
+		const text = message ?? t('projektwerk', 'WerkPlus hat einen Fehler gemeldet. Bitte versuche es später erneut.')
 		if (typeof data?.code === 'string' && CALM_CODES.includes(data.code)) {
 			actionInfo.value = text
 		} else {

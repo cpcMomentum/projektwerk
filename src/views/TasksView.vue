@@ -15,7 +15,7 @@
 
 		<!--
 			**Der Fehlerfall vor dem Leerfall.** Ohne ihn behauptet ein
-			gescheitertes Laden „Zurzeit wartet nichts auf Sie." — die Listen
+			gescheitertes Laden „Zurzeit wartet nichts auf dich." — die Listen
 			sind ja leer. Das ist die unangenehmste Sorte Falschaussage: Sie
 			beruhigt, wo sie warnen muesste.
 		-->
@@ -30,8 +30,8 @@
 
 		<NcEmptyContent
 			v-else-if="nothingToDo"
-			:name="t('projektwerk', 'Zurzeit wartet nichts auf Sie.')"
-			:description="t('projektwerk', 'Sobald Ihnen ein Arbeitsschritt zugewiesen wird oder Sie für einen Vorgang zuständig sind, steht er hier.')">
+			:name="t('projektwerk', 'Zurzeit wartet nichts auf dich.')"
+			:description="t('projektwerk', 'Sobald dir ein Arbeitsschritt zugewiesen wird oder du für einen Vorgang zuständig bist, steht er hier.')">
 			<template #icon>
 				<FormatListChecksIcon :size="20" />
 			</template>

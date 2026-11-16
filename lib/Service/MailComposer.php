@@ -108,10 +108,10 @@ class MailComposer {
 	 */
 	private function betreff(IL10N $l, string $event, string $nummer): string {
 		return match ($event) {
-			MailOutbox::EVENT_TICKET_ASSIGNED => $l->t('Vorgang #%1$s wurde Ihnen zugewiesen', [$nummer]),
-			MailOutbox::EVENT_STEP_ASSIGNED => $l->t('Arbeitsschritt in Vorgang #%1$s wurde Ihnen zugewiesen', [$nummer]),
+			MailOutbox::EVENT_TICKET_ASSIGNED => $l->t('Vorgang #%1$s wurde dir zugewiesen', [$nummer]),
+			MailOutbox::EVENT_STEP_ASSIGNED => $l->t('Arbeitsschritt in Vorgang #%1$s wurde dir zugewiesen', [$nummer]),
 			MailOutbox::EVENT_COMMENT_ADDED => $l->t('Neuer Kommentar zu Vorgang #%1$s', [$nummer]),
-			MailOutbox::EVENT_COMMENT_MENTION => $l->t('Sie wurden in Vorgang #%1$s erwähnt', [$nummer]),
+			MailOutbox::EVENT_COMMENT_MENTION => $l->t('Du wurdest in Vorgang #%1$s erwähnt', [$nummer]),
 			MailOutbox::EVENT_TICKET_CLOSED => $l->t('Vorgang #%1$s wurde geschlossen', [$nummer]),
 			default => $l->t('Neuer Vorgang #%1$s', [$nummer]),
 		};
@@ -132,20 +132,20 @@ class MailComposer {
 		switch ($event) {
 			case MailOutbox::EVENT_TICKET_ASSIGNED:
 				return $actor !== null
-					? $l->t('%1$s hat Ihnen den Vorgang #%2$s „%3$s“ zugewiesen.', [$actor, $nummer, $titel])
-					: $l->t('Ihnen wurde der Vorgang #%1$s „%2$s“ zugewiesen.', [$nummer, $titel]);
+					? $l->t('%1$s hat dir den Vorgang #%2$s „%3$s“ zugewiesen.', [$actor, $nummer, $titel])
+					: $l->t('Dir wurde der Vorgang #%1$s „%2$s“ zugewiesen.', [$nummer, $titel]);
 
 			case MailOutbox::EVENT_STEP_ASSIGNED:
 				if ($actor !== null && $schritt !== null) {
-					return $l->t('%1$s hat Ihnen den Arbeitsschritt „%2$s“ im Vorgang #%3$s „%4$s“ zugewiesen.', [$actor, $schritt, $nummer, $titel]);
+					return $l->t('%1$s hat dir den Arbeitsschritt „%2$s“ im Vorgang #%3$s „%4$s“ zugewiesen.', [$actor, $schritt, $nummer, $titel]);
 				}
 				if ($actor !== null) {
-					return $l->t('%1$s hat Ihnen einen Arbeitsschritt im Vorgang #%2$s „%3$s“ zugewiesen.', [$actor, $nummer, $titel]);
+					return $l->t('%1$s hat dir einen Arbeitsschritt im Vorgang #%2$s „%3$s“ zugewiesen.', [$actor, $nummer, $titel]);
 				}
 				if ($schritt !== null) {
-					return $l->t('Ihnen wurde der Arbeitsschritt „%1$s“ im Vorgang #%2$s „%3$s“ zugewiesen.', [$schritt, $nummer, $titel]);
+					return $l->t('Dir wurde der Arbeitsschritt „%1$s“ im Vorgang #%2$s „%3$s“ zugewiesen.', [$schritt, $nummer, $titel]);
 				}
-				return $l->t('Ihnen wurde ein Arbeitsschritt im Vorgang #%1$s „%2$s“ zugewiesen.', [$nummer, $titel]);
+				return $l->t('Dir wurde ein Arbeitsschritt im Vorgang #%1$s „%2$s“ zugewiesen.', [$nummer, $titel]);
 
 			case MailOutbox::EVENT_COMMENT_ADDED:
 				return $actor !== null
@@ -154,8 +154,8 @@ class MailComposer {
 
 			case MailOutbox::EVENT_COMMENT_MENTION:
 				return $actor !== null
-					? $l->t('%1$s hat Sie in einem Kommentar zum Vorgang #%2$s „%3$s“ erwähnt.', [$actor, $nummer, $titel])
-					: $l->t('Sie wurden in einem Kommentar zum Vorgang #%1$s „%2$s“ erwähnt.', [$nummer, $titel]);
+					? $l->t('%1$s hat dich in einem Kommentar zum Vorgang #%2$s „%3$s“ erwähnt.', [$actor, $nummer, $titel])
+					: $l->t('Du wurdest in einem Kommentar zum Vorgang #%1$s „%2$s“ erwähnt.', [$nummer, $titel]);
 
 			case MailOutbox::EVENT_TICKET_CLOSED:
 				return $actor !== null

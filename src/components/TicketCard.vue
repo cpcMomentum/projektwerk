@@ -31,8 +31,8 @@
 					v-if="changed"
 					class="pw-changed"
 					role="img"
-					:title="t('projektwerk', 'Seit Ihrem letzten Blick geändert')"
-					:aria-label="t('projektwerk', 'Seit Ihrem letzten Blick geändert')" />
+					:title="t('projektwerk', 'Seit deinem letzten Blick geändert')"
+					:aria-label="t('projektwerk', 'Seit deinem letzten Blick geändert')" />
 				<span class="pw-num">#{{ paddedNumber }}</span>
 				<!--
 					Das Abschluss-Ergebnis (#171) direkt auf der Karte — erledigt
