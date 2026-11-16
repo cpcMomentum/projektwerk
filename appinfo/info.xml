@@ -26,7 +26,7 @@ Der eigentliche Zweck ist nicht das Board, sondern die **sichtbare Zustaendigkei
 
 Frei enthalten sind zehn aktive Projekte mit je einem Board und ein Kundenprojekt. WerkPlus schaltet weitere Projekte, Kundenprojekte und Boards frei, dazu Antworten per E-Mail und den KI-Zugriff ueber MCP.
 
-Fuer die Lizenzpruefung gehen nur der WerkPlus-Schluessel, eine zufaellige Instanzkennung und die App-Version an api.werkwolke.de. Niemals Vorgaenge, Kommentare, Dateien, Namen, Adressen, Benutzer- oder Datei-IDs.
+Fuer die Lizenzpruefung gehen nur der WerkPlus-Schluessel, eine aus der Nextcloud abgeleitete Kennung und die Versionen der aktivierten Werk-Apps an api.werkwolke.de. Ein Schluessel gilt fuer alle Werk-Apps einer Nextcloud. Niemals Vorgaenge, Kommentare, Dateien, Namen, Adressen, Benutzer- oder Datei-IDs.
     ]]></description>
 
     <version>0.4.26</version>

@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace OCA\Projektwerk\Tests\Unit\License;
 
+use OCA\Projektwerk\License\InstanceId;
+use OCA\Projektwerk\License\SharedStore;
 use OCA\Projektwerk\License\WerkPlusApiException;
 use OCA\Projektwerk\License\LicenseService;
 use OCA\Projektwerk\License\WerkPlusClient;
@@ -24,56 +26,88 @@ class LicenseServiceTest extends TestCase {
 
 	private const KEY = 'wp_B7K2M9QX4TN6RJ8VC3HD5PKW2FSY7GZA3EFA69B6';
 
-	/** @var array<string, string> */
+	/** @var array<string, string> Eigene App-Konfiguration */
 	private array $config = [];
+	/** @var array<string, string> Gemeinsame Ablage `werkwolke` */
+	private array $shared = [];
 	/** @var array<string, bool> */
 	private array $sensitive = [];
+	/** @var array<string, bool> */
+	private array $enabledApps = [];
 	private int $now = self::NOW;
+	/** @var (\Closure(): void)|null Simuliert eine andere Werk-App, die zwischendurch schreibt. */
+	private ?\Closure $otherApp = null;
 	private WerkPlusClient&MockObject $client;
 
 	protected function setUp(): void {
 		parent::setUp();
-		$this->config = ['werkplus_instance_uuid' => self::UUID];
+		$this->config = [];
+		$this->shared = [];
 		$this->sensitive = [];
+		$this->enabledApps = ['projektwerk' => true, 'rechnungswerk' => true];
 		$this->now = self::NOW;
+		$this->otherApp = null;
 		$this->client = $this->createMock(WerkPlusClient::class);
+	}
+
+	/** @return array<string, string> */
+	private function &bucket(string $app): array {
+		if ($app === SharedStore::APP) {
+			return $this->shared;
+		}
+		$this->assertSame('projektwerk', $app);
+		return $this->config;
 	}
 
 	private function service(): LicenseService {
 		$appConfig = $this->createMock(IAppConfig::class);
 		$appConfig->method('getValueString')->willReturnCallback(
-			fn (string $app, string $key, string $default = '') => $this->config[$key] ?? $default
+			fn (string $app, string $key, string $default = '') => $this->bucket($app)[$key] ?? $default
 		);
 		$appConfig->method('setValueString')->willReturnCallback(
 			function (string $app, string $key, string $value, bool $lazy = false, bool $sensitive = false): bool {
-				$this->config[$key] = $value;
-				$this->sensitive[$key] = $sensitive;
+				$bucket = &$this->bucket($app);
+				$bucket[$key] = $value;
+				$this->sensitive[$app . '/' . $key] = $sensitive;
 				return true;
 			}
 		);
 		$appConfig->method('deleteKey')->willReturnCallback(function (string $app, string $key): void {
-			unset($this->config[$key]);
+			$bucket = &$this->bucket($app);
+			unset($bucket[$key]);
 		});
+		$appConfig->method('clearCache')->willReturnCallback(function (): void {
+			if ($this->otherApp !== null) {
+				($this->otherApp)();
+			}
+		});
+		$appConfig->expects($this->never())->method('deleteApp');
 		$appConfig->expects($this->never())->method('getValueInt');
 
-		$time = $this->createMock(ITimeFactory::class);
+		$time = $this->createStub(ITimeFactory::class);
 		$time->method('getTime')->willReturnCallback(fn () => $this->now);
-		$appManager = $this->createMock(IAppManager::class);
-		$appManager->method('getAppVersion')->willReturn('0.7.0');
+		$appManager = $this->createStub(IAppManager::class);
+		$appManager->method('isEnabledForAnyone')->willReturnCallback(fn (string $app) => $this->enabledApps[$app] ?? false);
+		$appManager->method('getAppVersion')->willReturnCallback(fn (string $app) => $app === 'projektwerk' ? '0.7.0' : '1.2.3');
+		$instanceId = $this->createStub(InstanceId::class);
+		$instanceId->method('uuid')->willReturn(self::UUID);
 
 		return new LicenseService(
 			$appConfig,
+			new SharedStore($appConfig),
+			$instanceId,
 			$time,
 			$this->client,
 			$this->verifier(),
 			$appManager,
-			$this->createMock(LoggerInterface::class),
+			$this->createStub(LoggerInterface::class),
 		);
 	}
 
 	private function storeToken(array $overrides = []): void {
-		$this->config['werkplus_key'] = self::KEY;
-		$this->config['werkplus_token'] = $this->token($this->claims($overrides));
+		$this->shared['store_version'] = '1';
+		$this->shared['key'] = self::KEY;
+		$this->shared['token'] = $this->token($this->claims($overrides));
 	}
 
 	/**
@@ -133,44 +167,26 @@ class LicenseServiceTest extends TestCase {
 
 	public function testActivateStoresKeyAndTokenSensitively(): void {
 		$this->client->expects($this->once())->method('validate')
-			->with(self::KEY, self::UUID, ['projektwerk' => '0.7.0'])
+			->with(self::KEY, self::UUID, ['rechnungswerk' => '1.2.3', 'projektwerk' => '0.7.0'])
 			->willReturn($this->response());
 		$service = $this->service();
 		$service->activate('  ' . self::KEY . ' ');
 
-		$this->assertSame(self::KEY, $this->config['werkplus_key']);
-		$this->assertTrue($this->sensitive['werkplus_key']);
-		$this->assertTrue($this->sensitive['werkplus_token']);
-		$this->assertSame((string)self::NOW, $this->config['werkplus_last_check_at']);
+		$this->assertSame(self::KEY, $this->shared['key']);
+		$this->assertTrue($this->sensitive['werkwolke/key']);
+		$this->assertSame('1', $this->shared['store_version']);
+		$this->assertSame([], $this->config);
+		$this->assertSame('2026-10-18T14:12:03Z', $service->getStatus()['lastCheckAt']);
 		$this->assertTrue($service->hasFeature('pw_projects'));
 		$this->assertNull($service->lastError());
 	}
 
-	public function testInstanceUuidIsCreatedLowercaseAndSentLowercase(): void {
-		unset($this->config['werkplus_instance_uuid']);
-		$sent = null;
-		$this->client->method('validate')->willReturnCallback(function (string $k, string $uuid) use (&$sent): array {
-			$sent = $uuid;
-			throw new WerkPlusApiException('SERVER_ERROR');
-		});
-		try {
-			$this->service()->activate(self::KEY);
-		} catch (WerkPlusApiException) {
-		}
-
-		$this->assertMatchesRegularExpression('/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/', $this->config['werkplus_instance_uuid']);
-		$this->assertSame($this->config['werkplus_instance_uuid'], $sent);
-	}
-
-	public function testUppercaseStoredUuidIsSentLowercaseAndItsTokenAccepted(): void {
-		$this->config['werkplus_instance_uuid'] = strtoupper(self::UUID);
+	public function testOnlyEnabledWerkAppsAreReported(): void {
+		$this->enabledApps = ['projektwerk' => true, 'worktime' => true, 'contractmanager' => true, 'deck' => true];
 		$this->client->expects($this->once())->method('validate')
-			->with(self::KEY, self::UUID)
+			->with(self::KEY, self::UUID, ['projektwerk' => '0.7.0', 'worktime' => '1.2.3', 'contractmanager' => '1.2.3'])
 			->willReturn($this->response());
-		$service = $this->service();
-		$service->activate(self::KEY);
-
-		$this->assertTrue($service->hasFeature('pw_projects'));
+		$this->service()->activate(self::KEY);
 	}
 
 	public function testFailedActivationStoresNoKey(): void {
@@ -183,7 +199,7 @@ class LicenseServiceTest extends TestCase {
 			$this->assertSame('KEY_UNKNOWN', $e->getErrorCode());
 		}
 
-		$this->assertArrayNotHasKey('werkplus_key', $this->config);
+		$this->assertArrayNotHasKey('key', $this->shared);
 		$this->assertNull($service->lastError());
 	}
 
@@ -193,7 +209,7 @@ class LicenseServiceTest extends TestCase {
 			->willReturn($this->response());
 		$this->service()->activate(' WP_b7k2-m9qx-4tn6 rj8v-c3hd-5pkw-2fsy-7gza 3efa69b6 ');
 
-		$this->assertSame(self::KEY, $this->config['werkplus_key']);
+		$this->assertSame(self::KEY, $this->shared['key']);
 	}
 
 	public function testRevokedStoredKeyInDisplayFormStillFallsBackToFree(): void {
@@ -281,7 +297,7 @@ class LicenseServiceTest extends TestCase {
 		} catch (WerkPlusApiException) {
 		}
 
-		$this->assertSame(self::KEY, $this->config['werkplus_key']);
+		$this->assertSame(self::KEY, $this->shared['key']);
 		$this->assertTrue($service->hasFeature('pw_projects'));
 	}
 
@@ -295,8 +311,8 @@ class LicenseServiceTest extends TestCase {
 		}
 
 		$this->assertSame('free', $service->tier());
-		$this->assertArrayNotHasKey('werkplus_token', $this->config);
-		$this->assertSame(self::KEY, $this->config['werkplus_key']);
+		$this->assertArrayHasKey('token', $this->shared, 'Die anderen Werk-Apps entscheiden selbst.');
+		$this->assertSame(self::KEY, $this->shared['key']);
 	}
 
 	/**
@@ -315,7 +331,7 @@ class LicenseServiceTest extends TestCase {
 	#[\PHPUnit\Framework\Attributes\DataProvider('transientErrors')]
 	public function testFailedRenewalKeepsTheOldToken(string $code): void {
 		$this->storeToken();
-		$before = $this->config['werkplus_token'];
+		$before = $this->shared['token'];
 		$this->client->method('validate')->willThrowException(new WerkPlusApiException($code));
 		$service = $this->service();
 		try {
@@ -323,7 +339,7 @@ class LicenseServiceTest extends TestCase {
 		} catch (WerkPlusApiException) {
 		}
 
-		$this->assertSame($before, $this->config['werkplus_token']);
+		$this->assertSame($before, $this->shared['token']);
 		$this->assertTrue($service->hasFeature('pw_projects'));
 	}
 
@@ -341,8 +357,8 @@ class LicenseServiceTest extends TestCase {
 			$this->assertSame(LicenseService::TOKEN_REJECTED, $e->getErrorCode());
 		}
 
-		$this->assertArrayNotHasKey('werkplus_token', $this->config);
-		$this->assertArrayNotHasKey('werkplus_key', $this->config);
+		$this->assertArrayNotHasKey('token', $this->shared);
+		$this->assertArrayNotHasKey('key', $this->shared);
 	}
 
 	public function testInvalidInputIsRejectedBeforeAnyCall(): void {
@@ -409,18 +425,16 @@ class LicenseServiceTest extends TestCase {
 	}
 
 	public function testTrialStoresKeyAndTokenAndReturnsTheKey(): void {
-		$this->config['werkplus_instance_uuid'] = strtoupper(self::UUID);
 		$this->client->expects($this->never())->method('validate');
 		$this->client->expects($this->once())->method('trial')
-			->with(self::UUID, ['projektwerk' => '0.7.0'])
+			->with(self::UUID, ['rechnungswerk' => '1.2.3', 'projektwerk' => '0.7.0'])
 			->willReturn(['key' => strtolower(self::KEY)] + $this->response());
 		$service = $this->service();
 
 		$this->assertSame(self::KEY, $service->startTrial());
-		$this->assertSame(self::KEY, $this->config['werkplus_key']);
-		$this->assertTrue($this->sensitive['werkplus_key']);
-		$this->assertTrue($this->sensitive['werkplus_token']);
-		$this->assertSame((string)self::NOW, $this->config['werkplus_last_check_at']);
+		$this->assertSame(self::KEY, $this->shared['key']);
+		$this->assertTrue($this->sensitive['werkwolke/key']);
+		$this->assertSame('2026-10-18T14:12:03Z', $service->getStatus()['lastCheckAt']);
 		$this->assertTrue($service->hasFeature('pw_projects'));
 		$this->assertNull($service->lastError());
 	}
@@ -443,8 +457,8 @@ class LicenseServiceTest extends TestCase {
 			$this->assertSame('TRIAL_ALREADY_USED', $e->getErrorCode());
 		}
 
-		$this->assertArrayNotHasKey('werkplus_key', $this->config);
-		$this->assertArrayNotHasKey('werkplus_token', $this->config);
+		$this->assertArrayNotHasKey('key', $this->shared);
+		$this->assertArrayNotHasKey('token', $this->shared);
 		$this->assertNull($service->getStatus()['lastError']);
 	}
 
@@ -458,8 +472,8 @@ class LicenseServiceTest extends TestCase {
 		$service = $this->service();
 
 		$this->assertSame(self::KEY, $service->startTrial());
-		$this->assertSame(self::KEY, $this->config['werkplus_key']);
-		$this->assertArrayNotHasKey('werkplus_token', $this->config);
+		$this->assertSame(self::KEY, $this->shared['key']);
+		$this->assertArrayNotHasKey('token', $this->shared);
 		$this->assertSame(LicenseService::TOKEN_REJECTED, $service->getStatus()['lastError']['code']);
 		$this->assertSame('free', $service->tier());
 		$this->assertTrue($service->isRefreshDue());
@@ -470,7 +484,7 @@ class LicenseServiceTest extends TestCase {
 		$service = $this->service();
 
 		$this->assertSame(self::KEY, $service->startTrial());
-		$this->assertSame(self::KEY, $this->config['werkplus_key']);
+		$this->assertSame(self::KEY, $this->shared['key']);
 		$this->assertSame(LicenseService::TOKEN_REJECTED, $service->lastError()['code']);
 	}
 
@@ -491,12 +505,14 @@ class LicenseServiceTest extends TestCase {
 		$this->service()->refreshIfDue();
 	}
 
-	public function testRemoveKeyClearsLicenseButKeepsTheInstanceUuid(): void {
+	public function testRemoveKeyClearsKeyAndTokenForAllWerkApps(): void {
 		$this->storeToken();
+		$this->config['werkplus_last_attempt_at'] = (string)self::NOW;
 		$service = $this->service();
 		$service->removeKey();
 
-		$this->assertSame(['werkplus_instance_uuid' => self::UUID], $this->config);
+		$this->assertSame(['store_version' => '1'], $this->shared);
+		$this->assertSame([], $this->config);
 		$this->assertSame('free', $service->tier());
 	}
 
@@ -530,5 +546,149 @@ class LicenseServiceTest extends TestCase {
 
 		$this->assertNull($status['licensedEmployees']);
 		$this->assertArrayNotHasKey('employeeBucket', $status);
+	}
+
+	public function testAKeyStoredByAnotherWerkAppIsActiveWithoutInput(): void {
+		$this->storeToken();
+		$this->client->expects($this->never())->method('validate');
+		$status = $this->service()->getStatus();
+
+		$this->assertTrue($status['keySet']);
+		$this->assertSame('valid', $status['state']);
+		$this->assertFalse($status['storeOutdated']);
+	}
+
+	public function testALegacyKeyIsTakenOverOnceWhenTheSharedStoreIsEmpty(): void {
+		$this->config = [
+			'werkplus_key' => self::KEY,
+			'werkplus_token' => 'alt',
+			'werkplus_instance_uuid' => '0b6f4c1e-7d2a-4f3b-9e8c-5a1d2b3c4d5e',
+			'werkplus_last_check_at' => '1',
+			'werkplus_last_attempt_at' => (string)self::NOW,
+		];
+		$service = $this->service();
+
+		$this->assertTrue($service->isRefreshDue(), 'Das alte Token gehört zur alten Kennung.');
+		$this->assertSame(['store_version' => '1', 'key' => self::KEY], $this->shared);
+		$this->assertSame([], $this->config);
+	}
+
+	public function testALegacyKeyNeverOverwritesTheSharedStore(): void {
+		$this->storeToken();
+		$before = $this->shared;
+		$this->config = ['werkplus_key' => 'wp_ALT', 'werkplus_instance_uuid' => '0b6f4c1e-7d2a-4f3b-9e8c-5a1d2b3c4d5e'];
+		$this->service()->state();
+
+		$this->assertSame($before, $this->shared);
+		$this->assertSame([], $this->config);
+	}
+
+	public function testANewerSharedStoreIsLeftAlone(): void {
+		$this->storeToken();
+		$this->shared['store_version'] = '2';
+		$this->config = ['werkplus_key' => 'wp_ALT'];
+		$before = $this->shared;
+		$this->client->expects($this->never())->method('validate');
+		$service = $this->service();
+
+		$this->assertTrue($service->getStatus()['storeOutdated']);
+		$this->assertFalse($service->isRefreshDue());
+		foreach ([fn () => $service->activate(self::KEY), fn () => $service->refresh(), fn () => $service->removeKey(), fn () => $service->startTrial()] as $action) {
+			try {
+				$action();
+				$this->fail('Ausnahme erwartet');
+			} catch (\InvalidArgumentException $e) {
+				$this->assertContains($e->getMessage(), ['storeOutdated', 'keySet']);
+			}
+		}
+		$this->assertSame($before, $this->shared);
+		$this->assertSame(['werkplus_key' => 'wp_ALT'], $this->config);
+	}
+
+	public function testRenewalNeverReplacesANewerToken(): void {
+		$this->storeToken(['iat' => self::NOW + 3600]);
+		$newer = $this->shared['token'];
+		$this->client->method('validate')->willReturn($this->response());
+		$this->service()->refresh();
+
+		$this->assertSame($newer, $this->shared['token']);
+	}
+
+	public function testTwoRenewalsAtOnceLeaveTheNewerToken(): void {
+		$this->storeToken();
+		$this->now = self::NOW + 8 * 86400;
+		$newer = $this->token($this->claims(['iat' => $this->now + 60]));
+		$this->client->method('validate')->willReturnCallback(function () use ($newer): array {
+			$this->otherApp = function () use ($newer): void {
+				$this->shared['token'] = $newer;
+			};
+			return $this->response(['iat' => $this->now]);
+		});
+		$this->service()->refresh();
+
+		$this->assertSame($newer, $this->shared['token']);
+	}
+
+	public function testRenewalReplacesAnOlderToken(): void {
+		$this->storeToken();
+		$this->now = self::NOW + 8 * 86400;
+		$fresh = $this->response(['iat' => $this->now]);
+		$this->client->method('validate')->willReturn($fresh);
+		$this->service()->refresh();
+
+		$this->assertSame($fresh['token'], $this->shared['token']);
+	}
+
+	public function testANewKeyReplacesKeyAndTokenTogether(): void {
+		$this->storeToken(['iat' => self::NOW + 3600]);
+		$fresh = $this->response();
+		$this->client->method('validate')->willReturn($fresh);
+		$this->service()->activate('wp_NEUERSCHLUESSEL');
+
+		$this->assertSame('wp_NEUERSCHLUESSEL', $this->shared['key']);
+		$this->assertSame($fresh['token'], $this->shared['token']);
+	}
+
+	public function testTheJobSkipsTheCallWhenAnotherWerkAppAlreadyRenewed(): void {
+		$this->storeToken();
+		$this->now = self::NOW + 8 * 86400;
+		$service = $this->service();
+		$this->assertTrue($service->isRefreshDue());
+
+		$this->otherApp = function (): void {
+			$this->shared['token'] = $this->token($this->claims(['iat' => $this->now - 60]));
+		};
+		$this->client->expects($this->never())->method('validate');
+		$service->refreshIfDue();
+	}
+
+	public function testANewerTokenFromAnotherWerkAppEndsTheRevokedStateDespiteClockSkew(): void {
+		$this->storeToken();
+		$this->now = self::NOW + 8 * 86400 + 600;
+		$this->client->method('validate')->willThrowException(new WerkPlusApiException('KEY_REVOKED'));
+		try {
+			$this->service()->refresh();
+		} catch (WerkPlusApiException) {
+		}
+		$this->assertFalse($this->service()->hasFeature('pw_projects'));
+
+		$this->shared['token'] = $this->token($this->claims(['iat' => self::NOW + 8 * 86400]));
+		$this->assertTrue($this->service()->hasFeature('pw_projects'), 'Die eigene Uhr geht vor, das neue Token zählt trotzdem.');
+	}
+
+	public function testATokenForAKeyReplacedMeanwhileIsDropped(): void {
+		$this->storeToken();
+		$this->now = self::NOW + 8 * 86400;
+		$this->client->method('validate')->willReturnCallback(function (): array {
+			$this->otherApp = function (): void {
+				$this->shared['key'] = 'wp_ANDERERSCHLUESSEL';
+				$this->shared['token'] = $this->token($this->claims(['features' => ['pw_projects']]));
+			};
+			return $this->response(['iat' => $this->now]);
+		});
+		$this->service()->refresh();
+
+		$this->assertSame('wp_ANDERERSCHLUESSEL', $this->shared['key']);
+		$this->assertSame(['pw_projects'], $this->service()->getStatus()['features']);
 	}
 }

@@ -43,9 +43,9 @@ anlegen pw-e2e-kunde 'E2E Kundenseite'
 
 # Die Specs legen mehrere Boards je Projekt an; das braucht WerkPlus, die App selbst kennt keinen Schalter dafür.
 if [ "${GITHUB_ACTIONS:-}" = "true" ]; then
-	mapfile -t lizenz < <(php "$(dirname "$0")/werkplus-lizenz.php" "$(cd "$(dirname "$0")/../.." && pwd)")
-	$OCC config:app:set projektwerk werkplus_instance_uuid --value="${lizenz[0]}" >/dev/null
-	$OCC config:app:set projektwerk werkplus_token --value="${lizenz[1]}" --sensitive >/dev/null
+	token=$(php "$(dirname "$0")/werkplus-lizenz.php" "$(cd "$(dirname "$0")/../.." && pwd)" "$($OCC config:system:get instanceid)")
+	$OCC config:app:set werkwolke store_version --value=1 >/dev/null
+	$OCC config:app:set werkwolke token --value="$token" >/dev/null
 	echo "WerkPlus-Testlizenz eingetragen"
 else
 	echo "Lokal keine Testlizenz: Die Dev-Instanz braucht eine echte WerkPlus-Lizenz für die Specs mit mehreren Boards"

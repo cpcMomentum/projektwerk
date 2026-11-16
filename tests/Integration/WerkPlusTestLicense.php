@@ -12,7 +12,9 @@ namespace OCA\Projektwerk\Tests\Integration;
 use OCA\Projektwerk\AppInfo\Application;
 use OCA\Projektwerk\License\EntitlementKeys;
 use OCA\Projektwerk\License\EntitlementTokenVerifier;
+use OCA\Projektwerk\License\InstanceId;
 use OCA\Projektwerk\License\LicenseService;
+use OCA\Projektwerk\License\SharedStore;
 use OCP\IAppConfig;
 use OCP\Server;
 
@@ -22,8 +24,12 @@ use OCP\Server;
 final class WerkPlusTestLicense {
 
 	private const KID = 'integration-test';
-	private const UUID = '0b6f4c1e-7d2a-4f3b-9e8c-5a1d2b3c4d5e';
-	private const CONFIG_KEYS = ['werkplus_instance_uuid', 'werkplus_token', 'werkplus_key', 'werkplus_last_check_at', 'werkplus_last_attempt_at', 'werkplus_last_error'];
+	/** @var array<string, list<string>> */
+	private const CONFIG_KEYS = [
+		SharedStore::APP => ['store_version', 'key', 'token'],
+		Application::APP_ID => ['werkplus_last_attempt_at', 'werkplus_last_error'],
+	];
+	private const SENSITIVE = ['key'];
 
 	private static ?\OpenSSLAsymmetricKey $privateKey = null;
 
@@ -52,7 +58,7 @@ final class WerkPlusTestLicense {
 		$claims = [
 			'iss' => EntitlementTokenVerifier::ISSUER,
 			'aud' => EntitlementTokenVerifier::AUDIENCE,
-			'sub' => self::UUID,
+			'sub' => Server::get(InstanceId::class)->uuid(),
 			'iat' => $now,
 			'nbf' => $now - 60,
 			'exp' => $now + 86400,
@@ -64,28 +70,32 @@ final class WerkPlusTestLicense {
 		openssl_sign($input, $signature, self::$privateKey, OPENSSL_ALGO_SHA256);
 
 		$config = Server::get(IAppConfig::class);
-		$config->setValueString(Application::APP_ID, 'werkplus_instance_uuid', self::UUID);
-		$config->setValueString(Application::APP_ID, 'werkplus_token', $input . '.' . self::b64($signature), sensitive: true);
+		$config->setValueString(SharedStore::APP, 'store_version', (string)SharedStore::VERSION);
+		$config->setValueString(SharedStore::APP, 'token', $input . '.' . self::b64($signature));
 	}
 
-	/** @return array<string, ?string> Die Lizenzwerte der Instanz, bevor ein Test sie überschreibt. */
+	/** @return array<string, array<string, ?string>> Die Lizenzwerte der Instanz, bevor ein Test sie überschreibt. */
 	public static function snapshot(): array {
 		$config = Server::get(IAppConfig::class);
 		$values = [];
-		foreach (self::CONFIG_KEYS as $key) {
-			$values[$key] = $config->hasKey(Application::APP_ID, $key) ? $config->getValueString(Application::APP_ID, $key) : null;
+		foreach (self::CONFIG_KEYS as $app => $keys) {
+			foreach ($keys as $key) {
+				$values[$app][$key] = $config->hasKey($app, $key) ? $config->getValueString($app, $key) : null;
+			}
 		}
 		return $values;
 	}
 
-	/** @param array<string, ?string> $snapshot Eine echte Lizenz auf der Dev-Instanz bleibt so erhalten. */
+	/** @param array<string, array<string, ?string>> $snapshot Eine echte Lizenz auf der Dev-Instanz bleibt so erhalten. */
 	public static function restore(array $snapshot): void {
 		$config = Server::get(IAppConfig::class);
-		foreach ($snapshot as $key => $value) {
-			if ($value === null) {
-				$config->deleteKey(Application::APP_ID, $key);
-			} else {
-				$config->setValueString(Application::APP_ID, $key, $value, sensitive: in_array($key, ['werkplus_key', 'werkplus_token'], true));
+		foreach ($snapshot as $app => $values) {
+			foreach ($values as $key => $value) {
+				if ($value === null) {
+					$config->deleteKey($app, $key);
+				} else {
+					$config->setValueString($app, $key, $value, sensitive: $app === SharedStore::APP && in_array($key, self::SENSITIVE, true));
+				}
 			}
 		}
 	}
