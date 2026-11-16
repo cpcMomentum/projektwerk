@@ -130,7 +130,7 @@
 					sie erst, wenn das Datum gerissen ist.
 				-->
 				<span
-					v-if="ticket.dueDate"
+					v-if="ticket.dueDate && ticket.closedAt === null"
 					class="pw-due"
 					:class="{ 'pw-due--overdue': overdue }"
 					:title="dueTitle">

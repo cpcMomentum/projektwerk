@@ -416,7 +416,7 @@
 					</div>
 
 					<div v-if="!editingResponsible" class="pw-eckdaten__zeile">
-						<div class="pw-frist" :class="{ 'pw-frist--overdue': dueOverdue }">
+						<div class="pw-frist" :class="{ 'pw-frist--overdue': dueOverdue, 'pw-frist--abgeschlossen': ticket.closedAt !== null }">
 							<span class="pw-frist__label">
 								<CalendarAlertIcon v-if="dueOverdue" :size="18" />
 								<CalendarIcon v-else :size="18" />
@@ -840,7 +840,7 @@ export default defineComponent({
 
 		/** Ist die Fälligkeit gerissen? Ein fehlendes Datum nie (#72). */
 		dueOverdue(): boolean {
-			return isOverdue(this.ticket?.dueDate ?? null)
+			return this.ticket?.closedAt === null && isOverdue(this.ticket.dueDate ?? null)
 		},
 
 		/** Benennt den Dialog ueber die Ueberschrift, die ohnehin dasteht. */
