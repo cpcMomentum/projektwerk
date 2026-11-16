@@ -1261,12 +1261,15 @@ body .modal-wrapper:has(.pw-detail) > .modal-container {
 	display: flex;
 	align-items: center;
 	gap: 8px;
-	/* Schlankes Band (#337): die Knoepfe tragen ihre 34-px-Klickflaeche selbst,
-	   das Polster drumherum war verschenkter Platz. */
 	margin-block-start: 2px;
-	padding-block: 4px;
+	padding-block: 8px;
 	background: var(--color-main-background);
 	box-shadow: 0 -1px 0 var(--color-border);
+}
+
+/* Sonst läge unter der Fußzeile am Ende des Scrollens zusätzlich das untere Polster des Dialogs. */
+.app-projektwerk .pw-detail:has(> .pw-detail__fuss) {
+	padding-block-end: 0;
 }
 
 /* Hülle für den Archivzustand: sperrt die Bedienelemente, ohne das Layout zu ändern. */
@@ -1289,11 +1292,6 @@ body .modal-wrapper:has(.pw-detail) > .modal-container {
 /* Der Ausgang rechts abgesetzt (#368), getrennt von den Aktionen am Vorgang. */
 .app-projektwerk .pw-detail__ausgang {
 	margin-inline-start: auto;
-}
-
-/* Farben kommen aus `variant="error"`, damit Löschen wie die Ausgänge daneben aussieht. */
-.app-projektwerk .pw-detail__loeschen {
-	margin-inline-end: 12px;
 }
 
 /*
