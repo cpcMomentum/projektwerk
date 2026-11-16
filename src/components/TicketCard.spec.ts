@@ -50,6 +50,17 @@ afterEach(() => {
 })
 
 describe('TicketCard', () => {
+	it('blendet die Frist bei abgeschlossenen Vorgängen aus, ohne sie zu ändern', () => {
+		const offen = { ...vorgang(1), dueDate: '2026-01-05' }
+		expect(mount(TicketCard, { props: { ticket: offen } }).find('.pw-due--overdue').exists()).toBe(true)
+
+		for (const closedOutcome of ['done', 'discarded'] as const) {
+			const zu = { ...offen, closedAt: '2026-01-10T09:00:00+00:00', closedOutcome }
+			expect(mount(TicketCard, { props: { ticket: zu } }).find('.pw-due').exists()).toBe(false)
+			expect(zu.dueDate).toBe('2026-01-05')
+		}
+	})
+
 	it('zeigt im Archiv kein Menü zum Ändern', () => {
 		expect(mount(TicketCard, { props: { ticket: vorgang(1) } }).find('.pw-card__menu').exists()).toBe(true)
 		expect(mount(TicketCard, { props: { ticket: vorgang(1), readOnly: true } }).find('.pw-card__menu').exists()).toBe(false)

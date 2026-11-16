@@ -3781,6 +3781,10 @@ body .app-projektwerk .v-select.select {
 	color: var(--color-error-text, var(--color-error));
 }
 
+.app-projektwerk .pw-frist--abgeschlossen .pw-frist__wert {
+	color: var(--color-text-maxcontrast);
+}
+
 /* Der eine Stift für Zuständig und Frist (#345) steht am Zeilenende. */
 .app-projektwerk .pw-eckdaten__stift {
 	margin-inline-start: auto;
