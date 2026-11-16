@@ -11,9 +11,11 @@ namespace OCA\Projektwerk\Controller;
 
 use OCA\Projektwerk\AppInfo\Application;
 use OCA\Projektwerk\Mcp\McpConfig;
+use OCA\Projektwerk\Service\EntitlementService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\JSONResponse;
+use OCP\IL10N;
 use OCP\IRequest;
 use Psr\Log\LoggerInterface;
 
@@ -23,19 +25,25 @@ class AiAccessController extends Controller {
 	public function __construct(
 		IRequest $request,
 		private McpConfig $config,
+		private EntitlementService $entitlement,
 		private LoggerInterface $logger,
+		private IL10N $l10n,
 		private ?string $userId,
 	) {
 		parent::__construct(Application::APP_ID, $request);
 	}
 
 	public function show(): JSONResponse {
-		return new JSONResponse(['publicWrite' => $this->config->publicWriteAllowed()]);
+		return new JSONResponse(['publicWrite' => $this->config->publicWriteAllowed(), 'werkplus' => $this->entitlement->mcpAllowed()]);
 	}
 
 	public function save(?bool $publicWrite = null): JSONResponse {
 		if ($publicWrite === null) {
 			return new JSONResponse([], Http::STATUS_BAD_REQUEST);
+		}
+		// Ausschalten muss auch ohne Lizenz gehen.
+		if ($publicWrite && !$this->entitlement->mcpAllowed()) {
+			return new JSONResponse(['error' => $this->l10n->t('Der KI-Zugriff über MCP ist Teil von WerkPlus.')], Http::STATUS_PAYMENT_REQUIRED);
 		}
 
 		$this->config->setPublicWriteAllowed($publicWrite);

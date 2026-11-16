@@ -189,6 +189,11 @@ return [
 		['name' => 'ownCompany#save', 'url' => '/api/v1/admin/own-company', 'verb' => 'PUT'],
 		['name' => 'aiAccess#show', 'url' => '/api/v1/admin/ai-access', 'verb' => 'GET'],
 		['name' => 'aiAccess#save', 'url' => '/api/v1/admin/ai-access', 'verb' => 'PUT'],
+		['name' => 'license#show', 'url' => '/api/v1/admin/license', 'verb' => 'GET'],
+		['name' => 'license#activate', 'url' => '/api/v1/admin/license', 'verb' => 'PUT'],
+		['name' => 'license#trial', 'url' => '/api/v1/admin/license/trial', 'verb' => 'POST'],
+		['name' => 'license#refresh', 'url' => '/api/v1/admin/license/refresh', 'verb' => 'POST'],
+		['name' => 'license#destroy', 'url' => '/api/v1/admin/license', 'verb' => 'DELETE'],
 
 		// MCP-Endpunkt fuer Claude (#343), Bearer-Token statt Sitzung. Keine OCS-Route:
 		// Claude sendet kein `OCS-APIRequest` und bekaeme 412.

@@ -9,9 +9,12 @@ declare(strict_types=1);
 
 namespace OCA\Projektwerk\Tests\Unit\Service;
 
+use OCA\Projektwerk\Service\EntitlementService;
 use OCA\Projektwerk\Service\ReplyMailboxSettings;
+use OCA\Projektwerk\Service\WerkPlusLimitException;
 use OCP\Exceptions\AppConfigTypeConflictException;
 use OCP\IAppConfig;
+use OCP\IL10N;
 use OCP\Security\ICrypto;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -35,6 +38,8 @@ use Psr\Log\LoggerInterface;
  * strukturell nicht sehen.
  */
 class ReplyMailboxSettingsTest extends TestCase {
+
+	private bool $werkplus = true;
 
 	/** @var array<string, string|int|bool> */
 	private array $store = [];
@@ -102,7 +107,12 @@ class ReplyMailboxSettingsTest extends TestCase {
 			static fn (string $cipher): string => preg_replace('/^ENC\((.*)\)$/', '$1', $cipher) ?? '',
 		);
 
-		return new ReplyMailboxSettings($config, $crypto, $this->createMock(LoggerInterface::class));
+		$entitlement = $this->createStub(EntitlementService::class);
+		$entitlement->method('mailReplyAllowed')->willReturnCallback(fn (): bool => $this->werkplus);
+		$l10n = $this->createStub(IL10N::class);
+		$l10n->method('t')->willReturnCallback(static fn (string $text): string => $text);
+
+		return new ReplyMailboxSettings($config, $crypto, $this->createMock(LoggerInterface::class), $entitlement, $l10n);
 	}
 
 	public function testDefaultsWhenNothingStored(): void {
@@ -273,5 +283,29 @@ class ReplyMailboxSettingsTest extends TestCase {
 
 		$settings->save(['imapHost' => 'imap.firma.de']);
 		$this->assertTrue($settings->isEnabled());
+	}
+
+	public function testWithoutWerkPlusTheMailboxCannotBeSwitchedOn(): void {
+		$this->werkplus = false;
+		$settings = $this->settings();
+
+		try {
+			$settings->save(['replyEnabled' => true, 'imapHost' => 'imap.firma.de']);
+			$this->fail('Einschalten ohne pw_mail_reply hätte abgelehnt werden müssen.');
+		} catch (WerkPlusLimitException) {
+		}
+		$this->assertArrayNotHasKey(ReplyMailboxSettings::KEY_HOST, $this->store, 'Abgelehnt heißt: nichts gespeichert.');
+		$this->assertFalse($settings->getPublicConfig()['werkplus']);
+	}
+
+	public function testWithoutWerkPlusAStoredMailboxStaysSavedButIsNotUsed(): void {
+		$settings = $this->settings();
+		$settings->save(['replyEnabled' => true, 'imapHost' => 'imap.firma.de', 'imapPassword' => 'geheim']);
+		$this->werkplus = false;
+
+		$this->assertFalse($settings->isEnabled());
+		$settings->save(['replyEnabled' => true, 'replyAddress' => 'neu@firma.de']);
+		$this->assertTrue($settings->getPublicConfig()['replyEnabled'], 'Bestand bleibt gespeichert.');
+		$this->assertSame('ENC(geheim)', $this->store[ReplyMailboxSettings::KEY_PASSWORD]);
 	}
 }

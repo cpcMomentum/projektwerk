@@ -7,6 +7,7 @@ import { apiGet, apiPut } from '@/services/api'
 
 export interface AiAccess {
 	publicWrite: boolean
+	werkplus?: boolean
 }
 
 /** Der Schalter für KI-Schreiben in kundensichtbare Vorgänge (nur Administration). */

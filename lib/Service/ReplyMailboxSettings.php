@@ -13,6 +13,7 @@ use OCA\Projektwerk\AppInfo\Application;
 use OCA\Projektwerk\Imap\ImapClient;
 use OCA\Projektwerk\Imap\ImapPasswordRequiredException;
 use OCP\IAppConfig;
+use OCP\IL10N;
 use OCP\Security\ICrypto;
 use Psr\Log\LoggerInterface;
 
@@ -57,6 +58,8 @@ class ReplyMailboxSettings {
 		private IAppConfig $config,
 		private ICrypto $crypto,
 		private LoggerInterface $logger,
+		private EntitlementService $entitlement,
+		private IL10N $l10n,
 	) {
 	}
 
@@ -67,7 +70,7 @@ class ReplyMailboxSettings {
 	 * damit „gespeichert, leer lassen" an, und das Geheimnis verlässt den Server
 	 * nie.
 	 *
-	 * @return array{replyEnabled: bool, replyAddress: string, imapHost: string, imapPort: int, imapSecurity: string, imapUser: string, imapFolder: string, imapPasswordSet: bool}
+	 * @return array{replyEnabled: bool, replyAddress: string, imapHost: string, imapPort: int, imapSecurity: string, imapUser: string, imapFolder: string, imapPasswordSet: bool, werkplus: bool}
 	 */
 	public function getPublicConfig(): array {
 		return [
@@ -84,6 +87,7 @@ class ReplyMailboxSettings {
 			'imapUser' => $this->config->getValueString(self::APP, self::KEY_USER),
 			'imapFolder' => $this->config->getValueString(self::APP, self::KEY_FOLDER, self::DEFAULT_FOLDER),
 			'imapPasswordSet' => $this->config->getValueString(self::APP, self::KEY_PASSWORD) !== '',
+			'werkplus' => $this->entitlement->mailReplyAllowed(),
 		];
 	}
 
@@ -97,8 +101,13 @@ class ReplyMailboxSettings {
 	 *
 	 * @param array<string, mixed> $data Teilmenge der Felder aus {@see getPublicConfig()}
 	 *                                    plus optional `imapPassword`/`imapPasswordClear`.
+	 * @throws WerkPlusLimitException Einschalten ohne `pw_mail_reply`.
 	 */
 	public function save(#[\SensitiveParameter] array $data): void {
+		$einschalten = ($data['replyEnabled'] ?? false) === true && !$this->config->getValueBool(self::APP, self::KEY_ENABLED, false);
+		if ($einschalten && !$this->entitlement->mailReplyAllowed()) {
+			throw new WerkPlusLimitException($this->l10n->t('Antworten per E-Mail sind Teil von WerkPlus.'));
+		}
 		if (array_key_exists('replyEnabled', $data)) {
 			$this->config->setValueBool(self::APP, self::KEY_ENABLED, (bool)$data['replyEnabled']);
 		}
@@ -187,7 +196,8 @@ class ReplyMailboxSettings {
 	 * Einlese-Job (#287) und der Reply-To-Kopf (#287) fragen hierüber.
 	 */
 	public function isEnabled(): bool {
-		return $this->config->getValueBool(self::APP, self::KEY_ENABLED, false)
+		return $this->entitlement->mailReplyAllowed()
+			&& $this->config->getValueBool(self::APP, self::KEY_ENABLED, false)
 			&& trim($this->config->getValueString(self::APP, self::KEY_HOST)) !== '';
 	}
 
