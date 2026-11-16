@@ -524,6 +524,14 @@ class LicenseServiceTest extends TestCase {
 		$this->assertSame('UNREACHABLE', $this->service()->getStatus()['lastError']['code']);
 	}
 
+	public function testStatusDropsAnErrorThatASuccessfulCheckByAnotherWerkAppOvertook(): void {
+		$this->config['werkplus_last_error'] = json_encode(['code' => 'UNREACHABLE', 'serverMessage' => '', 'at' => self::NOW - 60]);
+		$this->storeToken();
+
+		$this->assertNull($this->service()->getStatus()['lastError']);
+		$this->assertSame('UNREACHABLE', $this->service()->lastError()['code']);
+	}
+
 	public function testStatusMasksTheKey(): void {
 		$this->storeToken();
 		$status = $this->service()->getStatus();

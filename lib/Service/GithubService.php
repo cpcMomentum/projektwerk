@@ -101,7 +101,7 @@ class GithubService {
 		$token = $this->tokenOf($userId);
 		if ($token === null) {
 			throw new GithubTransferException(
-				$this->l10n->t('Kein GitHub-Token hinterlegt. Bitte in „Meine Einstellungen" einen Token eintragen.'),
+				$this->l10n->t('Kein GitHub-Token hinterlegt. Bitte in „Einstellungen" einen Token eintragen.'),
 			);
 		}
 
@@ -172,7 +172,7 @@ class GithubService {
 		$token = $this->tokenOf($userId);
 		if ($token === null) {
 			throw new GithubTransferException(
-				$this->l10n->t('Kein GitHub-Token hinterlegt. Bitte in „Meine Einstellungen" einen Token eintragen.'),
+				$this->l10n->t('Kein GitHub-Token hinterlegt. Bitte in „Einstellungen" einen Token eintragen.'),
 			);
 		}
 
@@ -280,7 +280,7 @@ class GithubService {
 	 */
 	private function messageForStatus(int $status): string {
 		return match ($status) {
-			401 => $this->l10n->t('Der GitHub-Token ist ungültig oder abgelaufen. Bitte in „Meine Einstellungen" erneuern.'),
+			401 => $this->l10n->t('Der GitHub-Token ist ungültig oder abgelaufen. Bitte in „Einstellungen" erneuern.'),
 			403, 429 => $this->l10n->t('GitHub hat die Anfrage abgelehnt (Rechte oder Ratenbegrenzung). Bitte den Token und dessen Repo-Rechte prüfen.'),
 			404 => $this->l10n->t('Das Repository wurde nicht gefunden, oder der Token hat keinen Zugriff darauf.'),
 			410, 422 => $this->l10n->t('GitHub hat den Vorgang abgelehnt — für dieses Repository lassen sich keine Issues anlegen.'),

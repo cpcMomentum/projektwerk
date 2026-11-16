@@ -83,12 +83,23 @@
 				eine Tabelle, in der man vergleichen will.
 			-->
 			<template #footer>
-				<!--
-					Verwaltung (#286, #352): Instanz-Einstellungen (eigene Firma,
-					Antwort-Postfach), nur für Administratoren. Der Eintrag blendet sich per `OC.isUserAdmin()`
-					aus, wo er ohnehin ins Leere liefe — die Sperre selbst sitzt
-					serverseitig an den Endpunkten.
-				-->
+				<NcAppNavigationItem
+					v-if="!isGuest"
+					:name="t('projektwerk', 'Neuerungen')"
+					@click="openWhatsNew">
+					<template #icon>
+						<BullhornOutlineIcon :size="20" />
+					</template>
+				</NcAppNavigationItem>
+				<NcAppNavigationItem
+					:name="t('projektwerk', 'Einstellungen')"
+					:to="{ name: 'my-settings' }"
+					@click="closeNavigationOnMobile">
+					<template #icon>
+						<CogIcon :size="20" />
+					</template>
+				</NcAppNavigationItem>
+				<!-- Ausgeblendet, wo er ins Leere liefe; die Sperre sitzt serverseitig. -->
 				<NcAppNavigationItem
 					v-if="isAdmin"
 					:name="t('projektwerk', 'Verwaltung')"
@@ -96,28 +107,6 @@
 					@click="closeNavigationOnMobile">
 					<template #icon>
 						<ShieldAccountIcon :size="20" />
-					</template>
-				</NcAppNavigationItem>
-				<NcAppNavigationItem
-					:name="t('projektwerk', 'Meine Einstellungen')"
-					:to="{ name: 'my-settings' }"
-					@click="closeNavigationOnMobile">
-					<template #icon>
-						<CogIcon :size="20" />
-					</template>
-				</NcAppNavigationItem>
-				<!--
-					Dauerhafter Zugang zu den Neuerungen (#329): öffnet das
-					„Was ist neu?"-Fenster im Archiv-Modus (alle bisherigen Punkte).
-					Kein Router-Ziel, nur ein Knopf. Gäste sehen ihn nicht —
-					sie bekommen keine Produktmeldungen.
-				-->
-				<NcAppNavigationItem
-					v-if="!isGuest"
-					:name="t('projektwerk', 'Neuerungen')"
-					@click="openWhatsNew">
-					<template #icon>
-						<BullhornOutlineIcon :size="20" />
 					</template>
 				</NcAppNavigationItem>
 			</template>

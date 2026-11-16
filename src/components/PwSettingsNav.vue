@@ -18,6 +18,7 @@
 				:class="{ 'pw-subnav__item--active': modelValue === s.key }"
 				:aria-current="modelValue === s.key ? 'page' : undefined"
 				@click="$emit('update:modelValue', s.key)">
+				<component :is="s.icon" v-if="s.icon" :size="18" />
 				{{ s.label }}
 			</button>
 		</div>
@@ -25,7 +26,7 @@
 </template>
 
 <script lang="ts">
-import type { PropType } from 'vue'
+import type { Component, PropType } from 'vue'
 
 import { t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
@@ -34,6 +35,7 @@ import { defineComponent } from 'vue'
 export interface SettingsSection {
 	key: string
 	label: string
+	icon?: Component
 }
 
 /** Eine Überschrift mit ihren Bereichen. */

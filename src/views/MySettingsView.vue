@@ -1,7 +1,7 @@
 <template>
 	<div class="pw-view pw-settingspage">
 		<h2 class="pw-settingspage__title">
-			{{ t('projektwerk', 'Meine Einstellungen') }}
+			{{ t('projektwerk', 'Einstellungen') }}
 		</h2>
 
 		<div class="pw-settingspage__body">
@@ -12,7 +12,8 @@
 				deshalb getrennt.
 			-->
 			<PwSettingsNav
-				:sections="sections"
+				:groups="navGroups"
+				:ariaLabel="t('projektwerk', 'Einstellungs-Navigation')"
 				:modelValue="activeSection"
 				@update:modelValue="activeSection = $event" />
 
@@ -23,11 +24,14 @@
 					Files-Bereich, nicht im geteilten Projektordner. Ohne Wahl gilt
 					die Vorgabe; hier lässt sie sich ändern.
 				-->
-				<div v-show="activeSection === 'dateien'">
+				<div v-show="activeSection === 'dateien'" class="pw-settings-card">
+					<h3 class="pw-settings-card__title">
+						{{ t('projektwerk', 'Dateien') }}
+					</h3>
 					<section class="pw-form-section">
-						<h3>
+						<h4>
 							{{ t('projektwerk', 'Ordner für private Anhänge') }}
-						</h3>
+						</h4>
 						<p class="pw-settings__hint">
 							{{ t('projektwerk', 'Dateien an „Nur ich"-Vorgängen liegen in diesem Ordner deiner eigenen Dateien. Ohne Wahl wird „ProjektWerk" verwendet und beim ersten Anhang angelegt.') }}
 						</p>
@@ -62,11 +66,14 @@
 					Token — je Person, verschlüsselt vom Server abgelegt. Angezeigt
 					wird nie der Token selbst, nur ob einer hinterlegt ist.
 				-->
-				<div v-show="activeSection === 'github'">
+				<div v-show="activeSection === 'github'" class="pw-settings-card">
+					<h3 class="pw-settings-card__title">
+						GitHub
+					</h3>
 					<section class="pw-form-section">
-						<h3>
+						<h4>
 							{{ t('projektwerk', 'GitHub-Token') }}
-						</h3>
+						</h4>
 						<p class="pw-settings__hint">
 							{{ t('projektwerk', 'Zum Überführen von Vorgängen nach GitHub. Empfohlen: ein fein abgestufter Token (fine-grained PAT) mit dem Recht „Issues: read and write“ auf die Ziel-Repositorys. Der Token wird verschlüsselt gespeichert und nie wieder angezeigt.') }}
 						</p>
@@ -113,11 +120,14 @@
 					Tabelle zu zwingen hiesse, dem Kanal eine Spalte je Projekt
 					zu geben, die niemand je anders setzt.
 				-->
-				<div v-show="activeSection === 'benachrichtigungen'">
+				<div v-show="activeSection === 'benachrichtigungen'" class="pw-settings-card">
+					<h3 class="pw-settings-card__title">
+						{{ t('projektwerk', 'Benachrichtigungen') }}
+					</h3>
 					<section class="pw-form-section">
-						<h3>
+						<h4>
 							{{ t('projektwerk', 'Wie möchtest du benachrichtigt werden?') }}
-						</h3>
+						</h4>
 						<p class="pw-settings__hint">
 							{{ t('projektwerk', 'Gilt für alle Projekte.') }}
 						</p>
@@ -135,9 +145,9 @@
 					</section>
 
 					<section class="pw-form-section">
-						<h3>
+						<h4>
 							{{ t('projektwerk', 'Wovon möchtest du benachrichtigt werden?') }}
-						</h3>
+						</h4>
 						<p class="pw-settings__hint">
 							{{ t('projektwerk', 'Die erste Zeile gilt für alle Projekte — auch für die, die später dazukommen. Darunter weichen einzelne Projekte davon ab.') }}
 						</p>
@@ -227,6 +237,7 @@
 </template>
 
 <script lang="ts">
+import type { SettingsGroup } from '@/components/PwSettingsNav.vue'
 import type { Channel, NotifyEvent, NotifyPrefs, PrefKey } from '@/services/notifyPrefs'
 import type { Board } from '@/types/board'
 
@@ -235,8 +246,11 @@ import { defineComponent } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
 import AlertIcon from 'vue-material-design-icons/AlertCircleOutline.vue'
+import BellOutlineIcon from 'vue-material-design-icons/BellOutline.vue'
 import CheckIcon from 'vue-material-design-icons/CheckCircleOutline.vue'
 import FolderIcon from 'vue-material-design-icons/Folder.vue'
+import FolderOutlineIcon from 'vue-material-design-icons/FolderOutline.vue'
+import GithubIcon from 'vue-material-design-icons/Github.vue'
 import FolderPicker from '@/components/FolderPicker.vue'
 import PwSettingsNav from '@/components/PwSettingsNav.vue'
 import { fetchBoards } from '@/services/boards'
@@ -246,7 +260,7 @@ import { fetchPrivateFolder, setPrivateFolder } from '@/services/privateFolder'
 import { showError } from '@/services/toast'
 
 /**
- * Meine Einstellungen — eine Seite mit zweiter Menüebene, wie im
+ * Einstellungen — eine Seite mit zweiter Menüebene, wie im
  * WorkTime-Verwaltungsbereich.
  *
  * **Zwei Fragen, getrennt gestellt** (Entscheidung mit Axel, 2026-08-11):
@@ -287,12 +301,21 @@ export default defineComponent({
 	},
 
 	computed: {
-		/** Die Bereiche der linken Navigation (#195). */
-		sections(): { key: string, label: string }[] {
+		navGroups(): SettingsGroup[] {
 			return [
-				{ key: 'benachrichtigungen', label: t('projektwerk', 'Benachrichtigungen') },
-				{ key: 'dateien', label: t('projektwerk', 'Dateien') },
-				{ key: 'github', label: 'GitHub' },
+				{
+					key: 'allgemein',
+					label: t('projektwerk', 'Allgemein'),
+					items: [
+						{ key: 'benachrichtigungen', label: t('projektwerk', 'Benachrichtigungen'), icon: BellOutlineIcon },
+						{ key: 'dateien', label: t('projektwerk', 'Dateien'), icon: FolderOutlineIcon },
+					],
+				},
+				{
+					key: 'verbindungen',
+					label: t('projektwerk', 'Verbindungen'),
+					items: [{ key: 'github', label: 'GitHub', icon: GithubIcon }],
+				},
 			]
 		},
 

@@ -5,6 +5,7 @@
 
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
+import { defineComponent, markRaw } from 'vue'
 import PwSettingsNav from '@/components/PwSettingsNav.vue'
 
 vi.mock(import('@nextcloud/l10n'), async (importOriginal) => ({
@@ -46,5 +47,16 @@ describe('PwSettingsNav', () => {
 
 		await gruppen[0].find('button').trigger('click')
 		expect(wrapper.emitted('update:modelValue')).toEqual([['projekt-archiv']])
+	})
+
+	it('zeigt das Symbol eines Bereichs in 18 px vor dem Namen', () => {
+		const Symbol = markRaw(defineComponent({ props: ['size'], template: '<span class="symbol" :data-size="size" />' }))
+		const wrapper = mount(PwSettingsNav, {
+			props: { sections: [{ key: 'a', label: 'A', icon: Symbol }, { key: 'b', label: 'B' }], modelValue: 'a' },
+		})
+
+		const [mit, ohne] = wrapper.findAll('button')
+		expect(mit.find('.symbol').attributes('data-size')).toBe('18')
+		expect(ohne.find('.symbol').exists()).toBe(false)
 	})
 })

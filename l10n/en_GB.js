@@ -740,6 +740,18 @@ OC.L10N.register(
     "Der Schlüssel wird für alle Werk-Apps dieser Nextcloud entfernt, nicht nur für ProjektWerk. Sie arbeiten danach im freien Umfang. Bestehende Projekte und Boards bleiben erhalten. Den Schlüssel kannst du jederzeit wieder eintragen." : "The key is removed for all Werk apps on this Nextcloud, not just for ProjektWerk. You will then work within the free scope. Existing projects and boards are kept. You can enter the key again at any time.",
     "Eine neuere Werk-App hat die Lizenzablage umgestellt. Bitte aktualisiere ProjektWerk, bevor du die Lizenz änderst." : "A newer Werk app has changed the license storage. Please update ProjektWerk before changing the license.",
     "Diese Lizenz ist einer anderen Nextcloud zugeordnet. Umzug im Kundenportal." : "This license is assigned to another Nextcloud. You can move it in the customer portal.",
-    "Für diese Nextcloud wurde bereits ein Testzeitraum genutzt." : "A trial has already been used for this Nextcloud."
+    "Für diese Nextcloud wurde bereits ein Testzeitraum genutzt." : "A trial has already been used for this Nextcloud.",
+    "Der Schlüssel gilt für alle Werk-Apps dieser Nextcloud und muss nur in einer davon eingetragen werden." : "The key applies to all Werk apps on this Nextcloud and only needs to be entered in one of them.",
+    "Eine andere Werk-App hat die Lizenz in einem neueren Format gespeichert. Bitte aktualisiere ProjektWerk." : "Another Werk app has stored the license in a newer format. Please update ProjektWerk.",
+    "Lizenzierte Mitarbeitende" : "Licensed employees",
+    "Der Testzeitraum läuft 30 Tage, braucht keine Zahlungsdaten, gilt für alle Werk-Apps dieser Nextcloud und ist je Nextcloud nur einmal möglich. Jetzt starten?" : "The trial runs for 30 days, needs no payment details, applies to all Werk apps on this Nextcloud and is only possible once per Nextcloud. Start now?",
+    "Der Schlüssel wird für alle Werk-Apps dieser Nextcloud entfernt, sie arbeiten danach im freien Umfang. Den Schlüssel kannst du jederzeit wieder eintragen. Fortfahren?" : "The key will be removed for all Werk apps on this Nextcloud; they will then continue within the free scope. You can enter the key again at any time. Continue?",
+    "Im Format „owner/repo“, z. B. „cpcMomentum/projektwerk“. Tippen sucht in deinen GitHub-Repositorys — dazu muss ein Token in „Einstellungen“ hinterlegt sein. Leer lassen lässt die Überführung ausgeblendet, bis ein Ziel eingetragen ist." : "In the format “owner/repo”, e.g. “cpcMomentum/projektwerk”. Typing searches your GitHub repositories — this requires a token stored in “Settings”. Leaving it empty keeps the transfer hidden until a target is entered.",
+    "Einstellungs-Navigation" : "Settings navigation",
+    "Verbindungen" : "Connections",
+    "Kommunikation" : "Communication",
+    "Lizenz" : "License",
+    "Kein GitHub-Token hinterlegt. Bitte in „Einstellungen\" einen Token eintragen." : "No GitHub token stored. Please enter a token in “Settings”.",
+    "Der GitHub-Token ist ungültig oder abgelaufen. Bitte in „Einstellungen\" erneuern." : "The GitHub token is invalid or has expired. Please renew it in “Settings”."
 },
 "nplurals=2; plural=(n != 1);");
