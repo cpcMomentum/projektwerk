@@ -415,26 +415,40 @@
 						</div>
 					</div>
 
-					<div v-if="!editingResponsible" class="pw-frist" :class="{ 'pw-frist--overdue': dueOverdue, 'pw-frist--abgeschlossen': ticket.closedAt !== null }">
-						<span class="pw-frist__label">
-							<CalendarAlertIcon v-if="dueOverdue" :size="18" />
-							<CalendarIcon v-else :size="18" />
-							{{ t('projektwerk', 'Fällig bis') }}
-						</span>
-						<span class="pw-frist__wert">{{ dueText }}</span>
-						<span v-if="dueOverdue" class="pw-frist__marke">
-							{{ t('projektwerk', 'überfällig') }}
-						</span>
-						<NcButton
-							class="pw-eckdaten__stift"
-							variant="tertiary"
-							:ariaLabel="t('projektwerk', 'Zuständigkeit und Fälligkeit ändern')"
-							:title="t('projektwerk', 'Bearbeiten')"
-							@click="startEditResponsible">
-							<template #icon>
-								<PencilOutlineIcon :size="20" />
-							</template>
-						</NcButton>
+					<div v-if="!editingResponsible" class="pw-eckdaten__zeile">
+						<div class="pw-frist" :class="{ 'pw-frist--overdue': dueOverdue, 'pw-frist--abgeschlossen': ticket.closedAt !== null }">
+							<span class="pw-frist__label">
+								<CalendarAlertIcon v-if="dueOverdue" :size="18" />
+								<CalendarIcon v-else :size="18" />
+								{{ t('projektwerk', 'Fällig bis') }}
+							</span>
+							<span class="pw-frist__wert">{{ dueText }}</span>
+							<span v-if="dueOverdue" class="pw-frist__marke">
+								{{ t('projektwerk', 'überfällig') }}
+							</span>
+						</div>
+						<div class="pw-eckdaten__rechts">
+							<DependencyList
+								v-if="!pending"
+								:boardId="ticket.boardId"
+								:ticketId="ticket.id"
+								:dependsOn="dependsOn"
+								:neededBy="neededBy"
+								:boardTickets="boardTickets"
+								:columns="columns"
+								@open="$emit('openTicket', $event)"
+								@changed="$emit('linksChanged', $event)" />
+							<NcButton
+								class="pw-eckdaten__stift"
+								variant="tertiary"
+								:ariaLabel="t('projektwerk', 'Zuständigkeit, Fälligkeit und Abhängigkeiten ändern')"
+								:title="t('projektwerk', 'Bearbeiten')"
+								@click="startEditResponsible">
+								<template #icon>
+									<PencilOutlineIcon :size="20" />
+								</template>
+							</NcButton>
+						</div>
 					</div>
 
 					<div v-else class="pw-eckdaten__edit">
@@ -464,6 +478,14 @@
 									:placeholder="t('projektwerk', 'Keine Frist')"
 									@update:modelValue="setDue" />
 							</div>
+							<DependencyList
+								v-if="!pending"
+								:editing="true"
+								:boardId="ticket.boardId"
+								:ticketId="ticket.id"
+								:dependsOn="dependsOn"
+								:boardTickets="boardTickets"
+								@changed="$emit('linksChanged', $event)" />
 						</div>
 						<div class="pw-step__felder-aktionen">
 							<NcButton
@@ -478,17 +500,6 @@
 							</NcButton>
 						</div>
 					</div>
-
-					<DependencyList
-						v-if="!pending"
-						:boardId="ticket.boardId"
-						:ticketId="ticket.id"
-						:dependsOn="dependsOn"
-						:neededBy="neededBy"
-						:boardTickets="boardTickets"
-						:columns="columns"
-						@open="$emit('openTicket', $event)"
-						@changed="$emit('linksChanged', $event)" />
 
 					<StepList
 						ref="steps"
