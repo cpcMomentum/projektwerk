@@ -1,4 +1,36 @@
 {
+	"0.5.0": [
+		{
+			"title": {
+				"de": "WerkPlus",
+				"en": "WerkPlus"
+			},
+			"text": {
+				"de": "WerkPlus-Schlüssel eintragen oder 30 Tage testen. Ein Schlüssel gilt für alle Werk-Apps dieser Nextcloud. Ohne WerkPlus gelten bis zu 10 aktive Projekte, ein Kundenprojekt und ein Board je Projekt; Antworten per E-Mail und der KI-Zugriff brauchen WerkPlus.",
+				"en": "Enter a WerkPlus key or try it for 30 days. One key covers all Werk apps of this Nextcloud. Without WerkPlus you get up to 10 active projects, one customer project and one board per project; replies by email and AI access need WerkPlus."
+			},
+			"icon": "star",
+			"where": {
+				"de": "Verwaltung › WerkPlus",
+				"en": "Management › WerkPlus"
+			},
+			"adminOnly": true,
+			"plus": false
+		},
+		{
+			"title": {
+				"de": "Abhängigkeiten neben der Fälligkeit",
+				"en": "Dependencies next to the due date"
+			},
+			"text": {
+				"de": "„Hängt ab von“ steht jetzt neben „Fällig bis“. Bei abgeschlossenen Vorgängen entfällt die Fälligkeit.",
+				"en": "“Depends on” now sits next to “Due by”. Completed tickets no longer show a due date."
+			},
+			"icon": "file-document",
+			"adminOnly": false,
+			"plus": false
+		}
+	],
 	"0.4.26": [
 		{
 			"title": {
