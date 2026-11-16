@@ -21,9 +21,15 @@ Der eigentliche Zweck ist nicht das Board, sondern die **sichtbare Zustaendigkei
 - **Dateien bleiben Dateien** — Anhaenge liegen in den echten Projektordnern, der Ablageort ist die Sichtbarkeit
 - **Meine Aufgaben** — projektuebergreifende Sicht ueber Tickets und Arbeitsschritte
 - **Kunden ohne Fremdkonto** — Zusammenarbeit auf der eigenen Nextcloud, wahlweise per Gastzugang
+
+## Freier Umfang und WerkPlus
+
+Frei enthalten sind zehn aktive Projekte mit je einem Board und ein Kundenprojekt. WerkPlus schaltet weitere Projekte, Kundenprojekte und Boards frei, dazu Antworten per E-Mail und den KI-Zugriff ueber MCP.
+
+Fuer die Lizenzpruefung gehen nur der WerkPlus-Schluessel, eine aus der Nextcloud abgeleitete Kennung und die Versionen der aktivierten Werk-Apps an api.werkwolke.de. Ein Schluessel gilt fuer alle Werk-Apps einer Nextcloud. Niemals Vorgaenge, Kommentare, Dateien, Namen, Adressen, Benutzer- oder Datei-IDs.
     ]]></description>
 
-    <version>0.4.26</version>
+    <version>0.5.0</version>
     <licence>AGPL-3.0-or-later</licence>
 
     <author mail="axel.deffner@cpcmomentum.com" homepage="https://github.com/cpcMomentum">Axel Deffner</author>
@@ -69,6 +75,7 @@ Der eigentliche Zweck ist nicht das Board, sondern die **sichtbare Zustaendigkei
         <job>OCA\Projektwerk\BackgroundJob\ReplyIntakeJob</job>
         <job>OCA\Projektwerk\BackgroundJob\IdemCleanupJob</job>
         <job>OCA\Projektwerk\BackgroundJob\ForgetRetryJob</job>
+        <job>OCA\Projektwerk\BackgroundJob\LicenseRefreshJob</job>
     </background-jobs>
 
     <!--

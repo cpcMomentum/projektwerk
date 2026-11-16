@@ -1,74 +1,42 @@
 <template>
-	<section class="pw-abschnitt pw-deps">
-		<div class="pw-abschnitt__kopf">
-			<h3>{{ t('projektwerk', 'Hängt ab von') }}</h3>
-			<span v-if="dependsOn.length > 0" class="pw-abschnitt__zaehler">{{ dependsOn.length }}</span>
+	<div v-if="editing" class="pw-field pw-eckdaten__deps">
+		<label :for="inputId">{{ t('projektwerk', 'Hängt ab von') }}</label>
+		<NcSelect
+			class="pw-deps__select"
+			:inputId="inputId"
+			:options="options"
+			:modelValue="selected"
+			label="label"
+			:multiple="true"
+			:labelOutside="true"
+			:appendToBody="true"
+			:disabled="busy"
+			:placeholder="t('projektwerk', 'Vorgang suchen …')"
+			@update:modelValue="change" />
+	</div>
 
-			<NcButton
-				v-if="!choosing"
-				variant="tertiary"
-				class="pw-abschnitt__aktion"
-				:disabled="busy || candidates.length === 0"
-				@click="startChoosing">
-				<template #icon>
-					<PlusIcon :size="20" />
-				</template>
-				{{ t('projektwerk', 'Abhängigkeit hinzufügen') }}
-			</NcButton>
-		</div>
-
-		<div v-if="choosing" class="pw-deps__auswahl">
-			<NcSelect
-				ref="auswahl"
-				class="pw-deps__select"
-				:options="candidates"
-				label="label"
-				:ariaLabelCombobox="t('projektwerk', 'Vorgang, auf den dieser wartet')"
-				:placeholder="t('projektwerk', 'Vorgang suchen …')"
-				:disabled="busy"
-				:appendToBody="true"
-				@update:modelValue="add" />
-			<NcButton
-				variant="tertiary"
-				:ariaLabel="t('projektwerk', 'Abbrechen')"
-				@click="choosing = false">
-				<template #icon>
-					<CloseIcon :size="20" />
-				</template>
-			</NcButton>
-		</div>
-
-		<p v-if="dependsOn.length === 0 && !choosing" class="pw-detail__empty">
-			{{ t('projektwerk', 'Wartet auf keinen anderen Vorgang.') }}
-		</p>
-
+	<div v-else class="pw-deps">
+		<span class="pw-deps__label">
+			<LinkVariantIcon :size="18" />
+			{{ t('projektwerk', 'Hängt ab von') }}
+		</span>
+		<span v-if="dependsOn.length === 0" class="pw-deps__keine">{{ t('projektwerk', 'keine') }}</span>
 		<ul v-else class="pw-deps__liste">
 			<li v-for="link in dependsOn" :key="link.id" class="pw-deps__zeile">
 				<a
 					href="#"
 					class="pw-deps__link"
 					:class="{ 'pw-deps__link--zu': link.closedOutcome !== null }"
+					:title="link.title"
 					@click.prevent="$emit('open', link.id)">
 					<span class="pw-deps__nummer">#{{ number(link) }}</span>
 					<span class="pw-deps__titel">{{ link.title }}</span>
 				</a>
 				<span class="pw-deps__status">{{ status(link) }}</span>
-				<NcButton
-					variant="tertiary"
-					:ariaLabel="t('projektwerk', 'Abhängigkeit von #{number} entfernen', { number: number(link) })"
-					:disabled="busy"
-					@click="remove(link)">
-					<template #icon>
-						<CloseIcon :size="20" />
-					</template>
-				</NcButton>
 			</li>
 		</ul>
-
 		<template v-if="neededBy.length > 0">
-			<h4 class="pw-deps__unterkopf">
-				{{ t('projektwerk', 'Wird gebraucht für') }}
-			</h4>
+			<span class="pw-deps__label pw-deps__label--folge">{{ t('projektwerk', 'Wird gebraucht für') }}</span>
 			<ul class="pw-deps__liste">
 				<li v-for="link in neededBy" :key="link.id" class="pw-deps__zeile">
 					<a
@@ -83,7 +51,7 @@
 				</li>
 			</ul>
 		</template>
-	</section>
+	</div>
 </template>
 
 <script lang="ts">
@@ -93,10 +61,8 @@ import type { Ticket, TicketLink, TicketLinks } from '@/types/ticket'
 
 import { t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
-import NcButton from '@nextcloud/vue/components/NcButton'
 import NcSelect from '@nextcloud/vue/components/NcSelect'
-import CloseIcon from 'vue-material-design-icons/Close.vue'
-import PlusIcon from 'vue-material-design-icons/Plus.vue'
+import LinkVariantIcon from 'vue-material-design-icons/LinkVariant.vue'
 import { addDependency, removeDependency } from '@/services/tickets'
 import { showError } from '@/services/toast'
 
@@ -108,46 +74,57 @@ interface Candidate {
 export default defineComponent({
 	name: 'DependencyList',
 
-	components: { CloseIcon, NcButton, NcSelect, PlusIcon },
+	components: { LinkVariantIcon, NcSelect },
 
 	props: {
 		boardId: { type: Number, required: true },
 		ticketId: { type: Number, required: true },
 		dependsOn: { type: Array as PropType<TicketLink[]>, default: () => [] },
 		neededBy: { type: Array as PropType<TicketLink[]>, default: () => [] },
-		/** Die geladenen Vorgänge des Boards; daraus wird gewählt. */
 		boardTickets: { type: Array as PropType<Ticket[]>, default: () => [] },
 		columns: { type: Array as PropType<Column[]>, default: () => [] },
+		editing: { type: Boolean, default: false },
 	},
 
 	emits: ['open', 'changed'],
 
 	data() {
 		return {
-			choosing: false,
 			busy: false,
 		}
 	},
 
 	computed: {
-		candidates(): Candidate[] {
-			const taken = new Set([this.ticketId, ...this.dependsOn.map((link) => link.id)])
-
-			return this.boardTickets
-				.filter((ticket) => ticket.id > 0 && !taken.has(ticket.id))
-				.sort((a, b) => a.number - b.number)
-				.map((ticket) => ({ id: ticket.id, label: `#${String(ticket.number).padStart(4, '0')} ${ticket.title}` }))
+		inputId(): string {
+			return `pw-deps-${this.ticketId}`
 		},
-	},
 
-	watch: {
-		ticketId() {
-			this.choosing = false
+		selected(): Candidate[] {
+			return this.dependsOn.map((link) => ({ id: link.id, label: this.label(link.number, link.title) }))
+		},
+
+		// Gewählte stehen immer zur Auswahl, auch wenn sie nicht unter den geladenen Vorgängen des Boards sind.
+		options(): Candidate[] {
+			const fromBoard = this.boardTickets
+				.filter((ticket) => ticket.id > 0 && ticket.id !== this.ticketId)
+				.map((ticket) => ({ id: ticket.id, number: ticket.number, label: this.label(ticket.number, ticket.title) }))
+			const ids = new Set(fromBoard.map((option) => option.id))
+			const extra = this.dependsOn
+				.filter((link) => !ids.has(link.id))
+				.map((link) => ({ id: link.id, number: link.number, label: this.label(link.number, link.title) }))
+
+			return [...fromBoard, ...extra]
+				.sort((a, b) => a.number - b.number)
+				.map(({ id, label }) => ({ id, label }))
 		},
 	},
 
 	methods: {
 		t,
+
+		label(nummer: number, title: string): string {
+			return `#${String(nummer).padStart(4, '0')} ${title}`
+		},
 
 		number(link: TicketLink): string {
 			return String(link.number).padStart(4, '0')
@@ -164,24 +141,20 @@ export default defineComponent({
 			return this.columns.find((column) => column.id === link.columnId)?.title ?? ''
 		},
 
-		startChoosing(): void {
-			this.choosing = true
-			this.$nextTick(() => {
-				const auswahl = this.$refs.auswahl as { $el?: HTMLElement } | undefined
-				auswahl?.$el?.querySelector('input')?.focus()
-			})
-		},
+		async change(value: Candidate[] | Candidate | null): Promise<void> {
+			const next = new Set((Array.isArray(value) ? value : value === null ? [] : [value]).map((option) => option.id))
+			const current = new Set(this.dependsOn.map((link) => link.id))
 
-		async add(choice: Candidate | null): Promise<void> {
-			if (choice === null) {
-				return
+			for (const id of next) {
+				if (!current.has(id)) {
+					await this.write(() => addDependency(this.boardId, this.ticketId, id), t('projektwerk', 'Die Abhängigkeit konnte nicht gespeichert werden.'))
+				}
 			}
-			await this.write(() => addDependency(this.boardId, this.ticketId, choice.id), t('projektwerk', 'Die Abhängigkeit konnte nicht gespeichert werden.'))
-			this.choosing = false
-		},
-
-		async remove(link: TicketLink): Promise<void> {
-			await this.write(() => removeDependency(this.boardId, this.ticketId, link.id), t('projektwerk', 'Die Abhängigkeit konnte nicht entfernt werden.'))
+			for (const id of current) {
+				if (!next.has(id)) {
+					await this.write(() => removeDependency(this.boardId, this.ticketId, id), t('projektwerk', 'Die Abhängigkeit konnte nicht entfernt werden.'))
+				}
+			}
 		},
 
 		async write(run: () => Promise<TicketLinks>, fallback: string): Promise<void> {

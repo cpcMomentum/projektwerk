@@ -137,6 +137,8 @@ export interface ViewerInfo {
 	isManager: boolean
 	/** Ob dieser Betrachter dieses Board angelegt hat (#281) — trägt das Einricht-Recht. */
 	isBoardCreator: boolean
+	/** Board oder Projekt archiviert: nur lesbar. */
+	readOnly?: boolean
 }
 
 /** Ein Board desselben Projekts, archivierte eingeschlossen. */

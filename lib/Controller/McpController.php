@@ -15,6 +15,7 @@ use OCA\Projektwerk\Mcp\JsonRpcDispatcher;
 use OCA\Projektwerk\Mcp\McpAuthException;
 use OCA\Projektwerk\Mcp\McpConfig;
 use OCA\Projektwerk\Mcp\McpResponse;
+use OCA\Projektwerk\Service\EntitlementService;
 use OCA\Projektwerk\Mcp\RequestBody;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
@@ -38,6 +39,7 @@ class McpController extends Controller {
 	public function __construct(
 		IRequest $request,
 		private McpConfig $config,
+		private EntitlementService $entitlement,
 		private BearerAuthenticator $authenticator,
 		private JsonRpcDispatcher $dispatcher,
 		private RequestBody $body,
@@ -69,6 +71,13 @@ class McpController extends Controller {
 			}
 
 			return $response;
+		}
+		// Nach der Anmeldung, damit Claude den Grund anzeigt statt einer erneuten Anmeldung.
+		if (!$this->entitlement->mcpAllowed()) {
+			return new JSONResponse(
+				McpResponse::error(403, null, JsonRpcDispatcher::INVALID_REQUEST, 'AI access to ProjektWerk requires WerkPlus. Ask your Nextcloud administrator to activate a WerkPlus license.')->body,
+				Http::STATUS_FORBIDDEN,
+			);
 		}
 
 		$body = $this->body->read();

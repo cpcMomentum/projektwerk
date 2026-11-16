@@ -130,7 +130,7 @@
 					sie erst, wenn das Datum gerissen ist.
 				-->
 				<span
-					v-if="ticket.dueDate"
+					v-if="ticket.dueDate && ticket.closedAt === null"
 					class="pw-due"
 					:class="{ 'pw-due--overdue': overdue }"
 					:title="dueTitle">
@@ -148,6 +148,7 @@
 			nachgerüstet.
 		-->
 		<NcActions
+			v-if="!readOnly"
 			class="pw-card__menu"
 			:forceMenu="true"
 			:ariaLabel="menuLabel">
@@ -319,6 +320,8 @@ export default defineComponent({
 		highlighted: { type: Boolean, default: false },
 		/** Aus Sicht der Kundenseite formuliert. */
 		fromClientSide: { type: Boolean, default: false },
+		/** Archiviertes Board: kein Menü zum Ändern. */
+		readOnly: { type: Boolean, default: false },
 	},
 
 	emits: ['open', 'move', 'toggleclosed', 'togglearchived', 'delete'],

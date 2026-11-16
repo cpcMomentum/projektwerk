@@ -293,6 +293,7 @@ export interface ProjectLogEntry {
 	action: string
 	targetUserId: string | null
 	targetName: string | null
+	newName: string | null
 	subject: string | null
 	oldValue: string | null
 	newValue: string | null

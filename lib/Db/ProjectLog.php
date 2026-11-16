@@ -48,6 +48,10 @@ class ProjectLog extends Entity implements JsonSerializable {
 	public const ROLE_CHANGED = 'role_changed';
 	public const MANAGER_GRANTED = 'manager_granted';
 	public const MANAGER_REVOKED = 'manager_revoked';
+	public const OWNER_CHANGED = 'owner_changed';
+
+	public const REASON_ACCOUNT_DELETED = 'account_deleted';
+	public const VIA_CONSOLE = 'occ';
 
 	protected ?int $projectId = null;
 	protected ?string $actorUserId = null;

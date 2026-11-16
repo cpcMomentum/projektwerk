@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace OCA\Projektwerk\Controller;
 
+use OCA\Projektwerk\Access\AllowedInArchive;
 use OCA\Projektwerk\Access\BoardAccess;
 use OCA\Projektwerk\Access\NotAMemberException;
 use OCA\Projektwerk\AppInfo\Application;
@@ -81,6 +82,7 @@ class BoardController extends Controller {
 	 * von selbst nicht einmal auf, weil sie nie stört.
 	 */
 	#[NoAdminRequired]
+	#[AllowedInArchive]
 	public function setPin(int $boardId, bool $pinned): JSONResponse {
 		if ($this->userId === null) {
 			return new JSONResponse([], Http::STATUS_UNAUTHORIZED);

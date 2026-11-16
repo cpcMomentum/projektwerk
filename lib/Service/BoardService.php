@@ -114,6 +114,7 @@ class BoardService {
 			throw new GuestNotAllowedException($this->l10n->t('Als Gast können Sie keine Projekte anlegen.'));
 		}
 		$this->assertTitle($title);
+		$this->entitlement->assertMayCreateProject();
 		// tz-ok: Zeitstempel fuer createdAt, updatedAt und addedAt
 		$now = new \DateTime();
 		// Ohne Angabe gilt die eigene Firma der Instanz (#352), auch für Wege ohne
@@ -475,12 +476,15 @@ class BoardService {
 		return $gespeichert;
 	}
 
-	/** @return array{archived: bool} Einzeln archivierte Boards bleiben beim Zurückholen archiviert; die WerkPlus-Zählung ändert sich nicht. */
+	/** @return array{archived: bool} Einzeln archivierte Boards bleiben beim Zurückholen archiviert. */
 	public function setProjectArchived(ViewerContext $viewer, bool $archived): array {
 		$this->assertManager($viewer);
 
 		$project = $this->projects->findForViewer($viewer);
 		$vorher = (int)$project->getArchived() === 1;
+		if (!$archived && $vorher) {
+			$this->entitlement->assertMayUnarchiveProject($viewer->projectId);
+		}
 		$project->setArchived($archived ? 1 : 0);
 		$project->setUpdatedAt(new \DateTime());
 		$this->projects->update($project);

@@ -6,6 +6,36 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-16
+
+### Added
+
+- **WerkPlus** (Verwaltung › WerkPlus, nur Administratoren): Lizenzschlüssel eintragen, prüfen und
+  entfernen, 30 Tage testen. Ein Schlüssel gilt für alle Werk-Apps einer Nextcloud; hat eine andere
+  Werk-App schon einen hinterlegt, ist WerkPlus hier ohne Eingabe aktiv.
+- **Freier Umfang ohne WerkPlus**: bis 10 aktive Projekte, 1 Kundenprojekt, 1 Board je Projekt.
+  Antworten per E-Mail und der KI-Zugriff (MCP) brauchen WerkPlus. Bestand über einer Grenze bleibt
+  unangetastet, gesperrt ist nur das Anlegen.
+- **Projekt-Protokoll**: Kontolöschung und `occ projektwerk:project:set-manager` werden vermerkt.
+
+### Changed
+
+- **Archiv**: Archivierte Projekte und Boards zählen bei keiner Grenze und sind nur lesbar, auch über
+  den KI-Zugriff und Antworten per E-Mail.
+- **Vorgang**: „Hängt ab von“ steht in den Eckdaten neben „Fällig bis“. Bei abgeschlossenen
+  Vorgängen wird die Fälligkeit ausgeblendet. Die Fußzeile des Vorgangs ist niedriger und mittig.
+
+### Fixed
+
+- **Arbeitsschritte**: Der Fokus bleibt nach dem Bearbeiten und nach einem gescheiterten Löschen bei
+  den Arbeitsschritten.
+
+### Notes
+
+- **Nach dem Update**: Ohne aktive WerkPlus-Lizenz gilt der freie Umfang. Wer Antworten per E-Mail
+  oder den KI-Zugriff nutzt, trägt unter Verwaltung › WerkPlus den Schlüssel ein.
+- Keine neue Migration. Die Lizenz liegt in der gemeinsamen Ablage `werkwolke` der App-Konfiguration.
+
 ## [0.4.26] - 2026-11-13
 
 ### Added

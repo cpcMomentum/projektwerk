@@ -43,11 +43,14 @@ class BoardAccess {
 		$qb->select('m.role', 'm.is_manager')
 			->selectAlias('b.project_id', 'project_id')
 			->selectAlias('b.created_by', 'created_by')
+			->selectAlias('b.archived', 'board_archived')
+			->selectAlias('p.archived', 'project_archived')
 			->from('pwerk_boards', 'b')
 			->innerJoin('b', 'pwerk_members', 'm', $qb->expr()->andX(
 				$qb->expr()->eq('m.project_id', 'b.project_id'),
 				$qb->expr()->eq('m.user_id', $qb->createNamedParameter($userId)),
 			))
+			->leftJoin('b', 'pwerk_projects', 'p', $qb->expr()->eq('p.id', 'b.project_id'))
 			->where($qb->expr()->eq('b.id', $qb->createNamedParameter($boardId, IQueryBuilder::PARAM_INT)))
 			->setMaxResults(1);
 
@@ -70,6 +73,7 @@ class BoardAccess {
 			// #281: Ersteller-Recht — nur wer dieses Board angelegt hat. Altbestand
 			// ohne created_by ergibt hier false (nur der Manager richtet ein).
 			$row['created_by'] !== null && (string)$row['created_by'] === $userId,
+			self::archived($row),
 		);
 	}
 
@@ -92,9 +96,12 @@ class BoardAccess {
 		$qb->selectAlias('b.id', 'board_id')
 			->selectAlias('b.project_id', 'project_id')
 			->selectAlias('b.created_by', 'created_by')
+			->selectAlias('b.archived', 'board_archived')
+			->selectAlias('p.archived', 'project_archived')
 			->addSelect('m.role', 'm.is_manager')
 			->from('pwerk_members', 'm')
 			->innerJoin('m', 'pwerk_boards', 'b', $qb->expr()->eq('b.project_id', 'm.project_id'))
+			->leftJoin('b', 'pwerk_projects', 'p', $qb->expr()->eq('p.id', 'b.project_id'))
 			->where($qb->expr()->eq('m.user_id', $qb->createNamedParameter($userId)))
 			->orderBy('b.id', 'ASC');
 
@@ -108,10 +115,16 @@ class BoardAccess {
 				(string)$row['role'],
 				(int)$row['is_manager'] === 1,
 				$row['created_by'] !== null && (string)$row['created_by'] === $userId,
+				self::archived($row),
 			);
 		}
 		$result->closeCursor();
 
 		return $contexts;
+	}
+
+	/** @param array<string, mixed> $row */
+	private static function archived(array $row): bool {
+		return (int)$row['board_archived'] === 1 || (int)($row['project_archived'] ?? 0) === 1;
 	}
 }

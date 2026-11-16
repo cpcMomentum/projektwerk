@@ -41,6 +41,12 @@ anlegen() {
 anlegen pw-e2e-intern 'E2E Dienstleisterseite'
 anlegen pw-e2e-kunde 'E2E Kundenseite'
 
-# Kein Aufheben der WerkPlus-Grenzen mehr noetig (#288): Ohne konfigurierten Wert
-# greift die Durchsetzung standardmaessig nicht — die E2E-Specs bauen ihre
-# Kundenprojekte/Boards ohnehin unbegrenzt.
+# Die Specs legen mehrere Boards je Projekt an; das braucht WerkPlus, die App selbst kennt keinen Schalter dafür.
+if [ "${GITHUB_ACTIONS:-}" = "true" ]; then
+	token=$(php "$(dirname "$0")/werkplus-lizenz.php" "$(cd "$(dirname "$0")/../.." && pwd)" "$($OCC config:system:get instanceid)")
+	$OCC config:app:set werkwolke store_version --value=1 >/dev/null
+	$OCC config:app:set werkwolke token --value="$token" >/dev/null
+	echo "WerkPlus-Testlizenz eingetragen"
+else
+	echo "Lokal keine Testlizenz: Die Dev-Instanz braucht eine echte WerkPlus-Lizenz für die Specs mit mehreren Boards"
+fi

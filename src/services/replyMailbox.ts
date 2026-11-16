@@ -23,6 +23,8 @@ export interface ReplyMailboxConfig {
 	imapFolder: string
 	/** Ob ein Passwort hinterlegt ist — nie das Passwort selbst. */
 	imapPasswordSet: boolean
+	/** Ob die Lizenz Antworten per E-Mail freischaltet. */
+	werkplus?: boolean
 }
 
 /**

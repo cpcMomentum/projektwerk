@@ -10,7 +10,10 @@ declare(strict_types=1);
 namespace OCA\Projektwerk\Command;
 
 use OCA\Projektwerk\Access\ViewerContext;
+use OCA\Projektwerk\Db\ProjectLog;
+use OCA\Projektwerk\Db\TicketLog;
 use OCA\Projektwerk\Service\MemberLifecycleService;
+use OCA\Projektwerk\Service\ProjectLogService;
 use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IDBConnection;
 use OCP\IUserManager;
@@ -26,6 +29,7 @@ class ProjectSetManager extends Command {
 		private IDBConnection $db,
 		private IUserManager $users,
 		private MemberLifecycleService $lifecycle,
+		private ProjectLogService $projectLog,
 	) {
 		parent::__construct();
 	}
@@ -55,16 +59,28 @@ class ProjectSetManager extends Command {
 		$this->db->beginTransaction();
 		try {
 			$qb = $this->db->getQueryBuilder();
-			$qb->update('pwerk_members')
-				->set('is_manager', $qb->createNamedParameter(1, IQueryBuilder::PARAM_INT))
+			$qb->select('is_manager')
+				->from('pwerk_members')
 				->where($qb->expr()->eq('project_id', $qb->createNamedParameter($projectId, IQueryBuilder::PARAM_INT)))
 				->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
 				->andWhere($qb->expr()->eq('role', $qb->createNamedParameter(ViewerContext::ROLE_INTERNAL)));
-			if ($qb->executeStatement() === 0) {
+			$bisher = $qb->executeQuery()->fetchOne();
+			if ($bisher === false) {
 				$this->db->rollBack();
 				$output->writeln('<error>Kein internes Mitglied ' . $userId . ' in Projekt ' . $projectId . '.</error>');
 
 				return 1;
+			}
+
+			$neuVerwalter = (int)$bisher === 0;
+			if ($neuVerwalter) {
+				$qb = $this->db->getQueryBuilder();
+				$qb->update('pwerk_members')
+					->set('is_manager', $qb->createNamedParameter(1, IQueryBuilder::PARAM_INT))
+					->where($qb->expr()->eq('project_id', $qb->createNamedParameter($projectId, IQueryBuilder::PARAM_INT)))
+					->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+					->andWhere($qb->expr()->eq('role', $qb->createNamedParameter(ViewerContext::ROLE_INTERNAL)));
+				$qb->executeStatement();
 			}
 
 			$eigentuemer = $this->lifecycle->setzeEigentuemer($projectId, '', $userId);
@@ -73,6 +89,13 @@ class ProjectSetManager extends Command {
 		} catch (\Throwable $e) {
 			$this->db->rollBack();
 			throw $e;
+		}
+
+		if ($neuVerwalter) {
+			$this->projectLog->recordFor($projectId, TicketLog::ACTOR_SYSTEM, ProjectLog::VIA_CONSOLE, ProjectLog::MANAGER_GRANTED, $userId);
+		}
+		if ($eigentuemer) {
+			$this->projectLog->recordFor($projectId, TicketLog::ACTOR_SYSTEM, ProjectLog::VIA_CONSOLE, ProjectLog::OWNER_CHANGED, null, null, null, $userId);
 		}
 
 		$output->writeln('<info>' . $userId . ' verwaltet jetzt Projekt ' . $projectId . ($eigentuemer ? ' und ist Eigentuemer.' : '.') . '</info>');

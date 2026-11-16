@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace OCA\Projektwerk\Controller;
 
+use OCA\Projektwerk\Access\AllowedInArchive;
 use OCA\Projektwerk\AppInfo\Application;
 use OCA\Projektwerk\Service\NotifyPrefService;
 use OCP\AppFramework\Controller;
@@ -57,6 +58,7 @@ class NotifyPrefController extends Controller {
 	 * @param int $boardId Projekt, oder 0 fuer global.
 	 */
 	#[NoAdminRequired]
+	#[AllowedInArchive]
 	public function update(string $prefKey, bool $enabled, int $boardId = 0): JSONResponse {
 		if ($this->userId === null) {
 			return new JSONResponse([], Http::STATUS_UNAUTHORIZED);

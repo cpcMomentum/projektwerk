@@ -101,6 +101,7 @@ class ProjectLogService {
 				static fn (ProjectLog $entry): array => $entry->jsonSerialize() + [
 					'actorName' => $name($entry->getActorUserId()),
 					'targetName' => $name($entry->getTargetUserId()),
+					'newName' => $entry->getAction() === ProjectLog::OWNER_CHANGED ? $name($entry->getNewValue()) : null,
 				],
 				array_slice($zeilen, 0, self::PAGE_SIZE),
 			),

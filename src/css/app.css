@@ -763,6 +763,11 @@ body .app-projektwerk :is(
 	font: inherit;
 }
 
+/* Bei Mehrfachauswahl steckt das Suchfeld neben den Chips im gerahmten Feld; ein eigener Rahmen zeichnete ein Feld im Feld. */
+body .app-projektwerk .nc-select.vs--multiple .vs__search input.input-field__input {
+	border: none;
+}
+
 /* Einzeilige Felder: feste Höhe ohne Innenabstand oben/unten, dann steht der Text mittig. */
 body .app-projektwerk :is(.pw-input:not(textarea), select, input:is(:not([type]), [type=text], [type=url], [type=email], [type=number], [type=password], [type=search]):not(.vs__search)) {
 	height: var(--pw-feld-hoehe);
@@ -1261,12 +1266,24 @@ body .modal-wrapper:has(.pw-detail) > .modal-container {
 	display: flex;
 	align-items: center;
 	gap: 8px;
-	/* Schlankes Band (#337): die Knoepfe tragen ihre 34-px-Klickflaeche selbst,
-	   das Polster drumherum war verschenkter Platz. */
 	margin-block-start: 2px;
-	padding-block: 4px;
+	padding-block: 8px;
 	background: var(--color-main-background);
 	box-shadow: 0 -1px 0 var(--color-border);
+}
+
+/* Sonst läge unter der Fußzeile am Ende des Scrollens zusätzlich das untere Polster des Dialogs. */
+.app-projektwerk .pw-detail:has(> .pw-detail__fuss) {
+	padding-block-end: 0;
+}
+
+/* Hülle für den Archivzustand: sperrt die Bedienelemente, ohne das Layout zu ändern. */
+.app-projektwerk .pw-nurlesen {
+	display: contents;
+	min-width: 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
 }
 
 /* „Zurück" links, die Ausgänge und Löschen rechts. */
@@ -1280,11 +1297,6 @@ body .modal-wrapper:has(.pw-detail) > .modal-container {
 /* Der Ausgang rechts abgesetzt (#368), getrennt von den Aktionen am Vorgang. */
 .app-projektwerk .pw-detail__ausgang {
 	margin-inline-start: auto;
-}
-
-/* Farben kommen aus `variant="error"`, damit Löschen wie die Ausgänge daneben aussieht. */
-.app-projektwerk .pw-detail__loeschen {
-	margin-inline-end: 12px;
 }
 
 /*
@@ -1813,19 +1825,40 @@ body .modal-wrapper:has(.pw-detail) > .modal-container {
 
 /* ---- Abhängigkeiten ----------------------------------------------------- */
 
-.app-projektwerk .pw-deps__auswahl {
+.app-projektwerk .pw-deps {
 	display: flex;
-	align-items: flex-end;
-	gap: 4px;
-	margin-block-end: 8px;
-}
-
-.app-projektwerk .pw-deps__select {
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 0 10px;
 	flex: 1 1 auto;
 	min-width: 0;
+	padding: 8px 2px;
+	min-height: var(--default-clickable-area, 44px);
+	box-sizing: border-box;
+}
+
+.app-projektwerk .pw-deps__label {
+	display: inline-flex;
+	align-items: center;
+	align-self: center;
+	gap: 6px;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-deps__label--folge {
+	flex-basis: 100%;
+	margin-block-start: 4px;
+	font-size: 13px;
+}
+
+.app-projektwerk .pw-deps__keine {
+	color: var(--color-text-maxcontrast);
+	align-self: center;
 }
 
 .app-projektwerk .pw-deps__liste {
+	flex: 1 1 180px;
+	min-width: 0;
 	margin: 0;
 	padding: 0;
 	list-style: none;
@@ -1833,9 +1866,9 @@ body .modal-wrapper:has(.pw-detail) > .modal-container {
 
 .app-projektwerk .pw-deps__zeile {
 	display: flex;
-	align-items: center;
+	align-items: baseline;
 	gap: 8px;
-	min-height: var(--default-clickable-area);
+	min-height: 28px;
 }
 
 .app-projektwerk .pw-deps__link {
@@ -1875,12 +1908,6 @@ body .modal-wrapper:has(.pw-detail) > .modal-container {
 	color: var(--color-text-maxcontrast);
 }
 
-.app-projektwerk .pw-deps__unterkopf {
-	margin: 8px 0 4px;
-	font-size: 13px;
-	font-weight: 600;
-	color: var(--color-text-maxcontrast);
-}
 
 /* ---- Sichtbarkeit ändern ------------------------------------------------ */
 
@@ -3772,9 +3799,45 @@ body .app-projektwerk .v-select.select {
 	color: var(--color-error-text, var(--color-error));
 }
 
-/* Der eine Stift für Zuständig und Frist (#345) steht am Zeilenende. */
+.app-projektwerk .pw-frist--abgeschlossen .pw-frist__wert {
+	color: var(--color-text-maxcontrast);
+}
+
+/* Frist und Abhängigkeiten nutzen dieselben zwei Spalten wie die Personen darüber. */
+.app-projektwerk .pw-eckdaten__zeile {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 0 16px;
+	align-items: start;
+}
+
+.app-projektwerk .pw-eckdaten__rechts {
+	display: flex;
+	align-items: flex-start;
+	gap: 4px;
+	min-width: 0;
+}
+
+@media (max-width: 520px) {
+	.app-projektwerk .pw-eckdaten__zeile {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
 .app-projektwerk .pw-eckdaten__stift {
+	flex: 0 0 auto;
 	margin-inline-start: auto;
+	margin-block-start: 5px;
+}
+
+.app-projektwerk .pw-eckdaten__deps {
+	flex: 1 1 280px;
+	min-width: 0;
+	margin-bottom: 0;
+}
+
+.app-projektwerk .pw-eckdaten__deps .pw-deps__select {
+	width: 100%;
 }
 
 .app-projektwerk .pw-person__name--leer {

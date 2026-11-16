@@ -146,7 +146,10 @@ export const useBoardStore = defineStore('board', {
 		 *
 		 * @param state
 		 */
-		canAddBoard: (state): boolean => state.viewer?.isManager === true || state.memberBoardsAllowed,
+		canAddBoard: (state): boolean => state.viewer?.readOnly !== true && (state.viewer?.isManager === true || state.memberBoardsAllowed),
+
+		/** @param state Der Speicher. */
+		readOnly: (state): boolean => state.viewer?.readOnly === true,
 
 		/**
 		 * Hat das Board überhaupt eine Gegenseite?

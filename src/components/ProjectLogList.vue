@@ -31,6 +31,9 @@
 						<template v-if="entry.via === 'tool'">
 							· {{ t('projektwerk', 'über KI-Werkzeug') }}
 						</template>
+						<template v-else-if="entry.via === VIA_CONSOLE">
+							· {{ t('projektwerk', 'über die Kommandozeile') }}
+						</template>
 					</span>
 				</div>
 			</li>
@@ -55,6 +58,9 @@ import { fetchProjectLog } from '@/services/settings'
 // Die Werte landen per Mustache im Text, Vue escaped selbst.
 const RAW = { escape: false }
 const ACTOR_SYSTEM = 'system'
+// Spiegeln ProjectLog::VIA_CONSOLE und ProjectLog::REASON_ACCOUNT_DELETED.
+const VIA_CONSOLE = 'occ'
+const REASON_ACCOUNT_DELETED = 'account_deleted'
 
 export default defineComponent({
 	name: 'ProjectLogList',
@@ -72,6 +78,7 @@ export default defineComponent({
 			failed: false,
 			more: false,
 			ACTOR_SYSTEM,
+			VIA_CONSOLE,
 		}
 	},
 
@@ -116,6 +123,18 @@ export default defineComponent({
 			return role === 'external' ? t('projektwerk', 'Kundenseite') : t('projektwerk', 'Intern')
 		},
 
+		ownerChange(from: string, to: string | null): string {
+			if (to === null) {
+				return from === ''
+					? t('projektwerk', 'hat das Projekt geändert')
+					: t('projektwerk', 'hat {name} als Eigentümer entfernt, das Projekt hat jetzt keinen Eigentümer', { name: from }, undefined, RAW)
+			}
+
+			return from === ''
+				? t('projektwerk', 'hat {to} zum Eigentümer gemacht', { to }, undefined, RAW)
+				: t('projektwerk', 'hat den Eigentümer geändert: {from} → {to}', { from, to }, undefined, RAW)
+		},
+
 		describe(entry: ProjectLogEntry): string {
 			const subject = entry.subject ?? ''
 			const name = entry.targetName ?? entry.targetUserId ?? ''
@@ -138,7 +157,11 @@ export default defineComponent({
 				case 'member_added':
 					return t('projektwerk', 'hat {name} hinzugefügt ({role})', { name, role: this.roleName(entry.newValue) }, undefined, RAW)
 				case 'member_removed':
-					return t('projektwerk', 'hat {name} aus dem Projekt entfernt', { name }, undefined, RAW)
+					return entry.newValue === REASON_ACCOUNT_DELETED
+						? t('projektwerk', 'hat {name} aus dem Projekt entfernt, weil das Konto gelöscht wurde', { name }, undefined, RAW)
+						: t('projektwerk', 'hat {name} aus dem Projekt entfernt', { name }, undefined, RAW)
+				case 'owner_changed':
+					return this.ownerChange(name, entry.newValue === null ? null : (entry.newName ?? entry.newValue))
 				case 'role_changed':
 					return t('projektwerk', 'hat die Rolle von {name} geändert: {from} → {to}', { name, from: this.roleName(entry.oldValue), to: this.roleName(entry.newValue) }, undefined, RAW)
 				case 'manager_granted':

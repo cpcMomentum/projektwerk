@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OCA\Projektwerk\SetupCheck;
 
 use OCA\Projektwerk\Mcp\McpConfig;
+use OCA\Projektwerk\Service\EntitlementService;
 use OCA\Projektwerk\Mcp\TokenValidator;
 use OCP\IAppConfig;
 use OCP\IConfig;
@@ -27,6 +28,7 @@ class McpSetupCheck implements ISetupCheck {
 
 	public function __construct(
 		private McpConfig $mcp,
+		private EntitlementService $entitlement,
 		private TokenValidator $validator,
 		private IAppConfig $appConfig,
 		private IConfig $config,
@@ -48,6 +50,9 @@ class McpSetupCheck implements ISetupCheck {
 		}
 
 		$problems = [];
+		if (!$this->entitlement->mcpAllowed()) {
+			$problems[] = $this->l10n->t('Der KI-Zugriff über MCP ist Teil von WerkPlus. Ohne WerkPlus-Lizenz weist der Endpunkt jede Anfrage ab, die Einstellungen bleiben gespeichert.');
+		}
 		if (!$this->validator->isAvailable()) {
 			$problems[] = $this->l10n->t('Die App „OpenID Connect Provider“ (oidc) ist nicht aktiv. Ohne sie kann sich niemand am MCP-Endpunkt anmelden.');
 		}
