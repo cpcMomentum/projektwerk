@@ -54,7 +54,7 @@ class SharedStore {
 		if ($token === '') {
 			$this->appConfig->deleteKey(self::APP, self::K_TOKEN);
 		} else {
-			$this->appConfig->setValueString(self::APP, self::K_TOKEN, $token);
+			$this->appConfig->setValueString(self::APP, self::K_TOKEN, $token, sensitive: true);
 		}
 	}
 
@@ -62,7 +62,7 @@ class SharedStore {
 	public function setToken(string $token): void {
 		$this->assertWritable();
 		$this->appConfig->setValueString(self::APP, self::K_VERSION, (string)self::VERSION);
-		$this->appConfig->setValueString(self::APP, self::K_TOKEN, $token);
+		$this->appConfig->setValueString(self::APP, self::K_TOKEN, $token, sensitive: true);
 	}
 
 	/** Nur für die Admin-Aktion „Schlüssel entfernen“; sie gilt für alle Werk-Apps. */
