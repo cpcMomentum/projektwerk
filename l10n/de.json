@@ -785,7 +785,9 @@
 		"WerkPlus ist gerade nicht erreichbar. Bitte versuchen Sie es später erneut.": "WerkPlus ist gerade nicht erreichbar. Bitte versuchen Sie es später erneut.",
 		"Die Antwort von WerkPlus ließ sich nicht prüfen. Die Lizenz wurde nicht übernommen.": "Die Antwort von WerkPlus ließ sich nicht prüfen. Die Lizenz wurde nicht übernommen.",
 		"Antworten per E-Mail sind Teil von WerkPlus.": "Antworten per E-Mail sind Teil von WerkPlus.",
-		"Der KI-Zugriff über MCP ist Teil von WerkPlus. Ohne WerkPlus-Lizenz weist der Endpunkt jede Anfrage ab, die Einstellungen bleiben gespeichert.": "Der KI-Zugriff über MCP ist Teil von WerkPlus. Ohne WerkPlus-Lizenz weist der Endpunkt jede Anfrage ab, die Einstellungen bleiben gespeichert."
+		"Der KI-Zugriff über MCP ist Teil von WerkPlus. Ohne WerkPlus-Lizenz weist der Endpunkt jede Anfrage ab, die Einstellungen bleiben gespeichert.": "Der KI-Zugriff über MCP ist Teil von WerkPlus. Ohne WerkPlus-Lizenz weist der Endpunkt jede Anfrage ab, die Einstellungen bleiben gespeichert.",
+		"keine": "keine",
+		"Zuständigkeit, Fälligkeit und Abhängigkeiten ändern": "Zuständigkeit, Fälligkeit und Abhängigkeiten ändern"
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }
