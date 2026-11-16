@@ -14,7 +14,11 @@
 			untereinanderzustellen. Genau das war die Kritik am alten Stand.
 		-->
 		<div class="pw-step-liste">
-			<div v-for="step in ordered" :key="step.id" class="pw-step">
+			<div
+				v-for="step in ordered"
+				:key="step.id"
+				class="pw-step"
+				:data-step="step.id">
 				<!-- Titel steht nicht im Label, sonst hakt ein Klick zum Öffnen ab. -->
 				<NcCheckboxRadioSwitch
 					type="checkbox"
@@ -46,7 +50,7 @@
 						<NcButton :disabled="busy" @click="removeStep(step)">
 							{{ t('projektwerk', 'Löschen') }}
 						</NcButton>
-						<NcButton :disabled="busy" @click="removing = null">
+						<NcButton class="pw-step__nicht-loeschen" :disabled="busy" @click="cancelRemove(step)">
 							{{ t('projektwerk', 'Abbrechen') }}
 						</NcButton>
 					</template>
@@ -83,8 +87,9 @@
 
 							<NcButton
 								variant="tertiary"
+								class="pw-step__loeschen"
 								:ariaLabel="t('projektwerk', 'Arbeitsschritt löschen: {title}', { title: step.title })"
-								@click="removing = step.id">
+								@click="askRemove(step)">
 								<template #icon>
 									<DeleteOutlineIcon :size="20" />
 								</template>
@@ -266,7 +271,8 @@
 				class="pw-step__neu-person"
 				:forceMenu="true"
 				:ariaLabel="newAssigneeLabel"
-				:title="newAssigneeLabel">
+				:title="newAssigneeLabel"
+				@closed="focusNewTitle">
 				<template #icon>
 					<NcAvatar
 						v-if="newAssignee !== null"
@@ -568,12 +574,7 @@ export default defineComponent({
 				return
 			}
 			this.fokusZiel = null
-			this.$nextTick(() => {
-				const el = this.$el?.querySelector?.(ziel)
-				if (el instanceof HTMLElement) {
-					el.focus()
-				}
-			})
+			this.$nextTick(() => this.focusIn(ziel))
 		},
 	},
 
@@ -770,12 +771,29 @@ export default defineComponent({
 			// Eine stehengebliebene Person landete sonst unbemerkt auch am nächsten Schritt.
 			this.newAssignee = null
 			// Zurück ins Feld: Das Plus wird mit dem leeren Feld gesperrt und nähme den Fokus sonst mit auf den `body`.
-			this.$nextTick(() => {
-				const el = this.$el?.querySelector?.('.pw-step--new input[type="text"]')
-				if (el instanceof HTMLElement) {
-					el.focus()
-				}
-			})
+			this.$nextTick(() => this.focusNewTitle())
+		},
+
+		// Ohne festes Ziel holt die Fokusfalle des Dialogs den Fokus an ihren Anfang im Kopf, und manche Browser scrollen dorthin.
+		focusIn(selector: string): void {
+			const el = (this.$el as HTMLElement | undefined)?.querySelector?.(selector)
+			if (el instanceof HTMLElement) {
+				el.focus({ preventScroll: true })
+			}
+		},
+
+		focusNewTitle(): void {
+			this.focusIn('.pw-step--new input[type="text"]')
+		},
+
+		askRemove(step: Step): void {
+			this.removing = step.id
+			this.$nextTick(() => this.focusIn(`[data-step="${step.id}"] .pw-step__nicht-loeschen`))
+		},
+
+		cancelRemove(step: Step): void {
+			this.removing = null
+			this.$nextTick(() => this.focusIn(`[data-step="${step.id}"] .pw-step__loeschen`))
 		},
 
 		/**
@@ -923,6 +941,8 @@ export default defineComponent({
 		 * @param step Der zu löschende Arbeitsschritt.
 		 */
 		async removeStep(step: Step): Promise<void> {
+			// Während des Schreibens ist das Feld gesperrt; gesetzt wird der Fokus erst, wenn die neue Liste steht.
+			this.fokusZiel = '.pw-step--new input[type="text"]'
 			await this.write(
 				() => deleteStep(this.boardId, step.id),
 				t('projektwerk', 'Löschen fehlgeschlagen'),
