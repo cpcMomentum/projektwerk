@@ -24,4 +24,32 @@ class SharedStoreTest extends TestCase {
 		$this->assertSame('', $store->token());
 		$this->assertFalse($store->isOutdated());
 	}
+
+	/**
+	 * @return array<string, array{\Closure(SharedStore): void}>
+	 */
+	public static function tokenWrites(): array {
+		return [
+			'neuer Schlüssel' => [fn (SharedStore $store) => $store->setKey('wp_KEY', 'jwt')],
+			'erneuertes Token' => [fn (SharedStore $store) => $store->setToken('jwt')],
+		];
+	}
+
+	#[\PHPUnit\Framework\Attributes\DataProvider('tokenWrites')]
+	public function testTheTokenIsStoredAsSensitiveBecauseOtherServicesAcceptItAsProof(\Closure $write): void {
+		$appConfig = $this->createStub(IAppConfig::class);
+		$appConfig->method('getValueString')->willReturn('1');
+		$written = [];
+		$appConfig->method('setValueString')->willReturnCallback(
+			function (string $app, string $key, string $value, bool $lazy = false, bool $sensitive = false) use (&$written): bool {
+				$written[$key] = ['sensitive' => $sensitive, 'lazy' => $lazy];
+				return true;
+			},
+		);
+
+		$write(new SharedStore($appConfig));
+
+		$this->assertSame(['sensitive' => true, 'lazy' => false], $written['token']);
+		$this->assertFalse($written['store_version']['lazy']);
+	}
 }
