@@ -588,6 +588,21 @@ describe('StepList', () => {
 			wrapper.unmount()
 		})
 
+		it('nach gescheitertem Löschen zurück auf den Papierkorb, ohne späteren Sprung', async () => {
+			deleteStep.mockRejectedValueOnce(new Error('nein'))
+			const wrapper = montiert()
+			await wrapper.find('.pw-step__loeschen').trigger('click')
+			await wrapper.findAll('.pw-step__rechts button').find((b) => b.text() === 'Löschen')!.trigger('click')
+			await new Promise((resolve) => setTimeout(resolve, 0))
+			await wrapper.vm.$nextTick()
+			expect(document.activeElement).toBe(wrapper.find('.pw-step__loeschen').element)
+
+			await wrapper.setProps({ steps: [mitFrist('2026-08-12')] } as Record<string, unknown>)
+			await wrapper.vm.$nextTick()
+			expect(document.activeElement).toBe(wrapper.find('.pw-step__loeschen').element)
+			wrapper.unmount()
+		})
+
 		it('nach dem Löschen im Titelfeld der neuen Zeile', async () => {
 			const wrapper = montiert()
 			await wrapper.find('.pw-step__loeschen').trigger('click')

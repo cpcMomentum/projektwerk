@@ -943,11 +943,23 @@ export default defineComponent({
 		async removeStep(step: Step): Promise<void> {
 			// Während des Schreibens ist das Feld gesperrt; gesetzt wird der Fokus erst, wenn die neue Liste steht.
 			this.fokusZiel = '.pw-step--new input[type="text"]'
+			let geloescht = true
 			await this.write(
-				() => deleteStep(this.boardId, step.id),
+				async () => {
+					try {
+						await deleteStep(this.boardId, step.id)
+					} catch (e) {
+						geloescht = false
+						throw e
+					}
+				},
 				t('projektwerk', 'Löschen fehlgeschlagen'),
 			)
 			this.removing = null
+			if (!geloescht) {
+				this.fokusZiel = null
+				this.$nextTick(() => this.focusIn(`[data-step="${step.id}"] .pw-step__loeschen`))
+			}
 		},
 
 		/**
