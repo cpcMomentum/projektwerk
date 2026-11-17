@@ -3877,7 +3877,7 @@ body .app-projektwerk .v-select.select {
 
 
 
-/* ---- Tabelle in „Meine Einstellungen" ------------------------------------ */
+/* ---- Tabelle in „Einstellungen" ----------------------------------------- */
 
 /*
  * Der Rahmen scrollt, nicht die Tabelle: `overflow` greift auf `display: table`
@@ -3961,6 +3961,10 @@ body .app-projektwerk .v-select.select {
  * Zuschnitt wie im WorkTime-Verwaltungsbereich: Ueberschrift oben, darunter
  * links die Abschnitte, rechts der Inhalt.
  */
+.app-projektwerk .pw-view.pw-settingspage {
+	max-width: 1100px;
+}
+
 .app-projektwerk .pw-settingspage__title {
 	margin: 0 0 14px;
 	font-size: 22px;
@@ -3969,58 +3973,61 @@ body .app-projektwerk .v-select.select {
 }
 
 .app-projektwerk .pw-settingspage__body {
-	display: flex;
-	align-items: flex-start;
+	display: grid;
+	grid-template-columns: 240px 1fr;
 	gap: 24px;
+	align-items: start;
 }
 
-/* Auf dem Handy waere eine zweite Spalte die halbe Breite — dort untereinander. */
-@media (max-width: 700px) {
+@media (max-width: 900px) {
 	.app-projektwerk .pw-settingspage__body {
-		flex-direction: column;
+		grid-template-columns: 1fr;
 		gap: 12px;
 	}
 }
 
 .app-projektwerk .pw-subnav {
-	flex: 0 0 240px;
+	position: sticky;
+	top: 0;
 	display: flex;
 	flex-direction: column;
-	gap: 2px;
-	padding-inline-end: 16px;
-	border-inline-end: 1px solid var(--color-border);
+	padding: 0 16px 0 0;
+	border-right: 1px solid var(--color-border-dark, var(--color-border));
 }
 
-@media (max-width: 700px) {
+@media (max-width: 900px) {
 	.app-projektwerk .pw-subnav {
-		flex: 1 1 auto;
-		width: 100%;
-		border-inline-end: 0;
-		border-bottom: 1px solid var(--color-border);
-		padding-inline-end: 0;
-		padding-bottom: 8px;
+		position: static;
+		padding: 0 0 8px;
+		border-right: 0;
+		border-bottom: 1px solid var(--color-border-dark, var(--color-border));
 	}
-}
-
-.app-projektwerk .pw-subnav__group {
-	margin: 8px 0 4px;
-	font-size: 13px;
-	font-weight: 600;
-	color: var(--color-text-maxcontrast);
 }
 
 .app-projektwerk .pw-subnav__block {
 	display: flex;
 	flex-direction: column;
-	gap: 2px;
 }
 
-.app-projektwerk .pw-subnav__block + .pw-subnav__block {
-	margin-top: 12px;
+.app-projektwerk .pw-subnav__group {
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: .5px;
+	text-transform: uppercase;
+	color: var(--color-text-maxcontrast);
+	padding: 16px 12px 6px;
+	margin-top: 8px;
+	border-top: 1px solid var(--color-border-dark, var(--color-border));
+}
+
+.app-projektwerk .pw-subnav__block:first-child .pw-subnav__group {
+	padding-top: 0;
+	margin-top: 0;
+	border-top: none;
 }
 
 .app-projektwerk .pw-subnav__picker {
-	margin-bottom: 4px;
+	margin: 0 0 4px;
 }
 
 .app-projektwerk .pw-subnav__picker .v-select.select {
@@ -4033,15 +4040,19 @@ body .app-projektwerk .v-select.select {
 	align-items: center;
 	gap: 10px;
 	width: 100%;
-	min-height: var(--default-clickable-area, 44px);
-	padding: 0 12px;
-	border: 0;
-	border-radius: var(--border-radius-large);
-	background: transparent;
-	font: inherit;
-	color: inherit;
+	padding: 9px 12px;
+	border: none;
+	background: none;
 	text-align: left;
+	color: var(--color-main-text);
+	font-size: 14px;
+	font-weight: 500;
+	border-radius: var(--border-radius-element, 8px);
 	cursor: pointer;
+}
+
+.app-projektwerk .pw-subnav__item .material-design-icon {
+	color: var(--color-text-maxcontrast);
 }
 
 .app-projektwerk .pw-subnav__item:hover {
@@ -4050,12 +4061,54 @@ body .app-projektwerk .v-select.select {
 
 .app-projektwerk .pw-subnav__item--active {
 	background: var(--color-primary-element-light);
+	color: var(--color-primary-element);
 	font-weight: 600;
 }
 
+.app-projektwerk .pw-subnav__item--active .material-design-icon {
+	color: var(--color-primary-element);
+}
+
+.app-projektwerk .pw-subnav__item:focus-visible {
+	outline: 2px solid var(--color-primary-element);
+	outline-offset: -2px;
+}
+
 .app-projektwerk .pw-settingspage__content {
-	flex: 1 1 auto;
 	min-width: 0;
+}
+
+.app-projektwerk .pw-settings-card {
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	padding: 18px 20px;
+	background: var(--color-main-background);
+}
+
+.app-projektwerk .pw-settings-card__title,
+.app-projektwerk .pw-settings-card .pw-werkplus > h3 {
+	margin: 0 0 var(--pw-abstand-zeile);
+	font-size: 13px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: .04em;
+	color: var(--color-text-maxcontrast);
+}
+
+.app-projektwerk .pw-settings-card .pw-form-section {
+	padding: 0;
+	border-top: none;
+}
+
+.app-projektwerk .pw-settings-card .pw-form-section + .pw-form-section {
+	margin-top: 20px;
+}
+
+.app-projektwerk .pw-settings-card h4 {
+	margin: 0 0 var(--pw-abstand-zeile);
+	font-size: inherit;
+	font-weight: 600;
+	color: var(--color-main-text);
 }
 
 /* Abschnittsköpfe wie in VertragsWerk: klein, grau, Versalien (siehe `.pw-form-section`). */
@@ -4080,7 +4133,8 @@ body .app-projektwerk .v-select.select {
 }
 
 .app-projektwerk .pw-table--notify .pw-table__mid {
-	width: 120px;
+	width: auto;
+	padding-inline: 8px;
 }
 
 /* Die allgemeine Zeile traegt die Vorgabe — sie steht optisch fuer sich. */

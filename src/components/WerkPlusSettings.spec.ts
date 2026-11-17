@@ -113,7 +113,7 @@ describe('WerkPlusSettings', () => {
 
 		expect(wrapper.find('.stub-note--success').text()).toBe('WerkPlus ist aktiv.')
 		expect(wrapper.find('dl').text()).toContain('…69B6')
-		expect(wrapper.find('dl').text()).toContain('12 Mitarbeitende')
+		expect(wrapper.find('dl').text()).toContain('Lizenzierte Mitarbeitende12')
 		expect(knoepfe(wrapper)).toEqual(['Speichern und prüfen', 'Jetzt prüfen', 'Schlüssel entfernen'])
 	})
 

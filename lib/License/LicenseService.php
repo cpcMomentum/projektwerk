@@ -210,10 +210,19 @@ class LicenseService {
 			'graceUntil' => $token !== null ? $this->iso($token->graceUntil) : null,
 			// Das Token stammt aus der letzten erfolgreichen Prüfung, egal welche Werk-App sie ausgelöst hat.
 			'lastCheckAt' => $token !== null ? $this->iso($token->issuedAt) : null,
-			// Ohne hinterlegten Schluessel waere ein alter Fehlversuch nur noch Rauschen.
-			'lastError' => $key !== '' ? $this->lastError() : null,
+			'lastError' => $key !== '' ? $this->currentError($token) : null,
 			'storeOutdated' => $this->store->isOutdated(),
 		];
+	}
+
+	/** @return array{code: string, serverMessage: string, at: int}|null */
+	private function currentError(?EntitlementToken $token): ?array {
+		$error = $this->lastError();
+		// Hat inzwischen eine Werk-App erfolgreich geprüft, ist der eigene Fehler überholt.
+		if ($error === null || ($token !== null && $token->issuedAt > $error['at'])) {
+			return null;
+		}
+		return $error;
 	}
 
 	/**

@@ -740,6 +740,18 @@ OC.L10N.register(
     "Der Schlüssel wird für alle Werk-Apps dieser Nextcloud entfernt, nicht nur für ProjektWerk. Sie arbeiten danach im freien Umfang. Bestehende Projekte und Boards bleiben erhalten. Den Schlüssel kannst du jederzeit wieder eintragen." : "Der Schlüssel wird für alle Werk-Apps dieser Nextcloud entfernt, nicht nur für ProjektWerk. Sie arbeiten danach im freien Umfang. Bestehende Projekte und Boards bleiben erhalten. Den Schlüssel kannst du jederzeit wieder eintragen.",
     "Eine neuere Werk-App hat die Lizenzablage umgestellt. Bitte aktualisiere ProjektWerk, bevor du die Lizenz änderst." : "Eine neuere Werk-App hat die Lizenzablage umgestellt. Bitte aktualisiere ProjektWerk, bevor du die Lizenz änderst.",
     "Diese Lizenz ist einer anderen Nextcloud zugeordnet. Umzug im Kundenportal." : "Diese Lizenz ist einer anderen Nextcloud zugeordnet. Umzug im Kundenportal.",
-    "Für diese Nextcloud wurde bereits ein Testzeitraum genutzt." : "Für diese Nextcloud wurde bereits ein Testzeitraum genutzt."
+    "Für diese Nextcloud wurde bereits ein Testzeitraum genutzt." : "Für diese Nextcloud wurde bereits ein Testzeitraum genutzt.",
+    "Der Schlüssel gilt für alle Werk-Apps dieser Nextcloud und muss nur in einer davon eingetragen werden." : "Der Schlüssel gilt für alle Werk-Apps dieser Nextcloud und muss nur in einer davon eingetragen werden.",
+    "Eine andere Werk-App hat die Lizenz in einem neueren Format gespeichert. Bitte aktualisiere ProjektWerk." : "Eine andere Werk-App hat die Lizenz in einem neueren Format gespeichert. Bitte aktualisiere ProjektWerk.",
+    "Lizenzierte Mitarbeitende" : "Lizenzierte Mitarbeitende",
+    "Der Testzeitraum läuft 30 Tage, braucht keine Zahlungsdaten, gilt für alle Werk-Apps dieser Nextcloud und ist je Nextcloud nur einmal möglich. Jetzt starten?" : "Der Testzeitraum läuft 30 Tage, braucht keine Zahlungsdaten, gilt für alle Werk-Apps dieser Nextcloud und ist je Nextcloud nur einmal möglich. Jetzt starten?",
+    "Der Schlüssel wird für alle Werk-Apps dieser Nextcloud entfernt, sie arbeiten danach im freien Umfang. Den Schlüssel kannst du jederzeit wieder eintragen. Fortfahren?" : "Der Schlüssel wird für alle Werk-Apps dieser Nextcloud entfernt, sie arbeiten danach im freien Umfang. Den Schlüssel kannst du jederzeit wieder eintragen. Fortfahren?",
+    "Im Format „owner/repo“, z. B. „cpcMomentum/projektwerk“. Tippen sucht in deinen GitHub-Repositorys — dazu muss ein Token in „Einstellungen“ hinterlegt sein. Leer lassen lässt die Überführung ausgeblendet, bis ein Ziel eingetragen ist." : "Im Format „owner/repo“, z. B. „cpcMomentum/projektwerk“. Tippen sucht in deinen GitHub-Repositorys — dazu muss ein Token in „Einstellungen“ hinterlegt sein. Leer lassen lässt die Überführung ausgeblendet, bis ein Ziel eingetragen ist.",
+    "Einstellungs-Navigation" : "Einstellungs-Navigation",
+    "Verbindungen" : "Verbindungen",
+    "Kommunikation" : "Kommunikation",
+    "Lizenz" : "Lizenz",
+    "Kein GitHub-Token hinterlegt. Bitte in „Einstellungen\" einen Token eintragen." : "Kein GitHub-Token hinterlegt. Bitte in „Einstellungen\" einen Token eintragen.",
+    "Der GitHub-Token ist ungültig oder abgelaufen. Bitte in „Einstellungen\" erneuern." : "Der GitHub-Token ist ungültig oder abgelaufen. Bitte in „Einstellungen\" erneuern."
 },
 "nplurals=2; plural=(n != 1);");
