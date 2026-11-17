@@ -6,6 +6,25 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-11-17
+
+### Changed
+
+- **Einstellungen und Verwaltung**: Die Punkte stehen in Gruppen mit Symbolen, die Inhalte in
+  Karten. „Meine Einstellungen“ heißt jetzt „Einstellungen“ und liegt unten in der Seitenleiste,
+  neben „Neuerungen“ und „Verwaltung“. Die Verwaltung sehen nur Administratoren.
+- **Anrede**: Mit „Deutsch (Persönlich: Du)“ duzt ProjektWerk, mit „Deutsch (Förmlich: Sie)“ siezt es, auch in E-Mails und
+  Benachrichtigungen. Neu ist außerdem „English (British English)“.
+
+### Fixed
+
+- **WerkPlus**: Ein Prüffehler wird nicht mehr angezeigt, wenn eine andere Werk-App die Lizenz
+  inzwischen erfolgreich geprüft hat.
+
+### Security
+
+- **WerkPlus**: Lizenzschlüssel und Lizenz-Token gelangen nicht mehr in Fehlerprotokolle.
+
 ## [0.5.0] - 2026-11-16
 
 ### Added
