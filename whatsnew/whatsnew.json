@@ -1,4 +1,36 @@
 {
+	"0.5.1": [
+		{
+			"title": {
+				"de": "Einstellungen neu geordnet",
+				"en": "Settings reorganised"
+			},
+			"text": {
+				"de": "Einstellungen und Verwaltung sind nach Themen gruppiert. Die Einstellungen liegen jetzt unten in der Seitenleiste.",
+				"en": "Settings and Management are grouped by topic. Settings now sit at the bottom of the sidebar."
+			},
+			"icon": "cog",
+			"adminOnly": false,
+			"plus": false
+		},
+		{
+			"title": {
+				"de": "Anrede nach Sprache",
+				"en": "Form of address by language"
+			},
+			"text": {
+				"de": "Mit der Sprache „Deutsch (Förmlich: Sie)“ spricht ProjektWerk förmlich an, mit „Deutsch (Persönlich: Du)“ per du. Das gilt auch für E-Mails und Benachrichtigungen.",
+				"en": "With the language “Deutsch (Förmlich: Sie)” ProjektWerk uses the formal German address, with “Deutsch (Persönlich: Du)” the informal one. This also applies to emails and notifications."
+			},
+			"icon": "account-group",
+			"where": {
+				"de": "Persönliche Einstellungen › Persönliche Informationen › Sprache",
+				"en": "Personal settings › Personal info › Language"
+			},
+			"adminOnly": false,
+			"plus": false
+		}
+	],
 	"0.5.0": [
 		{
 			"title": {
