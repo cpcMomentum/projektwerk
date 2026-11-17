@@ -69,7 +69,7 @@ class WerkPlusClient {
 				'http_errors' => false,
 			]);
 		} catch (\Throwable $e) {
-			throw new WerkPlusApiException(self::UNREACHABLE, '', $e);
+			throw new WerkPlusApiException(self::UNREACHABLE, '', new \RuntimeException(get_class($e) . ': ' . $e->getMessage()));
 		}
 
 		$body = json_decode((string)$response->getBody(), true);

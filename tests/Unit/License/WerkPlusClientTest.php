@@ -136,4 +136,34 @@ class WerkPlusClientTest extends TestCase {
 			$this->assertSame(WerkPlusClient::UNREACHABLE, $e->getErrorCode());
 		}
 	}
+
+	public function testUnreachableServerKeepsTheKeyOutOfTheExceptionChain(): void {
+		$key = 'wp_GEHEIMERTESTSCHLUESSEL1234';
+		$http = $this->createMock(IClient::class);
+		$http->method('post')->willReturnCallback(function (): never {
+			throw new \RuntimeException('cURL error 7: Failed to connect');
+		});
+		$service = $this->createMock(IClientService::class);
+		$service->method('newClient')->willReturn($http);
+		try {
+			(new WerkPlusClient($service))->validate($key, '8cb3c100-9e4c-5375-9e63-1f4d122ea315', ['projektwerk' => '0.5.0']);
+			$this->fail('Ausnahme erwartet');
+		} catch (WerkPlusApiException $e) {
+			$this->assertSame(WerkPlusClient::UNREACHABLE, $e->getErrorCode());
+			$messages = '';
+			$args = [];
+			for ($t = $e; $t !== null; $t = $t->getPrevious()) {
+				$messages .= $t->getMessage();
+				foreach ($t->getTrace() as $frame) {
+					$frameArgs = $frame['args'] ?? [];
+					array_walk_recursive($frameArgs, function ($value) use (&$args): void {
+						$args[] = is_string($value) ? $value : get_debug_type($value);
+					});
+				}
+			}
+			$this->assertStringContainsString('Failed to connect', $messages);
+			$this->assertNotEmpty($args, 'Trace ohne Argumente: zend.exception_ignore_args ist an, der Test prueft nichts');
+			$this->assertNotContains($key, $args);
+		}
+	}
 }
