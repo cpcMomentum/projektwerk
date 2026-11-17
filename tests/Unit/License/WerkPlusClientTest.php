@@ -17,6 +17,7 @@ use OCP\Http\Client\IResponse;
 use PHPUnit\Framework\TestCase;
 
 class WerkPlusClientTest extends TestCase {
+	use TraceStrings;
 
 	private function client(int $status, string $body, ?array &$captured = null): WerkPlusClient {
 		$response = $this->createMock(IResponse::class);
@@ -140,7 +141,7 @@ class WerkPlusClientTest extends TestCase {
 	public function testUnreachableServerKeepsTheKeyOutOfTheExceptionChain(): void {
 		$key = 'wp_GEHEIMERTESTSCHLUESSEL1234';
 		$http = $this->createMock(IClient::class);
-		$http->method('post')->willReturnCallback(function (): never {
+		$http->method('post')->willReturnCallback(function (string $uri, array $options): never {
 			throw new \RuntimeException('cURL error 7: Failed to connect');
 		});
 		$service = $this->createMock(IClientService::class);
@@ -150,20 +151,19 @@ class WerkPlusClientTest extends TestCase {
 			$this->fail('Ausnahme erwartet');
 		} catch (WerkPlusApiException $e) {
 			$this->assertSame(WerkPlusClient::UNREACHABLE, $e->getErrorCode());
-			$messages = '';
-			$args = [];
-			for ($t = $e; $t !== null; $t = $t->getPrevious()) {
-				$messages .= $t->getMessage();
-				foreach ($t->getTrace() as $frame) {
-					$frameArgs = $frame['args'] ?? [];
-					array_walk_recursive($frameArgs, function ($value) use (&$args): void {
-						$args[] = is_string($value) ? $value : get_debug_type($value);
-					});
-				}
-			}
-			$this->assertStringContainsString('Failed to connect', $messages);
-			$this->assertNotEmpty($args, 'Trace ohne Argumente: zend.exception_ignore_args ist an, der Test prueft nichts');
-			$this->assertNotContains($key, $args);
+			$this->assertSame('RuntimeException: cURL error 7: Failed to connect', $e->getPrevious()?->getMessage());
+			self::assertNotInTrace($key, $e);
+		}
+	}
+
+	public function testABrokenTokenAnswerKeepsTheTrialKeyOutOfTheTrace(): void {
+		try {
+			$this->client(200, '{"key":"wp_NEUERSCHLUESSEL","expiresAt":"e"}')->validate('wp_KEY', 'uuid', []);
+			$this->fail('Ausnahme erwartet');
+		} catch (WerkPlusApiException $e) {
+			$this->assertSame(WerkPlusClient::INVALID_RESPONSE, $e->getErrorCode());
+			self::assertNotInTrace('wp_NEUERSCHLUESSEL', $e);
+			self::assertNotInTrace('wp_KEY', $e);
 		}
 	}
 }

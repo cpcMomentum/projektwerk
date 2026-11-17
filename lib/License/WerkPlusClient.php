@@ -83,7 +83,7 @@ class WerkPlusClient {
 	}
 
 	/** @return array{token: string, expiresAt: string, graceUntil: string} */
-	private static function tokenFields(array $body): array {
+	private static function tokenFields(#[\SensitiveParameter] array $body): array {
 		if (!is_string($body['token'] ?? null)
 			|| !is_string($body['expiresAt'] ?? null)
 			|| !is_string($body['graceUntil'] ?? null)) {

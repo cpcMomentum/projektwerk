@@ -23,6 +23,7 @@ use Psr\Log\LoggerInterface;
 
 class LicenseServiceTest extends TestCase {
 	use EntitlementTokenFactory;
+	use TraceStrings;
 
 	private const KEY = 'wp_B7K2M9QX4TN6RJ8VC3HD5PKW2FSY7GZA3EFA69B6';
 
@@ -38,6 +39,7 @@ class LicenseServiceTest extends TestCase {
 	/** @var (\Closure(): void)|null Simuliert eine andere Werk-App, die zwischendurch schreibt. */
 	private ?\Closure $otherApp = null;
 	private WerkPlusClient&MockObject $client;
+	private ?LoggerInterface $logger = null;
 
 	protected function setUp(): void {
 		parent::setUp();
@@ -48,6 +50,7 @@ class LicenseServiceTest extends TestCase {
 		$this->now = self::NOW;
 		$this->otherApp = null;
 		$this->client = $this->createMock(WerkPlusClient::class);
+		$this->logger = null;
 	}
 
 	/** @return array<string, string> */
@@ -100,7 +103,7 @@ class LicenseServiceTest extends TestCase {
 			$this->client,
 			$this->verifier(),
 			$appManager,
-			$this->createStub(LoggerInterface::class),
+			$this->logger ?? $this->createStub(LoggerInterface::class),
 		);
 	}
 
@@ -267,25 +270,83 @@ class LicenseServiceTest extends TestCase {
 		$this->assertFalse($service->hasFeature('pw_projects'), 'Ein langer Prozess darf den alten Zustand nicht behalten.');
 	}
 
-	public function testTheKeyNeverAppearsInAStackTrace(): void {
-		$this->client->method('validate')->willReturn([
-			'token' => $this->token($this->claims(), [], self::foreignKey()['private']),
-			'expiresAt' => 'x',
-			'graceUntil' => 'y',
-		]);
+	public function testNeitherKeyNorTokenAppearInATraceOrTheLog(): void {
+		$jwt = $this->token($this->claims(), [], self::foreignKey()['private']);
+		$this->client->method('validate')->willReturn(['token' => $jwt, 'expiresAt' => 'x', 'graceUntil' => 'y']);
+		$logged = [];
+		$logger = $this->createMock(LoggerInterface::class);
+		$logger->method('warning')->willReturnCallback(function (string $msg, array $context = []) use (&$logged): void {
+			$logged[] = $context;
+		});
+		$this->logger = $logger;
 		try {
 			$this->service()->activate(self::KEY);
 			$this->fail('Ausnahme erwartet');
 		} catch (WerkPlusApiException $e) {
-			$args = [];
-			for ($t = $e; $t !== null; $t = $t->getPrevious()) {
-				foreach ($t->getTrace() as $frame) {
-					$args = array_merge($args, $frame['args'] ?? []);
-				}
-			}
-			$this->assertNotEmpty($args, 'Trace ohne Argumente: zend.exception_ignore_args ist an, der Test prueft nichts');
-			$this->assertNotContains(self::KEY, $args);
+			$this->assertNull($e->getPrevious());
+			self::assertNotInTrace(self::KEY, $e);
+			self::assertNotInTrace(explode('.', $jwt)[2], $e);
 		}
+		$this->assertSame([['reason' => 'Signatur ungueltig']], $logged);
+	}
+
+	/**
+	 * @return array<string, array{bool}>
+	 */
+	public static function storeTargets(): array {
+		return ['gespeicherter Schlüssel' => [true], 'neuer Schlüssel' => [false]];
+	}
+
+	#[\PHPUnit\Framework\Attributes\DataProvider('storeTargets')]
+	public function testATokenThatCanNoLongerBeStoredStaysOutOfTheTrace(bool $storedKey): void {
+		if ($storedKey) {
+			$this->storeToken(['iat' => self::NOW - 3600]);
+		}
+		$jwt = $this->token($this->claims());
+		$this->client->method('validate')->willReturnCallback(function () use ($jwt): array {
+			// Eine neuere Werk-App schreibt die Ablage um, während der Abruf läuft.
+			$this->shared['store_version'] = '2';
+			return ['token' => $jwt, 'expiresAt' => 'x', 'graceUntil' => 'y'];
+		});
+		try {
+			$this->service()->activate(self::KEY);
+			$this->fail('Ausnahme erwartet');
+		} catch (\InvalidArgumentException $e) {
+			$this->assertSame('storeOutdated', $e->getMessage());
+			self::assertNotInTrace(explode('.', $jwt)[2], $e);
+			self::assertNotInTrace(self::KEY, $e);
+		}
+	}
+
+	public function testARejectedTrialTokenIsLoggedOnlyWithItsReason(): void {
+		$this->client->method('trial')->willReturn(['key' => self::KEY] + ['token' => $this->token($this->claims(), [], self::foreignKey()['private']), 'expiresAt' => 'x', 'graceUntil' => 'y']);
+		$logger = $this->createMock(LoggerInterface::class);
+		$logger->expects($this->once())->method('warning')->with($this->anything(), ['reason' => 'Signatur ungueltig']);
+		$this->logger = $logger;
+
+		$this->assertSame(self::KEY, $this->service()->startTrial());
+	}
+
+	public function testAnInvalidStoredTokenIsLoggedOnlyWithItsReason(): void {
+		$this->storeToken();
+		$this->shared['token'] = $this->token($this->claims(), [], self::foreignKey()['private']);
+		$logger = $this->createMock(LoggerInterface::class);
+		$logger->expects($this->atLeastOnce())->method('debug')->with($this->anything(), ['reason' => 'Signatur ungueltig']);
+		$this->logger = $logger;
+
+		$this->assertFalse($this->service()->hasFeature('pw_projects'));
+	}
+
+	public function testFailedRenewalIsLoggedWithoutTheException(): void {
+		$this->storeToken();
+		$this->now = self::NOW + 8 * 86400;
+		$this->client->method('validate')->willThrowException(new WerkPlusApiException(WerkPlusClient::UNREACHABLE));
+		$logger = $this->createMock(LoggerInterface::class);
+		$logger->expects($this->once())->method('info')
+			->with($this->anything(), ['reason' => WerkPlusApiException::class . ': WerkPlus: UNREACHABLE']);
+		$this->logger = $logger;
+
+		$this->service()->refreshIfDue();
 	}
 
 	public function testRevokedNewKeyDoesNotCostTheStoredToken(): void {
