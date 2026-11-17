@@ -17,6 +17,7 @@ use OCP\Http\Client\IResponse;
 use PHPUnit\Framework\TestCase;
 
 class WerkPlusClientTest extends TestCase {
+	use TraceStrings;
 
 	private function client(int $status, string $body, ?array &$captured = null): WerkPlusClient {
 		$response = $this->createMock(IResponse::class);
@@ -134,6 +135,35 @@ class WerkPlusClientTest extends TestCase {
 			$this->fail('Ausnahme erwartet');
 		} catch (WerkPlusApiException $e) {
 			$this->assertSame(WerkPlusClient::UNREACHABLE, $e->getErrorCode());
+		}
+	}
+
+	public function testUnreachableServerKeepsTheKeyOutOfTheExceptionChain(): void {
+		$key = 'wp_GEHEIMERTESTSCHLUESSEL1234';
+		$http = $this->createMock(IClient::class);
+		$http->method('post')->willReturnCallback(function (string $uri, array $options): never {
+			throw new \RuntimeException('cURL error 7: Failed to connect');
+		});
+		$service = $this->createMock(IClientService::class);
+		$service->method('newClient')->willReturn($http);
+		try {
+			(new WerkPlusClient($service))->validate($key, '8cb3c100-9e4c-5375-9e63-1f4d122ea315', ['projektwerk' => '0.5.0']);
+			$this->fail('Ausnahme erwartet');
+		} catch (WerkPlusApiException $e) {
+			$this->assertSame(WerkPlusClient::UNREACHABLE, $e->getErrorCode());
+			$this->assertSame('RuntimeException: cURL error 7: Failed to connect', $e->getPrevious()?->getMessage());
+			self::assertNotInTrace($key, $e);
+		}
+	}
+
+	public function testABrokenTokenAnswerKeepsTheTrialKeyOutOfTheTrace(): void {
+		try {
+			$this->client(200, '{"key":"wp_NEUERSCHLUESSEL","expiresAt":"e"}')->validate('wp_KEY', 'uuid', []);
+			$this->fail('Ausnahme erwartet');
+		} catch (WerkPlusApiException $e) {
+			$this->assertSame(WerkPlusClient::INVALID_RESPONSE, $e->getErrorCode());
+			self::assertNotInTrace('wp_NEUERSCHLUESSEL', $e);
+			self::assertNotInTrace('wp_KEY', $e);
 		}
 	}
 }

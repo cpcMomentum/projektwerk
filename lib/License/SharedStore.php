@@ -47,7 +47,7 @@ class SharedStore {
 	}
 
 	/** Ein neuer Schlüssel ersetzt Schlüssel und Token gemeinsam. */
-	public function setKey(#[\SensitiveParameter] string $key, string $token): void {
+	public function setKey(#[\SensitiveParameter] string $key, #[\SensitiveParameter] string $token): void {
 		$this->assertWritable();
 		$this->appConfig->setValueString(self::APP, self::K_VERSION, (string)self::VERSION);
 		$this->appConfig->setValueString(self::APP, self::K_KEY, $key, sensitive: true);
@@ -59,7 +59,7 @@ class SharedStore {
 	}
 
 	/** Die Prüfung, ob das Token neuer ist, liegt beim Aufrufer, weil nur er es verifizieren kann. */
-	public function setToken(string $token): void {
+	public function setToken(#[\SensitiveParameter] string $token): void {
 		$this->assertWritable();
 		$this->appConfig->setValueString(self::APP, self::K_VERSION, (string)self::VERSION);
 		$this->appConfig->setValueString(self::APP, self::K_TOKEN, $token, sensitive: true);
