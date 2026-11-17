@@ -137,7 +137,7 @@ class MailComposerTest extends TestCase {
 			$this->l10n(),
 		);
 
-		$this->assertStringContainsString('Ihnen wurde der Vorgang', $text['einleitung']);
+		$this->assertStringContainsString('Dir wurde der Vorgang', $text['einleitung']);
 		$this->assertSame('', $text['meta'], 'Ohne Projektname keine Metazeile.');
 	}
 

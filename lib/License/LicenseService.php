@@ -121,8 +121,8 @@ class LicenseService {
 			$this->verifier->verify($response['token'], $this->getInstanceUuid(), $now);
 		} catch (InvalidTokenException $e) {
 			// Kein Abbruch, sonst sieht der Betreiber den Schluessel nie; die Erneuerung holt ein gueltiges Token.
-			$this->logger->warning('ProjektWerk: WerkPlus-Token abgelehnt', ['exception' => $e]);
-			$this->recordError(new WerkPlusApiException(self::TOKEN_REJECTED, '', $e), $now, true);
+			$this->logger->warning('ProjektWerk: WerkPlus-Token abgelehnt', ['reason' => $e->getMessage()]);
+			$this->recordError(new WerkPlusApiException(self::TOKEN_REJECTED), $now, true);
 			// Die naechste Erneuerung soll nicht sechs Stunden warten.
 			$this->appConfig->deleteKey(Application::APP_ID, self::K_LAST_ATTEMPT);
 			return $key;
@@ -154,7 +154,7 @@ class LicenseService {
 		try {
 			$this->refresh();
 		} catch (\Throwable $e) {
-			$this->logger->info('ProjektWerk: WerkPlus-Lizenz nicht erneuert', ['exception' => $e]);
+			$this->logger->info('ProjektWerk: WerkPlus-Lizenz nicht erneuert', ['reason' => get_class($e) . ': ' . $e->getMessage()]);
 		}
 	}
 
@@ -210,10 +210,19 @@ class LicenseService {
 			'graceUntil' => $token !== null ? $this->iso($token->graceUntil) : null,
 			// Das Token stammt aus der letzten erfolgreichen Prüfung, egal welche Werk-App sie ausgelöst hat.
 			'lastCheckAt' => $token !== null ? $this->iso($token->issuedAt) : null,
-			// Ohne hinterlegten Schluessel waere ein alter Fehlversuch nur noch Rauschen.
-			'lastError' => $key !== '' ? $this->lastError() : null,
+			'lastError' => $key !== '' ? $this->currentError($token) : null,
 			'storeOutdated' => $this->store->isOutdated(),
 		];
+	}
+
+	/** @return array{code: string, serverMessage: string, at: int}|null */
+	private function currentError(?EntitlementToken $token): ?array {
+		$error = $this->lastError();
+		// Hat inzwischen eine Werk-App erfolgreich geprüft, ist der eigene Fehler überholt.
+		if ($error === null || ($token !== null && $token->issuedAt > $error['at'])) {
+			return null;
+		}
+		return $error;
 	}
 
 	/**
@@ -247,8 +256,8 @@ class LicenseService {
 			try {
 				$token = $this->verifier->verify($response['token'], $this->getInstanceUuid(), $now);
 			} catch (InvalidTokenException $e) {
-				$this->logger->warning('ProjektWerk: WerkPlus-Token abgelehnt', ['exception' => $e]);
-				throw new WerkPlusApiException(self::TOKEN_REJECTED, '', $e);
+				$this->logger->warning('ProjektWerk: WerkPlus-Token abgelehnt', ['reason' => $e->getMessage()]);
+				throw new WerkPlusApiException(self::TOKEN_REJECTED);
 			}
 		} catch (WerkPlusApiException $e) {
 			$this->recordError($e, $now, $isStoredKey);
@@ -258,7 +267,7 @@ class LicenseService {
 	}
 
 	/** Erneuern mehrere Werk-Apps gleichzeitig, darf nie ein älteres Token gewinnen. */
-	private function keepNewer(#[\SensitiveParameter] string $key, string $jwt, EntitlementToken $token): void {
+	private function keepNewer(#[\SensitiveParameter] string $key, #[\SensitiveParameter] string $jwt, EntitlementToken $token): void {
 		$this->store->reload();
 		// Hat eine andere Werk-App inzwischen einen neuen Schlüssel eingetragen, gehört das Token nicht mehr dazu.
 		if ($this->store->key() !== $key) {
@@ -330,14 +339,14 @@ class LicenseService {
 			&& $token->issuedAt <= (is_int($data['tokenIat'] ?? null) ? $data['tokenIat'] : PHP_INT_MAX);
 	}
 
-	private function verifyQuietly(string $jwt): ?EntitlementToken {
+	private function verifyQuietly(#[\SensitiveParameter] string $jwt): ?EntitlementToken {
 		if ($jwt === '') {
 			return null;
 		}
 		try {
 			return $this->verifier->verify($jwt, $this->getInstanceUuid(), $this->now());
 		} catch (InvalidTokenException $e) {
-			$this->logger->debug('ProjektWerk: gespeichertes WerkPlus-Token ungueltig', ['exception' => $e]);
+			$this->logger->debug('ProjektWerk: gespeichertes WerkPlus-Token ungueltig', ['reason' => $e->getMessage()]);
 			return null;
 		}
 	}

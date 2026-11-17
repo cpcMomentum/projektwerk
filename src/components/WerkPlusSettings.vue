@@ -11,7 +11,7 @@
 			{{ t('projektwerk', 'Frei enthalten sind zehn aktive Projekte mit je einem Board und ein Kundenprojekt. Mit einem WerkPlus-Schlüssel schaltet ProjektWerk weitere Projekte, Kundenprojekte und Boards frei, dazu Antworten per E-Mail und den KI-Zugriff über MCP.') }}
 		</p>
 		<p class="pw-settings__hint">
-			{{ t('projektwerk', 'Ein Schlüssel gilt für alle Werk-Apps dieser Nextcloud. Ist er schon in einer anderen Werk-App hinterlegt, ist hier nichts weiter zu tun.') }}
+			{{ t('projektwerk', 'Der Schlüssel gilt für alle Werk-Apps dieser Nextcloud und muss nur in einer davon eingetragen werden.') }}
 		</p>
 
 		<NcNoteCard v-if="loadError" type="error" :text="loadError" />
@@ -20,17 +20,17 @@
 			<NcNoteCard
 				v-if="status.storeOutdated"
 				type="warning"
-				:text="t('projektwerk', 'Eine neuere Werk-App hat die Lizenzablage umgestellt. Bitte aktualisieren Sie ProjektWerk. Bis dahin lässt sich die Lizenz hier nicht ändern.')" />
+				:text="t('projektwerk', 'Eine andere Werk-App hat die Lizenz in einem neueren Format gespeichert. Bitte aktualisiere ProjektWerk.')" />
 			<NcNoteCard v-if="stateNote" :type="stateNote.type" :text="stateNote.text" />
 			<NcNoteCard v-if="trialKey" type="success">
 				<p v-if="licenseActive">
-					{{ t('projektwerk', 'Der Testzeitraum läuft. Das ist Ihr WerkPlus-Schlüssel:') }}
+					{{ t('projektwerk', 'Der Testzeitraum läuft. Das ist dein WerkPlus-Schlüssel:') }}
 				</p>
 				<p v-else>
-					{{ t('projektwerk', 'Der Testzeitraum ist gestartet, die Lizenz konnte aber noch nicht geprüft werden. Mit „Jetzt prüfen“ versuchen Sie es erneut. Das ist Ihr WerkPlus-Schlüssel:') }}
+					{{ t('projektwerk', 'Der Testzeitraum ist gestartet, die Lizenz konnte aber noch nicht geprüft werden. Mit „Jetzt prüfen“ versuchst du es erneut. Das ist dein WerkPlus-Schlüssel:') }}
 				</p>
 				<p><code>{{ trialKey }}</code></p>
-				<p>{{ t('projektwerk', 'Bitte bewahren Sie ihn sicher auf. Er ist hinterlegt, wird aber nur jetzt vollständig angezeigt.') }}</p>
+				<p>{{ t('projektwerk', 'Bitte bewahre ihn sicher auf. Er ist hinterlegt, wird aber nur jetzt vollständig angezeigt.') }}</p>
 			</NcNoteCard>
 			<NcNoteCard v-if="actionInfo" type="info" :text="actionInfo" />
 			<NcNoteCard v-if="actionError" type="error" :text="actionError" />
@@ -40,8 +40,8 @@
 				<dt>{{ t('projektwerk', 'Tarif') }}</dt>
 				<dd>{{ tierLabel }}</dd>
 				<template v-if="status.licensedEmployees">
-					<dt>{{ t('projektwerk', 'Lizenziert für') }}</dt>
-					<dd>{{ n('projektwerk', '%n Mitarbeitende', '%n Mitarbeitende', status.licensedEmployees) }}</dd>
+					<dt>{{ t('projektwerk', 'Lizenzierte Mitarbeitende') }}</dt>
+					<dd>{{ status.licensedEmployees }}</dd>
 				</template>
 				<template v-if="status.expiresAt">
 					<dt>{{ t('projektwerk', 'Gültig bis') }}</dt>
@@ -85,9 +85,9 @@
 				</NcButton>
 			</div>
 
-			<h3>
+			<h4>
 				{{ t('projektwerk', 'Was an WerkPlus übertragen wird') }}
-			</h3>
+			</h4>
 			<p class="pw-settings__hint">
 				{{ t('projektwerk', 'Eine aus dieser Nextcloud abgeleitete Kennung, die Versionen der aktivierten Werk-Apps und, sobald vorhanden, der Schlüssel. Nicht übertragen werden Vorgänge, Kommentare, Dateien, Namen, Adressen, Nextcloud-Benutzer oder Datei-IDs.') }}
 			</p>
@@ -105,7 +105,7 @@
 			size="normal"
 			@update:open="confirmTrial = false">
 			<div class="app-projektwerk">
-				<p>{{ t('projektwerk', 'Der Testzeitraum läuft 30 Tage, braucht keine Zahlungsdaten und ist je Nextcloud nur einmal möglich. Er gilt für alle Werk-Apps dieser Nextcloud.') }}</p>
+				<p>{{ t('projektwerk', 'Der Testzeitraum läuft 30 Tage, braucht keine Zahlungsdaten, gilt für alle Werk-Apps dieser Nextcloud und ist je Nextcloud nur einmal möglich. Jetzt starten?') }}</p>
 			</div>
 			<template #actions>
 				<NcButton @click="confirmTrial = false">
@@ -123,7 +123,7 @@
 			size="normal"
 			@update:open="confirmRemove = false">
 			<div class="app-projektwerk">
-				<p>{{ t('projektwerk', 'Der Schlüssel wird für alle Werk-Apps dieser Nextcloud entfernt, nicht nur für ProjektWerk. Sie arbeiten danach im freien Umfang. Bestehende Projekte und Boards bleiben erhalten. Den Schlüssel können Sie jederzeit wieder eintragen.') }}</p>
+				<p>{{ t('projektwerk', 'Der Schlüssel wird für alle Werk-Apps dieser Nextcloud entfernt, sie arbeiten danach im freien Umfang. Den Schlüssel kannst du jederzeit wieder eintragen. Fortfahren?') }}</p>
 			</div>
 			<template #actions>
 				<NcButton @click="confirmRemove = false">
@@ -140,7 +140,7 @@
 <script setup lang="ts">
 import type { LicenseStatus } from '@/services/license'
 
-import { n, t } from '@nextcloud/l10n'
+import { t } from '@nextcloud/l10n'
 import { computed, onMounted, ref } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcDialog from '@nextcloud/vue/components/NcDialog'
@@ -183,7 +183,7 @@ const stateNote = computed<{ type: 'success' | 'warning' | 'error', text: string
 		case 'expired':
 			return { type: 'error', text: t('projektwerk', 'Die Lizenz ist abgelaufen. ProjektWerk arbeitet im freien Umfang weiter.') }
 		case 'invalid':
-			return { type: 'error', text: t('projektwerk', 'Der gespeicherte Lizenznachweis ist ungültig. Bitte prüfen Sie die Lizenz erneut.') }
+			return { type: 'error', text: t('projektwerk', 'Der gespeicherte Lizenznachweis ist ungültig. Bitte prüfe die Lizenz erneut.') }
 		default:
 			return null
 	}
@@ -223,7 +223,7 @@ async function run(action: () => Promise<LicenseStatus>): Promise<void> {
 		keyInput.value = ''
 	} catch (e) {
 		const { message, data } = e as { message?: string, data?: Record<string, unknown> }
-		const text = message ?? t('projektwerk', 'WerkPlus hat einen Fehler gemeldet. Bitte versuchen Sie es später erneut.')
+		const text = message ?? t('projektwerk', 'WerkPlus hat einen Fehler gemeldet. Bitte versuche es später erneut.')
 		if (typeof data?.code === 'string' && CALM_CODES.includes(data.code)) {
 			actionInfo.value = text
 		} else {
@@ -273,15 +273,19 @@ onMounted(load)
 	display: grid;
 	grid-template-columns: max-content 1fr;
 	gap: 4px 16px;
-	margin: 12px 0;
+	margin: 12px 0 16px;
+}
+
+.pw-werkplus__facts dt,
+.pw-werkplus__facts dd {
+	width: auto;
+	margin: 0;
+	padding: 0;
+	text-align: start;
 }
 
 .pw-werkplus__facts dt {
 	color: var(--color-text-maxcontrast);
-}
-
-.pw-werkplus__facts dd {
-	margin: 0;
 }
 
 .pw-werkplus__actions {

@@ -6,7 +6,8 @@
 
 		<div class="pw-settingspage__body">
 			<PwSettingsNav
-				:sections="sections"
+				:groups="navGroups"
+				:ariaLabel="t('projektwerk', 'Einstellungs-Navigation')"
 				:modelValue="activeSection"
 				@update:modelValue="activeSection = $event" />
 
@@ -15,13 +16,13 @@
 					**Eigene Firma** (#352): einmal je Instanz. Neue Projekte
 					übernehmen sie als „eigene Firma"; im Projekt bleibt sie änderbar.
 				-->
-				<div v-show="activeSection === 'firma'">
+				<div v-show="activeSection === 'firma'" class="pw-settings-card">
+					<h3 class="pw-settings-card__title">
+						{{ t('projektwerk', 'Eigene Firma') }}
+					</h3>
 					<section class="pw-form-section">
-						<h3>
-							{{ t('projektwerk', 'Eigene Firma') }}
-						</h3>
 						<p class="pw-settings__hint">
-							{{ t('projektwerk', 'Der Name Ihrer Firma. Neue Projekte übernehmen ihn als „Eigene Firma"; im einzelnen Projekt lässt er sich ändern. Bestehende Projekte bleiben unverändert.') }}
+							{{ t('projektwerk', 'Der Name deiner Firma. Neue Projekte übernehmen ihn als „Eigene Firma"; im einzelnen Projekt lässt er sich ändern. Bestehende Projekte bleiben unverändert.') }}
 						</p>
 						<div class="pw-feld">
 							<label class="pw-feld__label" for="pw-my-company">{{ t('projektwerk', 'Eigene Firma') }}</label>
@@ -42,15 +43,15 @@
 					</section>
 				</div>
 
-				<div v-show="activeSection === 'werkplus'">
+				<div v-show="activeSection === 'werkplus'" class="pw-settings-card">
 					<WerkPlusSettings @changed="lizenzGeaendert" />
 				</div>
 
-				<div v-show="activeSection === 'ki'">
+				<div v-show="activeSection === 'ki'" class="pw-settings-card">
+					<h3 class="pw-settings-card__title">
+						{{ t('projektwerk', 'KI-Zugriff') }}
+					</h3>
 					<section class="pw-form-section">
-						<h3>
-							{{ t('projektwerk', 'KI-Zugriff') }}
-						</h3>
 						<NcNoteCard v-if="!aiWerkplus" type="info" :text="t('projektwerk', 'Der KI-Zugriff über MCP ist Teil von WerkPlus. Ohne WerkPlus-Lizenz weist ProjektWerk jede Anfrage von Claude ab, die Einstellungen bleiben gespeichert.')" />
 						<p class="pw-settings__hint">
 							{{ t('projektwerk', 'Über den KI-Zugang (MCP) kann Claude im Namen einer Person Vorgänge anlegen und ändern. Interne und private Vorgänge sind immer erlaubt.') }}
@@ -70,13 +71,13 @@
 					</section>
 				</div>
 
-				<div v-show="activeSection === 'antworten'">
+				<div v-show="activeSection === 'antworten'" class="pw-settings-card">
+					<h3 class="pw-settings-card__title">
+						{{ t('projektwerk', 'Antworten per E-Mail') }}
+					</h3>
 					<section class="pw-form-section">
-						<h3>
-							{{ t('projektwerk', 'Antworten per E-Mail') }}
-						</h3>
 						<p class="pw-settings__hint">
-							{{ t('projektwerk', 'Antworten auf Benachrichtigungs-E-Mails werden als Kommentar am Vorgang eingetragen. Dazu liest ProjektWerk ein IMAP-Postfach, das Sie hier hinterlegen. Es verlässt nichts die Instanz — das Postfach gehört Ihnen.') }}
+							{{ t('projektwerk', 'Antworten auf Benachrichtigungs-E-Mails werden als Kommentar am Vorgang eingetragen. Dazu liest ProjektWerk ein IMAP-Postfach, das du hier hinterlegst. Es verlässt nichts die Instanz — das Postfach gehört dir.') }}
 						</p>
 
 						<NcNoteCard v-if="form.werkplus === false" type="info" :text="t('projektwerk', 'Antworten per E-Mail sind Teil von WerkPlus. Ohne WerkPlus-Lizenz lässt sich das Postfach nicht einschalten, und ProjektWerk liest keine Antworten ein. Gespeicherte Zugangsdaten bleiben erhalten.')" />
@@ -94,11 +95,11 @@
 					</section>
 
 					<section class="pw-form-section">
-						<h3>
+						<h4>
 							{{ t('projektwerk', 'Antwortadresse') }}
-						</h3>
+						</h4>
 						<p class="pw-settings__hint">
-							{{ t('projektwerk', 'Die Adresse, an die Kunden antworten (z. B. projekte@ihre-firma.de). Sie wird als Reply-To gesetzt und gehört zu dem Postfach unten.') }}
+							{{ t('projektwerk', 'Die Adresse, an die Kunden antworten (z. B. projekte@deine-firma.de). Sie wird als Reply-To gesetzt und gehört zu dem Postfach unten.') }}
 						</p>
 						<div class="pw-feld">
 							<label class="pw-feld__label" for="pw-reply-address">{{ t('projektwerk', 'Antwortadresse (Reply-To)') }}</label>
@@ -114,9 +115,9 @@
 					</section>
 
 					<section class="pw-form-section">
-						<h3>
+						<h4>
 							{{ t('projektwerk', 'Posteingang (IMAP)') }}
-						</h3>
+						</h4>
 
 						<div class="pw-feld-reihe pw-replymail__server">
 							<div class="pw-feld">
@@ -126,7 +127,7 @@
 									v-model="form.imapHost"
 									:label="t('projektwerk', 'Server')"
 									:labelOutside="true"
-									placeholder="imap.ihre-firma.de"
+									placeholder="imap.deine-firma.de"
 									:disabled="busy"
 									autocomplete="off" />
 							</div>
@@ -230,6 +231,7 @@
 </template>
 
 <script lang="ts">
+import type { SettingsGroup } from '@/components/PwSettingsNav.vue'
 import type { ReplyMailboxConfig } from '@/services/replyMailbox'
 
 import { t } from '@nextcloud/l10n'
@@ -241,7 +243,11 @@ import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
 import AlertIcon from 'vue-material-design-icons/AlertCircleOutline.vue'
 import CheckIcon from 'vue-material-design-icons/CheckCircleOutline.vue'
+import DomainIcon from 'vue-material-design-icons/Domain.vue'
+import EmailArrowLeftOutlineIcon from 'vue-material-design-icons/EmailArrowLeftOutline.vue'
+import KeyOutlineIcon from 'vue-material-design-icons/KeyOutline.vue'
 import LanConnectIcon from 'vue-material-design-icons/LanConnect.vue'
+import RobotOutlineIcon from 'vue-material-design-icons/RobotOutline.vue'
 import PwSettingsNav from '@/components/PwSettingsNav.vue'
 import WerkPlusSettings from '@/components/WerkPlusSettings.vue'
 import { fetchAiAccess, saveAiAccess } from '@/services/aiAccess'
@@ -300,12 +306,26 @@ export default defineComponent({
 
 	computed: {
 		/** Die Bereiche der Verwaltung. */
-		sections(): { key: string, label: string }[] {
+		navGroups(): SettingsGroup[] {
 			return [
-				{ key: 'firma', label: t('projektwerk', 'Eigene Firma') },
-				{ key: 'antworten', label: t('projektwerk', 'Antworten per E-Mail') },
-				{ key: 'ki', label: t('projektwerk', 'KI-Zugriff') },
-				{ key: 'werkplus', label: t('projektwerk', 'WerkPlus') },
+				{
+					key: 'firma',
+					label: t('projektwerk', 'Firma'),
+					items: [{ key: 'firma', label: t('projektwerk', 'Eigene Firma'), icon: DomainIcon }],
+				},
+				{
+					key: 'kommunikation',
+					label: t('projektwerk', 'Kommunikation'),
+					items: [
+						{ key: 'antworten', label: t('projektwerk', 'Antworten per E-Mail'), icon: EmailArrowLeftOutlineIcon },
+						{ key: 'ki', label: t('projektwerk', 'KI-Zugriff'), icon: RobotOutlineIcon },
+					],
+				},
+				{
+					key: 'lizenz',
+					label: t('projektwerk', 'Lizenz'),
+					items: [{ key: 'werkplus', label: t('projektwerk', 'WerkPlus'), icon: KeyOutlineIcon }],
+				},
 			]
 		},
 

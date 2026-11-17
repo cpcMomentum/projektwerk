@@ -30,7 +30,7 @@
 
 		<div v-else-if="mayConfigureBoard && projectBoardsLoaded" class="pw-settingspage__body">
 			<!--
-				Linke Bereichs-Navigation wie in „Meine Einstellungen" (#196
+				Linke Bereichs-Navigation wie in „Einstellungen" (#196
 				Teil 2): dieselben `pw-subnav`/`pw-settingspage`-Klassen, damit
 				beide Einstellungsseiten gleich aussehen.
 			-->
@@ -258,7 +258,7 @@
 							</span>
 
 							<span class="pw-settings__hint">
-								{{ t('projektwerk', 'Im Format „owner/repo“, z. B. „cpcMomentum/projektwerk“. Tippen sucht in Ihren GitHub-Repositorys — dazu muss ein Token in „Meine Einstellungen“ hinterlegt sein. Leer lassen lässt die Überführung ausgeblendet, bis ein Ziel eingetragen ist.') }}
+								{{ t('projektwerk', 'Im Format „owner/repo“, z. B. „cpcMomentum/projektwerk“. Tippen sucht in deinen GitHub-Repositorys — dazu muss ein Token in „Einstellungen“ hinterlegt sein. Leer lassen lässt die Überführung ausgeblendet, bis ein Ziel eingetragen ist.') }}
 							</span>
 						</div>
 

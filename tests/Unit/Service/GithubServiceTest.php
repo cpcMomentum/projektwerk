@@ -115,7 +115,7 @@ class GithubServiceTest extends TestCase {
 		$this->client->expects($this->never())->method('post');
 
 		$this->expectException(GithubTransferException::class);
-		$this->expectExceptionMessage('Meine Einstellungen');
+		$this->expectExceptionMessage('„Einstellungen"');
 		$this->service->createIssue('anna', 'acme/app', 'Titel', 'Rumpf');
 	}
 
@@ -176,7 +176,7 @@ class GithubServiceTest extends TestCase {
 		$this->client->expects($this->never())->method('get');
 
 		$this->expectException(GithubTransferException::class);
-		$this->expectExceptionMessage('Meine Einstellungen');
+		$this->expectExceptionMessage('„Einstellungen"');
 		$this->service->searchRepos('anna', '');
 	}
 

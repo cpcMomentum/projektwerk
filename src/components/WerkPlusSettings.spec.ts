@@ -113,14 +113,14 @@ describe('WerkPlusSettings', () => {
 
 		expect(wrapper.find('.stub-note--success').text()).toBe('WerkPlus ist aktiv.')
 		expect(wrapper.find('dl').text()).toContain('…69B6')
-		expect(wrapper.find('dl').text()).toContain('12 Mitarbeitende')
+		expect(wrapper.find('dl').text()).toContain('Lizenzierte Mitarbeitende12')
 		expect(knoepfe(wrapper)).toEqual(['Speichern und prüfen', 'Jetzt prüfen', 'Schlüssel entfernen'])
 	})
 
 	it('eine neuere Lizenzablage: Hinweis auf ein Update, nichts lässt sich ändern', async () => {
 		const wrapper = await laden(aktiv({ storeOutdated: true }))
 
-		expect(wrapper.find('.stub-note--warning').text()).toContain('Bitte aktualisieren Sie ProjektWerk.')
+		expect(wrapper.find('.stub-note--warning').text()).toContain('Bitte aktualisiere ProjektWerk.')
 		expect(knoepfe(wrapper)).toEqual([])
 		expect(wrapper.find('.stub-key').exists()).toBe(false)
 		expect(wrapper.find('dl').text()).toContain('…69B6')

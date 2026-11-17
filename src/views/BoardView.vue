@@ -229,7 +229,7 @@
 		<NcEmptyContent
 			v-else-if="store.columns.length === 0"
 			:name="t('projektwerk', 'Noch keine Spalten')"
-			:description="t('projektwerk', 'Legen Sie in den Projekteinstellungen die erste Spalte an.')">
+			:description="t('projektwerk', 'Lege in den Projekteinstellungen die erste Spalte an.')">
 			<template #icon>
 				<FolderMultipleIcon :size="20" />
 			</template>

@@ -96,11 +96,11 @@ class Notifier implements INotifier {
 		$titel = (string)$ticket->getTitle();
 
 		$satz = match ($notification->getSubject()) {
-			self::SUBJECT_TICKET_ASSIGNED => $l->t('Ihnen wurde ein Vorgang zugewiesen: #%1$s %2$s', [$nummer, $titel]),
-			self::SUBJECT_STEP_ASSIGNED => $l->t('Ihnen wurde ein Arbeitsschritt zugewiesen: #%1$s %2$s', [$nummer, $titel]),
+			self::SUBJECT_TICKET_ASSIGNED => $l->t('Dir wurde ein Vorgang zugewiesen: #%1$s %2$s', [$nummer, $titel]),
+			self::SUBJECT_STEP_ASSIGNED => $l->t('Dir wurde ein Arbeitsschritt zugewiesen: #%1$s %2$s', [$nummer, $titel]),
 			self::SUBJECT_TICKET_CREATED => $l->t('Neuer Vorgang im Projekt: #%1$s %2$s', [$nummer, $titel]),
 			self::SUBJECT_COMMENT_ADDED => $l->t('Neuer Kommentar: #%1$s %2$s', [$nummer, $titel]),
-			self::SUBJECT_COMMENT_MENTION => $l->t('Sie wurden erwähnt: #%1$s %2$s', [$nummer, $titel]),
+			self::SUBJECT_COMMENT_MENTION => $l->t('Du wurdest erwähnt: #%1$s %2$s', [$nummer, $titel]),
 			self::SUBJECT_TICKET_CLOSED => $l->t('Vorgang geschlossen: #%1$s %2$s', [$nummer, $titel]),
 			// Ein Betreff, den diese Fassung nicht kennt — etwa nach einem
 			// Downgrade. Ihn stehen zu lassen waere eine leere Zeile in der
