@@ -12,6 +12,7 @@ namespace OCA\Projektwerk\Tests\Unit\Service;
 use OCA\Projektwerk\Access\TicketScope;
 use OCA\Projektwerk\Db\TicketLog;
 use OCA\Projektwerk\Db\TicketLogMapper;
+use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Service\TicketLogService;
 use OCP\Collaboration\Reference\IReferenceManager;
 use PHPUnit\Framework\TestCase;
@@ -36,10 +37,10 @@ class TicketLogServiceTest extends TestCase {
 		});
 		$aufgeschoben = &$this->aufgeschoben;
 
-		return new class($log, new TicketScope(), $references, $aufgeschoben) extends TicketLogService {
+		return new class($log, $this->createStub(TicketMapper::class), new TicketScope(), $references, $aufgeschoben) extends TicketLogService {
 			/** @param list<callable> $aufgeschoben */
-			public function __construct(TicketLogMapper $log, TicketScope $scope, IReferenceManager $references, private array &$aufgeschoben) {
-				parent::__construct($log, $scope, $references);
+			public function __construct(TicketLogMapper $log, TicketMapper $tickets, TicketScope $scope, IReferenceManager $references, private array &$aufgeschoben) {
+				parent::__construct($log, $tickets, $scope, $references);
 			}
 
 			protected function defer(callable $callback): void {

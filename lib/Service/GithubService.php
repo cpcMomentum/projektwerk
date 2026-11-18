@@ -41,6 +41,9 @@ class GithubService {
 
 	private const API_BASE = 'https://api.github.com';
 
+	/** GitHubs eigene Namensregeln: Konto bis 39 Zeichen aus Buchstaben, Ziffern, Bindestrich und (bei verwalteten Konten) Unterstrich, Repository bis 100. */
+	private const REPO_NAME = '#^[A-Za-z0-9][A-Za-z0-9_-]{0,38}/[A-Za-z0-9._-]{1,100}$#D';
+
 	/** Höchstens so viele Seiten à 100 Repos holen wir für die Auswahl (#196). */
 	private const REPO_PAGES = 2;
 
@@ -53,6 +56,19 @@ class GithubService {
 		private LoggerInterface $logger,
 		private IL10N $l10n,
 	) {
+	}
+
+	/**
+	 * Ob der Wert ein Repository im Format „owner/repo" benennt.
+	 *
+	 * Der Wert wird Teil des Anfragepfads; `.` und `..` als Name würden dort als Pfadschritt gelesen.
+	 */
+	public static function isRepoName(string $repo): bool {
+		if (preg_match(self::REPO_NAME, $repo) !== 1) {
+			return false;
+		}
+
+		return !in_array(explode('/', $repo)[1], ['.', '..'], true);
 	}
 
 	/**
@@ -106,7 +122,7 @@ class GithubService {
 		}
 
 		$repo = trim($repo);
-		if (!preg_match('#^[^/\s]+/[^/\s]+$#', $repo)) {
+		if (!self::isRepoName($repo)) {
 			throw new GithubTransferException(
 				$this->l10n->t('Das Ziel-Repository ist nicht im Format „owner/repo" hinterlegt.'),
 			);
@@ -115,7 +131,7 @@ class GithubService {
 		$client = $this->clientService->newClient();
 
 		try {
-			$response = $client->post(self::API_BASE . '/repos/' . $repo . '/issues', [
+			$response = $client->post(self::API_BASE . '/repos/' . implode('/', array_map('rawurlencode', explode('/', $repo))) . '/issues', [
 				'headers' => [
 					'Authorization' => 'Bearer ' . $token,
 					'Accept' => 'application/vnd.github+json',

@@ -752,6 +752,13 @@ OC.L10N.register(
     "Kommunikation" : "Communication",
     "Lizenz" : "License",
     "Kein GitHub-Token hinterlegt. Bitte in „Einstellungen\" einen Token eintragen." : "No GitHub token stored. Please enter a token in “Settings”.",
-    "Der GitHub-Token ist ungültig oder abgelaufen. Bitte in „Einstellungen\" erneuern." : "The GitHub token is invalid or has expired. Please renew it in “Settings”."
+    "Der GitHub-Token ist ungültig oder abgelaufen. Bitte in „Einstellungen\" erneuern." : "The GitHub token is invalid or has expired. Please renew it in “Settings”.",
+    "hat eingetragen, dass dieser Vorgang auf „{ticket}“ wartet" : "noted that this ticket is waiting for “{ticket}”",
+    "hat entfernt, dass dieser Vorgang auf „{ticket}“ wartet" : "removed that this ticket is waiting for “{ticket}”",
+    "Die App „Auditing / Logging“ (admin_audit) ist nicht aktiv. Änderungen über KI-Werkzeuge werden dann nicht im Audit-Log festgehalten." : "The app “Auditing / Logging” (admin_audit) is not active. Changes made through AI tools are then not recorded in the audit log.",
+    "Die Passwortbestätigung wurde abgebrochen." : "The password confirmation was cancelled.",
+    "Bitte bestätige dein Passwort: Seite neu laden und erneut versuchen." : "Please confirm your password: reload the page and try again.",
+    "Das Ziel-Repository muss im Format „owner/repo\" angegeben sein." : "The target repository must be given in the format “owner/repo”.",
+    "Die Chat-Adresse muss mit „https://\" oder „http://\" beginnen." : "The chat address must start with “https://” or “http://”."
 },
 "nplurals=2; plural=(n != 1);");

@@ -351,7 +351,13 @@ class BoardService {
 		if (array_key_exists('chatUrl', $changes)) {
 			// Reine Adresse für den Knopf „Zum Projektchat", am Projekt (#246).
 			// Leer heißt: Knopf entfällt ersatzlos.
-			$project->setChatUrl($this->trimOrNull($changes['chatUrl']));
+			$chatUrl = $this->trimOrNull($changes['chatUrl']);
+			// Nur bei einer Änderung prüfen: Das Formular schickt die Adresse mit
+			// jedem Speichern mit, ein Altwert darf Titel und Kunde nicht sperren.
+			if ($chatUrl !== $project->getChatUrl()) {
+				$this->assertWebAddress($chatUrl);
+			}
+			$project->setChatUrl($chatUrl);
 			$projectChanged = true;
 		}
 		if (array_key_exists('memberBoardsAllowed', $changes)) {
@@ -379,11 +385,14 @@ class BoardService {
 		}
 		if (array_key_exists('githubRepo', $changes)) {
 			// Reine Adresse „owner/repo" (#12). Leer heißt: kein Ziel — die
-			// Überführungs-Aktion bleibt dann aus. Die Formatprüfung sitzt bewusst
-			// erst beim Überführen ({@see GithubService}), damit ein aktiviertes
-			// Board ohne fertig eingetragenes Repo ein zulässiger Zwischenzustand
-			// bleibt.
-			$board->setGithubRepo($this->trimOrNull($changes['githubRepo']));
+			// Überführungs-Aktion bleibt dann aus, ein aktiviertes Board ohne
+			// eingetragenes Repo ist ein zulässiger Zwischenzustand.
+			$githubRepo = $this->trimOrNull($changes['githubRepo']);
+			// Ein unveränderter Altwert bleibt stehen, sonst ließe sich die Anbindung nicht einmal abschalten.
+			if ($githubRepo !== null && $githubRepo !== $board->getGithubRepo() && !GithubService::isRepoName($githubRepo)) {
+				throw new \InvalidArgumentException($this->l10n->t('Das Ziel-Repository muss im Format „owner/repo" angegeben sein.'));
+			}
+			$board->setGithubRepo($githubRepo);
 		}
 
 		$board->setUpdatedAt(new \DateTime());
@@ -687,6 +696,17 @@ class BoardService {
 	private function assertTitle(string $title): void {
 		if (trim($title) === '') {
 			throw new \InvalidArgumentException($this->l10n->t('Ein Projekt braucht einen Titel.'));
+		}
+	}
+
+	/**
+	 * Die Adresse landet unverändert im `href` eines Knopfs, den auch die Kundenseite sieht.
+	 *
+	 * @throws \InvalidArgumentException wenn sie nicht mit `https://` oder `http://` beginnt
+	 */
+	private function assertWebAddress(?string $url): void {
+		if ($url !== null && preg_match('#^https?://[^\s/]#i', $url) !== 1) {
+			throw new \InvalidArgumentException($this->l10n->t('Die Chat-Adresse muss mit „https://" oder „http://" beginnen.'));
 		}
 	}
 

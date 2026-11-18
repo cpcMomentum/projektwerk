@@ -15,6 +15,7 @@ use OCA\Projektwerk\Service\NotifyPrefService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
+use OCP\AppFramework\Http\Attribute\UserRateLimit;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\IRequest;
 
@@ -24,8 +25,8 @@ use OCP\IRequest;
  * **Kein Board im Pfad, und das ist richtig.** Jeder andere Endpunkt dieser App
  * beginnt mit einem Projekt, weil er Projektdaten liefert. Hier geht es um die
  * Einstellungen einer Person — die Grenze ist ihre Kennung, und die kommt aus
- * der Sitzung. Ein `boardId` im Pfad taeuschte eine Rechtepruefung vor, die es
- * hier nicht braucht und nicht gibt.
+ * der Sitzung. Ein `boardId` im Pfad taeuschte eine Rechtepruefung auf das
+ * Projekt vor; der Dienst uebergeht fremde Projekte still, statt sie abzuweisen.
  */
 class NotifyPrefController extends Controller {
 
@@ -59,6 +60,7 @@ class NotifyPrefController extends Controller {
 	 */
 	#[NoAdminRequired]
 	#[AllowedInArchive]
+	#[UserRateLimit(limit: 300, period: 3600)]
 	public function update(string $prefKey, bool $enabled, int $boardId = 0): JSONResponse {
 		if ($this->userId === null) {
 			return new JSONResponse([], Http::STATUS_UNAUTHORIZED);

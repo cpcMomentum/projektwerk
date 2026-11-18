@@ -13,6 +13,7 @@ use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Db\Ticket;
 use OCA\Projektwerk\Db\TicketDep;
 use OCA\Projektwerk\Db\TicketDepMapper;
+use OCA\Projektwerk\Db\TicketLog;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Utility\ITimeFactory;
@@ -26,6 +27,7 @@ class TicketDependencyService {
 	public function __construct(
 		private TicketMapper $tickets,
 		private TicketDepMapper $deps,
+		private TicketLogService $log,
 		private ITimeFactory $time,
 		private IL10N $l10n,
 	) {
@@ -40,7 +42,7 @@ class TicketDependencyService {
 	 */
 	public function add(ViewerContext $viewer, int $ticketId, int $dependsOnId): array {
 		$ticket = $this->tickets->findVisible($viewer, $ticketId);
-		$this->tickets->findVisible($viewer, $dependsOnId);
+		$partner = $this->tickets->findVisible($viewer, $dependsOnId);
 
 		if ($ticketId === $dependsOnId) {
 			throw new \InvalidArgumentException($this->l10n->t('Ein Vorgang kann nicht von sich selbst abhängen.'));
@@ -65,7 +67,10 @@ class TicketDependencyService {
 		$dep->setCreatedBy($viewer->userId);
 		$dep->setCreatedVia($viewer->via);
 		$dep->setCreatedAt($this->time->getDateTime());
-		$this->deps->insertPair($dep);
+		// Verliert der Aufruf ein Wettrennen um dasselbe Paar, hat der andere den Eintrag schon geschrieben.
+		if ($this->deps->insertPair($dep)) {
+			$this->log->record($viewer, $ticket, TicketLog::DEPENDENCY_ADDED, null, (string)$partner->getVisibility(), (string)$dependsOnId);
+		}
 
 		return $this->linksOf($viewer, $ticket);
 	}
@@ -76,8 +81,10 @@ class TicketDependencyService {
 	 */
 	public function remove(ViewerContext $viewer, int $ticketId, int $dependsOnId): array {
 		$ticket = $this->tickets->findVisible($viewer, $ticketId);
-		$this->tickets->findVisible($viewer, $dependsOnId);
-		$this->deps->deletePair($ticketId, $dependsOnId);
+		$partner = $this->tickets->findVisible($viewer, $dependsOnId);
+		if ($this->deps->deletePair($ticketId, $dependsOnId)) {
+			$this->log->record($viewer, $ticket, TicketLog::DEPENDENCY_REMOVED, null, (string)$partner->getVisibility(), (string)$dependsOnId);
+		}
 
 		return $this->linksOf($viewer, $ticket);
 	}
