@@ -41,6 +41,12 @@ Fuer die Lizenzpruefung gehen nur der WerkPlus-Schluessel, eine aus der Nextclou
 
     <bugs>https://github.com/cpcMomentum/projektwerk/issues</bugs>
     <repository type="git">https://github.com/cpcMomentum/projektwerk.git</repository>
+    <screenshot>https://raw.githubusercontent.com/cpcMomentum/projektwerk/main/screenshots/01-board.png</screenshot>
+    <screenshot>https://raw.githubusercontent.com/cpcMomentum/projektwerk/main/screenshots/02-vorgang.png</screenshot>
+    <screenshot>https://raw.githubusercontent.com/cpcMomentum/projektwerk/main/screenshots/03-kommentare.png</screenshot>
+    <screenshot>https://raw.githubusercontent.com/cpcMomentum/projektwerk/main/screenshots/04-kundensicht.png</screenshot>
+    <screenshot>https://raw.githubusercontent.com/cpcMomentum/projektwerk/main/screenshots/05-ueberblick.png</screenshot>
+    <screenshot>https://raw.githubusercontent.com/cpcMomentum/projektwerk/main/screenshots/06-meine-aufgaben.png</screenshot>
 
     <dependencies>
         <php min-version="8.3"/>
@@ -97,14 +103,6 @@ Fuer die Lizenzpruefung gehen nur der WerkPlus-Schluessel, eine aus der Nextclou
         </post-migration>
     </repair-steps>
 
-    <navigations>
-        <navigation>
-            <name>ProjektWerk</name>
-            <route>projektwerk.page.index</route>
-            <icon>app.svg</icon>
-            <order>10</order>
-        </navigation>
-    </navigations>
 	<!--
 		Der Papierkorb dieser App liegt auf der Kommandozeile: Eine Ansicht
 		geloeschter Vorgaenge in der Oberflaeche waere ein zweiter Ort, an dem
@@ -117,4 +115,13 @@ Fuer die Lizenzpruefung gehen nur der WerkPlus-Schluessel, eine aus der Nextclou
 		<command>OCA\Projektwerk\Command\AttachmentsVerify</command>
 		<command>OCA\Projektwerk\Command\ProjectSetManager</command>
 	</commands>
+
+    <navigations>
+        <navigation>
+            <name>ProjektWerk</name>
+            <route>projektwerk.page.index</route>
+            <icon>app.svg</icon>
+            <order>10</order>
+        </navigation>
+    </navigations>
 </info>
