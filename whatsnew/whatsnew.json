@@ -1,4 +1,36 @@
 {
+	"0.6.0": [
+		{
+			"title": {
+				"de": "WerkPlus: Testzeitraum und Laufzeit im Blick",
+				"en": "WerkPlus: trial period and term at a glance"
+			},
+			"text": {
+				"de": "Die WerkPlus-Einstellungen zeigen, bis wann der Testzeitraum oder die Lizenz läuft, und führen direkt zum Kauf. Vor dem Testende erinnert ProjektWerk die Administratoren per Benachrichtigung.",
+				"en": "The WerkPlus settings show when the trial period or licence ends and link straight to the purchase. Before the trial ends, ProjektWerk reminds administrators with a notification."
+			},
+			"icon": "star",
+			"where": {
+				"de": "Verwaltung › WerkPlus",
+				"en": "Management › WerkPlus"
+			},
+			"adminOnly": true,
+			"plus": false
+		},
+		{
+			"title": {
+				"de": "Abhängigkeiten im Verlauf",
+				"en": "Dependencies in the history"
+			},
+			"text": {
+				"de": "Wird eine Abhängigkeit hinzugefügt oder entfernt, steht das im Verlauf des Vorgangs.",
+				"en": "Adding or removing a dependency now shows up in the task's history."
+			},
+			"icon": "file-document",
+			"adminOnly": false,
+			"plus": false
+		}
+	],
 	"0.5.1": [
 		{
 			"title": {

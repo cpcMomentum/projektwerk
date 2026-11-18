@@ -10,6 +10,7 @@
 /.github            export-ignore
 /.githooks          export-ignore
 /docs               export-ignore
+/screenshots        export-ignore
 /spike              export-ignore
 /src                export-ignore
 /tests              export-ignore
