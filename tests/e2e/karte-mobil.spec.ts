@@ -3,7 +3,7 @@ import type { Projekt } from './projekt.ts'
 import { expect, test } from '@playwright/test'
 import { Api } from './api.ts'
 import { marke, projektAufbauen, projektAufraeumen } from './projekt.ts'
-import { APP_PFAD, INTERN } from './rollen.ts'
+import { APP_PFAD, INTERN, KUNDE } from './rollen.ts'
 
 /**
  * Die Karte auf Handybreite.
@@ -98,6 +98,54 @@ test('die Fusszeile der Karte bleibt einzeilig', async ({ page }) => {
 	for (const hoehe of hoehen) {
 		expect(hoehe, `Fusszeile ist ${hoehe} px hoch — das sind zwei Zeilen`).toBeLessThanOrEqual(26)
 	}
+})
+
+test.describe('volle Fusszeile auf dem Desktop', () => {
+	const VOLLE_KARTE = 'Karte mit Wartehinweis, Zaehlern und Frist'
+
+	// Die Karten haben auf dem Desktop eine feste, schmalere Breite als auf dem Handy.
+	test.use({ viewport: { width: 1440, height: 900 } })
+
+	test.beforeAll(async ({ browser }) => {
+		const kontext = await browser.newContext({ storageState: INTERN.sitzung })
+		try {
+			const api = await Api.fuer(kontext.request)
+			const ticket = await api.ticketAnlegen(projekt.boardId, {
+				title: VOLLE_KARTE,
+				columnId: projekt.spalten[0].id,
+				visibility: 'public',
+			})
+			await api.ticketAktualisieren(projekt.boardId, ticket.id, { dueDate: '2030-11-22' })
+			await api.kommentarAnlegen(projekt.boardId, ticket.id, 'Entwuerfe liegen bereit')
+			await api.schrittAnlegen(projekt.boardId, ticket.id, 'Freigabe erteilen', KUNDE.uid)
+			await api.schrittAnlegen(projekt.boardId, ticket.id, 'Feedback einarbeiten')
+		} finally {
+			await kontext.close()
+		}
+	})
+
+	test('Wartehinweis, Zaehler und Frist ueberlappen sich nicht', async ({ page }) => {
+		await page.goto(`${APP_PFAD}#/boards/${projekt.boardId}`)
+		const karte = page.locator('.pw-card', { hasText: VOLLE_KARTE })
+		await expect(karte.locator('.pw-card__foot .pw-due')).toBeVisible({ timeout: 30_000 })
+
+		const befunde = await karte.locator('.pw-card__foot').evaluate((zeile) => {
+			const teile = Array.from(zeile.children) as HTMLElement[]
+			const funde: string[] = []
+			teile.forEach((teil, i) => {
+				const naechstes = teile[i + 1]
+				if (naechstes !== undefined && teil.getBoundingClientRect().right > naechstes.getBoundingClientRect().left + 1) {
+					funde.push(`${teil.className} ragt in ${naechstes.className}`)
+				}
+				if (!teil.classList.contains('pw-wait') && teil.scrollWidth > teil.clientWidth + 1) {
+					funde.push(`${teil.className} abgeschnitten (${teil.scrollWidth} > ${teil.clientWidth})`)
+				}
+			})
+			return funde
+		})
+
+		expect(befunde).toEqual([])
+	})
 })
 
 /**
