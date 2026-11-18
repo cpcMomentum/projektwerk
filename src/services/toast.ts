@@ -15,6 +15,9 @@
  * Ausnahme zu werfen und damit den Fehler zu verdecken, den sie melden sollte.
  */
 
+import { t } from '@nextcloud/l10n'
+import { WERKPLUS_LINKS } from '@/utils/werkplusLinks'
+
 /**
  * @param message Der Text für die Person vor dem Schirm.
  */
@@ -29,6 +32,31 @@ export function showError(message: string): void {
 	// verschwände spurlos — ausgerechnet der, den diese Funktion melden soll.
 	// eslint-disable-next-line no-console
 	console.error('[projektwerk]', message)
+}
+
+// An einer Grenze des freien Umfangs (werkplusLimit) mit Link zu WerkPlus, sonst wie showError.
+export function showFailure(error: unknown, fallback: string): void {
+	const e = error as { status?: number, message?: string, data?: { werkplusLimit?: unknown } } | undefined
+	const message = e?.message ?? fallback
+	// 402 steht nur für Grenzen des freien Umfangs; so trägt auch eine künftige Grenze ohne Flag den Link.
+	if (e?.data?.werkplusLimit !== true && e?.status !== 402) {
+		showError(message)
+		return
+	}
+	const toast = (globalThis as { OCP?: { Toast?: { error?(m: string, o?: Record<string, unknown>): void } } }).OCP?.Toast
+	if (toast?.error === undefined) {
+		showError(message)
+		return
+	}
+	const link = `<a href="${WERKPLUS_LINKS.buy}" target="_blank" rel="noopener noreferrer" style="margin-inline-start: 0.5em; text-decoration: underline; white-space: nowrap">${escapeHtml(t('projektwerk', 'Mit WerkPlus freischalten'))}</a>`
+	toast.error(`<span>${escapeHtml(message)}</span>${link}`, { isHTML: true, timeout: 15000 })
+}
+
+/**
+ * @param text Beliebiger Text, der in HTML landet.
+ */
+function escapeHtml(text: string): string {
+	return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
 }
 
 /**

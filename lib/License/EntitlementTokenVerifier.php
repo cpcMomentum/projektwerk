@@ -95,6 +95,8 @@ final class EntitlementTokenVerifier {
 			}
 		}
 		$licensedEmployees = $claims['licensedEmployees'] ?? null;
+		$trial = $claims['trial'] ?? null;
+		$licenseValidUntil = $claims['licenseValidUntil'] ?? null;
 
 		return new EntitlementToken(
 			$tier,
@@ -103,6 +105,8 @@ final class EntitlementTokenVerifier {
 			$claims['exp'],
 			max($claims['exp'], $claims['graceUntil']),
 			self::positiveCount($licensedEmployees),
+			is_bool($trial) ? $trial : null,
+			self::positiveCount($licenseValidUntil),
 		);
 	}
 

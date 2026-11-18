@@ -217,7 +217,7 @@ import NcTextField from '@nextcloud/vue/components/NcTextField'
 import { fetchBoard } from '@/services/boards'
 import { ownCompany } from '@/services/ownCompany'
 import { addMember, searchCandidates, updateBoard } from '@/services/settings'
-import { showError } from '@/services/toast'
+import { showFailure } from '@/services/toast'
 import { useBoardStore } from '@/stores/boardStore'
 
 const STEP_COUNT = 5
@@ -399,7 +399,7 @@ export default defineComponent({
 			try {
 				await this.persistStep()
 			} catch (e) {
-				showError((e as { message?: string }).message ?? t('projektwerk', 'Anlegen fehlgeschlagen'))
+				showFailure(e, t('projektwerk', 'Anlegen fehlgeschlagen'))
 				this.saving = false
 
 				return
@@ -428,7 +428,7 @@ export default defineComponent({
 			try {
 				await this.persistStep()
 			} catch (e) {
-				showError((e as { message?: string }).message ?? t('projektwerk', 'Anlegen fehlgeschlagen'))
+				showFailure(e, t('projektwerk', 'Anlegen fehlgeschlagen'))
 				this.saving = false
 
 				return
@@ -522,7 +522,7 @@ export default defineComponent({
 				} catch (e) {
 					if (token === this.searchToken) {
 						this.candidates = []
-						showError((e as { message?: string }).message ?? t('projektwerk', 'Suche fehlgeschlagen'))
+						showFailure(e, t('projektwerk', 'Suche fehlgeschlagen'))
 					}
 				} finally {
 					if (token === this.searchToken) {
@@ -569,7 +569,7 @@ export default defineComponent({
 				this.memberSearch = ''
 				this.candidates = []
 			} catch (e) {
-				showError((e as { message?: string }).message ?? t('projektwerk', 'Mitglied konnte nicht hinzugefügt werden'))
+				showFailure(e, t('projektwerk', 'Mitglied konnte nicht hinzugefügt werden'))
 			} finally {
 				this.saving = false
 			}

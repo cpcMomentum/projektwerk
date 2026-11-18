@@ -27,7 +27,7 @@ const updateStep = vi.fn()
 
 vi.mock('@/services/tasks', () => ({ fetchTasks: () => Promise.resolve({ stepTickets: [], steps: [], tickets: [], boards: {} }) }))
 vi.mock('@/services/steps', () => ({ updateStep: (...args: unknown[]) => updateStep(...args) }))
-vi.mock('@/services/toast', () => ({ showError: () => {} }))
+vi.mock('@/services/toast', () => ({ showError: () => {}, showFailure: () => {} }))
 
 /** Fester „heute"-Wert, damit „überfällig" nicht vom Testtag abhängt. */
 const HEUTE = new Date('2026-08-09T09:00:00Z')

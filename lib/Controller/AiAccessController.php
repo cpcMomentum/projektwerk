@@ -43,7 +43,7 @@ class AiAccessController extends Controller {
 		}
 		// Ausschalten muss auch ohne Lizenz gehen.
 		if ($publicWrite && !$this->entitlement->mcpAllowed()) {
-			return new JSONResponse(['error' => $this->l10n->t('Der KI-Zugriff über MCP ist Teil von WerkPlus.')], Http::STATUS_PAYMENT_REQUIRED);
+			return new JSONResponse(['error' => $this->l10n->t('Der KI-Zugriff über MCP ist Teil von WerkPlus.'), 'werkplusLimit' => true], Http::STATUS_PAYMENT_REQUIRED);
 		}
 
 		$this->config->setPublicWriteAllowed($publicWrite);

@@ -31,7 +31,7 @@ vi.mock('@/services/tickets', () => ({
 	moveTicket: () => Promise.resolve(),
 	markTicketRead: () => Promise.resolve(),
 }))
-vi.mock('@/services/toast', () => ({ showError: () => {}, showUndo: () => {} }))
+vi.mock('@/services/toast', () => ({ showError: () => {}, showFailure: () => {}, showUndo: () => {} }))
 vi.mock('@/components/TicketDetail.vue', () => ({ default: { name: 'TicketDetail', template: '<div />' } }))
 vi.mock('@/components/CreateTicketDialog.vue', () => ({ default: { name: 'CreateTicketDialog', template: '<div />' } }))
 vi.mock('@/components/board/BoardDragLayer.vue', () => ({ default: { name: 'BoardDragLayer', template: '<div />' } }))

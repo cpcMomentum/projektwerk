@@ -27,7 +27,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useOverviewStore } from '@/stores/overviewStore'
 
 vi.mock('@/services/overview', () => ({ fetchOverview: () => Promise.resolve({ tickets: [], waiting: {}, boards: {}, names: {} }) }))
-vi.mock('@/services/toast', () => ({ showError: () => {} }))
+vi.mock('@/services/toast', () => ({ showError: () => {}, showFailure: () => {} }))
 
 /** Fester „heute"-Wert, damit die Standdauer nicht vom Testtag abhängt. */
 const HEUTE = new Date('2026-08-13T09:00:00Z')

@@ -129,7 +129,7 @@ describe('WhatsNewDialog', () => {
 
 		const links = wrapper.findAll('.whatsnew__link')
 		expect(links).toHaveLength(1)
-		expect(links[0].attributes('href')).toBe('https://werkwolke.de')
+		expect(links[0].attributes('href')).toBe('https://werkwolke.de/funktionen#projektwerk')
 		expect(links[0].attributes('rel')).toContain('noopener')
 	})
 

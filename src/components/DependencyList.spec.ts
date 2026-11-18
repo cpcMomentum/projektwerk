@@ -16,7 +16,7 @@ vi.mock('@/services/tickets', () => ({
 	addDependency: (...args: unknown[]) => addDependency(...args),
 	removeDependency: (...args: unknown[]) => removeDependency(...args),
 }))
-vi.mock('@/services/toast', () => ({ showError: vi.fn() }))
+vi.mock('@/services/toast', () => ({ showError: vi.fn(), showFailure: vi.fn() }))
 vi.mock('@nextcloud/l10n', () => ({ t: (_app: string, text: string) => text }))
 vi.mock('@nextcloud/vue/components/NcSelect', () => ({
 	default: {

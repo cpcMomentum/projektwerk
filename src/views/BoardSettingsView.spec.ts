@@ -59,7 +59,7 @@ vi.mock('@/services/settings', () => ({
 	setColumnFinalOutcome: vi.fn(),
 	updateMember: vi.fn(),
 }))
-vi.mock('@/services/toast', () => ({ showError: () => {}, showUndo: () => {} }))
+vi.mock('@/services/toast', () => ({ showError: () => {}, showFailure: () => {}, showUndo: () => {} }))
 vi.mock('@/components/FolderPicker.vue', () => ({ default: { name: 'FolderPicker', template: '<div />' } }))
 
 const route = reactive({ name: 'board-settings', params: { boardId: '5' }, query: {} as Record<string, string> })

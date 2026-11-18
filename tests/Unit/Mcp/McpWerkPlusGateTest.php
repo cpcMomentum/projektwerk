@@ -77,6 +77,7 @@ class McpWerkPlusGateTest extends TestCase {
 		$response = $controller->save(true);
 
 		$this->assertSame(Http::STATUS_PAYMENT_REQUIRED, $response->getStatus());
+		$this->assertTrue($response->getData()['werkplusLimit']);
 		$this->assertFalse($controller->show()->getData()['werkplus']);
 	}
 

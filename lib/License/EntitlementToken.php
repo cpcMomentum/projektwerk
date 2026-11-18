@@ -25,6 +25,9 @@ final class EntitlementToken {
 		public readonly int $expiresAt,
 		public readonly int $graceUntil,
 		public readonly ?int $licensedEmployees,
+		// null: Token von vor dem 18.11.2026 ohne diesen Anspruch.
+		public readonly ?bool $trial = null,
+		public readonly ?int $licenseValidUntil = null,
 	) {
 	}
 

@@ -810,7 +810,7 @@ import {
 	updateBoard,
 	updateMember,
 } from '@/services/settings'
-import { showError } from '@/services/toast'
+import { showFailure } from '@/services/toast'
 import { useBoardStore } from '@/stores/boardStore'
 
 /** Die Ordner der Dateiablage: Projektordner (#351) und die beiden Vorgangs-Ordner. */
@@ -1279,7 +1279,7 @@ export default defineComponent({
 				// stehen, ueberdeckten sie den Stand vom Server.
 				this.columnDrafts = {}
 			} catch (e) {
-				showError((e as { message?: string }).message ?? fallback)
+				showFailure(e, fallback)
 			} finally {
 				this.busy = false
 			}
@@ -1537,7 +1537,7 @@ export default defineComponent({
 					this.removeMemberImpact = impact.privateTickets
 				}
 			} catch (e) {
-				showError((e as { message?: string }).message ?? t('projektwerk', 'Die Vorschau konnte nicht geladen werden'))
+				showFailure(e, t('projektwerk', 'Die Vorschau konnte nicht geladen werden'))
 				this.cancelRemoveMember()
 			}
 		},
@@ -1638,7 +1638,7 @@ export default defineComponent({
 						// mit einer leeren Liste — die Meldung sagt dann, woran es
 						// liegt, statt „niemand gefunden" vorzutäuschen.
 						this.candidates = []
-						showError((e as { message?: string }).message ?? t('projektwerk', 'Suche fehlgeschlagen'))
+						showFailure(e, t('projektwerk', 'Suche fehlgeschlagen'))
 					}
 				} finally {
 					if (token === this.searchToken) {

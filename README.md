@@ -43,6 +43,13 @@ Ist Guests im Einsatz, muss `projektwerk` (und für Anhänge auch `viewer`) auf 
 Freigabeliste stehen — sonst bekommen Gäste eine 403-Seite. Die App prüft das selbst
 über einen Setup-Check und meldet sich nur, wenn Guests überhaupt installiert ist.
 
+## WerkPlus (optional)
+
+ProjektWerk ist kostenlos und Open Source. Wer die Weiterentwicklung
+unterstützen möchte, findet mit WerkPlus optionale Zusatzfunktionen für alle
+Werk-Apps. Welche es für ProjektWerk gibt, steht auf
+https://werkwolke.de/funktionen#projektwerk
+
 ## Anforderungen
 
 - Nextcloud 33–34

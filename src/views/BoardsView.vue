@@ -125,7 +125,7 @@ import CreateBoardWizard from '@/components/CreateBoardWizard.vue'
 import ProjectTile from '@/components/ProjectTile.vue'
 import { fetchBoards, setBoardPin } from '@/services/boards'
 import { projectTiles } from '@/services/projectTiles'
-import { showError } from '@/services/toast'
+import { showFailure } from '@/services/toast'
 import { useBoardStore } from '@/stores/boardStore'
 import { useOverviewStore } from '@/stores/overviewStore'
 
@@ -234,7 +234,7 @@ export default defineComponent({
 					}
 					this.allBoards = alle
 				} catch (e) {
-					showError((e as { message?: string }).message ?? t('projektwerk', 'Archivierte Projekte konnten nicht geladen werden'))
+					showFailure(e, t('projektwerk', 'Archivierte Projekte konnten nicht geladen werden'))
 					return
 				}
 			}
@@ -260,7 +260,7 @@ export default defineComponent({
 					}
 				}
 			} catch (e) {
-				showError((e as { message?: string }).message ?? t('projektwerk', 'Anpinnen fehlgeschlagen'))
+				showFailure(e, t('projektwerk', 'Anpinnen fehlgeschlagen'))
 			}
 		},
 

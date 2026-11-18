@@ -89,7 +89,7 @@ class ReplyMailboxController extends Controller {
 				'imapPasswordClear' => $imapPasswordClear,
 			]);
 		} catch (WerkPlusLimitException $e) {
-			return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_PAYMENT_REQUIRED);
+			return new JSONResponse(['error' => $e->getMessage(), 'werkplusLimit' => true], Http::STATUS_PAYMENT_REQUIRED);
 		}
 
 		$nachher = $this->settings->getPublicConfig();

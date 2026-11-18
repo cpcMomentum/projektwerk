@@ -7,13 +7,13 @@ import type * as L10n from '@nextcloud/l10n'
 import type { LicenseStatus } from '@/services/license'
 
 import { flushPromises, mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import WerkPlusSettings from '@/components/WerkPlusSettings.vue'
 
 vi.mock('@nextcloud/l10n', async (importOriginal) => ({
 	...(await importOriginal<typeof L10n>()),
 	t: (_app: string, text: string, vars?: Record<string, string>) => text.replace(/\{(\w+)\}/g, (_m, k: string) => vars?.[k] ?? ''),
-	n: (_app: string, _one: string, other: string, count: number) => other.replace('%n', String(count)),
+	n: (_app: string, _one: string, other: string, count: number, vars?: Record<string, string>) => other.replace('%n', String(count)).replace(/\{(\w+)\}/g, (_m, k: string) => vars?.[k] ?? ''),
 }))
 
 const getLicense = vi.fn<() => Promise<LicenseStatus>>()
@@ -30,9 +30,9 @@ vi.mock('@/services/license', () => ({
 
 const stubs = {
 	NcButton: {
-		props: ['variant', 'disabled'],
+		props: ['variant', 'disabled', 'href', 'target'],
 		emits: ['click'],
-		template: '<button class="stub-button" :disabled="disabled" @click="$emit(\'click\')"><slot /></button>',
+		template: '<button class="stub-button" :disabled="disabled" :data-href="href" :data-target="target" @click="$emit(\'click\')"><slot /></button>',
 	},
 	NcNoteCard: {
 		props: ['type', 'text'],
@@ -60,6 +60,9 @@ function status(teil: Partial<LicenseStatus> = {}): LicenseStatus {
 		features: [],
 		expiresAt: null,
 		graceUntil: null,
+		trial: false,
+		licenseValidUntil: null,
+		trialEnded: false,
 		lastCheckAt: null,
 		lastError: null,
 		storeOutdated: false,
@@ -97,12 +100,24 @@ describe('WerkPlusSettings', () => {
 		getLicense.mockReset()
 		activateLicense.mockReset()
 		startTrial.mockReset()
+		vi.useFakeTimers({ toFake: ['Date'] })
+		vi.setSystemTime(new Date('2026-11-20T12:00:00Z'))
 	})
 
-	it('ohne Schlüssel: Eintragen und Testen, kein Prüfen oder Entfernen', async () => {
+	afterEach(() => {
+		vi.useRealTimers()
+	})
+
+	function kaufLink(wrapper: Awaited<ReturnType<typeof laden>>) {
+		return wrapper.findAll('.stub-button').find((b) => b.attributes('data-href') !== undefined)
+	}
+
+	it('ohne Schlüssel: Eintragen, Testen und Kaufen, kein Prüfen oder Entfernen', async () => {
 		const wrapper = await laden(status())
 
-		expect(knoepfe(wrapper)).toEqual(['Schlüssel prüfen und speichern', '30 Tage testen'])
+		expect(knoepfe(wrapper)).toEqual(['Schlüssel prüfen und speichern', '30 Tage testen', 'WerkPlus kaufen'])
+		expect(kaufLink(wrapper)?.attributes('data-href')).toBe('https://werkwolke.de/preis?app=projektwerk')
+		expect(kaufLink(wrapper)?.attributes('data-target')).toBe('_blank')
 		expect(wrapper.find('.stub-button').attributes('disabled')).toBeDefined()
 		expect(wrapper.find('dl').exists()).toBe(false)
 		expect(wrapper.text()).toContain('3f2a1b64-9c8d-4e7f-a1b2-c3d4e5f60718')
@@ -115,6 +130,75 @@ describe('WerkPlusSettings', () => {
 		expect(wrapper.find('dl').text()).toContain('…69B6')
 		expect(wrapper.find('dl').text()).toContain('Lizenzierte Mitarbeitende12')
 		expect(knoepfe(wrapper)).toEqual(['Speichern und prüfen', 'Jetzt prüfen', 'Schlüssel entfernen'])
+	})
+
+	it('gekaufter Schlüssel: Laufzeit aus licenseValidUntil, nie das Token-Ende, kein Kauf-Link', async () => {
+		const wrapper = await laden(aktiv({ licenseValidUntil: '2027-11-18T00:00:00Z' }))
+
+		const facts = wrapper.find('dl').text()
+		expect(facts).toContain('Laufzeit bis' + new Date('2027-11-18T00:00:00Z').toLocaleDateString())
+		expect(facts).not.toContain(new Date('2026-12-05T12:00:00Z').toLocaleDateString())
+		expect(facts).not.toContain('Gültig bis')
+		expect(kaufLink(wrapper)).toBeUndefined()
+	})
+
+	it('ohne licenseValidUntil keine Laufzeit-Zeile, auch nicht ersatzweise exp', async () => {
+		const wrapper = await laden(aktiv())
+
+		expect(wrapper.find('dl').text()).not.toContain('Laufzeit')
+		expect(wrapper.find('dl').text()).not.toContain('Gültig bis')
+	})
+
+	it('Laufzeit vorbei, Token noch in der Karenz: Karenz-Ende', async () => {
+		const wrapper = await laden(aktiv({ state: 'grace', licenseValidUntil: '2026-11-18T00:00:00Z', graceUntil: '2026-12-02T00:00:00Z' }))
+
+		expect(wrapper.find('dl').text()).toContain('Laufzeit abgelaufen, Karenz bis ' + new Date('2026-12-02T00:00:00Z').toLocaleDateString())
+	})
+
+	it('Testzeitraum läuft: Tarif, Ende mit Resttagen, Jetzt kaufen und Hinweis zum eigenen Schlüssel', async () => {
+		const wrapper = await laden(aktiv({ trial: true, licenseValidUntil: '2026-11-27T12:00:00Z' }))
+
+		const facts = wrapper.find('dl').text()
+		expect(facts).toContain('WerkPlus – Testzeitraum')
+		expect(facts).toContain('Gültig bis' + new Date('2026-11-27T12:00:00Z').toLocaleDateString() + ' (noch 7 Tage)')
+		expect(kaufLink(wrapper)?.text()).toBe('Jetzt kaufen')
+		expect(wrapper.text()).toContain('er ersetzt den Testschlüssel')
+	})
+
+	it('Testzeitraum beendet: ein Hinweis statt zwei und Jetzt kaufen', async () => {
+		const wrapper = await laden(status({
+			keySet: true,
+			keyHint: '…69B6',
+			trialEnded: true,
+			lastError: { code: 'KEY_EXPIRED', message: 'Die Lizenz ist abgelaufen.', at: null },
+		}))
+
+		expect(wrapper.findAll('.stub-note--warning').map((n) => n.text())).toEqual(['Testzeitraum beendet. ProjektWerk arbeitet im freien Umfang weiter, deine Daten bleiben erhalten.'])
+		expect(kaufLink(wrapper)?.text()).toBe('Jetzt kaufen')
+	})
+
+	it('gekaufter Schlüssel, Token fehlt nur gerade oder ist ungültig: kein Kauf-Link', async () => {
+		const ohneToken = await laden(status({ keySet: true, keyHint: '…69B6', lastError: { code: 'SERVER_ERROR', message: 'Fehler', at: null } }))
+		expect(kaufLink(ohneToken)).toBeUndefined()
+
+		const ungueltig = await laden(status({ keySet: true, keyHint: '…69B6', state: 'invalid' }))
+		expect(kaufLink(ungueltig)).toBeUndefined()
+	})
+
+	it('abgelaufene gekaufte Lizenz: Jetzt kaufen', async () => {
+		const abgelaufen = await laden(aktiv({ state: 'expired' }))
+		expect(kaufLink(abgelaufen)?.text()).toBe('Jetzt kaufen')
+
+		const gesperrt = await laden(status({ keySet: true, keyHint: '…69B6', lastError: { code: 'KEY_EXPIRED', message: 'abgelaufen', at: null } }))
+		expect(kaufLink(gesperrt)?.text()).toBe('Jetzt kaufen')
+	})
+
+	it('Funktionen-Link zeigt auf die Funktionen-Adresse und öffnet ohne Referer', async () => {
+		const wrapper = await laden(status())
+
+		const link = wrapper.find('a[href="https://werkwolke.de/funktionen#projektwerk"]')
+		expect(link.attributes('target')).toBe('_blank')
+		expect(link.attributes('rel')).toBe('noopener noreferrer')
 	})
 
 	it('eine neuere Lizenzablage: Hinweis auf ein Update, nichts lässt sich ändern', async () => {
