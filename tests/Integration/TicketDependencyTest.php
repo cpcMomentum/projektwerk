@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OCA\Projektwerk\Tests\Integration;
 
 use OCA\Projektwerk\Access\ViewerContext;
+use OCA\Projektwerk\Db\TicketLog;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Mcp\AuthenticatedCaller;
 use OCA\Projektwerk\Mcp\McpConfig;
@@ -20,6 +21,7 @@ use OCA\Projektwerk\Mcp\Tools\GetTicket;
 use OCA\Projektwerk\Mcp\Tools\RemoveDependency;
 use OCA\Projektwerk\Service\TicketDependencyService;
 use OCA\Projektwerk\Service\TicketReadModel;
+use OCA\Projektwerk\Service\TicketService;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IAppConfig;
@@ -121,6 +123,78 @@ class TicketDependencyTest extends IntegrationTestCase {
 		$removed = $this->call(RemoveDependency::class, $args + ['confirm_public' => true]);
 		$this->assertFalse($removed->isError(), $this->text($removed));
 		$this->assertSame(0, $this->rowCount());
+	}
+
+	public function testAddingAndRemovingALinkShowsInTheHistoryOfTheWaitingTicket(): void {
+		$anna = $this->as(LeakMatrixFixture::ANNA);
+		$this->service()->add($anna, $this->id('public/anna'), $this->id('public/bert'));
+		$this->service()->remove($anna, $this->id('public/anna'), $this->id('public/bert'));
+
+		$eintraege = $this->verlauf(LeakMatrixFixture::CARLA, 'public/anna');
+		$this->assertSame([TicketLog::DEPENDENCY_ADDED, TicketLog::DEPENDENCY_REMOVED], array_column($eintraege, 'action'));
+		$this->assertSame([LeakMatrixFixture::ANNA, LeakMatrixFixture::ANNA], array_column($eintraege, 'actor'));
+		$this->assertStringContainsString('public/bert', $eintraege[0]['subject']);
+	}
+
+	public function testTheHistoryNeverNamesAPartnerTheViewerCannotSee(): void {
+		$anna = $this->as(LeakMatrixFixture::ANNA);
+		$this->service()->add($anna, $this->id('public/anna'), $this->id('internal/anna'));
+		$this->service()->remove($anna, $this->id('public/anna'), $this->id('internal/anna'));
+
+		$this->assertCount(2, $this->verlauf(LeakMatrixFixture::ANNA, 'public/anna'));
+		$this->assertSame([], $this->verlauf(LeakMatrixFixture::CARLA, 'public/anna'), 'Die Kundenseite erfährt weder Titel noch Existenz des internen Vorgangs.');
+	}
+
+	public function testAPartnerThatLaterBecomesVisibleDoesNotRevealItsHiddenPast(): void {
+		$anna = $this->as(LeakMatrixFixture::ANNA);
+		$tickets = Server::get(TicketService::class);
+		$partner = $tickets->create($anna, 'Heikler Arbeitstitel', null, 'internal', $this->fixture->columnIds[LeakMatrixFixture::COLUMN_A]);
+		$partnerId = (int)$partner->getId();
+		$this->service()->add($anna, $this->id('public/anna'), $partnerId);
+
+		$partner = $tickets->update($anna, $partnerId, (int)$partner->getVersion(), ['title' => 'Unverfänglich']);
+		$tickets->changeVisibility($anna, $partnerId, (int)$partner->getVersion(), 'public');
+
+		$this->assertSame([], $this->verlauf(LeakMatrixFixture::CARLA, 'public/anna'), 'Der Eintrag aus der internen Zeit bleibt der Kundenseite verborgen.');
+		$this->assertSame('#' . $partner->getNumber() . ' Unverfänglich', $this->verlauf(LeakMatrixFixture::ANNA, 'public/anna')[0]['subject']);
+		$this->assertSame(0, $this->storedTitles('Heikler Arbeitstitel'), 'Der Titel steht nie im Eintrag.');
+
+		$this->service()->remove($anna, $this->id('public/anna'), $partnerId);
+		$this->assertSame([TicketLog::DEPENDENCY_REMOVED], array_column($this->verlauf(LeakMatrixFixture::CARLA, 'public/anna'), 'action'), 'Was nach dem Wechsel geschieht, sieht die Kundenseite.');
+	}
+
+	private function storedTitles(string $title): int {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select($qb->func()->count('*'))
+			->from('pwerk_ticket_log')
+			->where($qb->expr()->in('action', $qb->createNamedParameter(TicketLog::DEPENDENCY_ACTIONS, IQueryBuilder::PARAM_STR_ARRAY)))
+			->andWhere($qb->expr()->like('subject', $qb->createNamedParameter('%' . $this->db->escapeLikeParameter($title) . '%')));
+
+		return (int)$qb->executeQuery()->fetchOne();
+	}
+
+	public function testRepeatingALinkOrRemovingAMissingOneLeavesNoEntry(): void {
+		$anna = $this->as(LeakMatrixFixture::ANNA);
+		$this->service()->add($anna, $this->id('public/anna'), $this->id('public/bert'));
+		$this->service()->add($anna, $this->id('public/anna'), $this->id('public/bert'));
+		$this->service()->remove($anna, $this->id('public/bert'), $this->id('internal/anna'));
+
+		$this->assertCount(1, $this->verlauf(LeakMatrixFixture::ANNA, 'public/anna'));
+		$this->assertSame([], $this->verlauf(LeakMatrixFixture::ANNA, 'public/bert'));
+	}
+
+	/**
+	 * Nur die Einträge zu Abhängigkeiten, älteste zuerst.
+	 *
+	 * @return list<array{action: string, actor: string, subject: ?string}>
+	 */
+	private function verlauf(string $userId, string $label): array {
+		$alle = Server::get(TicketReadModel::class)->history($this->as($userId), $this->id($label));
+
+		return array_values(array_map(
+			static fn (TicketLog $e): array => ['action' => $e->getAction(), 'actor' => $e->getActorUserId(), 'subject' => $e->getSubject()],
+			array_filter($alle, static fn (TicketLog $e): bool => in_array($e->getAction(), TicketLog::DEPENDENCY_ACTIONS, true)),
+		));
 	}
 
 	private function service(): TicketDependencyService {

@@ -752,6 +752,9 @@ OC.L10N.register(
     "Kommunikation" : "Kommunikation",
     "Lizenz" : "Lizenz",
     "Kein GitHub-Token hinterlegt. Bitte in „Einstellungen\" einen Token eintragen." : "Kein GitHub-Token hinterlegt. Bitte in „Einstellungen\" einen Token eintragen.",
-    "Der GitHub-Token ist ungültig oder abgelaufen. Bitte in „Einstellungen\" erneuern." : "Der GitHub-Token ist ungültig oder abgelaufen. Bitte in „Einstellungen\" erneuern."
+    "Der GitHub-Token ist ungültig oder abgelaufen. Bitte in „Einstellungen\" erneuern." : "Der GitHub-Token ist ungültig oder abgelaufen. Bitte in „Einstellungen\" erneuern.",
+    "hat eingetragen, dass dieser Vorgang auf „{ticket}“ wartet" : "hat eingetragen, dass dieser Vorgang auf „{ticket}“ wartet",
+    "hat entfernt, dass dieser Vorgang auf „{ticket}“ wartet" : "hat entfernt, dass dieser Vorgang auf „{ticket}“ wartet",
+    "Die App „Auditing / Logging“ (admin_audit) ist nicht aktiv. Änderungen über KI-Werkzeuge werden dann nicht im Audit-Log festgehalten." : "Die App „Auditing / Logging“ (admin_audit) ist nicht aktiv. Änderungen über KI-Werkzeuge werden dann nicht im Audit-Log festgehalten."
 },
 "nplurals=2; plural=(n != 1);");
