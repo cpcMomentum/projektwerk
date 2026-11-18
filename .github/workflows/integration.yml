@@ -148,8 +148,10 @@ jobs:
         include:
           - db: mariadb
             image: mariadb:11
+            health: healthcheck.sh --connect --innodb_initialized
           - db: mysql
             image: mysql:8.4
+            health: mysqladmin ping -h 127.0.0.1 -u root -pci-root-pass
 
     services:
       database:
@@ -162,7 +164,7 @@ jobs:
         ports:
           - 3306:3306
         options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -pci-root-pass"
+          --health-cmd="${{ matrix.health }}"
           --health-interval=5s --health-timeout=5s --health-retries=30
 
     steps:
