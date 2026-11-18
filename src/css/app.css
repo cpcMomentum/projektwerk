@@ -3710,6 +3710,13 @@ body .app-projektwerk .v-select.select {
 	min-width: 0;
 	overflow: hidden;
 	white-space: nowrap;
+	flex-wrap: wrap;
+	height: 18px;
+}
+
+/* Passt „seit …" nicht ganz, rutscht es in die verdeckte zweite Zeile statt angeschnitten zu werden. */
+.app-projektwerk .pw-card__foot .pw-wait__since {
+	flex-shrink: 0;
 }
 
 /*
@@ -3722,7 +3729,7 @@ body .app-projektwerk .v-select.select {
 	display: inline-flex;
 	align-items: center;
 	gap: 10px;
-	min-width: 0;
+	flex-shrink: 0;
 }
 
 /*
@@ -3746,6 +3753,7 @@ body .app-projektwerk .v-select.select {
 	gap: 3px;
 	font-variant-numeric: tabular-nums;
 	white-space: nowrap;
+	flex-shrink: 0;
 }
 
 .app-projektwerk .pw-card__foot > .pw-due:not(:first-child)::before {

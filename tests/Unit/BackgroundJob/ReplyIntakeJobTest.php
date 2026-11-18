@@ -17,6 +17,8 @@ use OCA\Projektwerk\Db\MailOutboxMapper;
 use OCA\Projektwerk\Db\Ticket;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Imap\ImapClient;
+use OCA\Projektwerk\Imap\ImapCommandRejectedException;
+use OCA\Projektwerk\Imap\ImapException;
 use OCA\Projektwerk\Service\CommentService;
 use OCA\Projektwerk\Service\ReplyMailboxSettings;
 use OCP\AppFramework\Utility\ITimeFactory;
@@ -26,7 +28,7 @@ use OCP\IUserManager;
 use OCP\L10N\IFactory;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
-use Psr\Log\NullLogger;
+use Psr\Log\AbstractLogger;
 use ReflectionMethod;
 
 /**
@@ -56,6 +58,11 @@ class ReplyIntakeJobTest extends TestCase {
 	private string $token;
 
 	private bool $archiviert = false;
+
+	/** @var list<int> */
+	private array $geholt = [];
+
+	private AbstractLogger $logger;
 
 	protected function setUp(): void {
 		parent::setUp();
@@ -117,7 +124,14 @@ class ReplyIntakeJobTest extends TestCase {
 			$this->comments,
 			$users,
 			$l10nFactory,
-			new NullLogger(),
+			$this->logger = new class extends AbstractLogger {
+				/** @var list<string> */
+				public array $zeilen = [];
+
+				public function log($level, string|\Stringable $message, array $context = []): void {
+					$this->zeilen[] = (string)$message;
+				}
+			},
 		);
 	}
 
@@ -293,6 +307,98 @@ class ReplyIntakeJobTest extends TestCase {
 		);
 	}
 
+	/**
+	 * Den Lauf über ein Postfach-Doppel fahren; Mails aus `$echte` sind gültige Antworten, alle anderen ohne Bezug.
+	 *
+	 * @param list<int>|\Throwable $treffer Antwort des Servers auf die Betreff-Suche.
+	 * @param list<int>|\Throwable $ungelesen Antwort des Servers auf die Suche nach allem Ungelesenen.
+	 * @param list<int> $echte
+	 */
+	private function lauf(array|\Throwable $treffer, array|\Throwable $ungelesen, array $echte): void {
+		$client = $this->createMock(ImapClient::class);
+		$client->method('uidSearch')->willReturnCallback(
+			static function (string $kriterium) use ($treffer, $ungelesen): array {
+				$antwort = $kriterium === 'UNSEEN' ? $ungelesen : $treffer;
+				if ($antwort instanceof \Throwable) {
+					throw $antwort;
+				}
+
+				return $antwort;
+			},
+		);
+		$this->geholt = [];
+		$client->method('uidFetchRaw')->willReturnCallback(
+			function (int $uid) use ($echte): string {
+				$this->geholt[] = $uid;
+
+				return in_array($uid, $echte, true)
+					? $this->raw(self::RECIPIENT_MAIL, $this->betreff(), 'Echte Antwort ' . $uid)
+					: $this->raw('fremd@example.org', 'Werbung', 'Kein Bezug');
+			},
+		);
+
+		(new ReflectionMethod(ReplyIntakeJob::class, 'abarbeiten'))->invoke($this->job, $client);
+	}
+
+	private function batch(): int {
+		return (new \ReflectionClassConstant(ReplyIntakeJob::class, 'BATCH'))->getValue();
+	}
+
+	public function testAReplyIsTakenOverEvenBehindMoreUnrelatedMailThanOneRunHandles(): void {
+		$antwort = $this->batch() * 3 + 1;
+		$this->comments->expects($this->once())->method('create');
+
+		$this->lauf([$antwort], range(1, $antwort), [$antwort]);
+	}
+
+	public function testRepliesComeFirstAndAreNotFetchedTwice(): void {
+		$this->lauf([3], [1, 2, 3], [3]);
+
+		$this->assertSame([3, 1, 2], $this->geholt);
+	}
+
+	public function testRepliesAndUnrelatedMailEachHaveTheirOwnLimitPerRun(): void {
+		$batch = $this->batch();
+		$treffer = range($batch + 1, $batch * 3);
+
+		$this->lauf($treffer, range(1, $batch * 3), []);
+
+		$this->assertSame([...array_slice($treffer, 0, $batch), ...range(1, $batch)], $this->geholt);
+	}
+
+	public function testTheSenderLimitSpansRepliesAndTheRest(): void {
+		$max = (new \ReflectionClassConstant(ReplyIntakeJob::class, 'MAX_JE_ABSENDER'))->getValue();
+		$alle = range(1, $max + 1);
+		$this->comments->expects($this->exactly($max))->method('create');
+
+		$this->lauf(array_slice($alle, 0, 5), $alle, $alle);
+	}
+
+	public function testAServerThatRejectsTheSubjectSearchFallsBackToMailboxOrder(): void {
+		$this->comments->expects($this->once())->method('create');
+
+		$this->lauf(new ImapCommandRejectedException('IMAP A003 BAD'), [1, 2, 3], [3]);
+
+		$this->assertSame([1, 2, 3], $this->geholt);
+	}
+
+	public function testALostConnectionDuringTheSubjectSearchEndsTheRun(): void {
+		$this->expectException(ImapException::class);
+
+		try {
+			$this->lauf(new ImapException('IMAP: Verbindung unerwartet geschlossen'), [1, 2, 3], [3]);
+		} finally {
+			$this->assertSame([], $this->geholt);
+		}
+	}
+
+	public function testRepliesAreTakenOverEvenWhenTheFullListCannotBeRead(): void {
+		$this->comments->expects($this->once())->method('create');
+		$this->expectException(ImapException::class);
+
+		$this->lauf([7], new ImapException('IMAP: Antwortzeile ueberschreitet das Limit'), [7]);
+	}
+
 	public function testRateLimitCapsCommentsPerSenderPerRun(): void {
 		// Über MAX_JE_ABSENDER hinaus wird kein weiterer Kommentar angelegt.
 		$max = (new \ReflectionClassConstant(ReplyIntakeJob::class, 'MAX_JE_ABSENDER'))->getValue();
@@ -305,5 +411,19 @@ class ReplyIntakeJobTest extends TestCase {
 				$counter,
 			);
 		}
+	}
+
+	public function testTheRunLimitIsLoggedWithTheAccountNotTheMailAddress(): void {
+		$max = (new \ReflectionClassConstant(ReplyIntakeJob::class, 'MAX_JE_ABSENDER'))->getValue();
+
+		$counter = [];
+		for ($i = 0; $i <= $max; $i++) {
+			$this->verarbeiten($this->raw(self::RECIPIENT_MAIL, $this->betreff(), 'Antwort ' . $i), $counter);
+		}
+
+		$grenze = array_values(array_filter($this->logger->zeilen, static fn (string $z): bool => str_contains($z, 'Lauf-Grenze')));
+		$this->assertCount(1, $grenze);
+		$this->assertStringContainsString(self::RECIPIENT, $grenze[0]);
+		$this->assertStringNotContainsString(self::RECIPIENT_MAIL, implode("\n", $this->logger->zeilen));
 	}
 }

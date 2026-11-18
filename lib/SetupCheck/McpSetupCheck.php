@@ -12,6 +12,7 @@ namespace OCA\Projektwerk\SetupCheck;
 use OCA\Projektwerk\Mcp\McpConfig;
 use OCA\Projektwerk\Service\EntitlementService;
 use OCA\Projektwerk\Mcp\TokenValidator;
+use OCP\App\IAppManager;
 use OCP\IAppConfig;
 use OCP\IConfig;
 use OCP\IL10N;
@@ -32,6 +33,7 @@ class McpSetupCheck implements ISetupCheck {
 		private TokenValidator $validator,
 		private IAppConfig $appConfig,
 		private IConfig $config,
+		private IAppManager $apps,
 		private IL10N $l10n,
 	) {
 	}
@@ -64,6 +66,9 @@ class McpSetupCheck implements ISetupCheck {
 		}
 		if ($this->config->getSystemValueString('memcache.distributed', '') === '') {
 			$problems[] = $this->l10n->t('Es ist kein verteilter Cache eingerichtet (memcache.distributed). Die Begrenzung fehlgeschlagener Anmeldungen am MCP-Endpunkt wirkt dann nicht.');
+		}
+		if (!$this->apps->isEnabledForAnyone('admin_audit')) {
+			$problems[] = $this->l10n->t('Die App „Auditing / Logging“ (admin_audit) ist nicht aktiv. Änderungen über KI-Werkzeuge werden dann nicht im Audit-Log festgehalten.');
 		}
 		try {
 			$refresh = $this->appConfig->getValueString('oidc', 'refresh_expire_time', '900');

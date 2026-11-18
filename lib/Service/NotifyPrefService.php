@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace OCA\Projektwerk\Service;
 
+use OCA\Projektwerk\Access\BoardAccess;
+use OCA\Projektwerk\Access\NotAMemberException;
 use OCA\Projektwerk\Db\NotifyPref;
 use OCA\Projektwerk\Db\NotifyPrefMapper;
 
@@ -16,9 +18,8 @@ use OCA\Projektwerk\Db\NotifyPrefMapper;
  * Die eigenen Kanalschalter lesen und setzen.
  *
  * **Die Grenze ist die Benutzerkennung, nicht ein Board.** Wer hier hereinkommt,
- * fragt nach seinen eigenen Schaltern — es gibt nichts Fremdes zu sehen und
- * nichts zu filtern. Deshalb steht der Dienst neben der Sichtbarkeitsregel und
- * nicht in ihr.
+ * fragt nach seinen eigenen Schaltern — es gibt nichts Fremdes zu sehen.
+ * Deshalb steht der Dienst neben der Sichtbarkeitsregel und nicht in ihr.
  *
  * Ein Schalter ist **kein Projektinhalt**. Dass jemand in Projekt 7 keine Mails
  * will, verrät nichts über Projekt 7 — es verrät etwas über die Person, und die
@@ -38,6 +39,7 @@ class NotifyPrefService {
 
 	public function __construct(
 		private NotifyPrefMapper $prefs,
+		private BoardAccess $access,
 	) {
 	}
 
@@ -74,20 +76,19 @@ class NotifyPrefService {
 	/**
 	 * Einen Schalter setzen — global oder für ein Projekt.
 	 *
-	 * **Ohne Prüfung, ob die Person Mitglied dieses Projekts ist.** Das ist
-	 * Absicht: Eine solche Prüfung wäre eine Auskunft darüber, welche Projekte
-	 * es gibt — wer eine fremde Kennung durchprobiert, erführe an der
-	 * Fehlermeldung, welche existieren. Ein Schalter zu einem Projekt, in dem
-	 * jemand nicht Mitglied ist, bewirkt schlicht nichts: Er bekäme von dort
-	 * ohnehin keine Benachrichtigung.
+	 * **Ein Projekt, in dem die Person nicht Mitglied ist, wird still
+	 * übergangen**, ohne Zeile und ohne Fehler. Ein Fehler wäre eine Auskunft
+	 * darüber, welche Projekte es gibt; eine Zeile bewirkte nichts und bliebe
+	 * für immer liegen, weil das Aufräumen nur echte Projekte kennt.
 	 *
 	 * @param string $userId Kennung der Person.
 	 * @param string $prefKey Einer der Kanäle oder Anlässe aus {@see NotifyPref}.
 	 * @param int $boardId Projekt, oder {@see NotifyPrefMapper::GLOBAL_SCOPE}.
 	 * @param bool $enabled Neuer Stand.
+	 * @return ?NotifyPref `null`, wenn die Person in diesem Projekt nicht Mitglied ist
 	 * @throws \InvalidArgumentException unbekannter Kanal oder negatives Projekt
 	 */
-	public function set(string $userId, string $prefKey, int $boardId, bool $enabled): NotifyPref {
+	public function set(string $userId, string $prefKey, int $boardId, bool $enabled): ?NotifyPref {
 		if (!in_array($prefKey, [...NotifyPref::CHANNELS, ...NotifyPref::EVENTS], true)) {
 			throw new \InvalidArgumentException('Unbekannter Schalter: ' . $prefKey);
 		}
@@ -99,6 +100,13 @@ class NotifyPrefService {
 			// Oberflaeche nicht anzeigt, aber die Aufloesung liest, ist genau
 			// die Sorte Einstellung, die niemand mehr findet.
 			throw new \InvalidArgumentException('Dieser Schalter gilt nur allgemein: ' . $prefKey);
+		}
+		if ($boardId !== NotifyPrefMapper::GLOBAL_SCOPE) {
+			try {
+				$this->access->contextFor($userId, $boardId);
+			} catch (NotAMemberException) {
+				return null;
+			}
 		}
 
 		foreach ($this->prefs->findForUser($userId) as $pref) {

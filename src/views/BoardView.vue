@@ -54,8 +54,8 @@
 
 				<!-- Ohne hinterlegte Adresse entfaellt der Knopf ersatzlos (§9). -->
 				<NcButton
-					v-if="store.board?.chatUrl"
-					:href="store.board.chatUrl"
+					v-if="chatUrl !== ''"
+					:href="chatUrl"
 					target="_blank"
 					rel="noopener">
 					{{ t('projektwerk', 'Zum Projektchat') }}
@@ -497,10 +497,11 @@ import PendingTicketCard from '@/components/PendingTicketCard.vue'
 import ProjectOverview from '@/components/ProjectOverview.vue'
 import TicketDetail from '@/components/TicketDetail.vue'
 import { deleteTicket as apiDeleteTicket, restoreTicket as apiRestoreTicket, fetchTicket, updateTicket } from '@/services/tickets'
-import { showError, showUndo } from '@/services/toast'
+import { showFailure, showUndo } from '@/services/toast'
 import { isConflict, reportWriteError } from '@/services/writeError'
 import { useBoardStore } from '@/stores/boardStore'
 import { useOutboxStore } from '@/stores/outboxStore'
+import { isWebAddress } from '@/utils/webAddress'
 
 /** Was die Vorlage über eine Spalte wissen muss — einmal je Neuzeichnen. */
 interface ColumnView {
@@ -566,6 +567,12 @@ export default defineComponent({
 		/** Link in die Dateien-App am Projektordner (#351), über die Datei-ID. */
 		projectFolderUrl(): string {
 			return this.store.projectFolder ? generateUrl('/f/{id}', { id: this.store.projectFolder.id }) : ''
+		},
+
+		/** Nur Web-Adressen werden zum Knopf; alles andere bleibt aus dem `href` heraus. */
+		chatUrl(): string {
+			const url = this.store.board?.chatUrl ?? ''
+			return isWebAddress(url) ? url : ''
 		},
 
 		boardId(): number {
@@ -776,7 +783,7 @@ export default defineComponent({
 				this.closeAddBoard()
 				this.$router.push({ name: 'board', params: { boardId: String(board.id) } })
 			} catch (e) {
-				showError((e as { message?: string }).message ?? t('projektwerk', 'Anlegen fehlgeschlagen'))
+				showFailure(e, t('projektwerk', 'Anlegen fehlgeschlagen'))
 			} finally {
 				this.addBusy = false
 			}
@@ -793,7 +800,7 @@ export default defineComponent({
 				this.deletingBoard = false
 				this.$router.push({ name: 'board', params: { boardId: String(next) } })
 			} catch (e) {
-				showError((e as { message?: string }).message ?? t('projektwerk', 'Löschen fehlgeschlagen'))
+				showFailure(e, t('projektwerk', 'Löschen fehlgeschlagen'))
 				this.deletingBoard = false
 				// Der Server weiß es besser als der geladene Stand, etwa wenn inzwischen ein Vorgang dazukam.
 				await this.store.open(this.boardId)

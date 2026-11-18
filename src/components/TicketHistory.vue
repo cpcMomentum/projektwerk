@@ -213,6 +213,10 @@ export default defineComponent({
 					return t('projektwerk', 'hat einen Kommentar geändert')
 				case 'comment_deleted':
 					return t('projektwerk', 'hat einen Kommentar gelöscht')
+				case 'dependency_added':
+					return t('projektwerk', 'hat eingetragen, dass dieser Vorgang auf „{ticket}“ wartet', { ticket: subject }, undefined, RAW)
+				case 'dependency_removed':
+					return t('projektwerk', 'hat entfernt, dass dieser Vorgang auf „{ticket}“ wartet', { ticket: subject }, undefined, RAW)
 				default:
 					return t('projektwerk', 'hat den Vorgang geändert')
 			}

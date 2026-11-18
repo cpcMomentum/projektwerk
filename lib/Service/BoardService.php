@@ -351,7 +351,13 @@ class BoardService {
 		if (array_key_exists('chatUrl', $changes)) {
 			// Reine Adresse für den Knopf „Zum Projektchat", am Projekt (#246).
 			// Leer heißt: Knopf entfällt ersatzlos.
-			$project->setChatUrl($this->trimOrNull($changes['chatUrl']));
+			$chatUrl = $this->trimOrNull($changes['chatUrl']);
+			// Nur bei einer Änderung prüfen: Das Formular schickt die Adresse mit
+			// jedem Speichern mit, ein Altwert darf Titel und Kunde nicht sperren.
+			if ($chatUrl !== $project->getChatUrl()) {
+				$this->assertWebAddress($chatUrl);
+			}
+			$project->setChatUrl($chatUrl);
 			$projectChanged = true;
 		}
 		if (array_key_exists('memberBoardsAllowed', $changes)) {
@@ -379,11 +385,14 @@ class BoardService {
 		}
 		if (array_key_exists('githubRepo', $changes)) {
 			// Reine Adresse „owner/repo" (#12). Leer heißt: kein Ziel — die
-			// Überführungs-Aktion bleibt dann aus. Die Formatprüfung sitzt bewusst
-			// erst beim Überführen ({@see GithubService}), damit ein aktiviertes
-			// Board ohne fertig eingetragenes Repo ein zulässiger Zwischenzustand
-			// bleibt.
-			$board->setGithubRepo($this->trimOrNull($changes['githubRepo']));
+			// Überführungs-Aktion bleibt dann aus, ein aktiviertes Board ohne
+			// eingetragenes Repo ist ein zulässiger Zwischenzustand.
+			$githubRepo = $this->trimOrNull($changes['githubRepo']);
+			// Ein unveränderter Altwert bleibt stehen, sonst ließe sich die Anbindung nicht einmal abschalten.
+			if ($githubRepo !== null && $githubRepo !== $board->getGithubRepo() && !GithubService::isRepoName($githubRepo)) {
+				throw new \InvalidArgumentException($this->l10n->t('Das Ziel-Repository muss im Format „owner/repo" angegeben sein.'));
+			}
+			$board->setGithubRepo($githubRepo);
 		}
 
 		$board->setUpdatedAt(new \DateTime());
@@ -564,7 +573,7 @@ class BoardService {
 	}
 
 	/**
-	 * Ein leeres Board endgültig löschen; Heimat-Mitglieder wandern auf ein anderes Board des Projekts.
+	 * Ein leeres Board endgültig löschen; Heimat-Mitglieder und gelöschte Vorgänge wandern auf ein anderes Board des Projekts.
 	 *
 	 * @return array{nextBoardId: int}
 	 * @throws NotManagerException
@@ -575,6 +584,8 @@ class BoardService {
 
 		$this->db->beginTransaction();
 		try {
+			// Zuerst das Projekt: Zwei Boards, die sich gegenseitig als Ziel hätten, löschen sonst gleichzeitig.
+			$this->projects->lock($viewer);
 			// Sperrt die Board-Zeile gegen gleichzeitiges Anlegen von Vorgängen.
 			$this->boards->bumpChangeSeq($viewer);
 			$ziel = $this->otherBoardId($viewer);
@@ -588,7 +599,7 @@ class BoardService {
 
 			$titel = (string)$this->boards->findForViewer($viewer)->getTitle();
 			$this->members->moveHomeBoard($viewer, $ziel);
-			$this->tickets->purgeDeletedInBoard($viewer);
+			$this->moveDeletedTickets($viewer, $ziel);
 			$verbleibend = array_values(array_filter(
 				$this->projectBoards($viewer),
 				static fn (Board $b): bool => (int)$b->getId() !== $viewer->boardId,
@@ -616,6 +627,30 @@ class BoardService {
 		$this->projectLog->record($viewer, ProjectLog::BOARD_DELETED, null, $titel);
 
 		return ['nextBoardId' => $ziel];
+	}
+
+	/** Gelöschte Vorgänge gehören oft der anderen Seite; wer das Board löscht, darf sie ihr nicht endgültig nehmen. */
+	private function moveDeletedTickets(ViewerContext $viewer, int $targetBoardId): void {
+		$ziel = $this->access->contextFor($viewer->userId, $targetBoardId);
+		// Sperrt das Ziel-Board, damit dort währenddessen keine Spalte entfernt wird.
+		$this->boards->bumpChangeSeq($ziel);
+		$zielspalten = $this->columns->findForBoard($ziel);
+		if ($zielspalten === []) {
+			throw new \InvalidArgumentException($this->l10n->t('Dieses Board kann nicht gelöscht werden.'));
+		}
+		$jeAusgang = [];
+		foreach ($zielspalten as $spalte) {
+			$jeAusgang[$spalte->getFinalOutcome() ?? ''] ??= (int)$spalte->getId();
+		}
+		$erste = (int)$zielspalten[0]->getId();
+
+		// Ein abgeschlossener Vorgang kommt wieder in eine Endspalte mit demselben Ausgang, sonst in die erste Spalte.
+		$zuordnung = [];
+		foreach ($this->columns->findForBoard($viewer) as $spalte) {
+			$zuordnung[(int)$spalte->getId()] = $jeAusgang[$spalte->getFinalOutcome() ?? ''] ?? $erste;
+		}
+
+		$this->tickets->moveDeletedToBoard($viewer, $ziel, $zuordnung, $erste);
 	}
 
 	/** Ein anderes Board desselben Projekts, aktive vor archivierten. */
@@ -661,6 +696,17 @@ class BoardService {
 	private function assertTitle(string $title): void {
 		if (trim($title) === '') {
 			throw new \InvalidArgumentException($this->l10n->t('Ein Projekt braucht einen Titel.'));
+		}
+	}
+
+	/**
+	 * Die Adresse landet unverändert im `href` eines Knopfs, den auch die Kundenseite sieht.
+	 *
+	 * @throws \InvalidArgumentException wenn sie nicht mit `https://` oder `http://` beginnt
+	 */
+	private function assertWebAddress(?string $url): void {
+		if ($url !== null && preg_match('#^https?://[^\s/]#i', $url) !== 1) {
+			throw new \InvalidArgumentException($this->l10n->t('Die Chat-Adresse muss mit „https://" oder „http://" beginnen.'));
 		}
 	}
 

@@ -11,6 +11,7 @@ namespace OCA\Projektwerk\Tests\Unit\License;
 
 use OCA\Projektwerk\License\InstanceId;
 use OCA\Projektwerk\License\SharedStore;
+use OCA\Projektwerk\License\TrialNotices;
 use OCA\Projektwerk\License\WerkPlusApiException;
 use OCA\Projektwerk\License\LicenseService;
 use OCA\Projektwerk\License\WerkPlusClient;
@@ -40,6 +41,7 @@ class LicenseServiceTest extends TestCase {
 	private ?\Closure $otherApp = null;
 	private WerkPlusClient&MockObject $client;
 	private ?LoggerInterface $logger = null;
+	private TrialNotices $trialNotices;
 
 	protected function setUp(): void {
 		parent::setUp();
@@ -51,6 +53,7 @@ class LicenseServiceTest extends TestCase {
 		$this->otherApp = null;
 		$this->client = $this->createMock(WerkPlusClient::class);
 		$this->logger = null;
+		$this->trialNotices = $this->createStub(TrialNotices::class);
 	}
 
 	/** @return array<string, string> */
@@ -104,6 +107,7 @@ class LicenseServiceTest extends TestCase {
 			$this->verifier(),
 			$appManager,
 			$this->logger ?? $this->createStub(LoggerInterface::class),
+			$this->trialNotices,
 		);
 	}
 
@@ -372,8 +376,139 @@ class LicenseServiceTest extends TestCase {
 		}
 
 		$this->assertSame('free', $service->tier());
-		$this->assertArrayHasKey('token', $this->shared, 'Die anderen Werk-Apps entscheiden selbst.');
+		$this->assertArrayNotHasKey('token', $this->shared, 'Vertrag Regel 2: alle Werk-Apps fallen gemeinsam auf Free.');
 		$this->assertSame(self::KEY, $this->shared['key']);
+	}
+
+	public function testExpiredTrialSendsTheEndNoticeBeforeTheTokenIsDropped(): void {
+		$this->storeToken(['trial' => true, 'licenseValidUntil' => self::NOW + 30 * 86400]);
+		$this->now = self::NOW + 31 * 86400;
+		$this->client->method('validate')->willThrowException(new WerkPlusApiException('KEY_EXPIRED', '', null, true));
+		$seenToken = null;
+		$this->trialNotices = $this->createMock(TrialNotices::class);
+		$this->trialNotices->expects($this->once())->method('sendDue')->willReturnCallback(
+			function ($token, int $now) use (&$seenToken): void {
+				$seenToken = $this->shared['token'] ?? null;
+				$this->assertTrue($token->trial);
+				$this->assertGreaterThanOrEqual(self::NOW + 30 * 86400, $now);
+			}
+		);
+		try {
+			$this->service()->refresh();
+		} catch (WerkPlusApiException) {
+		}
+
+		$this->assertNotNull($seenToken, 'Beim Versand lag das Token noch in der Ablage.');
+		$this->assertArrayNotHasKey('token', $this->shared);
+		$this->assertSame(self::KEY, $this->shared['key']);
+		$status = $this->service()->getStatus();
+		$this->assertTrue($status['trialEnded']);
+		$this->assertTrue($status['keySet']);
+	}
+
+	public function testExpiredPurchasedKeyIsNotShownAsEndedTrial(): void {
+		$this->storeToken();
+		$this->now = self::NOW + 400 * 86400;
+		$this->client->method('validate')->willThrowException(new WerkPlusApiException('KEY_EXPIRED'));
+		try {
+			$this->service()->refresh();
+		} catch (WerkPlusApiException) {
+		}
+
+		$this->assertFalse($this->service()->getStatus()['trialEnded']);
+	}
+
+	public function testRevokedKeySendsNoTrialNotice(): void {
+		$this->storeToken(['trial' => true]);
+		$this->client->method('validate')->willThrowException(new WerkPlusApiException('KEY_REVOKED'));
+		$this->trialNotices = $this->createMock(TrialNotices::class);
+		$this->trialNotices->expects($this->never())->method('sendDue');
+		try {
+			$this->service()->refresh();
+		} catch (WerkPlusApiException) {
+		}
+
+		$this->assertArrayNotHasKey('token', $this->shared);
+	}
+
+	public function testTokenIsNotDroppedWhenAnotherWerkAppSwitchedTheKeyMeanwhile(): void {
+		$this->storeToken();
+		$this->client->method('validate')->willReturnCallback(function (): array {
+			$this->otherApp = function (): void {
+				$this->shared['key'] = 'wp_ANDERERSCHLUESSEL';
+			};
+			throw new WerkPlusApiException('KEY_REVOKED');
+		});
+		try {
+			$this->service()->refresh();
+		} catch (WerkPlusApiException) {
+		}
+
+		$this->assertArrayHasKey('token', $this->shared);
+	}
+
+	public function testANewerStoreVersionIsNeverWrittenOnRevocation(): void {
+		$this->storeToken();
+		$this->client->method('validate')->willReturnCallback(function (): array {
+			$this->otherApp = function (): void {
+				$this->shared['store_version'] = '2';
+			};
+			throw new WerkPlusApiException('KEY_REVOKED');
+		});
+		try {
+			$this->service()->refresh();
+		} catch (WerkPlusApiException) {
+		}
+
+		$this->assertArrayHasKey('token', $this->shared);
+	}
+
+	public function testStatusCarriesTrialAndLicenseTermFromTheToken(): void {
+		$this->storeToken(['trial' => true, 'licenseValidUntil' => self::NOW + 20 * 86400]);
+		$status = $this->service()->getStatus();
+
+		$this->assertTrue($status['trial']);
+		$this->assertSame(gmdate('Y-m-d\TH:i:s\Z', self::NOW + 20 * 86400), $status['licenseValidUntil']);
+		$this->assertFalse($status['trialEnded']);
+	}
+
+	public function testTrialEndIsKnownWhileTheTrialTokenIsStoredEvenAfterExpiry(): void {
+		$this->storeToken(['trial' => true, 'licenseValidUntil' => self::NOW + 30 * 86400]);
+		$this->now = self::NOW + 31 * 86400;
+		$this->assertSame(self::NOW + 30 * 86400, $this->service()->trialEndsAt());
+
+		$this->storeToken();
+		$this->assertNull($this->service()->trialEndsAt(), 'Gekaufter Schlüssel');
+	}
+
+	public function testTokenWithoutTheNewClaimsCountsAsPurchasedWithoutTerm(): void {
+		$this->storeToken(['trial' => null, 'licenseValidUntil' => null]);
+		$status = $this->service()->getStatus();
+
+		$this->assertFalse($status['trial']);
+		$this->assertNull($status['licenseValidUntil']);
+	}
+
+	public function testTokenWithoutTrialClaimIsRenewedOnceRightAway(): void {
+		$this->storeToken(['trial' => null]);
+		$service = $this->service();
+		$this->assertTrue($service->isRefreshDue());
+
+		$this->client->expects($this->once())->method('validate')->willReturn($this->response(['trial' => null, 'iat' => self::NOW + 60]));
+		$this->now = self::NOW + 60;
+		$service->refresh();
+
+		$this->now = self::NOW + 6 * 3600;
+		$this->assertFalse($this->service()->isRefreshDue(), 'Einmalig, danach wieder die 7-Tage-Regel.');
+	}
+
+	public function testTheJobChecksTrialNoticesWithTheStoredToken(): void {
+		$this->storeToken(['trial' => true, 'licenseValidUntil' => self::NOW + 3 * 86400]);
+		$this->trialNotices = $this->createMock(TrialNotices::class);
+		$this->trialNotices->expects($this->once())->method('sendDue')
+			->with($this->callback(fn ($token) => $token->licenseValidUntil === self::NOW + 3 * 86400), self::NOW);
+
+		$this->service()->refreshIfDue();
 	}
 
 	/**

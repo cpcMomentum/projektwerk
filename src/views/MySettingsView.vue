@@ -257,7 +257,7 @@ import { fetchBoards } from '@/services/boards'
 import { clearGithubToken, fetchGithubTokenStatus, setGithubToken } from '@/services/github'
 import { clearNotifyOverrides, fetchNotifyPrefs, setNotifyPref } from '@/services/notifyPrefs'
 import { fetchPrivateFolder, setPrivateFolder } from '@/services/privateFolder'
-import { showError } from '@/services/toast'
+import { showFailure } from '@/services/toast'
 
 /**
  * Einstellungen — eine Seite mit zweiter Menüebene, wie im
@@ -392,7 +392,7 @@ export default defineComponent({
 				this.prefs = prefs
 				this.boards = boards
 			} catch (e) {
-				showError((e as { message?: string }).message ?? t('projektwerk', 'Einstellungen konnten nicht geladen werden'))
+				showFailure(e, t('projektwerk', 'Einstellungen konnten nicht geladen werden'))
 			}
 
 			// **Der private Ordner getrennt** (#191): eine Nebeneinstellung darf
@@ -403,7 +403,7 @@ export default defineComponent({
 				this.ordnerAktuell = path
 				this.ordnerEntwurf = path
 			} catch (e) {
-				showError((e as { message?: string }).message ?? t('projektwerk', 'Der Ordner für private Anhänge konnte nicht geladen werden'))
+				showFailure(e, t('projektwerk', 'Der Ordner für private Anhänge konnte nicht geladen werden'))
 			}
 
 			// **Der GitHub-Token getrennt** (#12), aus demselben Grund wie der
@@ -413,7 +413,7 @@ export default defineComponent({
 				const { present } = await fetchGithubTokenStatus()
 				this.githubTokenPresent = present
 			} catch (e) {
-				showError((e as { message?: string }).message ?? t('projektwerk', 'Der GitHub-Token-Status konnte nicht geladen werden'))
+				showFailure(e, t('projektwerk', 'Der GitHub-Token-Status konnte nicht geladen werden'))
 			}
 		},
 
@@ -445,7 +445,7 @@ export default defineComponent({
 				this.ordnerAktuell = path
 				this.ordnerEntwurf = path
 			} catch (e) {
-				showError((e as { message?: string }).message ?? t('projektwerk', 'Ordner konnte nicht gespeichert werden'))
+				showFailure(e, t('projektwerk', 'Ordner konnte nicht gespeichert werden'))
 			} finally {
 				this.busy = false
 			}
@@ -466,7 +466,7 @@ export default defineComponent({
 				this.githubTokenPresent = present
 				this.githubTokenEntwurf = ''
 			} catch (e) {
-				showError((e as { message?: string }).message ?? t('projektwerk', 'Token konnte nicht gespeichert werden'))
+				showFailure(e, t('projektwerk', 'Token konnte nicht gespeichert werden'))
 			} finally {
 				this.busy = false
 			}
@@ -484,7 +484,7 @@ export default defineComponent({
 				this.githubTokenPresent = present
 				this.githubTokenEntwurf = ''
 			} catch (e) {
-				showError((e as { message?: string }).message ?? t('projektwerk', 'Token konnte nicht entfernt werden'))
+				showFailure(e, t('projektwerk', 'Token konnte nicht entfernt werden'))
 			} finally {
 				this.busy = false
 			}
@@ -567,7 +567,7 @@ export default defineComponent({
 			try {
 				this.prefs = await run()
 			} catch (e) {
-				showError((e as { message?: string }).message ?? t('projektwerk', 'Einstellung konnte nicht gespeichert werden'))
+				showFailure(e, t('projektwerk', 'Einstellung konnte nicht gespeichert werden'))
 			} finally {
 				this.busy = false
 			}

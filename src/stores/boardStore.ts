@@ -20,7 +20,7 @@ import { lastBoards, rememberLastBoard } from '@/services/lastBoard'
 import { groupByProject, targetBoard } from '@/services/projectTiles'
 import { createBoard as createBoardRequest, createSiblingBoard as createSiblingBoardRequest, deleteBoard as deleteBoardRequest } from '@/services/settings'
 import { fetchTickets, markTicketRead, moveTicket as moveTicketRequest } from '@/services/tickets'
-import { showError } from '@/services/toast'
+import { showError, showFailure } from '@/services/toast'
 
 /**
  * Wie viele geschlossene Vorgänge je Spalte stehen bleiben (#59).
@@ -407,7 +407,7 @@ export const useBoardStore = defineStore('board', {
 				await setBoardPin(boardId, !vorher)
 			} catch (e) {
 				board.pinned = vorher
-				showError((e as { message?: string }).message ?? t('projektwerk', 'Anpinnen fehlgeschlagen'))
+				showFailure(e, t('projektwerk', 'Anpinnen fehlgeschlagen'))
 			}
 		},
 
@@ -539,7 +539,7 @@ export const useBoardStore = defineStore('board', {
 				if (this.showArchived === an) {
 					this.showArchived = vorher
 				}
-				showError((e as { message?: string }).message ?? t('projektwerk', 'Archivierte Vorgänge konnten nicht geladen werden'))
+				showFailure(e, t('projektwerk', 'Archivierte Vorgänge konnten nicht geladen werden'))
 			}
 		},
 

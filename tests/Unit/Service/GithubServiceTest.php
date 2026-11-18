@@ -119,13 +119,50 @@ class GithubServiceTest extends TestCase {
 		$this->service->createIssue('anna', 'acme/app', 'Titel', 'Rumpf');
 	}
 
-	public function testCreateIssueRejectsAMalformedRepo(): void {
+	#[\PHPUnit\Framework\Attributes\DataProvider('malformedRepos')]
+	public function testCreateIssueRejectsAMalformedRepo(string $repo): void {
 		$this->givenToken('anna', 'ghp_secret');
 		$this->client->expects($this->never())->method('post');
 
 		$this->expectException(GithubTransferException::class);
 		$this->expectExceptionMessage('owner/repo');
-		$this->service->createIssue('anna', 'kein-slug', 'Titel', 'Rumpf');
+		$this->service->createIssue('anna', $repo, 'Titel', 'Rumpf');
+	}
+
+	/** @return array<string, array{string}> */
+	public static function malformedRepos(): array {
+		return [
+			'ohne Schrägstrich' => ['kein-slug'],
+			'Pfadschritt als Konto' => ['../x'],
+			'Pfadschritt als Name' => ['acme/..'],
+			'Punkt als Name' => ['acme/.'],
+			'Fragment' => ['acme/app#'],
+			'Abfrage' => ['acme/app?state=all'],
+			'Prozentfolge' => ['acme/%2e%2e'],
+			'drei Teile' => ['acme/app/issues'],
+			'Leerzeichen im Namen' => ['acme/app name'],
+			'Konto zu lang' => [str_repeat('a', 40) . '/app'],
+		];
+	}
+
+	#[\PHPUnit\Framework\Attributes\DataProvider('wellFormedRepos')]
+	public function testRepoNamesGithubAllowsAreAccepted(string $repo): void {
+		$this->assertTrue(GithubService::isRepoName($repo));
+	}
+
+	public function testATrailingLineBreakIsNotPartOfAName(): void {
+		$this->assertFalse(GithubService::isRepoName("acme/app\n"));
+	}
+
+	/** @return array<string, array{string}> */
+	public static function wellFormedRepos(): array {
+		return [
+			'einfach' => ['acme/app'],
+			'gemischt' => ['cpcMomentum/projektwerk'],
+			'Punkt und Unterstrich' => ['a-b/my_repo.js'],
+			'führender Punkt' => ['acme/.github'],
+			'verwaltetes Konto mit Unterstrich' => ['mona_fabrikam/tools'],
+		];
 	}
 
 	public function testUnauthorizedBecomesARenewHint(): void {

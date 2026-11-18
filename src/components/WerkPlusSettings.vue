@@ -9,6 +9,7 @@
 		</h3>
 		<p class="pw-settings__hint">
 			{{ t('projektwerk', 'Frei enthalten sind zehn aktive Projekte mit je einem Board und ein Kundenprojekt. Mit einem WerkPlus-Schlüssel schaltet ProjektWerk weitere Projekte, Kundenprojekte und Boards frei, dazu Antworten per E-Mail und den KI-Zugriff über MCP.') }}
+			<a :href="WERKPLUS_LINKS.features" target="_blank" rel="noopener noreferrer">{{ t('projektwerk', 'Alle WerkPlus-Funktionen') }}</a>
 		</p>
 		<p class="pw-settings__hint">
 			{{ t('projektwerk', 'Der Schlüssel gilt für alle Werk-Apps dieser Nextcloud und muss nur in einer davon eingetragen werden.') }}
@@ -22,6 +23,9 @@
 				type="warning"
 				:text="t('projektwerk', 'Eine andere Werk-App hat die Lizenz in einem neueren Format gespeichert. Bitte aktualisiere ProjektWerk.')" />
 			<NcNoteCard v-if="stateNote" :type="stateNote.type" :text="stateNote.text" />
+			<p v-if="trialActive" class="pw-settings__hint">
+				{{ t('projektwerk', 'Mit dem Kauf erhältst du einen eigenen Schlüssel. Trage ihn hier ein, er ersetzt den Testschlüssel.') }}
+			</p>
 			<NcNoteCard v-if="trialKey" type="success">
 				<p v-if="licenseActive">
 					{{ t('projektwerk', 'Der Testzeitraum läuft. Das ist dein WerkPlus-Schlüssel:') }}
@@ -34,7 +38,7 @@
 			</NcNoteCard>
 			<NcNoteCard v-if="actionInfo" type="info" :text="actionInfo" />
 			<NcNoteCard v-if="actionError" type="error" :text="actionError" />
-			<NcNoteCard v-else-if="status.lastError" type="warning" :text="status.lastError.message" />
+			<NcNoteCard v-else-if="status.lastError && !status.trialEnded" type="warning" :text="status.lastError.message" />
 
 			<dl v-if="status.keySet" class="pw-werkplus__facts">
 				<dt>{{ t('projektwerk', 'Tarif') }}</dt>
@@ -43,9 +47,9 @@
 					<dt>{{ t('projektwerk', 'Lizenzierte Mitarbeitende') }}</dt>
 					<dd>{{ status.licensedEmployees }}</dd>
 				</template>
-				<template v-if="status.expiresAt">
-					<dt>{{ t('projektwerk', 'Gültig bis') }}</dt>
-					<dd>{{ formatDate(status.expiresAt) }}</dd>
+				<template v-if="termLine">
+					<dt>{{ termLine.label }}</dt>
+					<dd>{{ termLine.value }}</dd>
 				</template>
 				<dt>{{ t('projektwerk', 'Letzte erfolgreiche Prüfung') }}</dt>
 				<dd>{{ status.lastCheckAt ? formatDateTime(status.lastCheckAt) : t('projektwerk', 'noch keine') }}</dd>
@@ -72,6 +76,9 @@
 				</NcButton>
 				<NcButton v-if="!status.keySet" :disabled="busy" @click="confirmTrial = true">
 					{{ t('projektwerk', '30 Tage testen') }}
+				</NcButton>
+				<NcButton v-if="showBuy" :href="WERKPLUS_LINKS.buy" target="_blank">
+					{{ status.keySet ? t('projektwerk', 'Jetzt kaufen') : t('projektwerk', 'WerkPlus kaufen') }}
 				</NcButton>
 				<NcButton v-if="status.keySet" :disabled="busy" @click="onRefresh">
 					{{ t('projektwerk', 'Jetzt prüfen') }}
@@ -140,13 +147,14 @@
 <script setup lang="ts">
 import type { LicenseStatus } from '@/services/license'
 
-import { t } from '@nextcloud/l10n'
+import { n, t } from '@nextcloud/l10n'
 import { computed, onMounted, ref } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcDialog from '@nextcloud/vue/components/NcDialog'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
 import { activateLicense, getLicense, refreshLicense, removeLicense, startTrial } from '@/services/license'
+import { WERKPLUS_LINKS } from '@/utils/werkplusLinks'
 
 const emit = defineEmits<{ changed: [] }>()
 
@@ -165,12 +173,51 @@ const CALM_CODES = ['TRIAL_ALREADY_USED']
 
 const licenseActive = computed(() => status.value?.state === 'valid' || status.value?.state === 'grace')
 
-const tierLabel = computed(() => (status.value?.tier === 'werkplus' ? 'WerkPlus' : t('projektwerk', 'Frei')))
+const trialActive = computed(() => licenseActive.value && status.value?.trial === true)
+
+// Kein Kauf-Link für Zahlende, deren Token nur gerade fehlt oder ungültig ist.
+const showBuy = computed(() => {
+	const s = status.value
+	return !s?.keySet || trialActive.value || s.trialEnded || s.state === 'expired' || s.lastError?.code === 'KEY_EXPIRED'
+})
+
+const tierLabel = computed(() => {
+	if (status.value?.tier !== 'werkplus') {
+		return t('projektwerk', 'Frei')
+	}
+	return trialActive.value ? t('projektwerk', 'WerkPlus – Testzeitraum') : 'WerkPlus'
+})
+
+// Das Token-Ende (exp) ist nur der nächste Prüftermin und wird nie angezeigt.
+const termLine = computed<{ label: string, value: string } | null>(() => {
+	const s = status.value
+	if (!s?.licenseValidUntil || !licenseActive.value) {
+		return null
+	}
+	const until = new Date(s.licenseValidUntil)
+	if (s.trial) {
+		const days = Math.max(0, Math.ceil((until.getTime() - Date.now()) / 86400000))
+		return {
+			label: t('projektwerk', 'Gültig bis'),
+			value: n('projektwerk', '{date} (noch %n Tag)', '{date} (noch %n Tage)', days, { date: formatDate(s.licenseValidUntil) }),
+		}
+	}
+	if (until.getTime() <= Date.now() && s.state === 'grace' && s.graceUntil) {
+		return {
+			label: t('projektwerk', 'Laufzeit'),
+			value: t('projektwerk', 'Laufzeit abgelaufen, Karenz bis {date}', { date: formatDate(s.graceUntil) }),
+		}
+	}
+	return { label: t('projektwerk', 'Laufzeit bis'), value: formatDate(s.licenseValidUntil) }
+})
 
 const stateNote = computed<{ type: 'success' | 'warning' | 'error', text: string } | null>(() => {
 	const s = status.value
 	if (!s) {
 		return null
+	}
+	if (s.trialEnded) {
+		return { type: 'warning', text: t('projektwerk', 'Testzeitraum beendet. ProjektWerk arbeitet im freien Umfang weiter, deine Daten bleiben erhalten.') }
 	}
 	switch (s.state) {
 		case 'valid':

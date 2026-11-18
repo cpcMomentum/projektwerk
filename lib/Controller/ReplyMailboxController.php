@@ -13,9 +13,11 @@ use OCA\Projektwerk\AppInfo\Application;
 use OCA\Projektwerk\Imap\ImapException;
 use OCA\Projektwerk\Imap\ImapPasswordRequiredException;
 use OCA\Projektwerk\Service\ReplyMailboxSettings;
+use OCA\Projektwerk\Service\SettingsAudit;
 use OCA\Projektwerk\Service\WerkPlusLimitException;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
+use OCP\AppFramework\Http\Attribute\PasswordConfirmationRequired;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\IL10N;
 use OCP\IRequest;
@@ -35,11 +37,15 @@ use Psr\Log\LoggerInterface;
  */
 class ReplyMailboxController extends Controller {
 
+	private const AUDIT_FIELDS = ['replyEnabled', 'replyAddress', 'imapHost', 'imapPort', 'imapSecurity', 'imapUser', 'imapFolder'];
+
 	public function __construct(
 		IRequest $request,
 		private ReplyMailboxSettings $settings,
+		private SettingsAudit $audit,
 		private IL10N $l10n,
 		private LoggerInterface $logger,
+		private ?string $userId,
 	) {
 		parent::__construct(Application::APP_ID, $request);
 	}
@@ -57,6 +63,7 @@ class ReplyMailboxController extends Controller {
 	 * Leeres `imapPassword` lässt das gespeicherte unberührt; `imapPasswordClear`
 	 * löscht es.
 	 */
+	#[PasswordConfirmationRequired]
 	public function save(
 		bool $replyEnabled = false,
 		string $replyAddress = '',
@@ -68,6 +75,7 @@ class ReplyMailboxController extends Controller {
 		#[\SensitiveParameter] string $imapPassword = '',
 		bool $imapPasswordClear = false,
 	): JSONResponse {
+		$vorher = $this->settings->getPublicConfig();
 		try {
 			$this->settings->save([
 				'replyEnabled' => $replyEnabled,
@@ -81,10 +89,20 @@ class ReplyMailboxController extends Controller {
 				'imapPasswordClear' => $imapPasswordClear,
 			]);
 		} catch (WerkPlusLimitException $e) {
-			return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_PAYMENT_REQUIRED);
+			return new JSONResponse(['error' => $e->getMessage(), 'werkplusLimit' => true], Http::STATUS_PAYMENT_REQUIRED);
 		}
 
-		return new JSONResponse($this->settings->getPublicConfig());
+		$nachher = $this->settings->getPublicConfig();
+		$geaendert = array_keys(array_filter($nachher, static fn (mixed $wert, string $feld): bool => in_array($feld, self::AUDIT_FIELDS, true) && ($vorher[$feld] ?? null) !== $wert, ARRAY_FILTER_USE_BOTH));
+		// Ein geänderter Zugang verwirft das gespeicherte Passwort, auch ohne dass eines mitkommt.
+		if ($imapPassword !== '' || ($imapPasswordClear && $vorher['imapPasswordSet']) || $vorher['imapPasswordSet'] !== $nachher['imapPasswordSet']) {
+			$geaendert[] = 'imapPassword';
+		}
+		if ($geaendert !== []) {
+			$this->audit->record($this->userId, 'reply mailbox settings changed', array_values(array_unique($geaendert)));
+		}
+
+		return new JSONResponse($nachher);
 	}
 
 	/**
@@ -94,6 +112,7 @@ class ReplyMailboxController extends Controller {
 	 *
 	 * Leeres `imapPassword` → das gespeicherte wird verwendet.
 	 */
+	#[PasswordConfirmationRequired]
 	public function test(
 		string $imapHost = '',
 		int $imapPort = 993,

@@ -6,6 +6,32 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-18
+
+### Added
+
+- **WerkPlus**: Die Einstellungen zeigen den Testzeitraum mit Enddatum und Resttagen sowie die
+  Laufzeit der Lizenz. Ohne Schlüssel, im Test und nach Ablauf führt ein Knopf zum Kauf.
+  Erinnerungen an die Administratoren 7 Tage und 1 Tag vor dem Testende und danach.
+- **Grenzmeldungen**: Stößt eine Aktion an den freien Umfang, enthält die Meldung den Link
+  „Mit WerkPlus freischalten“.
+- **Verlauf**: Hinzugefügte und entfernte Abhängigkeiten stehen im Verlauf des Vorgangs. Änderungen
+  am Antwort-Postfach und am eigenen GitHub-Token werden vermerkt (wer und welche Felder, ohne Werte).
+
+### Changed
+
+- **Antwort-Postfach**: Antworten auf Benachrichtigungen werden zuerst verarbeitet. Speichern und
+  Testen verlangen die Bestätigung des eigenen Passworts.
+- **Einstellungen**: Chat-Adresse und Ziel-Repository werden schon beim Speichern geprüft.
+- **Board löschen**: Gelöschte Vorgänge ziehen auf das verbleibende Board um, statt zu verschwinden.
+
+### Fixed
+
+- **Installation auf MariaDB und MySQL**: brach mit „Row size too large“ ab (#510).
+- **Board**: Wartehinweis, Zähler und Frist in der Kartenfußzeile überlagern sich nicht mehr (#513).
+- **Aufräumen**: Kontolöschung und Entfernen aus einem Projekt räumen Lesemarken, vorgemerkte Mails
+  und Verknüpfungen vollständig ab.
+
 ## [0.5.1] - 2026-11-17
 
 ### Changed

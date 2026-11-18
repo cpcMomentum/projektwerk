@@ -802,7 +802,30 @@
 		"Kommunikation": "Kommunikation",
 		"Lizenz": "Lizenz",
 		"Kein GitHub-Token hinterlegt. Bitte in „Einstellungen\" einen Token eintragen.": "Kein GitHub-Token hinterlegt. Bitte in „Einstellungen\" einen Token eintragen.",
-		"Der GitHub-Token ist ungültig oder abgelaufen. Bitte in „Einstellungen\" erneuern.": "Der GitHub-Token ist ungültig oder abgelaufen. Bitte in „Einstellungen\" erneuern."
+		"Der GitHub-Token ist ungültig oder abgelaufen. Bitte in „Einstellungen\" erneuern.": "Der GitHub-Token ist ungültig oder abgelaufen. Bitte in „Einstellungen\" erneuern.",
+		"hat eingetragen, dass dieser Vorgang auf „{ticket}“ wartet": "hat eingetragen, dass dieser Vorgang auf „{ticket}“ wartet",
+		"hat entfernt, dass dieser Vorgang auf „{ticket}“ wartet": "hat entfernt, dass dieser Vorgang auf „{ticket}“ wartet",
+		"Die App „Auditing / Logging“ (admin_audit) ist nicht aktiv. Änderungen über KI-Werkzeuge werden dann nicht im Audit-Log festgehalten.": "Die App „Auditing / Logging“ (admin_audit) ist nicht aktiv. Änderungen über KI-Werkzeuge werden dann nicht im Audit-Log festgehalten.",
+		"Die Passwortbestätigung wurde abgebrochen.": "Die Passwortbestätigung wurde abgebrochen.",
+		"Bitte bestätige dein Passwort: Seite neu laden und erneut versuchen.": "Bitte bestätige dein Passwort: Seite neu laden und erneut versuchen.",
+		"Das Ziel-Repository muss im Format „owner/repo\" angegeben sein.": "Das Ziel-Repository muss im Format „owner/repo\" angegeben sein.",
+		"Die Chat-Adresse muss mit „https://\" oder „http://\" beginnen.": "Die Chat-Adresse muss mit „https://\" oder „http://\" beginnen.",
+		"Alle WerkPlus-Funktionen": "Alle WerkPlus-Funktionen",
+		"Mit dem Kauf erhältst du einen eigenen Schlüssel. Trage ihn hier ein, er ersetzt den Testschlüssel.": "Mit dem Kauf erhältst du einen eigenen Schlüssel. Trage ihn hier ein, er ersetzt den Testschlüssel.",
+		"Jetzt kaufen": "Jetzt kaufen",
+		"WerkPlus kaufen": "WerkPlus kaufen",
+		"WerkPlus – Testzeitraum": "WerkPlus – Testzeitraum",
+		"Laufzeit": "Laufzeit",
+		"Laufzeit abgelaufen, Karenz bis {date}": "Laufzeit abgelaufen, Karenz bis {date}",
+		"Laufzeit bis": "Laufzeit bis",
+		"Testzeitraum beendet. ProjektWerk arbeitet im freien Umfang weiter, deine Daten bleiben erhalten.": "Testzeitraum beendet. ProjektWerk arbeitet im freien Umfang weiter, deine Daten bleiben erhalten.",
+		"_{date} (noch %n Tag)_::_{date} (noch %n Tage)_": [
+			"{date} (noch %n Tag)",
+			"{date} (noch %n Tage)"
+		],
+		"Mit WerkPlus freischalten": "Mit WerkPlus freischalten",
+		"Der WerkPlus-Testzeitraum endet am %s.": "Der WerkPlus-Testzeitraum endet am %s.",
+		"Der WerkPlus-Testzeitraum ist beendet. ProjektWerk läuft im freien Umfang weiter, deine Daten bleiben erhalten.": "Der WerkPlus-Testzeitraum ist beendet. ProjektWerk läuft im freien Umfang weiter, deine Daten bleiben erhalten."
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }

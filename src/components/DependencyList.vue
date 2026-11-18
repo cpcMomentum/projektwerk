@@ -64,7 +64,7 @@ import { defineComponent } from 'vue'
 import NcSelect from '@nextcloud/vue/components/NcSelect'
 import LinkVariantIcon from 'vue-material-design-icons/LinkVariant.vue'
 import { addDependency, removeDependency } from '@/services/tickets'
-import { showError } from '@/services/toast'
+import { showFailure } from '@/services/toast'
 
 interface Candidate {
 	id: number
@@ -162,7 +162,7 @@ export default defineComponent({
 			try {
 				this.$emit('changed', await run())
 			} catch (e) {
-				showError((e as { message?: string }).message ?? fallback)
+				showFailure(e, fallback)
 			} finally {
 				this.busy = false
 			}

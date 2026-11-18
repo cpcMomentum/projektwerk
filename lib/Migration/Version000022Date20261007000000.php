@@ -49,7 +49,8 @@ class Version000022Date20261007000000 extends SimpleMigrationStep {
 			$added = true;
 		}
 		if (!$projects->hasColumn('folder_root_path')) {
-			$projects->addColumn('folder_root_path', Types::STRING, ['notnull' => false, 'length' => 4000]);
+			// TEXT: MariaDB/MySQL zählen VARCHAR in die Zeilengrenze, TEXT nicht.
+			$projects->addColumn('folder_root_path', Types::TEXT, ['notnull' => false]);
 			$added = true;
 		}
 

@@ -17,6 +17,9 @@ export interface LicenseStatus {
 	licensedEmployees: number | null
 	expiresAt: string | null
 	graceUntil: string | null
+	trial: boolean
+	licenseValidUntil: string | null
+	trialEnded: boolean
 	lastCheckAt: string | null
 	lastError: { code: string, message: string, at: string | null } | null
 	storeOutdated: boolean

@@ -44,6 +44,8 @@ class LicenseService {
 
 	private const K_LAST_ATTEMPT = 'werkplus_last_attempt_at';
 	private const K_LAST_ERROR = 'werkplus_last_error';
+	/** Ein Token ohne `trial` wird einmal sofort erneuert, danach gilt wieder die 7-Tage-Regel. */
+	private const K_CLAIMS_REFRESHED = 'werkplus_claims_refreshed';
 	/** Ablage bis 0.4.26, vor der gemeinsamen Lizenz aller Werk-Apps. */
 	private const LEGACY_KEY = 'werkplus_key';
 	private const LEGACY = [self::LEGACY_KEY, 'werkplus_token', 'werkplus_instance_uuid', 'werkplus_last_check_at'];
@@ -62,6 +64,7 @@ class LicenseService {
 		private readonly EntitlementTokenVerifier $verifier,
 		private readonly IAppManager $appManager,
 		private readonly LoggerInterface $logger,
+		private readonly TrialNotices $trialNotices,
 	) {
 	}
 
@@ -75,6 +78,12 @@ class LicenseService {
 
 	public function tier(): string {
 		return $this->activeToken()?->tier ?? 'free';
+	}
+
+	/** Ende des Testzeitraums, solange das gespeicherte Token ein Testtoken ist, auch nach Ablauf. */
+	public function trialEndsAt(): ?int {
+		$token = $this->verifyQuietly($this->store()->token());
+		return $token?->trial === true ? $token->licenseValidUntil : null;
 	}
 
 	public function state(): string {
@@ -101,7 +110,7 @@ class LicenseService {
 		} else {
 			$this->store->setKey($key, $jwt);
 		}
-		$this->succeeded();
+		$this->succeeded($token);
 	}
 
 	/** @throws WerkPlusApiException */
@@ -118,7 +127,7 @@ class LicenseService {
 		$key = self::normalizeKey($response['key']);
 		$this->store->setKey($key, '');
 		try {
-			$this->verifier->verify($response['token'], $this->getInstanceUuid(), $now);
+			$token = $this->verifier->verify($response['token'], $this->getInstanceUuid(), $now);
 		} catch (InvalidTokenException $e) {
 			// Kein Abbruch, sonst sieht der Betreiber den Schluessel nie; die Erneuerung holt ein gueltiges Token.
 			$this->logger->warning('ProjektWerk: WerkPlus-Token abgelehnt', ['reason' => $e->getMessage()]);
@@ -128,7 +137,7 @@ class LicenseService {
 			return $key;
 		}
 		$this->store->setToken($response['token']);
-		$this->succeeded();
+		$this->succeeded($token);
 		return $key;
 	}
 
@@ -141,13 +150,14 @@ class LicenseService {
 		$this->assertWritable();
 		[$jwt, $token] = $this->fetchToken($key);
 		$this->keepNewer($key, $jwt, $token);
-		$this->succeeded();
+		$this->succeeded($token);
 	}
 
 	/** Fuer den Hintergrundjob: erneuert nur, wenn faellig, und wirft nie. */
 	public function refreshIfDue(): void {
 		// Hat eine andere Werk-App schon erneuert, entfällt der Abruf.
 		$this->store->reload();
+		$this->sendTrialNotices();
 		if (!$this->isRefreshDue()) {
 			return;
 		}
@@ -176,6 +186,9 @@ class LicenseService {
 		if ($token === null) {
 			return true;
 		}
+		if ($token->trial === null && $this->get(self::K_CLAIMS_REFRESHED) === '') {
+			return true;
+		}
 		return $now - $token->issuedAt >= self::RENEW_AFTER
 			|| $token->expiresAt - $now < self::RENEW_BEFORE_EXPIRY;
 	}
@@ -184,7 +197,7 @@ class LicenseService {
 	public function removeKey(): void {
 		$this->assertWritable();
 		$this->store()->remove();
-		foreach ([self::K_LAST_ATTEMPT, self::K_LAST_ERROR] as $configKey) {
+		foreach ([self::K_LAST_ATTEMPT, self::K_LAST_ERROR, self::K_CLAIMS_REFRESHED] as $configKey) {
 			$this->appConfig->deleteKey(Application::APP_ID, $configKey);
 		}
 		$this->current = null;
@@ -208,6 +221,9 @@ class LicenseService {
 			'licensedEmployees' => $active?->licensedEmployees,
 			'expiresAt' => $token !== null ? $this->iso($token->expiresAt) : null,
 			'graceUntil' => $token !== null ? $this->iso($token->graceUntil) : null,
+			'trial' => $token?->trial === true,
+			'licenseValidUntil' => $token?->licenseValidUntil !== null ? $this->iso($token->licenseValidUntil) : null,
+			'trialEnded' => $key !== '' && $token === null && $this->trialEnded(),
 			// Das Token stammt aus der letzten erfolgreichen Prüfung, egal welche Werk-App sie ausgelöst hat.
 			'lastCheckAt' => $token !== null ? $this->iso($token->issuedAt) : null,
 			'lastError' => $key !== '' ? $this->currentError($token) : null,
@@ -215,7 +231,12 @@ class LicenseService {
 		];
 	}
 
-	/** @return array{code: string, serverMessage: string, at: int}|null */
+	private function trialEnded(): bool {
+		$error = $this->lastError();
+		return $error !== null && $error['code'] === 'KEY_EXPIRED' && $error['trial'];
+	}
+
+	/** @return array{code: string, serverMessage: string, at: int, trial: bool}|null */
 	private function currentError(?EntitlementToken $token): ?array {
 		$error = $this->lastError();
 		// Hat inzwischen eine Werk-App erfolgreich geprüft, ist der eigene Fehler überholt.
@@ -226,7 +247,7 @@ class LicenseService {
 	}
 
 	/**
-	 * @return array{code: string, serverMessage: string, at: int}|null
+	 * @return array{code: string, serverMessage: string, at: int, trial: bool}|null
 	 */
 	public function lastError(): ?array {
 		$data = json_decode($this->get(self::K_LAST_ERROR), true);
@@ -237,6 +258,7 @@ class LicenseService {
 			'code' => $data['code'],
 			'serverMessage' => is_string($data['serverMessage'] ?? null) ? $data['serverMessage'] : '',
 			'at' => is_int($data['at'] ?? null) ? $data['at'] : 0,
+			'trial' => ($data['trial'] ?? null) === true,
 		];
 	}
 
@@ -261,6 +283,9 @@ class LicenseService {
 			}
 		} catch (WerkPlusApiException $e) {
 			$this->recordError($e, $now, $isStoredKey);
+			if ($isStoredKey && in_array($e->getErrorCode(), self::DROP_TOKEN, true)) {
+				$this->dropToken($key, $e->getErrorCode(), $now);
+			}
 			throw $e;
 		}
 		return [$response['token'], $token];
@@ -279,9 +304,46 @@ class LicenseService {
 		}
 	}
 
-	private function succeeded(): void {
+	private function succeeded(?EntitlementToken $token): void {
 		$this->appConfig->deleteKey(Application::APP_ID, self::K_LAST_ERROR);
+		// Liefert auch der Server noch kein `trial`, wartet die nächste Erneuerung wieder auf die 7-Tage-Regel.
+		if ($token !== null && $token->trial === null) {
+			$this->appConfig->setValueString(Application::APP_ID, self::K_CLAIMS_REFRESHED, '1');
+		}
 		$this->current = null;
+	}
+
+	/** Vertrag Regel 2: nur das Token, nur für den geprüften Schlüssel; die Ende-Erinnerung geht vorher raus. */
+	private function dropToken(#[\SensitiveParameter] string $key, string $code, int $now): void {
+		$this->store->reload();
+		if ($this->store->isOutdated() || $this->store->key() !== $key) {
+			return;
+		}
+		$token = $this->verifyQuietly($this->store->token());
+		if ($token !== null && $code === 'KEY_EXPIRED') {
+			// Danach weiß keine Werk-App mehr, dass es ein Test war.
+			$this->notifyQuietly($token, max($now, $token->licenseValidUntil ?? $now));
+		}
+		$this->store->dropToken();
+		$this->current = null;
+	}
+
+	private function sendTrialNotices(): void {
+		if ($this->store->isOutdated()) {
+			return;
+		}
+		$token = $this->verifyQuietly($this->store()->token());
+		if ($token !== null) {
+			$this->notifyQuietly($token, $this->now());
+		}
+	}
+
+	private function notifyQuietly(EntitlementToken $token, int $now): void {
+		try {
+			$this->trialNotices->sendDue($token, $now);
+		} catch (\Throwable $e) {
+			$this->logger->info('ProjektWerk: WerkPlus-Erinnerung fehlgeschlagen', ['reason' => get_class($e) . ': ' . $e->getMessage()]);
+		}
 	}
 
 	private function recordError(WerkPlusApiException $e, int $now, bool $isStoredKey): void {
@@ -293,6 +355,7 @@ class LicenseService {
 			'code' => $e->getErrorCode(),
 			'serverMessage' => $e->getServerMessage(),
 			'at' => $now,
+			'trial' => $e->wasTrial(),
 			// Die Sperre gilt bis zum nächsten Token; verglichen wird Server- mit Serverzeit.
 			'tokenIat' => $this->verifyQuietly($this->store->token())?->issuedAt ?? 0,
 		], JSON_THROW_ON_ERROR));
@@ -331,7 +394,7 @@ class LicenseService {
 		return ['token' => $token, 'state' => $token->stateAt($this->now())];
 	}
 
-	// Das Token bleibt für die anderen Werk-Apps liegen; diese App wartet auf ein neueres.
+	// Greift, wenn dropToken nicht löschen durfte (Schlüssel gewechselt, neuere Ablage); dann zählt erst ein neueres Token.
 	private function revokedSince(EntitlementToken $token): bool {
 		$data = json_decode($this->get(self::K_LAST_ERROR), true);
 		return is_array($data)

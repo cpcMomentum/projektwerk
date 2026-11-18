@@ -35,6 +35,7 @@ vi.mock('@nextcloud/router', () => ({
 }))
 vi.mock('@/services/toast', () => ({
 	showError: (...args: unknown[]) => showError(...args),
+	showFailure: (e: unknown, fallback: string) => showError((e as { message?: string } | undefined)?.message ?? fallback),
 }))
 vi.mock('@nextcloud/l10n', () => ({
 	t: (_app: string, text: string) => text,
@@ -209,6 +210,20 @@ describe('normale Antworten', () => {
 			notJson: false,
 		})
 		expect(showError).not.toHaveBeenCalled()
+	})
+
+	it('übersetzt die Ablehnung ohne Passwortbestätigung in eine lesbare Meldung', async () => {
+		rejectWith({
+			status: 403,
+			headers: { 'content-type': 'application/json', 'x-nc-auth-notconfirmed': 'true' },
+			data: { message: 'Password confirmation is required' },
+		})
+
+		await expect(apiGet('/reply-mailbox')).rejects.toMatchObject({
+			status: 403,
+			message: 'Bitte bestätige dein Passwort: Seite neu laden und erneut versuchen.',
+			notJson: false,
+		})
 	})
 
 	/**

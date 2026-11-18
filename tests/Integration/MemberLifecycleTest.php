@@ -21,6 +21,11 @@ use OCA\Projektwerk\Service\BoardService;
 use OCA\Projektwerk\Service\MemberLifecycleService;
 use OCA\Projektwerk\Service\MemberService;
 use OCA\Projektwerk\Service\ProjectLogService;
+use OCA\Projektwerk\Service\TicketDependencyService;
+use OCA\Projektwerk\Db\TicketReadMapper;
+use OCA\Projektwerk\Db\MailOutbox;
+use OCA\Projektwerk\Db\MailOutboxMapper;
+use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IAppConfig;
 use OCP\IDBConnection;
 use OCP\IUser;
@@ -97,6 +102,78 @@ class MemberLifecycleTest extends IntegrationTestCase {
 		// Und seine Kinder gehen mit — sonst blieben Zeilen ohne Vorgang.
 		$this->assertSame(0, $this->kinderVon('pwerk_steps', $privat));
 		$this->assertSame(0, $this->kinderVon('pwerk_comments', $privat));
+	}
+
+	public function testForgettingAPersonRemovesTheirReadMarksAndTheLinksOfTheirPrivateTickets(): void {
+		$privat = $this->fixture->ticketIds['private/anna'];
+		$oeffentlich = $this->fixture->ticketIds['public/anna'];
+		$anna = $this->fixture->contextFor(LeakMatrixFixture::ANNA);
+		Server::get(TicketDependencyService::class)->add($anna, $privat, $oeffentlich);
+		Server::get(TicketDependencyService::class)->add($anna, $this->fixture->ticketIds['internal/anna'], $privat);
+		$reads = Server::get(TicketReadMapper::class);
+		$reads->markSeen(LeakMatrixFixture::ANNA, $oeffentlich);
+		$reads->markSeen(LeakMatrixFixture::ANNA, $privat);
+		$reads->markSeen(LeakMatrixFixture::BERT, $oeffentlich);
+		$reads->markSeen(LeakMatrixFixture::BERT, $privat);
+		$this->vorgemerkteMail($privat, LeakMatrixFixture::BERT);
+
+		$this->lifecycle->forget(LeakMatrixFixture::ANNA);
+
+		$this->assertSame(0, $this->kinderVon('pwerk_reads', $privat), 'Auch fremde Lesemarken am entfernten Vorgang gehen mit.');
+		$this->assertSame(0, $this->kinderVon('pwerk_mail_outbox', $privat), 'Keine vorgemerkte Mail zeigt auf einen Vorgang, den es nicht mehr gibt.');
+
+		$this->assertSame(0, $this->lesemarken(LeakMatrixFixture::ANNA), 'Wann die Person was gelesen hat, überlebt ihr Konto nicht.');
+		$this->assertSame(1, $this->lesemarken(LeakMatrixFixture::BERT), 'Fremde Lesemarken bleiben.');
+		$this->assertSame(0, $this->verknuepfungenMit($privat), 'Keine Verknüpfung zeigt auf einen Vorgang, den es nicht mehr gibt.');
+	}
+
+	public function testRemovingFromAProjectClearsReadMarksAndLinksThereOnly(): void {
+		$privat = $this->fixture->ticketIds['private/bert'];
+		$bert = $this->fixture->contextFor(LeakMatrixFixture::BERT);
+		Server::get(TicketDependencyService::class)->add($bert, $privat, $this->fixture->ticketIds['public/bert']);
+		$reads = Server::get(TicketReadMapper::class);
+		$reads->markSeen(LeakMatrixFixture::BERT, $this->fixture->ticketIds['public/anna']);
+		$reads->markSeen(LeakMatrixFixture::BERT, $this->fixture->ticketIds['b:internal/bert']);
+
+		$this->vorgemerkteMail($privat, LeakMatrixFixture::ANNA);
+
+		$this->lifecycle->removeFromProject(LeakMatrixFixture::BERT, $this->fixture->projectId);
+
+		$this->assertSame(0, $this->kinderVon('pwerk_mail_outbox', $privat));
+		$this->assertSame(1, $this->lesemarken(LeakMatrixFixture::BERT), 'Nur die Lesemarke aus dem anderen Projekt bleibt.');
+		$this->assertSame(0, $this->verknuepfungenMit($privat));
+	}
+
+	private function vorgemerkteMail(int $ticketId, string $recipient): void {
+		$mail = new MailOutbox();
+		$mail->setTicketId($ticketId);
+		$mail->setRecipientUid($recipient);
+		$mail->setEvent('comment');
+		$mail->setStatus('pending');
+		$mail->setAttempts(0);
+		$mail->setCreatedAt(new \DateTime());
+		Server::get(MailOutboxMapper::class)->insert($mail);
+	}
+
+	private function lesemarken(string $userId): int {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select($qb->func()->count('*'))
+			->from('pwerk_reads')
+			->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+
+		return (int)$qb->executeQuery()->fetchOne();
+	}
+
+	private function verknuepfungenMit(int $ticketId): int {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select($qb->func()->count('*'))
+			->from('pwerk_ticket_deps')
+			->where($qb->expr()->orX(
+				$qb->expr()->eq('ticket_id', $qb->createNamedParameter($ticketId, IQueryBuilder::PARAM_INT)),
+				$qb->expr()->eq('depends_on_id', $qb->createNamedParameter($ticketId, IQueryBuilder::PARAM_INT)),
+			));
+
+		return (int)$qb->executeQuery()->fetchOne();
 	}
 
 	/**

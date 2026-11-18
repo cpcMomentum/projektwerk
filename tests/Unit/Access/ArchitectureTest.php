@@ -100,7 +100,6 @@ class ArchitectureTest extends TestCase {
 		];
 		// Diese Stellen nennen die Tabelle nur in Lösch-Listen beim Purge.
 		$purgeOnly = [
-			'Db/TicketMapper.php',
 			'Service/MemberLifecycleService.php',
 		];
 
@@ -136,9 +135,14 @@ class ArchitectureTest extends TestCase {
 	 */
 	public function testNoAdminBackdoorInLib(): void {
 		$forbidden = ['isAdmin', 'IGroupManager'];
+		// Nur Empfänger der WerkPlus-Erinnerung an die Admin-Gruppe, kein Zugriff auf Projektdaten.
+		$allowed = ['License/TrialNotices.php'];
 
 		$offenders = [];
 		foreach ($this->phpFilesIn(self::LIB) as $relative => $path) {
+			if (in_array($relative, $allowed, true)) {
+				continue;
+			}
 			$content = (string)file_get_contents($path);
 			foreach ($forbidden as $needle) {
 				if (str_contains($content, $needle)) {

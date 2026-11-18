@@ -44,7 +44,7 @@ vi.mock('@/services/tickets', () => ({
 	moveTicket: () => Promise.resolve(),
 	markTicketRead: markTicketReadSpy,
 }))
-vi.mock('@/services/toast', () => ({ showError: () => {} }))
+vi.mock('@/services/toast', () => ({ showError: () => {}, showFailure: () => {} }))
 
 const COLUMN = 7
 

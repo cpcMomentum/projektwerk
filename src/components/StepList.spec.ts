@@ -39,6 +39,7 @@ vi.mock('@/services/steps', () => ({
 }))
 vi.mock('@/services/toast', () => ({
 	showError: (...args: unknown[]) => showError(...args),
+	showFailure: (e: unknown, fallback: string) => showError((e as { message?: string } | undefined)?.message ?? fallback),
 }))
 vi.mock('@nextcloud/l10n', () => ({
 	t: (_app: string, text: string) => text,

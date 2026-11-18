@@ -375,22 +375,7 @@ class MemberLifecycleService {
 			$qb->executeQuery()->fetchAll(),
 		);
 
-		if ($ids === []) {
-			return 0;
-		}
-
-		foreach (['pwerk_comments', 'pwerk_steps', 'pwerk_attachments', 'pwerk_ticket_users', 'pwerk_reads', 'pwerk_ticket_log'] as $tabelle) {
-			$qb = $this->db->getQueryBuilder();
-			$qb->delete($tabelle)
-				->where($qb->expr()->in('ticket_id', $qb->createNamedParameter($ids, IQueryBuilder::PARAM_INT_ARRAY)));
-			$qb->executeStatement();
-		}
-
-		$qb = $this->db->getQueryBuilder();
-		$qb->delete('pwerk_tickets')
-			->where($qb->expr()->in('id', $qb->createNamedParameter($ids, IQueryBuilder::PARAM_INT_ARRAY)));
-
-		return $qb->executeStatement();
+		return $this->loescheMitKindern($ids);
 	}
 
 	/**
@@ -402,11 +387,13 @@ class MemberLifecycleService {
 	 * @param int $projectId Kennung des Projekts.
 	 */
 	private function entferneMitgliedschaftImProjekt(string $userId, int $projectId): void {
-		$qb = $this->db->getQueryBuilder();
-		$qb->delete('pwerk_ticket_users')
-			->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
-			->andWhere($qb->expr()->in('ticket_id', $qb->createFunction($this->ticketIdsInProject($qb, $projectId)->getSQL())));
-		$qb->executeStatement();
+		foreach (['pwerk_ticket_users', 'pwerk_reads'] as $tabelle) {
+			$qb = $this->db->getQueryBuilder();
+			$qb->delete($tabelle)
+				->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+				->andWhere($qb->expr()->in('ticket_id', $qb->createFunction($this->ticketIdsInProject($qb, $projectId)->getSQL())));
+			$qb->executeStatement();
+		}
 
 		$qb = $this->db->getQueryBuilder();
 		$qb->delete('pwerk_members')
@@ -485,29 +472,14 @@ class MemberLifecycleService {
 			$qb->executeQuery()->fetchAll(),
 		);
 
-		if ($ids === []) {
-			return 0;
-		}
-
-		foreach (['pwerk_comments', 'pwerk_steps', 'pwerk_attachments', 'pwerk_ticket_users', 'pwerk_ticket_log'] as $tabelle) {
-			$qb = $this->db->getQueryBuilder();
-			$qb->delete($tabelle)
-				->where($qb->expr()->in('ticket_id', $qb->createNamedParameter($ids, IQueryBuilder::PARAM_INT_ARRAY)));
-			$qb->executeStatement();
-		}
-
-		$qb = $this->db->getQueryBuilder();
-		$qb->delete('pwerk_tickets')
-			->where($qb->expr()->in('id', $qb->createNamedParameter($ids, IQueryBuilder::PARAM_INT_ARRAY)));
-
-		return $qb->executeStatement();
+		return $this->loescheMitKindern($ids);
 	}
 
 	/**
 	 * @param string $userId Kennung der gelöschten Person.
 	 */
 	private function entferneMitgliedschaften(string $userId): void {
-		foreach (['pwerk_members', 'pwerk_ticket_users'] as $tabelle) {
+		foreach (['pwerk_members', 'pwerk_ticket_users', 'pwerk_reads'] as $tabelle) {
 			$qb = $this->db->getQueryBuilder();
 			$qb->delete($tabelle)
 				->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
@@ -534,5 +506,38 @@ class MemberLifecycleService {
 		$qb->delete('pwerk_mail_outbox')
 			->where($qb->expr()->eq('recipient_uid', $qb->createNamedParameter($userId)));
 		$qb->executeStatement();
+	}
+
+	/**
+	 * Vorgänge samt allem entfernen, was an ihnen hängt; dieselben Tabellen für jeden Aufräumweg.
+	 *
+	 * @param int[] $ids
+	 */
+	private function loescheMitKindern(array $ids): int {
+		$geloescht = 0;
+		// Blöcke wegen der Parametergrenze mancher Datenbanken.
+		foreach (array_chunk($ids, 1000) as $block) {
+			foreach (['pwerk_comments', 'pwerk_steps', 'pwerk_attachments', 'pwerk_ticket_users', 'pwerk_reads', 'pwerk_mail_outbox', 'pwerk_ticket_log'] as $tabelle) {
+				$qb = $this->db->getQueryBuilder();
+				$qb->delete($tabelle)
+					->where($qb->expr()->in('ticket_id', $qb->createNamedParameter($block, IQueryBuilder::PARAM_INT_ARRAY)));
+				$qb->executeStatement();
+			}
+
+			$qb = $this->db->getQueryBuilder();
+			$qb->delete('pwerk_ticket_deps')
+				->where($qb->expr()->orX(
+					$qb->expr()->in('ticket_id', $qb->createNamedParameter($block, IQueryBuilder::PARAM_INT_ARRAY)),
+					$qb->expr()->in('depends_on_id', $qb->createNamedParameter($block, IQueryBuilder::PARAM_INT_ARRAY)),
+				));
+			$qb->executeStatement();
+
+			$qb = $this->db->getQueryBuilder();
+			$qb->delete('pwerk_tickets')
+				->where($qb->expr()->in('id', $qb->createNamedParameter($block, IQueryBuilder::PARAM_INT_ARRAY)));
+			$geloescht += $qb->executeStatement();
+		}
+
+		return $geloescht;
 	}
 }
