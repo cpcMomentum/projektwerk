@@ -12,6 +12,7 @@ namespace OCA\Projektwerk\Controller;
 use OCA\Projektwerk\AppInfo\Application;
 use OCA\Projektwerk\Service\GithubService;
 use OCA\Projektwerk\Service\GithubTransferException;
+use OCA\Projektwerk\Service\SettingsAudit;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
@@ -36,6 +37,7 @@ class GithubTokenController extends Controller {
 	public function __construct(
 		IRequest $request,
 		private GithubService $github,
+		private SettingsAudit $audit,
 		private ?string $userId,
 	) {
 		parent::__construct(Application::APP_ID, $request);
@@ -70,6 +72,7 @@ class GithubTokenController extends Controller {
 		} catch (\InvalidArgumentException $e) {
 			return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
 		}
+		$this->audit->record($this->userId, 'personal GitHub token stored');
 
 		return new JSONResponse(['present' => true]);
 	}
@@ -83,7 +86,11 @@ class GithubTokenController extends Controller {
 			return new JSONResponse([], Http::STATUS_UNAUTHORIZED);
 		}
 
+		$vorhanden = $this->github->hasToken($this->userId);
 		$this->github->deleteToken($this->userId);
+		if ($vorhanden) {
+			$this->audit->record($this->userId, 'personal GitHub token removed');
+		}
 
 		return new JSONResponse(['present' => false]);
 	}
