@@ -251,7 +251,7 @@ class ImapClient {
 
 			if (preg_match('/^' . preg_quote($tag, '/') . ' (OK|NO|BAD)\b/i', $line, $mm)) {
 				if (strtoupper($mm[1]) !== 'OK') {
-					throw new ImapException('IMAP ' . trim($line));
+					throw new ImapCommandRejectedException('IMAP ' . trim($line));
 				}
 				return ['raw' => $raw, 'literals' => $literals];
 			}

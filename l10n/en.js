@@ -752,6 +752,8 @@ OC.L10N.register(
     "Kommunikation" : "Communication",
     "Lizenz" : "License",
     "Kein GitHub-Token hinterlegt. Bitte in „Einstellungen\" einen Token eintragen." : "No GitHub token stored. Please enter a token in “Settings”.",
-    "Der GitHub-Token ist ungültig oder abgelaufen. Bitte in „Einstellungen\" erneuern." : "The GitHub token is invalid or has expired. Please renew it in “Settings”."
+    "Der GitHub-Token ist ungültig oder abgelaufen. Bitte in „Einstellungen\" erneuern." : "The GitHub token is invalid or has expired. Please renew it in “Settings”.",
+    "Die Passwortbestätigung wurde abgebrochen." : "The password confirmation was cancelled.",
+    "Bitte bestätige dein Passwort: Seite neu laden und erneut versuchen." : "Please confirm your password: reload the page and try again."
 },
 "nplurals=2; plural=(n != 1);");

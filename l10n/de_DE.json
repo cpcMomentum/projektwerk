@@ -802,7 +802,9 @@
 		"Kommunikation": "Kommunikation",
 		"Lizenz": "Lizenz",
 		"Kein GitHub-Token hinterlegt. Bitte in „Einstellungen\" einen Token eintragen.": "Kein GitHub-Token hinterlegt. Bitte in „Einstellungen\" einen Token eintragen.",
-		"Der GitHub-Token ist ungültig oder abgelaufen. Bitte in „Einstellungen\" erneuern.": "Der GitHub-Token ist ungültig oder abgelaufen. Bitte in „Einstellungen\" erneuern."
+		"Der GitHub-Token ist ungültig oder abgelaufen. Bitte in „Einstellungen\" erneuern.": "Der GitHub-Token ist ungültig oder abgelaufen. Bitte in „Einstellungen\" erneuern.",
+		"Die Passwortbestätigung wurde abgebrochen.": "Die Passwortbestätigung wurde abgebrochen.",
+		"Bitte bestätige dein Passwort: Seite neu laden und erneut versuchen.": "Bitte bestätigen Sie Ihr Passwort: Seite neu laden und erneut versuchen."
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }
