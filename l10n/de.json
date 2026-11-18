@@ -803,6 +803,8 @@
 		"Lizenz": "Lizenz",
 		"Kein GitHub-Token hinterlegt. Bitte in „Einstellungen\" einen Token eintragen.": "Kein GitHub-Token hinterlegt. Bitte in „Einstellungen\" einen Token eintragen.",
 		"Der GitHub-Token ist ungültig oder abgelaufen. Bitte in „Einstellungen\" erneuern.": "Der GitHub-Token ist ungültig oder abgelaufen. Bitte in „Einstellungen\" erneuern.",
+		"Die Passwortbestätigung wurde abgebrochen.": "Die Passwortbestätigung wurde abgebrochen.",
+		"Bitte bestätige dein Passwort: Seite neu laden und erneut versuchen.": "Bitte bestätige dein Passwort: Seite neu laden und erneut versuchen.",
 		"Das Ziel-Repository muss im Format „owner/repo\" angegeben sein.": "Das Ziel-Repository muss im Format „owner/repo\" angegeben sein.",
 		"Die Chat-Adresse muss mit „https://\" oder „http://\" beginnen.": "Die Chat-Adresse muss mit „https://\" oder „http://\" beginnen."
 	},

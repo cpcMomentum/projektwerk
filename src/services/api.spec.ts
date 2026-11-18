@@ -211,6 +211,20 @@ describe('normale Antworten', () => {
 		expect(showError).not.toHaveBeenCalled()
 	})
 
+	it('übersetzt die Ablehnung ohne Passwortbestätigung in eine lesbare Meldung', async () => {
+		rejectWith({
+			status: 403,
+			headers: { 'content-type': 'application/json', 'x-nc-auth-notconfirmed': 'true' },
+			data: { message: 'Password confirmation is required' },
+		})
+
+		await expect(apiGet('/reply-mailbox')).rejects.toMatchObject({
+			status: 403,
+			message: 'Bitte bestätige dein Passwort: Seite neu laden und erneut versuchen.',
+			notJson: false,
+		})
+	})
+
 	/**
 	 * Ein Netzfehler hat gar keine Antwort. Ihn als Freigabelisten-Fall zu
 	 * melden wäre die falsche Fährte — und der Fall tritt bei jedem
