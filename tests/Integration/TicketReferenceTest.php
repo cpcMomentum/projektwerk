@@ -20,6 +20,8 @@ use OCA\Projektwerk\Search\TicketSearchProvider;
 use OCA\Projektwerk\Service\MemberService;
 use OCA\Projektwerk\Service\TicketService;
 use OCA\Projektwerk\Service\TicketLink;
+use OCA\Projektwerk\Service\MemberLifecycleService;
+use OCA\Projektwerk\Access\ViewerContext;
 use OCP\IL10N;
 use OCP\IURLGenerator;
 use OCP\IUser;
@@ -118,8 +120,62 @@ class TicketReferenceTest extends IntegrationTestCase {
 	}
 
 	public function testTheCacheKeyIsPerUser(): void {
-		$this->assertSame(LeakMatrixFixture::ANNA, $this->provider(LeakMatrixFixture::ANNA)->getCacheKey('x'));
-		$this->assertSame(LeakMatrixFixture::CARLA, $this->provider(LeakMatrixFixture::CARLA)->getCacheKey('x'));
+		$this->assertStringStartsWith(LeakMatrixFixture::ANNA . ':', $this->provider(LeakMatrixFixture::ANNA)->getCacheKey('x'));
+		$this->assertStringStartsWith(LeakMatrixFixture::CARLA . ':', $this->provider(LeakMatrixFixture::CARLA)->getCacheKey('x'));
+		$this->assertSame($this->provider(LeakMatrixFixture::ANNA)->getCacheKey('x'), $this->provider(LeakMatrixFixture::ANNA)->getCacheKey('y'));
+	}
+
+	/**
+	 * Unabhängig davon, ob die Testumgebung überhaupt einen Cache hat.
+	 */
+	public function testTheCacheKeyChangesWithTheMembership(): void {
+		$carla = $this->provider(LeakMatrixFixture::CARLA)->getCacheKey('x');
+		$bert = $this->provider(LeakMatrixFixture::BERT)->getCacheKey('x');
+		$anna = $this->provider(LeakMatrixFixture::ANNA)->getCacheKey('x');
+
+		Server::get(MemberLifecycleService::class)->removeFromProject(LeakMatrixFixture::CARLA, $this->fixture->projectId);
+		Server::get(MemberService::class)->update($this->fixture->contextFor(LeakMatrixFixture::ANNA), LeakMatrixFixture::BERT, ['role' => ViewerContext::ROLE_EXTERNAL]);
+
+		$this->assertNotSame($carla, $this->provider(LeakMatrixFixture::CARLA)->getCacheKey('x'), 'Entfernt: neuer Schlüssel.');
+		$this->assertNotSame($bert, $this->provider(LeakMatrixFixture::BERT)->getCacheKey('x'), 'Umgestuft: neuer Schlüssel.');
+		$this->assertSame($anna, $this->provider(LeakMatrixFixture::ANNA)->getCacheKey('x'), 'Unbeteiligt: der Schlüssel bleibt, sonst wäre der Cache nutzlos.');
+	}
+
+	public function testARemovedMemberNoLongerGetsTheCardFromTheCache(): void {
+		$manager = Server::get(IReferenceManager::class);
+		$session = Server::get(IUserSession::class);
+		$link = Server::get(TicketLink::class)->forTicket($this->fixture->ticketIds['public/anna']);
+
+		try {
+			$this->actAs($session, LeakMatrixFixture::CARLA);
+			$this->assertNotNull($manager->resolveReference($link), 'Vorher sieht Carla die Karte.');
+
+			Server::get(MemberLifecycleService::class)->removeFromProject(LeakMatrixFixture::CARLA, $this->fixture->projectId);
+
+			$after = $manager->resolveReference($link);
+			$this->assertFalse($after !== null && $after->getRichObjectType() === TicketReferenceProvider::RICH_OBJECT_TYPE, 'Carla bekommt die Karte nach dem Entfernen weiter aus dem Cache.');
+		} finally {
+			$session->setVolatileActiveUser(null);
+		}
+	}
+
+	public function testAMemberMovedToTheCustomerSideNoLongerGetsInternalCardsFromTheCache(): void {
+		$manager = Server::get(IReferenceManager::class);
+		$session = Server::get(IUserSession::class);
+		$link = Server::get(TicketLink::class)->forTicket($this->fixture->ticketIds['internal/anna']);
+
+		try {
+			$this->actAs($session, LeakMatrixFixture::BERT);
+			$vorher = $manager->resolveReference($link);
+			$this->assertTrue($vorher !== null && $vorher->getRichObjectType() === TicketReferenceProvider::RICH_OBJECT_TYPE, 'Als Interner sieht Bert die Karte.');
+
+			Server::get(MemberService::class)->update($this->fixture->contextFor(LeakMatrixFixture::ANNA), LeakMatrixFixture::BERT, ['role' => ViewerContext::ROLE_EXTERNAL]);
+
+			$after = $manager->resolveReference($link);
+			$this->assertFalse($after !== null && $after->getRichObjectType() === TicketReferenceProvider::RICH_OBJECT_TYPE, 'Bert bekommt die interne Karte nach dem Wechsel weiter aus dem Cache.');
+		} finally {
+			$session->setVolatileActiveUser(null);
+		}
 	}
 
 	public function testTheHashFormIsRecognisedToo(): void {

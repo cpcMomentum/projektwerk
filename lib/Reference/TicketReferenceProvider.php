@@ -120,9 +120,14 @@ class TicketReferenceProvider extends ADiscoverableReferenceProvider implements 
 		return (string)$this->ticketIdFrom($referenceId);
 	}
 
-	/** Je Nutzer: Sonst bekäme ein Kunde aus dem Cache die Karte, die ein Interner aufgelöst hat. */
+	/** Je Nutzer und Stand seiner Mitgliedschaften: Wer entfernt oder umgestuft wird, bekommt keine Karte mehr aus dem Cache. */
 	public function getCacheKey(string $referenceId): ?string {
-		return $this->currentUserId() ?? '';
+		$userId = $this->currentUserId();
+		if ($userId === null) {
+			return '';
+		}
+
+		return $userId . ':' . md5((string)json_encode($this->members->rolesForUserBoards($userId)));
 	}
 
 	/** Aus der Sitzung zur Aufrufzeit: Der Server-Container injiziert Providern kein `userId`. */

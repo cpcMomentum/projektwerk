@@ -863,54 +863,55 @@ class TicketMapper extends QBMapper {
 	}
 
 	/**
-	 * Gelöschte Vorgänge eines Boards samt Kindzeilen endgültig entfernen; Dateien bleiben.
+	 * Gelöschte Vorgänge eines Boards auf ein anderes Board desselben Projekts umhängen, damit sie wiederherstellbar bleiben.
 	 *
-	 * @throws \LogicException wenn noch ein nicht gelöschter Vorgang im Board liegt
+	 * @param array<int, int> $columnMap Spalte im alten Board => Spalte im Ziel-Board
+	 * @throws \LogicException wenn noch ein nicht gelöschter Vorgang im Board liegt oder das Ziel zu einem anderen Projekt gehört
 	 */
-	public function purgeDeletedInBoard(ViewerContext $viewer): void {
+	public function moveDeletedToBoard(ViewerContext $viewer, ViewerContext $target, array $columnMap, int $fallbackColumnId): void {
+		if ($target->projectId !== $viewer->projectId) {
+			throw new \LogicException('Ziel-Board gehört zu einem anderen Projekt.');
+		}
 		$boardId = $viewer->boardId;
+		$targetBoardId = $target->boardId;
 
 		$qb = $this->db->getQueryBuilder();
-		$qb->select('id', 'deleted_at')
+		$qb->select('id', 'column_id', 'deleted_at')
 			->from($this->tableName)
 			->where($qb->expr()->eq('board_id', $qb->createNamedParameter($boardId, IQueryBuilder::PARAM_INT)));
 		$result = $qb->executeQuery();
-		$ticketIds = [];
+		$jeZielspalte = [];
 		while ($row = $result->fetch()) {
 			if ($row['deleted_at'] === null) {
 				$result->closeCursor();
 				throw new \LogicException('Board ' . $boardId . ' enthält noch Vorgänge.');
 			}
-			$ticketIds[] = (int)$row['id'];
+			$jeZielspalte[$columnMap[(int)$row['column_id']] ?? $fallbackColumnId][] = (int)$row['id'];
 		}
 		$result->closeCursor();
 
-		// Blöcke wegen der Parametergrenze mancher Datenbanken.
-		foreach (array_chunk($ticketIds, 1000) as $chunk) {
-			// Vorgänge zuerst und nur noch gelöschte: Wurde einer inzwischen wiederhergestellt, rollt der Aufrufer alles zurück.
-			$tickets = $this->db->getQueryBuilder();
-			$tickets->delete($this->tableName)
-				->where($tickets->expr()->in('id', $tickets->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)))
-				->andWhere($tickets->expr()->eq('board_id', $tickets->createNamedParameter($boardId, IQueryBuilder::PARAM_INT)))
-				->andWhere($tickets->expr()->isNotNull('deleted_at'));
-			if ($tickets->executeStatement() !== count($chunk)) {
-				throw new \LogicException('Board ' . $boardId . ': ein Vorgang wurde während des Löschens wiederhergestellt.');
+		foreach ($jeZielspalte as $columnId => $ticketIds) {
+			// Blöcke wegen der Parametergrenze mancher Datenbanken.
+			foreach (array_chunk($ticketIds, 1000) as $chunk) {
+				// Nur noch gelöschte: Wurde einer inzwischen wiederhergestellt, rollt der Aufrufer alles zurück.
+				$move = $this->db->getQueryBuilder();
+				$move->update($this->tableName)
+					->set('board_id', $move->createNamedParameter($targetBoardId, IQueryBuilder::PARAM_INT))
+					->set('column_id', $move->createNamedParameter($columnId, IQueryBuilder::PARAM_INT))
+					->where($move->expr()->in('id', $move->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)))
+					->andWhere($move->expr()->eq('board_id', $move->createNamedParameter($boardId, IQueryBuilder::PARAM_INT)))
+					->andWhere($move->expr()->eq('project_id', $move->createNamedParameter($viewer->projectId, IQueryBuilder::PARAM_INT)))
+					->andWhere($move->expr()->isNotNull('deleted_at'));
+				if ($move->executeStatement() !== count($chunk)) {
+					throw new \LogicException('Board ' . $boardId . ': ein Vorgang wurde während des Löschens wiederhergestellt.');
+				}
 			}
-
-			foreach (['pwerk_steps', 'pwerk_comments', 'pwerk_attachments', 'pwerk_reads', 'pwerk_ticket_users', 'pwerk_mail_outbox', 'pwerk_ticket_log'] as $table) {
-				$delete = $this->db->getQueryBuilder();
-				$delete->delete($table)
-					->where($delete->expr()->in('ticket_id', $delete->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)));
-				$delete->executeStatement();
-			}
-
-			$deps = $this->db->getQueryBuilder();
-			$deps->delete('pwerk_ticket_deps')
-				->where($deps->expr()->orX(
-					$deps->expr()->in('ticket_id', $deps->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)),
-					$deps->expr()->in('depends_on_id', $deps->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)),
-				));
-			$deps->executeStatement();
 		}
+
+		$deps = $this->db->getQueryBuilder();
+		$deps->update('pwerk_ticket_deps')
+			->set('board_id', $deps->createNamedParameter($targetBoardId, IQueryBuilder::PARAM_INT))
+			->where($deps->expr()->eq('board_id', $deps->createNamedParameter($boardId, IQueryBuilder::PARAM_INT)));
+		$deps->executeStatement();
 	}
 }

@@ -92,20 +92,105 @@ final class BoardDeleteTest extends IntegrationTestCase {
 		$this->assertSame(1, $this->rows('pwerk_tickets', 'board_id', (int)$this->boardB->getId()));
 	}
 
-	public function testDeletedTicketsCountAsEmptyAndGoWithTheBoard(): void {
+	public function testDeletedTicketsCountAsEmptyAndMoveToTheRemainingBoard(): void {
 		$anna = $this->viewer(self::ANNA, (int)$this->boardB->getId());
 		$ticket = $this->ticket($anna, TicketScope::VISIBILITY_PUBLIC);
-		Server::get(StepService::class)->create($anna, (int)$ticket->getId(), 'Schritt');
-		Server::get(CommentService::class)->create($anna, (int)$ticket->getId(), 'Kommentar');
-		$aktuell = Server::get(\OCA\Projektwerk\Db\TicketMapper::class)->findVisible($anna, (int)$ticket->getId());
-		Server::get(TicketService::class)->delete($anna, (int)$ticket->getId(), (int)$aktuell->getVersion());
+		$id = (int)$ticket->getId();
+		Server::get(StepService::class)->create($anna, $id, 'Schritt');
+		Server::get(CommentService::class)->create($anna, $id, 'Kommentar');
+		$this->loeschen($anna, $id);
 
 		$this->assertTrue($this->deletable(self::ANNA, $this->boardB));
 		$this->service->delete($anna);
 
-		$this->assertSame(0, $this->rows('pwerk_tickets', 'id', (int)$ticket->getId()));
-		$this->assertSame(0, $this->rows('pwerk_steps', 'ticket_id', (int)$ticket->getId()));
-		$this->assertSame(0, $this->rows('pwerk_comments', 'ticket_id', (int)$ticket->getId()));
+		$this->assertSame(1, $this->rows('pwerk_tickets', 'id', $id), 'Der gelöschte Vorgang bleibt erhalten.');
+		$this->assertSame(1, $this->rows('pwerk_steps', 'ticket_id', $id));
+		$this->assertSame(1, $this->rows('pwerk_comments', 'ticket_id', $id));
+		$this->assertSame(0, $this->rows('pwerk_tickets', 'board_id', (int)$this->boardB->getId()));
+
+		$annaA = $this->viewer(self::ANNA, (int)$this->boardA->getId());
+		$zurueck = Server::get(TicketService::class)->restore($annaA, $id);
+		$spaltenA = array_map(static fn ($c): int => (int)$c->getId(), Server::get(ColumnMapper::class)->findForBoard($annaA));
+		$this->assertSame((int)$this->boardA->getId(), (int)$zurueck->getBoardId());
+		$this->assertSame($spaltenA[0], (int)$zurueck->getColumnId(), 'Ein offener Vorgang landet in der ersten Spalte des verbleibenden Boards.');
+	}
+
+	/**
+	 * Wer ein Board anlegen durfte, darf es löschen, aber nicht die gelöschten Vorgänge der anderen Seite mitnehmen.
+	 */
+	public function testABoardCreatorFromTheOtherSideCannotDestroyDeletedTicketsOfTheInternalSide(): void {
+		$boardId = (int)$this->boardB->getId();
+		$qb = $this->db->getQueryBuilder();
+		$qb->update('pwerk_boards')
+			->set('created_by', $qb->createNamedParameter(self::CARLA))
+			->where($qb->expr()->eq('id', $qb->createNamedParameter($boardId, IQueryBuilder::PARAM_INT)));
+		$qb->executeStatement();
+
+		$bert = $this->viewer(self::BERT, $boardId);
+		$intern = (int)$this->ticket($bert, TicketScope::VISIBILITY_INTERNAL)->getId();
+		$this->loeschen($bert, $intern);
+
+		$carla = $this->viewer(self::CARLA, $boardId);
+		$this->assertTrue($carla->isBoardCreator);
+		$this->service->delete($carla);
+
+		$zurueck = Server::get(TicketService::class)->restore($this->viewer(self::BERT, (int)$this->boardA->getId()), $intern);
+		$this->assertNull($zurueck->getDeletedAt(), 'Die interne Seite kann ihren Vorgang weiterhin wiederherstellen.');
+	}
+
+	public function testAClosedDeletedTicketLandsInAnEndColumnWithTheSameOutcome(): void {
+		$anna = $this->viewer(self::ANNA, (int)$this->boardB->getId());
+		$endspalte = array_values(array_filter(
+			Server::get(ColumnMapper::class)->findForBoard($anna),
+			static fn ($c): bool => $c->getFinalOutcome() === \OCA\Projektwerk\Db\Ticket::OUTCOME_DISCARDED,
+		))[0];
+		$id = (int)$this->ticket($anna, TicketScope::VISIBILITY_PUBLIC)->getId();
+		$qb = $this->db->getQueryBuilder();
+		$qb->update('pwerk_tickets')
+			->set('column_id', $qb->createNamedParameter((int)$endspalte->getId(), IQueryBuilder::PARAM_INT))
+			->set('deleted_at', $qb->createNamedParameter(new \DateTime(), IQueryBuilder::PARAM_DATETIME_MUTABLE))
+			->where($qb->expr()->eq('id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)));
+		$qb->executeStatement();
+
+		$this->service->delete($anna);
+
+		$annaA = $this->viewer(self::ANNA, (int)$this->boardA->getId());
+		$ziel = array_values(array_filter(
+			Server::get(ColumnMapper::class)->findForBoard($annaA),
+			static fn ($c): bool => $c->getFinalOutcome() === \OCA\Projektwerk\Db\Ticket::OUTCOME_DISCARDED,
+		))[0];
+		$this->assertSame((int)$ziel->getId(), (int)Server::get(TicketService::class)->restore($annaA, $id)->getColumnId());
+	}
+
+	public function testLinksBetweenDeletedTicketsMoveWithThem(): void {
+		$anna = $this->viewer(self::ANNA, (int)$this->boardB->getId());
+		$wartend = (int)$this->ticket($anna, TicketScope::VISIBILITY_PUBLIC)->getId();
+		$partner = (int)$this->ticket($anna, TicketScope::VISIBILITY_PUBLIC)->getId();
+		Server::get(\OCA\Projektwerk\Service\TicketDependencyService::class)->add($anna, $wartend, $partner);
+		$this->loeschen($anna, $wartend);
+		$this->loeschen($anna, $partner);
+
+		$this->service->delete($anna);
+
+		$this->assertSame(0, $this->rows('pwerk_ticket_deps', 'board_id', (int)$this->boardB->getId()));
+		$this->assertSame(1, $this->rows('pwerk_ticket_deps', 'board_id', (int)$this->boardA->getId()));
+	}
+
+	public function testDeletedTicketsNeverMoveToABoardOfAnotherProject(): void {
+		$fremd = $this->service->create(self::ANNA, 'Anderes Projekt');
+
+		$this->expectException(\LogicException::class);
+		Server::get(\OCA\Projektwerk\Db\TicketMapper::class)->moveDeletedToBoard(
+			$this->viewer(self::ANNA, (int)$this->boardB->getId()),
+			$this->viewer(self::ANNA, (int)$fremd->getId()),
+			[],
+			0,
+		);
+	}
+
+	private function loeschen(ViewerContext $viewer, int $ticketId): void {
+		$aktuell = Server::get(\OCA\Projektwerk\Db\TicketMapper::class)->findVisible($viewer, $ticketId);
+		Server::get(TicketService::class)->delete($viewer, $ticketId, (int)$aktuell->getVersion());
 	}
 
 	public function testTheLastBoardOfAProjectIsRefused(): void {

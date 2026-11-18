@@ -22,6 +22,9 @@ class TicketLogService {
 
 	private const MAX_LENGTH = 255;
 
+	/** @var array<int, true> */
+	private array $pending = [];
+
 	public function __construct(
 		private TicketLogMapper $log,
 		private TicketMapper $tickets,
@@ -69,8 +72,31 @@ class TicketLogService {
 		$entry->setCreatedAt(new \DateTime());
 		// Jede Änderung läuft hier durch; eine veraltete Vorschaukarte zeigte sonst bis zu einer Stunde den alten Stand.
 		$this->references->invalidateCache((string)$entry->getTicketId());
+		$this->invalidateAgainAfterCommit($ticketId);
 
 		return $this->log->insert($entry);
+	}
+
+	/**
+	 * Der Eintrag entsteht meist in einer offenen Transaktion: Wer dazwischen auflöst, legte den alten Stand wieder in den Cache.
+	 */
+	private function invalidateAgainAfterCommit(int $ticketId): void {
+		if ($this->pending === []) {
+			$this->defer($this->invalidatePending(...));
+		}
+		$this->pending[$ticketId] = true;
+	}
+
+	protected function defer(callable $callback): void {
+		register_shutdown_function($callback);
+	}
+
+	/** Am Ende der Anfrage sind alle Transaktionen abgeschlossen. */
+	public function invalidatePending(): void {
+		foreach (array_keys($this->pending) as $ticketId) {
+			$this->references->invalidateCache((string)$ticketId);
+		}
+		$this->pending = [];
 	}
 
 	/** @return TicketLog[] älteste zuerst; `$ticket` stammt aus findVisible() */

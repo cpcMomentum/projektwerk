@@ -163,7 +163,7 @@ class BoardMapper extends QBMapper {
 	}
 
 	/**
-	 * Board samt Spalten und Board-Einstellungen entfernen; Vorgänge räumt vorher {@see TicketMapper::purgeDeletedInBoard()} ab.
+	 * Board samt Spalten und Board-Einstellungen entfernen; gelöschte Vorgänge hängt vorher {@see TicketMapper::moveDeletedToBoard()} um.
 	 */
 	public function purge(ViewerContext $viewer): void {
 		$boardId = $viewer->boardId;

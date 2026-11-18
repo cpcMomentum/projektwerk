@@ -67,6 +67,15 @@ class ProjectMapper extends QBMapper {
 		return $this->findEntities($qb);
 	}
 
+	/** Die Projektzeile sperren; gehört in die Transaktion des Aufrufers und reiht Änderungen am Aufbau des Projekts hintereinander. */
+	public function lock(ViewerContext $viewer): void {
+		$qb = $this->db->getQueryBuilder();
+		$qb->update($this->tableName)
+			->set('ticket_counter', $qb->createFunction('ticket_counter'))
+			->where($qb->expr()->eq('id', $qb->createNamedParameter($viewer->projectId, IQueryBuilder::PARAM_INT)));
+		$qb->executeStatement();
+	}
+
 	/**
 	 * Die nächste Vorgangsnummer — **projektweit** fortlaufend (#246 PR 4).
 	 *

@@ -573,7 +573,7 @@ class BoardService {
 	}
 
 	/**
-	 * Ein leeres Board endgültig löschen; Heimat-Mitglieder wandern auf ein anderes Board des Projekts.
+	 * Ein leeres Board endgültig löschen; Heimat-Mitglieder und gelöschte Vorgänge wandern auf ein anderes Board des Projekts.
 	 *
 	 * @return array{nextBoardId: int}
 	 * @throws NotManagerException
@@ -584,6 +584,8 @@ class BoardService {
 
 		$this->db->beginTransaction();
 		try {
+			// Zuerst das Projekt: Zwei Boards, die sich gegenseitig als Ziel hätten, löschen sonst gleichzeitig.
+			$this->projects->lock($viewer);
 			// Sperrt die Board-Zeile gegen gleichzeitiges Anlegen von Vorgängen.
 			$this->boards->bumpChangeSeq($viewer);
 			$ziel = $this->otherBoardId($viewer);
@@ -597,7 +599,7 @@ class BoardService {
 
 			$titel = (string)$this->boards->findForViewer($viewer)->getTitle();
 			$this->members->moveHomeBoard($viewer, $ziel);
-			$this->tickets->purgeDeletedInBoard($viewer);
+			$this->moveDeletedTickets($viewer, $ziel);
 			$verbleibend = array_values(array_filter(
 				$this->projectBoards($viewer),
 				static fn (Board $b): bool => (int)$b->getId() !== $viewer->boardId,
@@ -625,6 +627,30 @@ class BoardService {
 		$this->projectLog->record($viewer, ProjectLog::BOARD_DELETED, null, $titel);
 
 		return ['nextBoardId' => $ziel];
+	}
+
+	/** Gelöschte Vorgänge gehören oft der anderen Seite; wer das Board löscht, darf sie ihr nicht endgültig nehmen. */
+	private function moveDeletedTickets(ViewerContext $viewer, int $targetBoardId): void {
+		$ziel = $this->access->contextFor($viewer->userId, $targetBoardId);
+		// Sperrt das Ziel-Board, damit dort währenddessen keine Spalte entfernt wird.
+		$this->boards->bumpChangeSeq($ziel);
+		$zielspalten = $this->columns->findForBoard($ziel);
+		if ($zielspalten === []) {
+			throw new \InvalidArgumentException($this->l10n->t('Dieses Board kann nicht gelöscht werden.'));
+		}
+		$jeAusgang = [];
+		foreach ($zielspalten as $spalte) {
+			$jeAusgang[$spalte->getFinalOutcome() ?? ''] ??= (int)$spalte->getId();
+		}
+		$erste = (int)$zielspalten[0]->getId();
+
+		// Ein abgeschlossener Vorgang kommt wieder in eine Endspalte mit demselben Ausgang, sonst in die erste Spalte.
+		$zuordnung = [];
+		foreach ($this->columns->findForBoard($viewer) as $spalte) {
+			$zuordnung[(int)$spalte->getId()] = $jeAusgang[$spalte->getFinalOutcome() ?? ''] ?? $erste;
+		}
+
+		$this->tickets->moveDeletedToBoard($viewer, $ziel, $zuordnung, $erste);
 	}
 
 	/** Ein anderes Board desselben Projekts, aktive vor archivierten. */

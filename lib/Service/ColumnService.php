@@ -190,6 +190,8 @@ class ColumnService {
 		$this->db->beginTransaction();
 
 		try {
+			// Sperrt die Board-Zeile; eine Board-Löschung, die Vorgänge hierher umhängt, wartet darauf.
+			$this->boards->bumpChangeSeq($viewer);
 			$existing = $this->columns->findForBoard($viewer);
 
 			// Die einzige Spalte zuerst: Sonst beantwortete ein Board mit einer
