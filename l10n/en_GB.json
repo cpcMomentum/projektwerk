@@ -804,7 +804,9 @@
 		"Kein GitHub-Token hinterlegt. Bitte in „Einstellungen\" einen Token eintragen.": "No GitHub token stored. Please enter a token in “Settings”.",
 		"Der GitHub-Token ist ungültig oder abgelaufen. Bitte in „Einstellungen\" erneuern.": "The GitHub token is invalid or has expired. Please renew it in “Settings”.",
 		"Die Passwortbestätigung wurde abgebrochen.": "The password confirmation was cancelled.",
-		"Bitte bestätige dein Passwort: Seite neu laden und erneut versuchen.": "Please confirm your password: reload the page and try again."
+		"Bitte bestätige dein Passwort: Seite neu laden und erneut versuchen.": "Please confirm your password: reload the page and try again.",
+		"Das Ziel-Repository muss im Format „owner/repo\" angegeben sein.": "The target repository must be given in the format “owner/repo”.",
+		"Die Chat-Adresse muss mit „https://\" oder „http://\" beginnen.": "The chat address must start with “https://” or “http://”."
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }

@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OCA\Projektwerk\Tests\Unit\Security;
 
 use OCA\Projektwerk\Controller\CommentController;
+use OCA\Projektwerk\Controller\NotifyPrefController;
 use OCA\Projektwerk\Controller\StepController;
 use OCA\Projektwerk\Controller\TicketController;
 use OCP\AppFramework\Http\Attribute\UserRateLimit;
@@ -35,5 +36,9 @@ class WriteRateLimitTest extends TestCase {
 		$attributes = (new \ReflectionMethod($class, $method))->getAttributes(UserRateLimit::class);
 
 		$this->assertCount(1, $attributes, $class . '::' . $method);
+	}
+
+	public function testWritingAnOwnNotificationSwitchIsRateLimited(): void {
+		$this->assertCount(1, (new \ReflectionMethod(NotifyPrefController::class, 'update'))->getAttributes(UserRateLimit::class));
 	}
 }
