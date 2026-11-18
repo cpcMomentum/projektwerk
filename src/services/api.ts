@@ -246,6 +246,15 @@ function wrapError(error: unknown): ApiError {
 		}
 	}
 
+	if (String(response.headers?.['x-nc-auth-notconfirmed'] ?? '') === 'true') {
+		// Nextcloud lehnt ohne frische Passwortbestätigung ab und schickt dazu nur eine englische Kurzmeldung.
+		return {
+			status,
+			message: t('projektwerk', 'Bitte bestätige dein Passwort: Seite neu laden und erneut versuchen.'),
+			notJson: false,
+		}
+	}
+
 	return {
 		status,
 		// Die Meldung des Servers hat Vorrang: Sie ist die einzige, die den

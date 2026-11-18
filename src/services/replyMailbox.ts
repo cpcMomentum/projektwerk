@@ -11,6 +11,7 @@
  */
 
 import { apiGet, apiPost, apiPut } from '@/services/api'
+import { confirmPassword } from '@/services/passwordConfirmation'
 
 /** Die Einstellungen, wie die Oberfläche sie liest — ohne Passwort. */
 export interface ReplyMailboxConfig {
@@ -58,6 +59,7 @@ export async function fetchReplyMailbox(): Promise<ReplyMailboxConfig> {
  * @param data Die zu speichernden Felder, optional mit neuem Passwort.
  */
 export async function saveReplyMailbox(data: ReplyMailboxSave): Promise<ReplyMailboxConfig> {
+	await confirmPassword()
 	return apiPut<ReplyMailboxConfig, ReplyMailboxSave>('/reply-mailbox', data)
 }
 
@@ -69,5 +71,6 @@ export async function saveReplyMailbox(data: ReplyMailboxSave): Promise<ReplyMai
  * @param data Die Verbindungsfelder; `imapPassword` optional (sonst gespeichertes).
  */
 export async function testReplyMailbox(data: ReplyMailboxTest): Promise<{ ok: boolean }> {
+	await confirmPassword()
 	return apiPost<{ ok: boolean }, ReplyMailboxTest>('/reply-mailbox/test', data)
 }

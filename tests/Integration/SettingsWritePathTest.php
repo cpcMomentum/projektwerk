@@ -105,6 +105,69 @@ class SettingsWritePathTest extends IntegrationTestCase {
 		$this->assertNull($board->getCustomer());
 	}
 
+	#[\PHPUnit\Framework\Attributes\DataProvider('unusableChatAddresses')]
+	public function testTheChatAddressMustBeAWebAddress(string $url): void {
+		try {
+			$this->boardService->update($this->manager(), ['chatUrl' => $url]);
+			$this->fail('Die Adresse hätte abgewiesen werden müssen: ' . $url);
+		} catch (\InvalidArgumentException) {
+			$this->assertNull(Server::get(ProjectMapper::class)->findForViewer($this->manager())->getChatUrl());
+		}
+	}
+
+	/** @return array<string, array{string}> */
+	public static function unusableChatAddresses(): array {
+		return [
+			'Skript' => ['javascript:alert(1)'],
+			'Daten' => ['data:text/html,x'],
+			'ohne Schema' => ['chat.example.org/pw'],
+			'schemalos' => ['//chat.example.org/pw'],
+			'nur Schema' => ['https://'],
+		];
+	}
+
+	public function testAWebAddressIsStoredAsChatAddress(): void {
+		$this->boardService->update($this->manager(), ['chatUrl' => ' https://chat.example.org/pw ']);
+
+		$this->assertSame('https://chat.example.org/pw', Server::get(ProjectMapper::class)->findForViewer($this->manager())->getChatUrl());
+	}
+
+	/**
+	 * Das Formular schickt Chat-Adresse und Repository mit jedem Speichern mit.
+	 */
+	public function testAStoredLegacyValueDoesNotBlockSavingOtherFields(): void {
+		$viewer = $this->manager();
+		$project = Server::get(ProjectMapper::class)->findForViewer($viewer);
+		$project->setChatUrl('/call/abc123');
+		Server::get(ProjectMapper::class)->update($project);
+		$board = Server::get(BoardMapper::class)->findForViewer($viewer);
+		$board->setGithubRepo('https://github.com/acme/app');
+		Server::get(BoardMapper::class)->update($board);
+
+		$saved = $this->boardService->update($viewer, ['customer' => 'Neuer Kunde', 'chatUrl' => '/call/abc123']);
+		$this->assertSame('Neuer Kunde', $saved->getCustomer());
+
+		$saved = $this->boardService->update($viewer, ['githubEnabled' => false, 'githubRepo' => 'https://github.com/acme/app']);
+		$this->assertSame(0, (int)$saved->getGithubEnabled());
+
+		$this->expectException(\InvalidArgumentException::class);
+		$this->boardService->update($viewer, ['chatUrl' => '/call/anders']);
+	}
+
+	public function testTheTargetRepositoryIsCheckedWhenSaving(): void {
+		$board = $this->boardService->update($this->manager(), ['githubRepo' => ' acme/app ']);
+		$this->assertSame('acme/app', $board->getGithubRepo());
+
+		try {
+			$this->boardService->update($this->manager(), ['githubRepo' => '../x#']);
+			$this->fail('Das Repository hätte abgewiesen werden müssen.');
+		} catch (\InvalidArgumentException) {
+			$this->assertSame('acme/app', Server::get(BoardMapper::class)->findForViewer($this->manager())->getGithubRepo());
+		}
+
+		$this->assertNull($this->boardService->update($this->manager(), ['githubRepo' => ''])->getGithubRepo());
+	}
+
 	/**
 	 * **Die eigene Firma landet am Projekt, nicht nur am Board (#309 Phase 5).**
 	 *

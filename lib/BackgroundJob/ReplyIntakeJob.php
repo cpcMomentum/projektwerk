@@ -14,6 +14,7 @@ use OCA\Projektwerk\Access\BoardAccess;
 use OCA\Projektwerk\Db\MailOutboxMapper;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Imap\ImapClient;
+use OCA\Projektwerk\Imap\ImapCommandRejectedException;
 use OCA\Projektwerk\Imap\MimeMessage;
 use OCA\Projektwerk\Service\CommentService;
 use OCA\Projektwerk\Service\ReplyMailboxSettings;
@@ -61,7 +62,7 @@ class ReplyIntakeJob extends TimedJob {
 	/** Alle fünf Minuten (§Antwort-Postfach). */
 	private const INTERVALL_SEKUNDEN = 300;
 
-	/** Wie viele ungelesene Mails ein Lauf höchstens anfasst. */
+	/** Wie viele ungelesene Mails ein Lauf höchstens anfasst, je für Antworten und für den Rest. */
 	private const BATCH = 30;
 
 	/**
@@ -108,31 +109,47 @@ class ReplyIntakeJob extends TimedJob {
 			$client->login($cfg['user'], $cfg['password']);
 			$client->select($cfg['folder']);
 
-			$uids = $client->uidSearch('UNSEEN');
-			$jeAbsender = [];
-			$angefasst = 0;
-			foreach ($uids as $uid) {
-				if ($angefasst >= self::BATCH) {
-					break;
-				}
-				$angefasst++;
-
-				try {
-					$this->verarbeiten($client, $uid, $jeAbsender);
-				} catch (\Throwable $e) {
-					// Eine Mail darf den Lauf nicht beenden — und ein
-					// „Giftbrief" nicht jeden Lauf erneut kosten: gelesen
-					// markieren, damit der nächste Lauf ihn übergeht.
-					$this->logger->warning('ProjektWerk: Antwort-Einlesen an UID ' . $uid . ' gescheitert', ['exception' => $e]);
-					$this->stillMarkieren($client, $uid);
-				}
-			}
+			$this->abarbeiten($client);
 		} catch (\Throwable $e) {
 			// Postfach nicht erreichbar, Anmeldung abgelehnt, Ordner fehlt: ein
 			// Zustand, kein Programmfehler — im nächsten Lauf erneut versuchen.
 			$this->logger->warning('ProjektWerk: Antwort-Postfach nicht erreichbar', ['exception' => $e]);
 		} finally {
 			$client->logout();
+		}
+	}
+
+	/** Antworten zuerst und mit eigenem Kontingent, damit fremde Mails im Postfach sie nicht verdrängen. */
+	private function abarbeiten(ImapClient $client): void {
+		$jeAbsender = [];
+
+		try {
+			$antworten = $client->uidSearch('UNSEEN SUBJECT "[PW-"');
+		} catch (ImapCommandRejectedException) {
+			$this->logger->info('ProjektWerk: Postfach kann nicht im Betreff suchen, Antworten ohne Vorrang');
+			$antworten = [];
+		}
+		$this->stapel($client, $antworten, $jeAbsender);
+
+		// Erst danach: Die Liste aller ungelesenen Mails kann bei einem vollen Postfach scheitern.
+		$this->stapel($client, array_values(array_diff($client->uidSearch('UNSEEN'), $antworten)), $jeAbsender);
+	}
+
+	/**
+	 * @param int[] $uids
+	 * @param array<string, int> $jeAbsender
+	 */
+	private function stapel(ImapClient $client, array $uids, array &$jeAbsender): void {
+		foreach (array_slice($uids, 0, self::BATCH) as $uid) {
+			try {
+				$this->verarbeiten($client, $uid, $jeAbsender);
+			} catch (\Throwable $e) {
+				// Eine Mail darf den Lauf nicht beenden — und ein
+				// „Giftbrief" nicht jeden Lauf erneut kosten: gelesen
+				// markieren, damit der nächste Lauf ihn übergeht.
+				$this->logger->warning('ProjektWerk: Antwort-Einlesen an UID ' . $uid . ' gescheitert', ['exception' => $e]);
+				$this->stillMarkieren($client, $uid);
+			}
 		}
 	}
 
@@ -224,7 +241,7 @@ class ReplyIntakeJob extends TimedJob {
 		// Amok-Bremse: höchstens MAX_JE_ABSENDER je Absender und Lauf.
 		$jeAbsender[$from] = ($jeAbsender[$from] ?? 0) + 1;
 		if ($jeAbsender[$from] > self::MAX_JE_ABSENDER) {
-			$this->logger->warning('ProjektWerk: Absender ' . $from . ' über der Lauf-Grenze — Mail zurückgestellt (gelesen markiert)');
+			$this->logger->warning('ProjektWerk: Konto ' . $recipientUid . ' über der Lauf-Grenze — Mail zurückgestellt (gelesen markiert)');
 			$this->stillMarkieren($client, $uid);
 
 			return;

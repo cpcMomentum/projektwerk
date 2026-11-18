@@ -17,6 +17,7 @@ use OCA\Projektwerk\Service\SettingsAudit;
 use OCA\Projektwerk\Service\WerkPlusLimitException;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
+use OCP\AppFramework\Http\Attribute\PasswordConfirmationRequired;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\IL10N;
 use OCP\IRequest;
@@ -62,6 +63,7 @@ class ReplyMailboxController extends Controller {
 	 * Leeres `imapPassword` lässt das gespeicherte unberührt; `imapPasswordClear`
 	 * löscht es.
 	 */
+	#[PasswordConfirmationRequired]
 	public function save(
 		bool $replyEnabled = false,
 		string $replyAddress = '',
@@ -110,6 +112,7 @@ class ReplyMailboxController extends Controller {
 	 *
 	 * Leeres `imapPassword` → das gespeicherte wird verwendet.
 	 */
+	#[PasswordConfirmationRequired]
 	public function test(
 		string $imapHost = '',
 		int $imapPort = 993,

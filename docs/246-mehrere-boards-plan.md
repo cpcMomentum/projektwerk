@@ -185,7 +185,7 @@ Die heutigen Routen (`/project/:boardId` als Dashboard, `/boards/:boardId` als B
 
 ## 4. Phasen-Übersicht
 
-Gestaffelte, einzeln bewiesene PRs. **Dark-Launch bis PR 5**: jede Stufe ist ausschließbar, die App bleibt an jedem Punkt lauffähig und deploybar (Produktivinstanz v0.4.x, nc.cpcmomentum.com). Die riskante Access-Umstellung (PR 2) ist hinter einem vollen Leak-Matrix-Rerun über die synthetischen Multi-Board-Fixtures isoliert.
+Gestaffelte, einzeln bewiesene PRs. **Dark-Launch bis PR 5**: jede Stufe ist ausschließbar, die App bleibt an jedem Punkt lauffähig und deploybar (Produktivinstanz v0.4.x). Die riskante Access-Umstellung (PR 2) ist hinter einem vollen Leak-Matrix-Rerun über die synthetischen Multi-Board-Fixtures isoliert.
 
 ### PR 0 — Reversibler Spike: `pwerk_projects` + `boards.project_id`
 - Migration: neue Tabelle `pwerk_projects` (nullable Neuspalten, im selben Schritt befüllt), `boards.project_id` nullable + befüllt. Backfill: **je Board ein Projekt** (Owner/Ordner/`chat_url`/`ticket_counter`/`org_*`/`archived` kopiert), deterministisch, weil heute 1:1.

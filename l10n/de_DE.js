@@ -755,6 +755,10 @@ OC.L10N.register(
     "Der GitHub-Token ist ungültig oder abgelaufen. Bitte in „Einstellungen\" erneuern." : "Der GitHub-Token ist ungültig oder abgelaufen. Bitte in „Einstellungen\" erneuern.",
     "hat eingetragen, dass dieser Vorgang auf „{ticket}“ wartet" : "hat eingetragen, dass dieser Vorgang auf „{ticket}“ wartet",
     "hat entfernt, dass dieser Vorgang auf „{ticket}“ wartet" : "hat entfernt, dass dieser Vorgang auf „{ticket}“ wartet",
-    "Die App „Auditing / Logging“ (admin_audit) ist nicht aktiv. Änderungen über KI-Werkzeuge werden dann nicht im Audit-Log festgehalten." : "Die App „Auditing / Logging“ (admin_audit) ist nicht aktiv. Änderungen über KI-Werkzeuge werden dann nicht im Audit-Log festgehalten."
+    "Die App „Auditing / Logging“ (admin_audit) ist nicht aktiv. Änderungen über KI-Werkzeuge werden dann nicht im Audit-Log festgehalten." : "Die App „Auditing / Logging“ (admin_audit) ist nicht aktiv. Änderungen über KI-Werkzeuge werden dann nicht im Audit-Log festgehalten.",
+    "Die Passwortbestätigung wurde abgebrochen." : "Die Passwortbestätigung wurde abgebrochen.",
+    "Bitte bestätige dein Passwort: Seite neu laden und erneut versuchen." : "Bitte bestätigen Sie Ihr Passwort: Seite neu laden und erneut versuchen.",
+    "Das Ziel-Repository muss im Format „owner/repo\" angegeben sein." : "Das Ziel-Repository muss im Format „owner/repo\" angegeben sein.",
+    "Die Chat-Adresse muss mit „https://\" oder „http://\" beginnen." : "Die Chat-Adresse muss mit „https://\" oder „http://\" beginnen."
 },
 "nplurals=2; plural=(n != 1);");
