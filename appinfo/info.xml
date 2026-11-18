@@ -29,7 +29,7 @@ Frei enthalten sind zehn aktive Projekte mit je einem Board und ein Kundenprojek
 Fuer die Lizenzpruefung gehen nur der WerkPlus-Schluessel, eine aus der Nextcloud abgeleitete Kennung und die Versionen der aktivierten Werk-Apps an api.werkwolke.de. Ein Schluessel gilt fuer alle Werk-Apps einer Nextcloud. Niemals Vorgaenge, Kommentare, Dateien, Namen, Adressen, Benutzer- oder Datei-IDs.
     ]]></description>
 
-    <version>0.5.1</version>
+    <version>0.6.0</version>
     <licence>AGPL-3.0-or-later</licence>
 
     <author mail="axel.deffner@cpcmomentum.com" homepage="https://github.com/cpcMomentum">Axel Deffner</author>
