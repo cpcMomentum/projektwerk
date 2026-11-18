@@ -100,7 +100,6 @@ class ArchitectureTest extends TestCase {
 		];
 		// Diese Stellen nennen die Tabelle nur in Lösch-Listen beim Purge.
 		$purgeOnly = [
-			'Db/TicketMapper.php',
 			'Service/MemberLifecycleService.php',
 		];
 

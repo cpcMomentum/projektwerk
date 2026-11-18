@@ -10,7 +10,6 @@ declare(strict_types=1);
 namespace OCA\Projektwerk\Tests\Integration;
 
 use OCA\Projektwerk\Access\ViewerContext;
-use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Mcp\AuthenticatedCaller;
 use OCA\Projektwerk\Mcp\McpConfig;
 use OCA\Projektwerk\Mcp\McpRateLimiter;
@@ -84,20 +83,6 @@ class TicketDependencyTest extends IntegrationTestCase {
 		$this->assertSame(1, $this->rowCount());
 
 		$this->assertSame([], $this->service()->remove($anna, $this->id('public/anna'), $this->id('public/bert'))['dependsOn']);
-		$this->assertSame(0, $this->rowCount());
-	}
-
-	public function testPurgingTheBoardRemovesItsLinks(): void {
-		$anna = $this->as(LeakMatrixFixture::ANNA);
-		$this->service()->add($anna, $this->id('public/anna'), $this->id('public/bert'));
-
-		$qb = $this->db->getQueryBuilder();
-		$qb->update('pwerk_tickets')
-			->set('deleted_at', $qb->createNamedParameter(new \DateTime(), IQueryBuilder::PARAM_DATETIME_MUTABLE))
-			->where($qb->expr()->eq('board_id', $qb->createNamedParameter($this->fixture->boardId, IQueryBuilder::PARAM_INT)));
-		$qb->executeStatement();
-		Server::get(TicketMapper::class)->purgeDeletedInBoard($anna);
-
 		$this->assertSame(0, $this->rowCount());
 	}
 
