@@ -58,6 +58,18 @@ class EntitlementTokenVerifierTest extends TestCase {
 		$this->assertSame(12, $read(12.0));
 	}
 
+	public function testTrialAndLicenseTermAreReadAndMayBeMissing(): void {
+		$read = fn (array $claims) => $this->verifier()->verify($this->token($this->claims($claims)), self::UUID, self::NOW);
+
+		$this->assertTrue($read(['trial' => true])->trial);
+		$this->assertFalse($read(['trial' => false])->trial);
+		$this->assertNull($read(['trial' => null])->trial, 'Token von vor dem 18.11.2026');
+		$this->assertNull($read(['trial' => 'true'])->trial);
+		$this->assertSame(self::NOW + 99, $read(['licenseValidUntil' => self::NOW + 99])->licenseValidUntil);
+		$this->assertNull($read(['licenseValidUntil' => null])->licenseValidUntil);
+		$this->assertNull($read(['licenseValidUntil' => '1796134323'])->licenseValidUntil);
+	}
+
 	public function testValidTokenYieldsTierAndFeatures(): void {
 		$token = $this->verifier()->verify($this->token($this->claims()), self::UUID, self::NOW);
 

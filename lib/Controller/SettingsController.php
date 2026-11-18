@@ -81,7 +81,7 @@ class SettingsController extends Controller {
 			// 404: Der Gast ist angemeldet, es gibt nichts zu verbergen.
 			return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_FORBIDDEN);
 		} catch (WerkPlusLimitException $e) {
-			return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_PAYMENT_REQUIRED);
+			return new JSONResponse(['error' => $e->getMessage(), 'werkplusLimit' => true], Http::STATUS_PAYMENT_REQUIRED);
 		} catch (\InvalidArgumentException $e) {
 			return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
 		}
@@ -335,7 +335,7 @@ class SettingsController extends Controller {
 			// 402, nicht 403: Es fehlt kein Recht, sondern der freie Umfang ist
 			// erschöpft (#288). Die Meldung nennt WerkPlus; die Oberfläche zeigt
 			// sie unverändert an.
-			return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_PAYMENT_REQUIRED);
+			return new JSONResponse(['error' => $e->getMessage(), 'werkplusLimit' => true], Http::STATUS_PAYMENT_REQUIRED);
 		} catch (NotManagerException | NotOwnerException $e) {
 			// 403, nicht 404: Der Betrachter ist Mitglied und sieht das Board.
 			// Zu verbergen gibt es nichts mehr — nur zu erklären. Zwei

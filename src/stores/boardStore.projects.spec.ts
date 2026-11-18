@@ -26,7 +26,7 @@ vi.mock('@/services/boards', () => ({
 }))
 const ticketsApi = vi.hoisted(() => ({ fetchTickets: vi.fn<(board: number, column?: number, archived?: boolean) => Promise<unknown>>(() => Promise.resolve({ tickets: [], counts: {}, waiting: {}, changed: {} })) }))
 vi.mock('@/services/tickets', () => ticketsApi)
-vi.mock('@/services/toast', () => ({ showError: () => {} }))
+vi.mock('@/services/toast', () => ({ showError: () => {}, showFailure: () => {} }))
 
 describe('Projekt-Sicht im Store', () => {
 	beforeEach(() => {

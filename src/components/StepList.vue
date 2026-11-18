@@ -350,7 +350,7 @@ import DeleteOutlineIcon from 'vue-material-design-icons/DeleteOutline.vue'
 import PencilOutlineIcon from 'vue-material-design-icons/PencilOutline.vue'
 import PlusIcon from 'vue-material-design-icons/Plus.vue'
 import { deleteStep, fetchAssignable, fetchAssignableForNew, updateStep } from '@/services/steps'
-import { showError } from '@/services/toast'
+import { showFailure } from '@/services/toast'
 import { useOutboxStore } from '@/stores/outboxStore'
 import { LIMITS } from '@/utils/limits'
 
@@ -717,7 +717,7 @@ export default defineComponent({
 					await run()
 					this.$emit('changed')
 				} catch (e) {
-					showError((e as { message?: string }).message ?? fallback)
+					showFailure(e, fallback)
 				} finally {
 					this.busy = false
 				}

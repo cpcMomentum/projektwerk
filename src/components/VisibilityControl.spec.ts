@@ -34,6 +34,7 @@ vi.mock('@/services/tickets', () => ({
 }))
 vi.mock('@/services/toast', () => ({
 	showError: (...args: unknown[]) => showError(...args),
+	showFailure: (e: unknown, fallback: string) => showError((e as { message?: string } | undefined)?.message ?? fallback),
 }))
 vi.mock('@nextcloud/l10n', () => ({
 	t: (_app: string, text: string, vars?: Record<string, unknown>) => text.replace(/\{(\w+)\}/g, (match, key: string) => String(vars?.[key] ?? match)),

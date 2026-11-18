@@ -253,7 +253,7 @@ import WerkPlusSettings from '@/components/WerkPlusSettings.vue'
 import { fetchAiAccess, saveAiAccess } from '@/services/aiAccess'
 import { ownCompany, saveOwnCompany } from '@/services/ownCompany'
 import { fetchReplyMailbox, saveReplyMailbox, testReplyMailbox } from '@/services/replyMailbox'
-import { showError, showSuccess } from '@/services/toast'
+import { showFailure, showSuccess } from '@/services/toast'
 
 /**
  * Antworten per E-Mail (#286) — die Admin-Einstellungen des Antwort-Postfachs.
@@ -347,7 +347,7 @@ export default defineComponent({
 			try {
 				this.form = await fetchReplyMailbox()
 			} catch (e) {
-				showError((e as { message?: string }).message ?? t('projektwerk', 'Einstellungen konnten nicht geladen werden'))
+				showFailure(e, t('projektwerk', 'Einstellungen konnten nicht geladen werden'))
 			} finally {
 				this.busy = false
 			}
@@ -403,7 +403,7 @@ export default defineComponent({
 				this.aiPublicWrite = ai.publicWrite
 				this.aiWerkplus = ai.werkplus !== false
 			} catch (e) {
-				showError((e as { message?: string }).message ?? t('projektwerk', 'Einstellungen konnten nicht geladen werden'))
+				showFailure(e, t('projektwerk', 'Einstellungen konnten nicht geladen werden'))
 			}
 		},
 
@@ -416,7 +416,7 @@ export default defineComponent({
 				this.aiPublicWrite = (await saveAiAccess(an)).publicWrite
 				showSuccess(t('projektwerk', 'Einstellungen gespeichert.'))
 			} catch (e) {
-				showError((e as { message?: string }).message ?? t('projektwerk', 'Einstellungen konnten nicht gespeichert werden'))
+				showFailure(e, t('projektwerk', 'Einstellungen konnten nicht gespeichert werden'))
 			} finally {
 				this.aiBusy = false
 			}
@@ -433,7 +433,7 @@ export default defineComponent({
 				this.firmaEntwurf = await saveOwnCompany(this.firmaEntwurf.trim())
 				showSuccess(t('projektwerk', 'Einstellungen gespeichert.'))
 			} catch (e) {
-				showError((e as { message?: string }).message ?? t('projektwerk', 'Einstellungen konnten nicht gespeichert werden'))
+				showFailure(e, t('projektwerk', 'Einstellungen konnten nicht gespeichert werden'))
 			} finally {
 				this.busy = false
 			}
@@ -463,7 +463,7 @@ export default defineComponent({
 				this.testResult = ''
 				showSuccess(t('projektwerk', 'Einstellungen gespeichert.'))
 			} catch (e) {
-				showError((e as { message?: string }).message ?? t('projektwerk', 'Einstellungen konnten nicht gespeichert werden'))
+				showFailure(e, t('projektwerk', 'Einstellungen konnten nicht gespeichert werden'))
 			} finally {
 				this.busy = false
 			}

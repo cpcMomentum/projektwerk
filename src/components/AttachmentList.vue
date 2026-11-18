@@ -156,7 +156,7 @@ import LinkOffIcon from 'vue-material-design-icons/LinkOff.vue'
 import PaperclipIcon from 'vue-material-design-icons/Paperclip.vue'
 import { isApiError, isTransient } from '@/services/api'
 import { createAttachment, deleteAttachment } from '@/services/attachments'
-import { showError } from '@/services/toast'
+import { showFailure } from '@/services/toast'
 import { newId } from '@/utils/id'
 
 const UPLOAD_VERSUCHE = 3
@@ -359,7 +359,7 @@ export default defineComponent({
 				// Die Meldung des Servers hat Vorrang — sie kennt den Fall.
 				// „Für dieses Projekt ist noch kein Ordner hinterlegt" ist eine
 				// Anleitung, „Fehlgeschlagen" ist keine.
-				showError((e as { message?: string }).message ?? t('projektwerk', 'Der Anhang konnte nicht gespeichert werden'))
+				showFailure(e, t('projektwerk', 'Der Anhang konnte nicht gespeichert werden'))
 			} finally {
 				this.busy = false
 			}

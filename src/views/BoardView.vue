@@ -497,7 +497,7 @@ import PendingTicketCard from '@/components/PendingTicketCard.vue'
 import ProjectOverview from '@/components/ProjectOverview.vue'
 import TicketDetail from '@/components/TicketDetail.vue'
 import { deleteTicket as apiDeleteTicket, restoreTicket as apiRestoreTicket, fetchTicket, updateTicket } from '@/services/tickets'
-import { showError, showUndo } from '@/services/toast'
+import { showFailure, showUndo } from '@/services/toast'
 import { isConflict, reportWriteError } from '@/services/writeError'
 import { useBoardStore } from '@/stores/boardStore'
 import { useOutboxStore } from '@/stores/outboxStore'
@@ -783,7 +783,7 @@ export default defineComponent({
 				this.closeAddBoard()
 				this.$router.push({ name: 'board', params: { boardId: String(board.id) } })
 			} catch (e) {
-				showError((e as { message?: string }).message ?? t('projektwerk', 'Anlegen fehlgeschlagen'))
+				showFailure(e, t('projektwerk', 'Anlegen fehlgeschlagen'))
 			} finally {
 				this.addBusy = false
 			}
@@ -800,7 +800,7 @@ export default defineComponent({
 				this.deletingBoard = false
 				this.$router.push({ name: 'board', params: { boardId: String(next) } })
 			} catch (e) {
-				showError((e as { message?: string }).message ?? t('projektwerk', 'Löschen fehlgeschlagen'))
+				showFailure(e, t('projektwerk', 'Löschen fehlgeschlagen'))
 				this.deletingBoard = false
 				// Der Server weiß es besser als der geladene Stand, etwa wenn inzwischen ein Vorgang dazukam.
 				await this.store.open(this.boardId)

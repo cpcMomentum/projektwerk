@@ -104,6 +104,7 @@ class WerkPlusClient {
 			// Unbekannte oder fehlende Codes wie einen Serverfehler behandeln: altes Token bleibt.
 			$code = 'SERVER_ERROR';
 		}
-		return new WerkPlusApiException($code, $message);
+		$trial = $code === 'KEY_EXPIRED' && ($error['trial'] ?? null) === true;
+		return new WerkPlusApiException($code, $message, null, $trial);
 	}
 }

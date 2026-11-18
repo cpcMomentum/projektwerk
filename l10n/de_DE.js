@@ -759,6 +759,19 @@ OC.L10N.register(
     "Die Passwortbestätigung wurde abgebrochen." : "Die Passwortbestätigung wurde abgebrochen.",
     "Bitte bestätige dein Passwort: Seite neu laden und erneut versuchen." : "Bitte bestätigen Sie Ihr Passwort: Seite neu laden und erneut versuchen.",
     "Das Ziel-Repository muss im Format „owner/repo\" angegeben sein." : "Das Ziel-Repository muss im Format „owner/repo\" angegeben sein.",
-    "Die Chat-Adresse muss mit „https://\" oder „http://\" beginnen." : "Die Chat-Adresse muss mit „https://\" oder „http://\" beginnen."
+    "Die Chat-Adresse muss mit „https://\" oder „http://\" beginnen." : "Die Chat-Adresse muss mit „https://\" oder „http://\" beginnen.",
+    "Alle WerkPlus-Funktionen" : "Alle WerkPlus-Funktionen",
+    "Mit dem Kauf erhältst du einen eigenen Schlüssel. Trage ihn hier ein, er ersetzt den Testschlüssel." : "Mit dem Kauf erhalten Sie einen eigenen Schlüssel. Tragen Sie ihn hier ein, er ersetzt den Testschlüssel.",
+    "Jetzt kaufen" : "Jetzt kaufen",
+    "WerkPlus kaufen" : "WerkPlus kaufen",
+    "WerkPlus – Testzeitraum" : "WerkPlus – Testzeitraum",
+    "Laufzeit" : "Laufzeit",
+    "Laufzeit abgelaufen, Karenz bis {date}" : "Laufzeit abgelaufen, Karenz bis {date}",
+    "Laufzeit bis" : "Laufzeit bis",
+    "Testzeitraum beendet. ProjektWerk arbeitet im freien Umfang weiter, deine Daten bleiben erhalten." : "Testzeitraum beendet. ProjektWerk arbeitet im freien Umfang weiter, Ihre Daten bleiben erhalten.",
+    "_{date} (noch %n Tag)_::_{date} (noch %n Tage)_" : ["{date} (noch %n Tag)","{date} (noch %n Tage)"],
+    "Mit WerkPlus freischalten" : "Mit WerkPlus freischalten",
+    "Der WerkPlus-Testzeitraum endet am %s." : "Der WerkPlus-Testzeitraum endet am %s.",
+    "Der WerkPlus-Testzeitraum ist beendet. ProjektWerk läuft im freien Umfang weiter, deine Daten bleiben erhalten." : "Der WerkPlus-Testzeitraum ist beendet. ProjektWerk läuft im freien Umfang weiter, Ihre Daten bleiben erhalten."
 },
 "nplurals=2; plural=(n != 1);");

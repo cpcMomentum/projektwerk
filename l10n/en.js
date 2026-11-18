@@ -759,6 +759,19 @@ OC.L10N.register(
     "Die Passwortbestätigung wurde abgebrochen." : "The password confirmation was cancelled.",
     "Bitte bestätige dein Passwort: Seite neu laden und erneut versuchen." : "Please confirm your password: reload the page and try again.",
     "Das Ziel-Repository muss im Format „owner/repo\" angegeben sein." : "The target repository must be given in the format “owner/repo”.",
-    "Die Chat-Adresse muss mit „https://\" oder „http://\" beginnen." : "The chat address must start with “https://” or “http://”."
+    "Die Chat-Adresse muss mit „https://\" oder „http://\" beginnen." : "The chat address must start with “https://” or “http://”.",
+    "Alle WerkPlus-Funktionen" : "All WerkPlus features",
+    "Mit dem Kauf erhältst du einen eigenen Schlüssel. Trage ihn hier ein, er ersetzt den Testschlüssel." : "Buying gives you a key of your own. Enter it here; it replaces the trial key.",
+    "Jetzt kaufen" : "Buy now",
+    "WerkPlus kaufen" : "Buy WerkPlus",
+    "WerkPlus – Testzeitraum" : "WerkPlus – trial",
+    "Laufzeit" : "Term",
+    "Laufzeit abgelaufen, Karenz bis {date}" : "Term ended, grace period until {date}",
+    "Laufzeit bis" : "Term until",
+    "Testzeitraum beendet. ProjektWerk arbeitet im freien Umfang weiter, deine Daten bleiben erhalten." : "Trial ended. ProjektWerk continues in the free scope, your data is kept.",
+    "_{date} (noch %n Tag)_::_{date} (noch %n Tage)_" : ["{date} (%n day left)","{date} (%n days left)"],
+    "Mit WerkPlus freischalten" : "Unlock with WerkPlus",
+    "Der WerkPlus-Testzeitraum endet am %s." : "The WerkPlus trial ends on %s.",
+    "Der WerkPlus-Testzeitraum ist beendet. ProjektWerk läuft im freien Umfang weiter, deine Daten bleiben erhalten." : "The WerkPlus trial has ended. ProjektWerk continues in the free scope, your data is kept."
 },
 "nplurals=2; plural=(n != 1);");

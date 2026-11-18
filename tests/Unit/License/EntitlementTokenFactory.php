@@ -64,6 +64,8 @@ trait EntitlementTokenFactory {
 			'tier' => 'werkplus',
 			'features' => ['pw_projects', 'pw_mcp', 'pw_multi_board'],
 			'graceUntil' => self::NOW + 44 * 86400,
+			'trial' => false,
+			'licenseValidUntil' => self::NOW + 365 * 86400,
 		];
 		foreach ($overrides as $name => $value) {
 			if ($value === null) {

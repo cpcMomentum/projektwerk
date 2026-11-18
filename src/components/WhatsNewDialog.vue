@@ -89,9 +89,9 @@ import MagnifyIcon from 'vue-material-design-icons/Magnify.vue'
 import StarIcon from 'vue-material-design-icons/Star.vue'
 import TranslateIcon from 'vue-material-design-icons/Translate.vue'
 import { getWhatsNew, getWhatsNewArchive, markWhatsNewSeen } from '@/services/whatsnew'
+import { WERKPLUS_LINKS } from '@/utils/werkplusLinks'
 
-/** Zielseite der WerkPlus-Eintraege (Konzept v1.1, Abschnitt 2). */
-const WERKPLUS_URL = 'https://werkwolke.de'
+const WERKPLUS_URL = WERKPLUS_LINKS.features
 
 /**
  * NcModal beschriftet sich ueber `name` mit einer eigenen Kopfzeile, die am

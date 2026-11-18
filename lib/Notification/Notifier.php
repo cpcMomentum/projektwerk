@@ -12,10 +12,17 @@ namespace OCA\Projektwerk\Notification;
 use OCA\Projektwerk\AppInfo\Application;
 use OCA\Projektwerk\Db\Ticket;
 use OCA\Projektwerk\Db\TicketMapper;
+use OCA\Projektwerk\License\AppLinks;
+use OCA\Projektwerk\License\LicenseService;
+use OCA\Projektwerk\License\TrialNotices;
 use OCP\AppFramework\Db\DoesNotExistException;
+use OCP\AppFramework\Utility\ITimeFactory;
+use OCP\IDateTimeFormatter;
+use OCP\IL10N;
 use OCP\IURLGenerator;
 use OCP\L10N\IFactory;
 use OCP\Notification\AlreadyProcessedException;
+use OCP\Notification\IAction;
 use OCP\Notification\INotification;
 use OCP\Notification\INotifier;
 use OCP\Notification\UnknownNotificationException;
@@ -64,6 +71,9 @@ class Notifier implements INotifier {
 		private IFactory $l10nFactory,
 		private IURLGenerator $urls,
 		private TicketMapper $tickets,
+		private IDateTimeFormatter $dates,
+		private LicenseService $license,
+		private ITimeFactory $time,
 	) {
 	}
 
@@ -90,6 +100,9 @@ class Notifier implements INotifier {
 		}
 
 		$l = $this->l10nFactory->get(Application::APP_ID, $languageCode);
+		if ($notification->getObjectType() === 'werkplus') {
+			return $this->prepareTrial($notification, $l);
+		}
 		$ticket = $this->sichtbaresTicket($notification);
 
 		$nummer = str_pad((string)$ticket->getNumber(), 4, '0', STR_PAD_LEFT);
@@ -117,6 +130,44 @@ class Notifier implements INotifier {
 		));
 
 		return $notification;
+	}
+
+	/** @throws AlreadyProcessedException unbekannte oder überholte Stufe */
+	private function prepareTrial(INotification $notification, IL10N $l): INotification {
+		$until = (int)($notification->getSubjectParameters()['until'] ?? 0);
+		if (!$this->trialNoticeCurrent($notification->getSubject(), $until)) {
+			throw new AlreadyProcessedException();
+		}
+		$satz = match ($notification->getSubject()) {
+			TrialNotices::SUBJECT_7D, TrialNotices::SUBJECT_1D => $l->t('Der WerkPlus-Testzeitraum endet am %s.', [$this->dates->formatDate($until, 'long', null, $l)]),
+			TrialNotices::SUBJECT_END => $l->t('Der WerkPlus-Testzeitraum ist beendet. ProjektWerk läuft im freien Umfang weiter, deine Daten bleiben erhalten.'),
+			default => throw new AlreadyProcessedException(),
+		};
+		$notification->setParsedSubject($satz);
+		$notification->setLink(AppLinks::BUY);
+		$notification->setIcon($this->urls->getAbsoluteURL(
+			$this->urls->imagePath(Application::APP_ID, 'app-dark.svg'),
+		));
+		$kaufen = $notification->createAction();
+		$kaufen->setLabel('buy')
+			->setParsedLabel($l->t('Jetzt kaufen'))
+			->setLink(AppLinks::BUY, IAction::TYPE_WEB)
+			->setPrimary(true);
+		$notification->addParsedAction($kaufen);
+
+		return $notification;
+	}
+
+	// Wie bei Vorgängen: überholt ist, was beim Anzeigen nicht mehr stimmt (nächste Stufe, Kauf, neuer Test).
+	private function trialNoticeCurrent(string $subject, int $until): bool {
+		$now = $this->time->getTime();
+		$trialEndsAt = $this->license->trialEndsAt();
+		return match ($subject) {
+			TrialNotices::SUBJECT_7D => $trialEndsAt === $until && $now < $until - 86400,
+			TrialNotices::SUBJECT_1D => $trialEndsAt === $until && $now < $until,
+			TrialNotices::SUBJECT_END => !($this->license->tier() === 'werkplus' && $trialEndsAt === null),
+			default => false,
+		};
 	}
 
 	/**

@@ -72,7 +72,7 @@ vi.mock('@/stores/boardStore', () => ({ useBoardStore: () => boardStore }))
 const allBoards = vi.hoisted(() => ({ list: [] as Array<Record<string, unknown>> }))
 const pinApi = vi.hoisted(() => vi.fn(() => Promise.resolve({})))
 vi.mock('@/services/boards', () => ({ fetchBoards: () => Promise.resolve(allBoards.list), setBoardPin: pinApi }))
-vi.mock('@/services/toast', () => ({ showError: () => {} }))
+vi.mock('@/services/toast', () => ({ showError: () => {}, showFailure: () => {} }))
 vi.mock('@/stores/overviewStore', () => ({ useOverviewStore: () => overviewStore }))
 
 function board(id: number, title: string, extra: Record<string, unknown> = {}) {

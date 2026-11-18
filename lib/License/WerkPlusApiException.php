@@ -16,8 +16,14 @@ class WerkPlusApiException extends \RuntimeException {
 		private readonly string $errorCode,
 		private readonly string $serverMessage = '',
 		?\Throwable $previous = null,
+		// Nur bei KEY_EXPIRED: Der geprüfte Schlüssel war eine Testlizenz.
+		private readonly bool $trial = false,
 	) {
 		parent::__construct('WerkPlus: ' . $errorCode, 0, $previous);
+	}
+
+	public function wasTrial(): bool {
+		return $this->trial;
 	}
 
 	public function getErrorCode(): string {

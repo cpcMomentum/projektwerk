@@ -236,7 +236,7 @@ import NcRichText from '@nextcloud/vue/components/NcRichText'
 import { loadCommentDraft, saveCommentDraft } from '@/services/commentDraft'
 import { deleteComment, updateComment } from '@/services/comments'
 import { fetchAssignable } from '@/services/steps'
-import { showError } from '@/services/toast'
+import { showFailure } from '@/services/toast'
 import { useOutboxStore } from '@/stores/outboxStore'
 
 /**
@@ -553,7 +553,7 @@ export default defineComponent({
 				await run()
 				this.$emit('changed')
 			} catch (e) {
-				showError((e as { message?: string }).message ?? fallback)
+				showFailure(e, fallback)
 			} finally {
 				this.busy = false
 			}

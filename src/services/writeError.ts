@@ -12,7 +12,7 @@
  */
 
 import { t } from '@nextcloud/l10n'
-import { showError } from '@/services/toast'
+import { showError, showFailure } from '@/services/toast'
 
 /**
  * Was diese Stelle von einem fehlgeschlagenen Schreibvorgang braucht.
@@ -57,7 +57,7 @@ export function reportWriteError(error: unknown, fallback: string, reloaded = fa
 		return true
 	}
 
-	showError((error as WriteError)?.message ?? fallback)
+	showFailure(error, fallback)
 
 	return false
 }
