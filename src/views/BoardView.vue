@@ -54,8 +54,8 @@
 
 				<!-- Ohne hinterlegte Adresse entfaellt der Knopf ersatzlos (§9). -->
 				<NcButton
-					v-if="store.board?.chatUrl"
-					:href="store.board.chatUrl"
+					v-if="chatUrl !== ''"
+					:href="chatUrl"
 					target="_blank"
 					rel="noopener">
 					{{ t('projektwerk', 'Zum Projektchat') }}
@@ -501,6 +501,7 @@ import { showError, showUndo } from '@/services/toast'
 import { isConflict, reportWriteError } from '@/services/writeError'
 import { useBoardStore } from '@/stores/boardStore'
 import { useOutboxStore } from '@/stores/outboxStore'
+import { isWebAddress } from '@/utils/webAddress'
 
 /** Was die Vorlage über eine Spalte wissen muss — einmal je Neuzeichnen. */
 interface ColumnView {
@@ -566,6 +567,12 @@ export default defineComponent({
 		/** Link in die Dateien-App am Projektordner (#351), über die Datei-ID. */
 		projectFolderUrl(): string {
 			return this.store.projectFolder ? generateUrl('/f/{id}', { id: this.store.projectFolder.id }) : ''
+		},
+
+		/** Nur Web-Adressen werden zum Knopf; alles andere bleibt aus dem `href` heraus. */
+		chatUrl(): string {
+			const url = this.store.board?.chatUrl ?? ''
+			return isWebAddress(url) ? url : ''
 		},
 
 		boardId(): number {

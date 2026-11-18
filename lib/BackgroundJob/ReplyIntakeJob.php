@@ -224,7 +224,7 @@ class ReplyIntakeJob extends TimedJob {
 		// Amok-Bremse: höchstens MAX_JE_ABSENDER je Absender und Lauf.
 		$jeAbsender[$from] = ($jeAbsender[$from] ?? 0) + 1;
 		if ($jeAbsender[$from] > self::MAX_JE_ABSENDER) {
-			$this->logger->warning('ProjektWerk: Absender ' . $from . ' über der Lauf-Grenze — Mail zurückgestellt (gelesen markiert)');
+			$this->logger->warning('ProjektWerk: Konto ' . $recipientUid . ' über der Lauf-Grenze — Mail zurückgestellt (gelesen markiert)');
 			$this->stillMarkieren($client, $uid);
 
 			return;

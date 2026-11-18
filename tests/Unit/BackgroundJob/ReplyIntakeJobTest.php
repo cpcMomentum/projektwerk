@@ -26,7 +26,7 @@ use OCP\IUserManager;
 use OCP\L10N\IFactory;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
-use Psr\Log\NullLogger;
+use Psr\Log\AbstractLogger;
 use ReflectionMethod;
 
 /**
@@ -56,6 +56,8 @@ class ReplyIntakeJobTest extends TestCase {
 	private string $token;
 
 	private bool $archiviert = false;
+
+	private AbstractLogger $logger;
 
 	protected function setUp(): void {
 		parent::setUp();
@@ -117,7 +119,14 @@ class ReplyIntakeJobTest extends TestCase {
 			$this->comments,
 			$users,
 			$l10nFactory,
-			new NullLogger(),
+			$this->logger = new class extends AbstractLogger {
+				/** @var list<string> */
+				public array $zeilen = [];
+
+				public function log($level, string|\Stringable $message, array $context = []): void {
+					$this->zeilen[] = (string)$message;
+				}
+			},
 		);
 	}
 
@@ -305,5 +314,19 @@ class ReplyIntakeJobTest extends TestCase {
 				$counter,
 			);
 		}
+	}
+
+	public function testTheRunLimitIsLoggedWithTheAccountNotTheMailAddress(): void {
+		$max = (new \ReflectionClassConstant(ReplyIntakeJob::class, 'MAX_JE_ABSENDER'))->getValue();
+
+		$counter = [];
+		for ($i = 0; $i <= $max; $i++) {
+			$this->verarbeiten($this->raw(self::RECIPIENT_MAIL, $this->betreff(), 'Antwort ' . $i), $counter);
+		}
+
+		$grenze = array_values(array_filter($this->logger->zeilen, static fn (string $z): bool => str_contains($z, 'Lauf-Grenze')));
+		$this->assertCount(1, $grenze);
+		$this->assertStringContainsString(self::RECIPIENT, $grenze[0]);
+		$this->assertStringNotContainsString(self::RECIPIENT_MAIL, implode("\n", $this->logger->zeilen));
 	}
 }

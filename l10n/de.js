@@ -752,6 +752,8 @@ OC.L10N.register(
     "Kommunikation" : "Kommunikation",
     "Lizenz" : "Lizenz",
     "Kein GitHub-Token hinterlegt. Bitte in „Einstellungen\" einen Token eintragen." : "Kein GitHub-Token hinterlegt. Bitte in „Einstellungen\" einen Token eintragen.",
-    "Der GitHub-Token ist ungültig oder abgelaufen. Bitte in „Einstellungen\" erneuern." : "Der GitHub-Token ist ungültig oder abgelaufen. Bitte in „Einstellungen\" erneuern."
+    "Der GitHub-Token ist ungültig oder abgelaufen. Bitte in „Einstellungen\" erneuern." : "Der GitHub-Token ist ungültig oder abgelaufen. Bitte in „Einstellungen\" erneuern.",
+    "Das Ziel-Repository muss im Format „owner/repo\" angegeben sein." : "Das Ziel-Repository muss im Format „owner/repo\" angegeben sein.",
+    "Die Chat-Adresse muss mit „https://\" oder „http://\" beginnen." : "Die Chat-Adresse muss mit „https://\" oder „http://\" beginnen."
 },
 "nplurals=2; plural=(n != 1);");
