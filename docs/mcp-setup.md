@@ -93,7 +93,7 @@ Schreiben (dieselben Rechte und Regeln wie im Browser, über dieselben Dienste):
 
 | Werkzeug | Was |
 |---|---|
-| `create_ticket`, `update_ticket` | Vorgang anlegen/ändern, mit Zuständigem und Fälligkeit |
+| `create_ticket`, `update_ticket` | Vorgang anlegen/ändern, mit Zuständigem, Fälligkeit und Sichtbarkeit. Ein Wechsel von oder nach „Alle Beteiligten“ (`public`) nur mit eingeschaltetem Schalter und Bestätigung; er steht im Verlauf (Herkunft KI-Werkzeug) und im Admin-Log. Zwischen intern und privat ohne Schalter |
 | `move_ticket`, `close_ticket` | ans Ende einer Spalte schieben; als erledigt/verworfen abschließen |
 | `add_step`, `update_step` | Arbeitsschritt anlegen, zuweisen, Frist, abhaken |
 | `add_comment` | Kommentar, `@kennung` benachrichtigt |
@@ -102,7 +102,7 @@ Schreiben (dieselben Rechte und Regeln wie im Browser, über dieselben Dienste):
 | `link_file` | Datei oder Ordner aus der eigenen Nextcloud verknüpfen, ohne Kopie; jede Person sieht nur Ziele, die sie selbst öffnen kann. An kundensichtbaren Vorgängen nur mit Bestätigung und eingeschaltetem Schalter |
 | `transfer_to_github` | als GitHub-Issue übertragen (nur interne Seite) |
 
-Nicht über den KI-Zugang: löschen, wiederöffnen, Sichtbarkeit ändern, Kommentare bearbeiten,
+Nicht über den KI-Zugang: löschen, wiederöffnen, Kommentare bearbeiten,
 Mitglieder und Board-Einstellungen.
 
 - **Kundensichtbares ab Werk gesperrt:** Solange in ProjektWerk unter Verwaltung › KI-Zugriff der

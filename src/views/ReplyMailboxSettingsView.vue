@@ -66,7 +66,7 @@
 							</NcCheckboxRadioSwitch>
 						</label>
 						<p class="pw-settings__hint">
-							{{ t('projektwerk', 'Ist der Schalter aus, lehnt ProjektWerk jede KI-Änderung an Vorgängen ab, die der Kunde sieht. Ist er an, muss die KI vor jeder solchen Änderung nachfragen. Dateien aus der Nextcloud hängt die KI nie an kundensichtbare Vorgänge an.') }}
+							{{ t('projektwerk', 'Ist der Schalter aus, lehnt ProjektWerk jede KI-Änderung an Vorgängen ab, die der Kunde sieht, und die KI kann keinen Vorgang für den Kunden sichtbar machen. Ist er an, muss die KI vor jeder solchen Änderung nachfragen. Dateien aus der Nextcloud hängt die KI nie an kundensichtbare Vorgänge an.') }}
 						</p>
 					</section>
 				</div>

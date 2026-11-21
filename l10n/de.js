@@ -670,7 +670,6 @@ OC.L10N.register(
     "KI-Zugriff" : "KI-Zugriff",
     "Über den KI-Zugang (MCP) kann Claude im Namen einer Person Vorgänge anlegen und ändern. Interne und private Vorgänge sind immer erlaubt." : "Über den KI-Zugang (MCP) kann Claude im Namen einer Person Vorgänge anlegen und ändern. Interne und private Vorgänge sind immer erlaubt.",
     "KI darf in kundensichtbare Vorgänge schreiben" : "KI darf in kundensichtbare Vorgänge schreiben",
-    "Ist der Schalter aus, lehnt ProjektWerk jede KI-Änderung an Vorgängen ab, die der Kunde sieht. Ist er an, muss die KI vor jeder solchen Änderung nachfragen. Dateien aus der Nextcloud hängt die KI nie an kundensichtbare Vorgänge an." : "Ist der Schalter aus, lehnt ProjektWerk jede KI-Änderung an Vorgängen ab, die der Kunde sieht. Ist er an, muss die KI vor jeder solchen Änderung nachfragen. Dateien aus der Nextcloud hängt die KI nie an kundensichtbare Vorgänge an.",
     "Ein Vorgang kann höchstens %s Arbeitsschritte haben." : "Ein Vorgang kann höchstens %s Arbeitsschritte haben.",
     "Der Titel darf höchstens %s Zeichen lang sein." : "Der Titel darf höchstens %s Zeichen lang sein.",
     "Beschreibung und Ergebnis dürfen je höchstens %s Zeichen lang sein." : "Beschreibung und Ergebnis dürfen je höchstens %s Zeichen lang sein.",
@@ -788,6 +787,7 @@ OC.L10N.register(
     "Bitte eine Datei oder einen Ordner angeben." : "Bitte eine Datei oder einen Ordner angeben.",
     "Diese Datei oder dieser Ordner ist nicht erreichbar." : "Diese Datei oder dieser Ordner ist nicht erreichbar.",
     "hat eine Datei oder einen Ordner verknüpft" : "hat eine Datei oder einen Ordner verknüpft",
-    "hat eine Verknüpfung entfernt" : "hat eine Verknüpfung entfernt"
+    "hat eine Verknüpfung entfernt" : "hat eine Verknüpfung entfernt",
+    "Ist der Schalter aus, lehnt ProjektWerk jede KI-Änderung an Vorgängen ab, die der Kunde sieht, und die KI kann keinen Vorgang für den Kunden sichtbar machen. Ist er an, muss die KI vor jeder solchen Änderung nachfragen. Dateien aus der Nextcloud hängt die KI nie an kundensichtbare Vorgänge an." : "Ist der Schalter aus, lehnt ProjektWerk jede KI-Änderung an Vorgängen ab, die der Kunde sieht, und die KI kann keinen Vorgang für den Kunden sichtbar machen. Ist er an, muss die KI vor jeder solchen Änderung nachfragen. Dateien aus der Nextcloud hängt die KI nie an kundensichtbare Vorgänge an."
 },
 "nplurals=2; plural=(n != 1);");
