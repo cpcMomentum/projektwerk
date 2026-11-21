@@ -80,7 +80,9 @@ die Person auch in der Weboberfläche sieht.
 
 ## Was der KI-Zugang darf
 
-Lesen: Boards, Spalten, Mitglieder, Vorgänge mit Schritten, Anhängen und Kommentaren.
+Lesen: Boards, Spalten, Mitglieder, Vorgänge mit Schritten, Anhängen und Kommentaren. `search_tickets`
+durchsucht Titel, Beschreibung und Nummer über alle sichtbaren Boards, auch abgeschlossene Vorgänge,
+damit die KI vor dem Anlegen Doppelte findet.
 
 Schreiben (dieselben Rechte und Regeln wie im Browser, über dieselben Dienste):
 

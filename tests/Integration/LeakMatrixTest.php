@@ -50,6 +50,7 @@ use OCA\Projektwerk\Mcp\Tools\ListBoards;
 use OCA\Projektwerk\Mcp\Tools\ListColumns;
 use OCA\Projektwerk\Mcp\Tools\ListMembers;
 use OCA\Projektwerk\Mcp\Tools\ListTickets;
+use OCA\Projektwerk\Mcp\Tools\SearchTickets;
 use OCA\Projektwerk\Service\BoardPinService;
 use OCA\Projektwerk\Service\BoardReadModel;
 use OCA\Projektwerk\Service\BoardService;
@@ -344,6 +345,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'list_tickets' => 'testMcpToolsMatchTheirRestTwins',
 		'get_ticket' => 'testMcpToolsMatchTheirRestTwins',
 		'list_members' => 'testMcpToolsMatchTheirRestTwins',
+		'search_tickets' => 'testSearchToolNeverWidensBeyondTheVisibleSet',
 	];
 
 	/**
@@ -2037,6 +2039,23 @@ class LeakMatrixTest extends IntegrationTestCase {
 				$expected = [...$expected, 'b:public/erna', 'b:internal/bert'];
 			}
 			$this->assertTicketLabels($expected, $tickets->findVisibleMatching($userId, '/', 100), 'Suche ' . $userId);
+		}
+	}
+
+	public function testSearchToolNeverWidensBeyondTheVisibleSet(): void {
+		foreach (self::VISIBLE as $userId => $expected) {
+			if ($userId === self::BERT) {
+				$expected = [...$expected, 'b:public/erna', 'b:internal/bert'];
+			}
+			$result = Server::get(SearchTickets::class)->call(new AuthenticatedCaller($userId, 'leak-matrix'), ['query' => '/']);
+			$this->assertSame($this->fixture->idsFor($expected), $this->sorted(array_column($result->structured()['tickets'], 'id')), 'search_tickets ' . $userId);
+
+			$onBoard = Server::get(SearchTickets::class)->call(new AuthenticatedCaller($userId, 'leak-matrix'), ['query' => '/', 'board_id' => $this->fixture->boardId]);
+			if ($userId === self::FREMD) {
+				$this->assertTrue($onBoard->isError(), 'search_tickets mit fremdem Board');
+			} else {
+				$this->assertSame([$this->fixture->boardId], array_values(array_unique(array_column($onBoard->structured()['tickets'], 'boardId'))), 'search_tickets bleibt im Board');
+			}
 		}
 	}
 
