@@ -775,6 +775,19 @@ OC.L10N.register(
     "Wähle zuerst den Projektordner. Danach lässt sich dieser Ordner hier mit dem Standardnamen anlegen." : "Wählen Sie zuerst den Projektordner. Danach lässt sich dieser Ordner hier mit dem Standardnamen anlegen.",
     "Die Kundenseite hat Zugriff. Leer lassen heißt: an diesen Vorgängen sind keine Anhänge möglich. Die App legt keine Freigaben an, diesen Ordner gibst du selbst an die Kundenseite frei." : "Die Kundenseite hat Zugriff. Leer lassen heißt: an diesen Vorgängen sind keine Anhänge möglich. Die App legt keine Freigaben an, diesen Ordner geben Sie selbst an die Kundenseite frei.",
     "Im Projektordner fehlen dir die Schreibrechte, um diesen Ordner anzulegen." : "Im Projektordner fehlen Ihnen die Schreibrechte, um diesen Ordner anzulegen.",
-    "Den Projektordner gibt es unter diesem Pfad nicht mehr. Bitte lade die Seite neu." : "Den Projektordner gibt es unter diesem Pfad nicht mehr. Bitte laden Sie die Seite neu."
+    "Den Projektordner gibt es unter diesem Pfad nicht mehr. Bitte lade die Seite neu." : "Den Projektordner gibt es unter diesem Pfad nicht mehr. Bitte laden Sie die Seite neu.",
+    "Verknüpfen" : "Verknüpfen",
+    "Nicht mehr vorhanden" : "Nicht mehr vorhanden",
+    "Verknüpfung, liegt in {path}" : "Verknüpfung, liegt in {path}",
+    "Verknüpfung entfernen: {name}" : "Verknüpfung entfernen: {name}",
+    "Die Verknüpfung konnte nicht gespeichert werden" : "Die Verknüpfung konnte nicht gespeichert werden",
+    "Die Verknüpfung konnte nicht entfernt werden" : "Die Verknüpfung konnte nicht entfernt werden",
+    "Datei oder Ordner wählen" : "Datei oder Ordner wählen",
+    "Dieser Ordner ist leer." : "Dieser Ordner ist leer.",
+    "Verknüpfung nicht gefunden." : "Verknüpfung nicht gefunden.",
+    "Bitte eine Datei oder einen Ordner angeben." : "Bitte eine Datei oder einen Ordner angeben.",
+    "Diese Datei oder dieser Ordner ist nicht erreichbar." : "Diese Datei oder dieser Ordner ist nicht erreichbar.",
+    "hat eine Datei oder einen Ordner verknüpft" : "hat eine Datei oder einen Ordner verknüpft",
+    "hat eine Verknüpfung entfernt" : "hat eine Verknüpfung entfernt"
 },
 "nplurals=2; plural=(n != 1);");

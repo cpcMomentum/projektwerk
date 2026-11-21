@@ -139,6 +139,8 @@ final class ReadPathRegistry {
 		'StepMapper::countForTickets',
 		'AttachmentMapper::findForTickets',
 		'AttachmentMapper::countForTickets',
+		'FileLinkMapper::findForTickets',
+		'FileLinkMapper::countForTickets',
 		'TicketUserMapper::findForTickets',
 		'TicketUserMapper::countForTickets',
 		'TicketLogMapper::findForTickets',

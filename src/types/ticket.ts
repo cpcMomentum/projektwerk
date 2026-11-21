@@ -95,6 +95,21 @@ export interface Comment {
  * Projektordner umbenennt, lässt eine Beschriftung falsch werden und keine
  * Verknüpfung reißen (§5.18).
  */
+/** Eine verknüpfte Datei oder ein verknüpfter Ordner; ohne Zugriff liefert der Server sie gar nicht. */
+export interface FileLink {
+	id: number
+	ticketId: number
+	fileId: number
+	name: string
+	path: string | null
+	type: 'file' | 'folder' | null
+	url: string | null
+	missing: boolean
+	createdBy: string
+	createdVia: string | null
+	createdAt: string | null
+}
+
 export interface Attachment {
 	id: number
 	ticketId: number
@@ -202,5 +217,6 @@ export interface TicketDetail extends TicketLinks {
 	comments: Comment[]
 	steps: Step[]
 	attachments: Attachment[]
+	links: FileLink[]
 	collaborators: unknown[]
 }

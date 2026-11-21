@@ -38,7 +38,7 @@ class GetTicket implements Tool {
 	}
 
 	public function description(): string {
-		return 'Returns one ticket with its description, steps, attachments, dependencies and the latest comments. '
+		return 'Returns one ticket with its description, steps, attachments, linked files and folders, dependencies and the latest comments. '
 			. 'dependsOn lists the tickets this one waits for, neededBy the tickets waiting for this one. '
 			. 'Identify it by ticket_id or by ticket_number (the "#42" people use), exactly one of them. '
 			. 'Comments are newest first; if comments_next_cursor is set, pass it as comments_cursor for older ones. '
@@ -97,6 +97,7 @@ class GetTicket implements Tool {
 				'dueDate' => $step->getDueDate()?->format('Y-m-d'),
 			], $data['steps']),
 			'attachments' => self::plain($data['attachments']),
+			'links' => $data['links'],
 			'collaborators' => self::plain($data['collaborators']),
 			'dependsOn' => $data['dependsOn'],
 			'neededBy' => $data['neededBy'],

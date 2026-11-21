@@ -17,6 +17,7 @@ use OCA\Projektwerk\Mcp\Tools\AttachFile;
 use OCA\Projektwerk\Mcp\Tools\CloseTicket;
 use OCA\Projektwerk\Mcp\Tools\CreateTicket;
 use OCA\Projektwerk\Mcp\Tools\GetTicket;
+use OCA\Projektwerk\Mcp\Tools\LinkFile;
 use OCA\Projektwerk\Mcp\Tools\ListBoards;
 use OCA\Projektwerk\Mcp\Tools\ListColumns;
 use OCA\Projektwerk\Mcp\Tools\ListMembers;
@@ -53,9 +54,10 @@ class ToolRegistry {
 		TransferToGithub $transferToGithub,
 		AddDependency $addDependency,
 		RemoveDependency $removeDependency,
+		LinkFile $linkFile,
 	) {
 		$all = [$listBoards, $listColumns, $listTickets, $getTicket, $listMembers, $createTicket, $updateTicket, $moveTicket,
-			$closeTicket, $addStep, $updateStep, $addComment, $addAttachment, $attachFile, $transferToGithub, $addDependency, $removeDependency];
+			$closeTicket, $addStep, $updateStep, $addComment, $addAttachment, $attachFile, $transferToGithub, $addDependency, $removeDependency, $linkFile];
 		foreach ($all as $tool) {
 			$this->tools[$tool->name()] = $tool;
 		}

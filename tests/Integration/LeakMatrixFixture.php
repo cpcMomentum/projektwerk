@@ -13,6 +13,8 @@ use OCA\Projektwerk\Access\TicketScope;
 use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Db\Attachment;
 use OCA\Projektwerk\Db\AttachmentMapper;
+use OCA\Projektwerk\Db\FileLink;
+use OCA\Projektwerk\Db\FileLinkMapper;
 use OCA\Projektwerk\Db\Board;
 use OCA\Projektwerk\Db\BoardMapper;
 use OCA\Projektwerk\Db\Column;
@@ -197,6 +199,7 @@ final class LeakMatrixFixture {
 		$comments = Server::get(CommentMapper::class);
 		$steps = Server::get(StepMapper::class);
 		$attachments = Server::get(AttachmentMapper::class);
+		$fileLinks = Server::get(FileLinkMapper::class);
 		$ticketUsers = Server::get(TicketUserMapper::class);
 		$log = Server::get(TicketLogMapper::class);
 		$projects = Server::get(ProjectMapper::class);
@@ -309,6 +312,14 @@ final class LeakMatrixFixture {
 			$attachment->setUploadedBy($creator);
 			$attachment->setCreatedAt($now);
 			$attachments->insert($attachment);
+
+			$fileLink = new FileLink();
+			$fileLink->setTicketId($ticketId);
+			$fileLink->setFileId(200000 + $number);
+			$fileLink->setFileName($label . '.md');
+			$fileLink->setCreatedBy($creator);
+			$fileLink->setCreatedAt($now);
+			$fileLinks->insert($fileLink);
 
 			// Dirk auf jedem Ticket — siehe Klassenkommentar. Ohne die Regel
 			// liefert „Meine Aufgaben" ihm alle neun.

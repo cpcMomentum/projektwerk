@@ -33,6 +33,47 @@
 				</template>
 				{{ t('projektwerk', 'Datei anhängen') }}
 			</NcButton>
+
+			<NcButton
+				variant="tertiary"
+				:disabled="busy"
+				@click="linkPicker = true">
+				<template #icon>
+					<LinkVariantIcon :size="20" />
+				</template>
+				{{ t('projektwerk', 'Verknüpfen') }}
+			</NcButton>
+		</div>
+
+		<div v-for="link in fileLinks" :key="'link-' + link.id" class="pw-attach pw-attach--link">
+			<FolderIcon v-if="link.type === 'folder'" :size="18" class="pw-attach__icon" />
+			<FileIcon v-else :size="18" class="pw-attach__icon" />
+			<span v-if="link.missing || link.url === null" class="pw-attach__name pw-attach__name--weg">
+				{{ link.name }}
+			</span>
+			<a
+				v-else
+				class="pw-attach__name"
+				:href="link.url"
+				:title="link.path ?? link.name"
+				target="_blank"
+				rel="noopener noreferrer">
+				{{ link.name }}
+			</a>
+
+			<span class="pw-attach__meta">
+				{{ link.missing ? t('projektwerk', 'Nicht mehr vorhanden') : t('projektwerk', 'Verknüpfung, liegt in {path}', { path: parentOf(link.path) }) }}
+			</span>
+
+			<NcButton
+				variant="tertiary"
+				:disabled="busy"
+				:ariaLabel="t('projektwerk', 'Verknüpfung entfernen: {name}', { name: link.name })"
+				@click="unlink(link)">
+				<template #icon>
+					<LinkOffIcon :size="20" />
+				</template>
+			</NcButton>
 		</div>
 
 		<div v-for="file in attachments" :key="file.id" class="pw-attach">
@@ -76,7 +117,7 @@
 			</NcButton>
 		</div>
 
-		<p v-if="attachments.length === 0" class="pw-detail__empty">
+		<p v-if="attachments.length === 0 && fileLinks.length === 0" class="pw-detail__empty">
 			{{ t('projektwerk', 'Noch keine Anhänge.') }}
 		</p>
 
@@ -130,6 +171,12 @@
 			</template>
 		</NcDialog>
 
+		<FolderPicker
+			:open="linkPicker"
+			:allowFiles="true"
+			@update:open="linkPicker = $event"
+			@select="link" />
+
 		<!--
 			Die Anzeige „hier ablegen" nur während des Ziehens. `pointer-events`
 			aus, damit die Fläche die `dragleave`/`drop`-Ereignisse nicht selbst
@@ -145,17 +192,22 @@
 <script lang="ts">
 import type { PropType } from 'vue'
 import type { Member } from '@/types/board'
-import type { Attachment } from '@/types/ticket'
+import type { Attachment, FileLink } from '@/types/ticket'
 
 import { t } from '@nextcloud/l10n'
 import { generateUrl } from '@nextcloud/router'
 import { defineComponent } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcDialog from '@nextcloud/vue/components/NcDialog'
+import FileIcon from 'vue-material-design-icons/FileOutline.vue'
+import FolderIcon from 'vue-material-design-icons/FolderOutline.vue'
 import LinkOffIcon from 'vue-material-design-icons/LinkOff.vue'
+import LinkVariantIcon from 'vue-material-design-icons/LinkVariant.vue'
 import PaperclipIcon from 'vue-material-design-icons/Paperclip.vue'
+import FolderPicker from '@/components/FolderPicker.vue'
 import { isApiError, isTransient } from '@/services/api'
 import { createAttachment, deleteAttachment } from '@/services/attachments'
+import { createFileLink, deleteFileLink } from '@/services/fileLinks'
 import { showFailure } from '@/services/toast'
 import { newId } from '@/utils/id'
 
@@ -177,12 +229,13 @@ const UPLOAD_VERSUCHE = 3
 export default defineComponent({
 	name: 'AttachmentList',
 
-	components: { LinkOffIcon, NcButton, NcDialog, PaperclipIcon },
+	components: { FileIcon, FolderIcon, FolderPicker, LinkOffIcon, LinkVariantIcon, NcButton, NcDialog, PaperclipIcon },
 
 	props: {
 		boardId: { type: Number, required: true },
 		ticketId: { type: Number, required: true },
 		attachments: { type: Array as PropType<Attachment[]>, required: true },
+		fileLinks: { type: Array as PropType<FileLink[]>, default: () => [] },
 		members: { type: Array as PropType<Member[]>, required: true },
 	},
 
@@ -193,6 +246,7 @@ export default defineComponent({
 			busy: false,
 			/** Der Anhang, über dessen Lösen gerade zurückgefragt wird. */
 			removing: null as Attachment | null,
+			linkPicker: false,
 			/**
 			 * Wie tief die Ziehgeste im Bereich steckt (#150). `dragenter` und
 			 * `dragleave` feuern auch an Kindelementen; ein Zähler bleibt
@@ -239,6 +293,28 @@ export default defineComponent({
 			return file.createdVia === 'tool'
 				? t('projektwerk', 'von {name} über KI-Werkzeug', { name: this.nameOf(file.uploadedBy) })
 				: t('projektwerk', 'von {name}', { name: this.nameOf(file.uploadedBy) })
+		},
+
+		/**
+		 * @param path Pfad relativ zur Files-Wurzel oder null.
+		 */
+		parentOf(path: string | null): string {
+			const parent = (path ?? '').split('/').slice(0, -1).join('/')
+			return parent === '' ? t('projektwerk', 'Meine Dateien') : parent
+		},
+
+		/**
+		 * @param path Gewählte Datei oder gewählter Ordner.
+		 */
+		async link(path: string): Promise<void> {
+			await this.write(() => createFileLink(this.boardId, this.ticketId, path), t('projektwerk', 'Die Verknüpfung konnte nicht gespeichert werden'))
+		},
+
+		/**
+		 * @param link Die Verknüpfung.
+		 */
+		async unlink(link: FileLink): Promise<void> {
+			await this.write(() => deleteFileLink(this.boardId, link.id), t('projektwerk', 'Die Verknüpfung konnte nicht entfernt werden'))
 		},
 
 		choose() {
@@ -346,8 +422,9 @@ export default defineComponent({
 
 		/**
 		 * @param run Der Schreibaufruf.
+		 * @param fallback
 		 */
-		async write(run: () => Promise<unknown>): Promise<void> {
+		async write(run: () => Promise<unknown>, fallback = t('projektwerk', 'Der Anhang konnte nicht gespeichert werden')): Promise<void> {
 			if (this.busy) {
 				return
 			}
@@ -359,7 +436,7 @@ export default defineComponent({
 				// Die Meldung des Servers hat Vorrang — sie kennt den Fall.
 				// „Für dieses Projekt ist noch kein Ordner hinterlegt" ist eine
 				// Anleitung, „Fehlgeschlagen" ist keine.
-				showFailure(e, t('projektwerk', 'Der Anhang konnte nicht gespeichert werden'))
+				showFailure(e, fallback)
 			} finally {
 				this.busy = false
 			}

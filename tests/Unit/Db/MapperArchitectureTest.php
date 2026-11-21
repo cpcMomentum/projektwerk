@@ -12,6 +12,7 @@ namespace OCA\Projektwerk\Tests\Unit\Db;
 use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Db\AttachmentMapper;
 use OCA\Projektwerk\Db\CommentMapper;
+use OCA\Projektwerk\Db\FileLinkMapper;
 use OCA\Projektwerk\Db\StepMapper;
 use OCA\Projektwerk\Db\TicketChildMapper;
 use OCA\Projektwerk\Db\TicketMapper;
@@ -39,6 +40,7 @@ class MapperArchitectureTest extends TestCase {
 		CommentMapper::class,
 		StepMapper::class,
 		AttachmentMapper::class,
+		FileLinkMapper::class,
 		TicketUserMapper::class,
 		TicketLogMapper::class,
 	];

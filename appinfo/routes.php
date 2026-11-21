@@ -88,6 +88,8 @@ return [
 		// „destroy" loest die Verknuepfung — die Datei bleibt liegen, die App
 		// loescht nie (§5.18).
 		['name' => 'attachment#destroy', 'url' => '/api/v1/boards/{boardId}/attachments/{attachmentId}', 'verb' => 'DELETE'],
+		['name' => 'fileLink#create', 'url' => '/api/v1/boards/{boardId}/tickets/{ticketId}/links', 'verb' => 'POST'],
+		['name' => 'fileLink#destroy', 'url' => '/api/v1/boards/{boardId}/links/{linkId}', 'verb' => 'DELETE'],
 
 		// **Die eigenen Kanalschalter — ohne Board im Pfad.** Die Grenze ist die
 		// Benutzerkennung aus der Sitzung; ein `boardId` davor taeuschte eine

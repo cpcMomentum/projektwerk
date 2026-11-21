@@ -92,6 +92,7 @@ Schreiben (dieselben Rechte und Regeln wie im Browser, über dieselben Dienste):
 | `add_comment` | Kommentar, `@kennung` benachrichtigt |
 | `add_attachment` | Datei mitschicken (≤ 1 MB je Anfrage) |
 | `attach_file` | Datei aus der eigenen Nextcloud kopieren, **nur an interne und private Vorgänge** |
+| `link_file` | Datei oder Ordner aus der eigenen Nextcloud verknüpfen, ohne Kopie; jede Person sieht nur Ziele, die sie selbst öffnen kann. An kundensichtbaren Vorgängen nur mit Bestätigung und eingeschaltetem Schalter |
 | `transfer_to_github` | als GitHub-Issue übertragen (nur interne Seite) |
 
 Nicht über den KI-Zugang: löschen, wiederöffnen, Sichtbarkeit ändern, Kommentare bearbeiten,

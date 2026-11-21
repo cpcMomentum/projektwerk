@@ -22,6 +22,7 @@ use OCA\Projektwerk\Controller\SettingsController;
 use OCA\Projektwerk\Controller\TaskController;
 use OCA\Projektwerk\Controller\TicketController;
 use OCA\Projektwerk\Db\AttachmentMapper;
+use OCA\Projektwerk\Db\FileLinkMapper;
 use OCA\Projektwerk\Db\BoardMapper;
 use OCA\Projektwerk\Db\ColumnMapper;
 use OCA\Projektwerk\Db\CommentMapper;
@@ -288,6 +289,8 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'StepMapper::countForTickets' => 'testChildCountersFollowTheFilteredTicketSet',
 		'AttachmentMapper::findForTickets' => 'testChildrenFollowTheFilteredTicketSet',
 		'AttachmentMapper::countForTickets' => 'testChildCountersFollowTheFilteredTicketSet',
+		'FileLinkMapper::findForTickets' => 'testChildrenFollowTheFilteredTicketSet',
+		'FileLinkMapper::countForTickets' => 'testChildCountersFollowTheFilteredTicketSet',
 		'TicketUserMapper::findForTickets' => 'testChildrenFollowTheFilteredTicketSet',
 		'TicketUserMapper::countForTickets' => 'testChildCountersFollowTheFilteredTicketSet',
 		'TicketLogMapper::findForTickets' => 'testChildrenFollowTheFilteredTicketSet',
@@ -2435,6 +2438,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 			'Kommentare' => Server::get(CommentMapper::class),
 			'Arbeitsschritte' => Server::get(StepMapper::class),
 			'Anhaenge' => Server::get(AttachmentMapper::class),
+			'Verknuepfungen' => Server::get(FileLinkMapper::class),
 			'Mitarbeitende' => Server::get(TicketUserMapper::class),
 			'Verlauf' => Server::get(TicketLogMapper::class),
 		];

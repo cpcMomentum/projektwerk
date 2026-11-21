@@ -14,6 +14,7 @@ use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Access\WaitStateCalculator;
 use OCA\Projektwerk\Db\AttachmentMapper;
 use OCA\Projektwerk\Db\CommentMapper;
+use OCA\Projektwerk\Db\FileLinkMapper;
 use OCA\Projektwerk\Db\StepMapper;
 use OCA\Projektwerk\Db\Ticket;
 use OCA\Projektwerk\Db\TicketMapper;
@@ -40,6 +41,8 @@ class TicketReadModel {
 		private WaitStateCalculator $waitState,
 		private ChangeHighlighter $highlighter,
 		private TicketLogService $log,
+		private FileLinkMapper $fileLinks,
+		private FileLinkService $fileLinkService,
 	) {
 	}
 
@@ -111,6 +114,7 @@ class TicketReadModel {
 			'comments' => $this->comments->findForTickets($ids),
 			'steps' => $steps,
 			'attachments' => $this->attachmentService->withPresence($viewer, $this->attachments->findForTickets($ids)),
+			'links' => $this->fileLinkService->forViewer($viewer, $this->fileLinks->findForTickets($ids)),
 			'collaborators' => $this->ticketUsers->findForTickets($ids),
 			'dependsOn' => self::linkSummaries($this->tickets->findVisibleDependencies($viewer, $ids[0])),
 			'neededBy' => self::linkSummaries($this->tickets->findVisibleDependents($viewer, $ids[0])),
