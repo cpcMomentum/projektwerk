@@ -23,6 +23,7 @@ use OCA\Projektwerk\Mcp\Tools\AddAttachment;
 use OCA\Projektwerk\Mcp\Tools\AddComment;
 use OCA\Projektwerk\Mcp\Tools\AddStep;
 use OCA\Projektwerk\Mcp\Tools\AttachFile;
+use OCA\Projektwerk\Mcp\Tools\LinkFile;
 use OCA\Projektwerk\Mcp\Tools\CloseTicket;
 use OCA\Projektwerk\Mcp\Tools\CreateTicket;
 use OCA\Projektwerk\Mcp\Tools\MoveTicket;
@@ -98,6 +99,7 @@ class McpWritePathTest extends IntegrationTestCase {
 		yield 'add_comment' => [AddComment::class, ['body' => 'Hallo Kunde']];
 		yield 'add_attachment' => [AddAttachment::class, ['file_name' => 'a.txt', 'content' => 'x', 'encoding' => 'text']];
 		yield 'attach_file' => [AttachFile::class, ['path' => 'nicht/da.txt']];
+		yield 'link_file' => [LinkFile::class, ['path' => 'nicht/da']];
 		yield 'transfer_to_github' => [TransferToGithub::class, []];
 	}
 

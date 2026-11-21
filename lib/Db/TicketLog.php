@@ -62,6 +62,8 @@ class TicketLog extends Entity implements JsonSerializable {
 	public const STEP_DELETED = 'step_deleted';
 	public const ATTACHMENT_ADDED = 'attachment_added';
 	public const ATTACHMENT_REMOVED = 'attachment_removed';
+	public const FILE_LINKED = 'file_linked';
+	public const FILE_UNLINKED = 'file_unlinked';
 	public const COMMENT_EDITED = 'comment_edited';
 	public const COMMENT_DELETED = 'comment_deleted';
 	/** `new_value` = Kennung des anderen Vorgangs, `old_value` = dessen Sichtbarkeit beim Eintrag; der Titel wird nie gespeichert. */

@@ -517,7 +517,7 @@ class MemberLifecycleService {
 		$geloescht = 0;
 		// Blöcke wegen der Parametergrenze mancher Datenbanken.
 		foreach (array_chunk($ids, 1000) as $block) {
-			foreach (['pwerk_comments', 'pwerk_steps', 'pwerk_attachments', 'pwerk_ticket_users', 'pwerk_reads', 'pwerk_mail_outbox', 'pwerk_ticket_log'] as $tabelle) {
+			foreach (['pwerk_comments', 'pwerk_steps', 'pwerk_attachments', 'pwerk_file_links', 'pwerk_ticket_users', 'pwerk_reads', 'pwerk_mail_outbox', 'pwerk_ticket_log'] as $tabelle) {
 				$qb = $this->db->getQueryBuilder();
 				$qb->delete($tabelle)
 					->where($qb->expr()->in('ticket_id', $qb->createNamedParameter($block, IQueryBuilder::PARAM_INT_ARRAY)));

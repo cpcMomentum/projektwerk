@@ -775,6 +775,19 @@ OC.L10N.register(
     "Wähle zuerst den Projektordner. Danach lässt sich dieser Ordner hier mit dem Standardnamen anlegen." : "Choose the project folder first. Then this folder can be created here with its standard name.",
     "Die Kundenseite hat Zugriff. Leer lassen heißt: an diesen Vorgängen sind keine Anhänge möglich. Die App legt keine Freigaben an, diesen Ordner gibst du selbst an die Kundenseite frei." : "The customer side has access. Leaving it empty means these tickets cannot have attachments. The app does not create shares; share this folder with the customer side yourself.",
     "Im Projektordner fehlen dir die Schreibrechte, um diesen Ordner anzulegen." : "You do not have write access in the project folder to create this folder.",
-    "Den Projektordner gibt es unter diesem Pfad nicht mehr. Bitte lade die Seite neu." : "The project folder no longer exists at this path. Please reload the page."
+    "Den Projektordner gibt es unter diesem Pfad nicht mehr. Bitte lade die Seite neu." : "The project folder no longer exists at this path. Please reload the page.",
+    "Verknüpfen" : "Link",
+    "Nicht mehr vorhanden" : "No longer available",
+    "Verknüpfung, liegt in {path}" : "Link, located in {path}",
+    "Verknüpfung entfernen: {name}" : "Remove link: {name}",
+    "Die Verknüpfung konnte nicht gespeichert werden" : "The link could not be saved",
+    "Die Verknüpfung konnte nicht entfernt werden" : "The link could not be removed",
+    "Datei oder Ordner wählen" : "Choose file or folder",
+    "Dieser Ordner ist leer." : "This folder is empty.",
+    "Verknüpfung nicht gefunden." : "Link not found.",
+    "Bitte eine Datei oder einen Ordner angeben." : "Please specify a file or folder.",
+    "Diese Datei oder dieser Ordner ist nicht erreichbar." : "This file or folder is not accessible.",
+    "hat eine Datei oder einen Ordner verknüpft" : "linked a file or folder",
+    "hat eine Verknüpfung entfernt" : "removed a link"
 },
 "nplurals=2; plural=(n != 1);");
