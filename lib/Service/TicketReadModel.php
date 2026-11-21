@@ -56,11 +56,7 @@ class TicketReadModel {
 		return $this->indexOf($viewer->userId, $this->tickets->findVisibleInBoard($viewer, $columnId, !$includeArchived));
 	}
 
-	/**
-	 * Dieselbe Form wie index(), über alle aktiven Boards; Archiviertes bleibt wie im Überblick draußen.
-	 *
-	 * @param int[] $activeBoardIds nicht archivierte Boards der Person
-	 */
+	/** Dieselbe Form wie index(), über die übergebenen aktiven Boards; Archiviertes bleibt wie im Überblick draußen. */
 	public function indexAcrossBoards(string $userId, bool $includeClosed, array $activeBoardIds): array {
 		$active = array_flip($activeBoardIds);
 		$tickets = array_values(array_filter(
