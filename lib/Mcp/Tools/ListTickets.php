@@ -84,12 +84,12 @@ class ListTickets implements Tool {
 		if ($boardId === null && isset($arguments['column_id'])) {
 			return ToolResult::error('column_id needs board_id.');
 		}
-		if (isset($arguments['due_before']) && $this->parse($arguments['due_before'], ['!Y-m-d']) === null) {
+		if (isset($arguments['due_before']) && DateArgument::parse($arguments['due_before'], DateArgument::DATE, $this->zone->getTimeZone()) === null) {
 			return ToolResult::error('due_before must be a date like 2026-11-27.');
 		}
 		$since = null;
 		if (isset($arguments['changed_since'])) {
-			$since = $this->parse($arguments['changed_since'], ['!Y-m-d', \DateTimeInterface::ATOM, 'Y-m-d\TH:i:sP', 'Y-m-d\TH:i:s', 'Y-m-d\TH:i']);
+			$since = DateArgument::parse($arguments['changed_since'], DateArgument::DATE_OR_TIME, $this->zone->getTimeZone());
 			if ($since === null) {
 				return ToolResult::error('changed_since must be an ISO 8601 date (2026-11-20) or date-time (2026-11-20T08:00:00+01:00).');
 			}
@@ -171,23 +171,6 @@ class ListTickets implements Tool {
 		}
 
 		return $last;
-	}
-
-	/**
-	 * Streng statt `new DateTimeImmutable()`, das auch „tomorrow“ schluckt; ohne Zone gilt die der Person.
-	 *
-	 * @param string[] $formats
-	 */
-	private function parse(string $value, array $formats): ?\DateTimeImmutable {
-		foreach ($formats as $format) {
-			$parsed = \DateTimeImmutable::createFromFormat($format, $value, $this->zone->getTimeZone());
-			$errors = \DateTimeImmutable::getLastErrors();
-			if ($parsed !== false && ($errors === false || ($errors['warning_count'] === 0 && $errors['error_count'] === 0))) {
-				return $parsed;
-			}
-		}
-
-		return null;
 	}
 
 	/** @return array<int, array<string, mixed>> */

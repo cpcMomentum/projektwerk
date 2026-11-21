@@ -92,4 +92,9 @@ class CommentMapper extends TicketChildMapper {
 
 		return $newest;
 	}
+
+	/** @return Comment[] nur über die bereits gefilterte Ticket-Menge, für die Aktivität ab einem Zeitpunkt */
+	public function findForTicketsSince(array $ticketIds, \DateTimeInterface $since): array {
+		return $this->findForTicketsCreatedSince($ticketIds, $since);
+	}
 }

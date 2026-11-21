@@ -26,4 +26,9 @@ class TicketLogMapper extends TicketChildMapper {
 	protected function sortProperty(): string {
 		return 'createdAt';
 	}
+
+	/** @return TicketLog[] nur über die bereits gefilterte Ticket-Menge, für die Aktivität ab einem Zeitpunkt */
+	public function findForTicketsSince(array $ticketIds, \DateTimeInterface $since): array {
+		return $this->findForTicketsCreatedSince($ticketIds, $since);
+	}
 }

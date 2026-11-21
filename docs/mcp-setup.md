@@ -85,6 +85,9 @@ durchsucht Titel, Beschreibung und Nummer über alle sichtbaren Boards, auch abg
 damit die KI vor dem Anlegen Doppelte findet. `list_tickets` geht ohne `board_id` über alle Projekte und
 filtert nach Verantwortlichen (`me`), Fälligkeit (`due_before`), `overdue` und `changed_since` (ein neuer
 Kommentar zählt als Änderung); abgeschlossene nur mit `include_closed`.
+`list_activity` listet Kommentare und Änderungen seit einem Zeitpunkt (`since`, Pflicht), eingrenzbar auf
+Projekt, Board, Art (`comments`/`changes`), Seite (`internal`/`external`) und Person; mit Herkunft
+(`ui`, `mail`, `tool`) und nur für Vorgänge, die man sehen darf.
 
 Schreiben (dieselben Rechte und Regeln wie im Browser, über dieselben Dienste):
 

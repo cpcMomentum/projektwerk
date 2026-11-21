@@ -61,6 +61,8 @@ class MapperArchitectureTest extends TestCase {
 		// gefahren (testNewestCommentFollowsTheFilteredTicketSet). Die Uniformität
 		// der uebrigen drei Kinder-Mapper bleibt unangetastet.
 		'CommentMapper::findNewestForTickets' => 'Jüngster Kommentar je Vorgang (#79), leak-matrix-geprüft.',
+		'CommentMapper::findForTicketsSince' => 'Aktivität ab einem Zeitpunkt, über die gefilterte Menge, leak-matrix-geprüft.',
+		'TicketLogMapper::findForTicketsSince' => 'Aktivität ab einem Zeitpunkt, über die gefilterte Menge, leak-matrix-geprüft.',
 	];
 
 	/**
