@@ -17,6 +17,7 @@
  */
 
 import axios from '@nextcloud/axios'
+import { t } from '@nextcloud/l10n'
 import { generateRemoteUrl } from '@nextcloud/router'
 
 /** Ein Ordnereintrag: Anzeigename und der Pfad relativ zur Files-Wurzel. */
@@ -135,4 +136,32 @@ export async function folderChildren(path: string): Promise<FolderEntry[]> {
  */
 export async function createFolder(path: string): Promise<void> {
 	await axios.request({ method: 'MKCOL', url: toUrl(path) })
+}
+
+/** Feste Ordnernamen, in keiner Sprache übersetzt: Es sind Ordner, keine Texte. */
+export const STANDARD_FOLDERS = { public: '90_Austausch', internal: '91_Tickets_intern' } as const
+
+/** Pfad des Standardordners unter dem Projektordner, unabhängig von dessen Schreibweise. */
+export function standardFolderPath(root: string, slot: keyof typeof STANDARD_FOLDERS): string {
+	const base = root.replace(/^\/+|\/+$/g, '')
+	return base === '' ? STANDARD_FOLDERS[slot] : base + '/' + STANDARD_FOLDERS[slot]
+}
+
+/** Ordner anlegen oder einen vorhandenen übernehmen, damit „Anlegen“ zweimal gefahrlos ist. */
+export async function ensureFolder(path: string): Promise<void> {
+	try {
+		await createFolder(path)
+	} catch (e) {
+		const status = (e as { response?: { status?: number } })?.response?.status
+		// 405: Der Name ist schon belegt; ob es ein Ordner ist, prüft der Server beim Speichern.
+		if (status === 405) {
+			return
+		}
+		const message = status === 403
+			? t('projektwerk', 'Im Projektordner fehlen dir die Schreibrechte, um diesen Ordner anzulegen.')
+			: status === 409
+				? t('projektwerk', 'Den Projektordner gibt es unter diesem Pfad nicht mehr. Bitte lade die Seite neu.')
+				: t('projektwerk', 'Der Ordner konnte nicht angelegt werden.')
+		throw new Error(message, { cause: e })
+	}
 }

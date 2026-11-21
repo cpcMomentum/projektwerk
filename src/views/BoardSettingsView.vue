@@ -325,8 +325,21 @@
 									@click="saveFolder(slot.key)">
 									{{ t('projektwerk', 'Übernehmen') }}
 								</NcButton>
+
+								<NcButton
+									v-if="slot.key !== 'root' && slot.path === '' && rootFolderPath !== '' && store.projectFolder?.reachable"
+									:disabled="busy || !mayManage || folderDrafts[slot.key].trim() !== ''"
+									@click="createStandardFolder(slot.key)">
+									<template #icon>
+										<FolderPlusIcon :size="20" />
+									</template>
+									{{ t('projektwerk', 'Anlegen') }}
+								</NcButton>
 							</div>
 							<span class="pw-feld__hinweis">{{ slot.hint }}</span>
+							<span v-if="slot.key !== 'root' && slot.path === '' && rootFolderPath === ''" class="pw-feld__hinweis">
+								{{ t('projektwerk', 'Wähle zuerst den Projektordner. Danach lässt sich dieser Ordner hier mit dem Standardnamen anlegen.') }}
+							</span>
 						</div>
 					</fieldset>
 				</section>
@@ -790,10 +803,12 @@ import ArrowUpIcon from 'vue-material-design-icons/ArrowUp.vue'
 import ChevronLeftIcon from 'vue-material-design-icons/ChevronLeft.vue'
 import DeleteIcon from 'vue-material-design-icons/DeleteOutline.vue'
 import FolderIcon from 'vue-material-design-icons/Folder.vue'
+import FolderPlusIcon from 'vue-material-design-icons/FolderPlus.vue'
 import LockIcon from 'vue-material-design-icons/Lock.vue'
 import FolderPicker from '@/components/FolderPicker.vue'
 import ProjectLogList from '@/components/ProjectLogList.vue'
 import PwSettingsNav from '@/components/PwSettingsNav.vue'
+import { ensureFolder, standardFolderPath } from '@/services/folders'
 import { searchGithubRepos } from '@/services/github'
 import {
 	addMember,
@@ -839,7 +854,7 @@ function parentPath(path: string): string {
 export default defineComponent({
 	name: 'BoardSettingsView',
 
-	components: { ArrowDownIcon, ArrowUpIcon, ChevronLeftIcon, DeleteIcon, FolderIcon, FolderPicker, LockIcon, NcAvatar, NcButton, NcCheckboxRadioSwitch, NcDialog, NcEmptyContent, NcNoteCard, NcSelect, NcTextField, ProjectLogList, PwSettingsNav },
+	components: { ArrowDownIcon, ArrowUpIcon, ChevronLeftIcon, DeleteIcon, FolderIcon, FolderPicker, FolderPlusIcon, LockIcon, NcAvatar, NcButton, NcCheckboxRadioSwitch, NcDialog, NcEmptyContent, NcNoteCard, NcSelect, NcTextField, ProjectLogList, PwSettingsNav },
 
 	setup() {
 		return { store: useBoardStore() }
@@ -1010,6 +1025,10 @@ export default defineComponent({
 			return t('projektwerk', 'Nur das Board „{title}“ wird archiviert. Die anderen Boards des Projekts bleiben unverändert. Nichts wird gelöscht; zurückholen über die Board-Auswahl.', { title: this.store.board?.title ?? '' }, undefined, { escape: false })
 		},
 
+		rootFolderPath(): string {
+			return this.store.projectFolder?.path ?? ''
+		},
+
 		/**
 		 * Die beiden Ablageorte als Zeilen, damit die Vorlage sie nicht doppelt
 		 * ausschreibt.
@@ -1021,6 +1040,7 @@ export default defineComponent({
 		 */
 		folderSlots(): { key: FolderSlot, label: string, hint: string, placeholder: string, path: string }[] {
 			const board = this.store.board
+			const root = this.rootFolderPath
 
 			return [
 				{
@@ -1028,20 +1048,20 @@ export default defineComponent({
 					label: t('projektwerk', 'Projektordner'),
 					hint: t('projektwerk', 'Der Oberordner des Projekts. Der Knopf „Projektordner" im Projektkopf öffnet ihn, und die Ordnerauswahl für die beiden Ordner darunter beginnt hier.'),
 					placeholder: 'Projekte/Kunde A',
-					path: this.store.projectFolder?.path ?? '',
+					path: root,
 				},
 				{
 					key: 'public',
 					label: t('projektwerk', 'Ordner für Vorgänge, die alle Beteiligten sehen'),
-					hint: t('projektwerk', 'Die Kundenseite hat Zugriff. Leer lassen heißt: an diesen Vorgängen sind keine Anhänge möglich.'),
-					placeholder: 'Projekte/Kunde A/90_Austausch',
+					hint: t('projektwerk', 'Die Kundenseite hat Zugriff. Leer lassen heißt: an diesen Vorgängen sind keine Anhänge möglich. Die App legt keine Freigaben an, diesen Ordner gibst du selbst an die Kundenseite frei.'),
+					placeholder: root === '' ? 'Projekte/Kunde A/90_Austausch' : standardFolderPath(root, 'public'),
 					path: board?.folderPublicPath ?? '',
 				},
 				{
 					key: 'internal',
 					label: t('projektwerk', 'Ordner für interne Vorgänge'),
 					hint: t('projektwerk', 'Nur die eigene Seite hat Zugriff. Leer lassen heißt: an internen Vorgängen sind keine Anhänge möglich.'),
-					placeholder: 'Projekte/Kunde A/91_Tickets_intern',
+					placeholder: root === '' ? 'Projekte/Kunde A/91_Tickets_intern' : standardFolderPath(root, 'internal'),
 					path: board?.folderInternalPath ?? '',
 				},
 			]
@@ -1360,6 +1380,24 @@ export default defineComponent({
 
 			return this.write(
 				() => updateBoard(this.boardId, { [field]: path }),
+				t('projektwerk', 'Ordner konnte nicht gespeichert werden'),
+				false,
+				['ordner'],
+			)
+		},
+
+		createStandardFolder(slot: FolderSlot): Promise<void> {
+			if (slot === 'root' || this.rootFolderPath === '' || !this.store.projectFolder?.reachable) {
+				return Promise.resolve()
+			}
+			const path = standardFolderPath(this.rootFolderPath, slot)
+			const field = slot === 'public' ? 'folderPublicPath' : 'folderInternalPath'
+
+			return this.write(
+				async () => {
+					await ensureFolder(path)
+					await updateBoard(this.boardId, { [field]: path })
+				},
 				t('projektwerk', 'Ordner konnte nicht gespeichert werden'),
 				false,
 				['ordner'],

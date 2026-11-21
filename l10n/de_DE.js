@@ -147,7 +147,6 @@ OC.L10N.register(
     "Dateiablage" : "Dateiablage",
     "Anhänge an Vorgängen landen in diesen Ordnern. Ohne Ordner sind an den betreffenden Vorgängen keine Anhänge möglich." : "Anhänge an Vorgängen landen in diesen Ordnern. Ohne Ordner sind an den betreffenden Vorgängen keine Anhänge möglich.",
     "Ordner für Vorgänge, die alle Beteiligten sehen" : "Ordner für Vorgänge, die alle Beteiligten sehen",
-    "Die Kundenseite hat Zugriff. Leer lassen heißt: an diesen Vorgängen sind keine Anhänge möglich." : "Die Kundenseite hat Zugriff. Leer lassen heißt: an diesen Vorgängen sind keine Anhänge möglich.",
     "Ordner für interne Vorgänge" : "Ordner für interne Vorgänge",
     "Nur die eigene Seite hat Zugriff. Leer lassen heißt: an internen Vorgängen sind keine Anhänge möglich." : "Nur die eigene Seite hat Zugriff. Leer lassen heißt: an internen Vorgängen sind keine Anhänge möglich.",
     "Übernehmen" : "Übernehmen",
@@ -772,6 +771,10 @@ OC.L10N.register(
     "_{date} (noch %n Tag)_::_{date} (noch %n Tage)_" : ["{date} (noch %n Tag)","{date} (noch %n Tage)"],
     "Mit WerkPlus freischalten" : "Mit WerkPlus freischalten",
     "Der WerkPlus-Testzeitraum endet am %s." : "Der WerkPlus-Testzeitraum endet am %s.",
-    "Der WerkPlus-Testzeitraum ist beendet. ProjektWerk läuft im freien Umfang weiter, deine Daten bleiben erhalten." : "Der WerkPlus-Testzeitraum ist beendet. ProjektWerk läuft im freien Umfang weiter, Ihre Daten bleiben erhalten."
+    "Der WerkPlus-Testzeitraum ist beendet. ProjektWerk läuft im freien Umfang weiter, deine Daten bleiben erhalten." : "Der WerkPlus-Testzeitraum ist beendet. ProjektWerk läuft im freien Umfang weiter, Ihre Daten bleiben erhalten.",
+    "Wähle zuerst den Projektordner. Danach lässt sich dieser Ordner hier mit dem Standardnamen anlegen." : "Wählen Sie zuerst den Projektordner. Danach lässt sich dieser Ordner hier mit dem Standardnamen anlegen.",
+    "Die Kundenseite hat Zugriff. Leer lassen heißt: an diesen Vorgängen sind keine Anhänge möglich. Die App legt keine Freigaben an, diesen Ordner gibst du selbst an die Kundenseite frei." : "Die Kundenseite hat Zugriff. Leer lassen heißt: an diesen Vorgängen sind keine Anhänge möglich. Die App legt keine Freigaben an, diesen Ordner geben Sie selbst an die Kundenseite frei.",
+    "Im Projektordner fehlen dir die Schreibrechte, um diesen Ordner anzulegen." : "Im Projektordner fehlen Ihnen die Schreibrechte, um diesen Ordner anzulegen.",
+    "Den Projektordner gibt es unter diesem Pfad nicht mehr. Bitte lade die Seite neu." : "Den Projektordner gibt es unter diesem Pfad nicht mehr. Bitte laden Sie die Seite neu."
 },
 "nplurals=2; plural=(n != 1);");

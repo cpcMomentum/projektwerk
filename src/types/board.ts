@@ -161,7 +161,7 @@ export interface BoardDetail {
 	projectArchived?: boolean
 	siblings?: SiblingBoard[]
 	/** Der Projektordner (#351): Datei-ID zum Öffnen, Pfad zur Anzeige. */
-	projectFolder?: { id: number, path: string } | null
+	projectFolder?: { id: number, path: string, reachable: boolean } | null
 	/** Ob der Betrachter dieses Board jetzt löschen dürfte. */
 	deletable?: boolean
 }
