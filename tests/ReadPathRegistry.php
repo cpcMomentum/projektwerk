@@ -332,6 +332,7 @@ final class ReadPathRegistry {
 		'list_tickets',
 		'get_ticket',
 		'list_members',
+		'search_tickets',
 	];
 
 	/**

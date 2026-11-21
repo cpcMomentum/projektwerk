@@ -210,14 +210,23 @@ class TicketMapper extends QBMapper {
 	}
 
 	/**
-	 * Suche nach Titel oder Nummer über alle Boards, die der Betrachter sehen darf; Grundlage für Suche und Smart Picker.
+	 * Suche nach Titel, Beschreibung oder Nummer über alle Boards, die der Betrachter sehen darf; Grundlage für Suche, Smart Picker und search_tickets.
 	 *
 	 * @return Ticket[]
 	 */
-	public function findVisibleMatching(string $userId, string $term, int $limit): array {
-		$qb = $this->scopedQuery($userId, null);
+	public function findVisibleMatching(string $userId, string $term, int $limit, ?int $boardId = null, ?int $projectId = null, bool $includeClosed = true, int $offset = 0): array {
+		$qb = $this->scopedQuery($userId, $boardId);
 		$like = $qb->createNamedParameter('%' . $this->db->escapeLikeParameter($term) . '%');
-		$match = $qb->expr()->orX($qb->expr()->iLike(self::T . '.title', $like));
+		$match = $qb->expr()->orX(
+			$qb->expr()->iLike(self::T . '.title', $like),
+			$qb->expr()->iLike(self::T . '.description', $like),
+		);
+		if ($projectId !== null) {
+			$qb->andWhere($qb->expr()->eq(self::T . '.project_id', $qb->createNamedParameter($projectId, IQueryBuilder::PARAM_INT)));
+		}
+		if (!$includeClosed) {
+			$qb->andWhere($qb->expr()->isNull(self::T . '.closed_at'));
+		}
 
 		$number = ltrim($term, '#');
 		if ($number !== '' && ctype_digit($number)) {
@@ -228,6 +237,7 @@ class TicketMapper extends QBMapper {
 			->andWhere($match)
 			->orderBy(self::T . '.updated_at', 'DESC')
 			->addOrderBy(self::T . '.id', 'DESC')
+			->setFirstResult($offset)
 			->setMaxResults($limit);
 
 		return $this->findEntities($qb);
