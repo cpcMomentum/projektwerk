@@ -82,7 +82,9 @@ die Person auch in der Weboberfläche sieht.
 
 Lesen: Boards, Spalten, Mitglieder, Vorgänge mit Schritten, Anhängen und Kommentaren. `search_tickets`
 durchsucht Titel, Beschreibung und Nummer über alle sichtbaren Boards, auch abgeschlossene Vorgänge,
-damit die KI vor dem Anlegen Doppelte findet.
+damit die KI vor dem Anlegen Doppelte findet. `list_tickets` geht ohne `board_id` über alle Projekte und
+filtert nach Verantwortlichen (`me`), Fälligkeit (`due_before`), `overdue` und `changed_since` (ein neuer
+Kommentar zählt als Änderung); abgeschlossene nur mit `include_closed`.
 
 Schreiben (dieselben Rechte und Regeln wie im Browser, über dieselben Dienste):
 
