@@ -43,7 +43,7 @@ abstract class WriteTool implements Tool {
 		protected BoardAccess $access,
 		protected PublicGuard $guard,
 		private McpRateLimiter $rateLimiter,
-		private McpAudit $audit,
+		protected McpAudit $audit,
 	) {
 	}
 
