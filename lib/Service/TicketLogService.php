@@ -101,10 +101,21 @@ class TicketLogService {
 
 	/** @return TicketLog[] älteste zuerst; `$ticket` stammt aus findVisible() */
 	public function listFor(ViewerContext $viewer, Ticket $ticket): array {
+		return $this->listForTickets($viewer, [$ticket]);
+	}
+
+	/** @return TicketLog[] je Vorgang älteste zuerst; die Vorgänge stammen aus der gefilterten Menge */
+	public function listForTickets(ViewerContext $viewer, array $tickets, ?\DateTimeInterface $since = null): array {
+		$byId = [];
+		foreach ($tickets as $ticket) {
+			$byId[(int)$ticket->getId()] = $ticket;
+		}
 		$visible = [];
 		$partner = [];
-		foreach ($this->log->findForTickets([(int)$ticket->getId()]) as $entry) {
-			if (!$this->wouldSee($viewer, $ticket, $entry->getVisibility())) {
+		$entries = $since === null ? $this->log->findForTickets(array_keys($byId)) : $this->log->findForTicketsSince(array_keys($byId), $since);
+		foreach ($entries as $entry) {
+			$ticket = $byId[(int)$entry->getTicketId()] ?? null;
+			if ($ticket === null || !$this->wouldSee($viewer, $ticket, $entry->getVisibility())) {
 				continue;
 			}
 			if (in_array($entry->getAction(), TicketLog::DEPENDENCY_ACTIONS, true) && !$this->namePartner($viewer, $entry, $partner)) {

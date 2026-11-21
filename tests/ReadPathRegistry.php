@@ -135,6 +135,8 @@ final class ReadPathRegistry {
 		// deinem Blick". Wie die beiden darüber über die gefilterte Menge, und
 		// mit derselben Erwartung: keine Zeile zu einem verborgenen Vorgang.
 		'CommentMapper::findNewestForTickets',
+		'CommentMapper::findForTicketsSince',
+		'TicketLogMapper::findForTicketsSince',
 		'StepMapper::findForTickets',
 		'StepMapper::countForTickets',
 		'AttachmentMapper::findForTickets',
@@ -333,6 +335,7 @@ final class ReadPathRegistry {
 		'get_ticket',
 		'list_members',
 		'search_tickets',
+		'list_activity',
 	];
 
 	/**

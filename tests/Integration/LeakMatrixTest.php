@@ -49,6 +49,7 @@ use OCA\Projektwerk\Mcp\Tools\GetTicket;
 use OCA\Projektwerk\Mcp\Tools\ListBoards;
 use OCA\Projektwerk\Mcp\Tools\ListColumns;
 use OCA\Projektwerk\Mcp\Tools\ListMembers;
+use OCA\Projektwerk\Mcp\Tools\ListActivity;
 use OCA\Projektwerk\Mcp\Tools\ListTickets;
 use OCA\Projektwerk\Mcp\Tools\SearchTickets;
 use OCA\Projektwerk\Service\BoardPinService;
@@ -286,6 +287,8 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'CommentMapper::findForTickets' => 'testChildrenFollowTheFilteredTicketSet',
 		'CommentMapper::countForTickets' => 'testChildCountersFollowTheFilteredTicketSet',
 		'CommentMapper::findNewestForTickets' => 'testNewestCommentFollowsTheFilteredTicketSet',
+		'CommentMapper::findForTicketsSince' => 'testActivityNeverWidensBeyondTheVisibleSet',
+		'TicketLogMapper::findForTicketsSince' => 'testActivityNeverWidensBeyondTheVisibleSet',
 		'StepMapper::findForTickets' => 'testChildrenFollowTheFilteredTicketSet',
 		'StepMapper::countForTickets' => 'testChildCountersFollowTheFilteredTicketSet',
 		'AttachmentMapper::findForTickets' => 'testChildrenFollowTheFilteredTicketSet',
@@ -346,6 +349,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'get_ticket' => 'testMcpToolsMatchTheirRestTwins',
 		'list_members' => 'testMcpToolsMatchTheirRestTwins',
 		'search_tickets' => 'testSearchToolNeverWidensBeyondTheVisibleSet',
+		'list_activity' => 'testActivityNeverWidensBeyondTheVisibleSet',
 	];
 
 	/**
@@ -2039,6 +2043,29 @@ class LeakMatrixTest extends IntegrationTestCase {
 				$expected = [...$expected, 'b:public/erna', 'b:internal/bert'];
 			}
 			$this->assertTicketLabels($expected, $tickets->findVisibleMatching($userId, '/', 100), 'Suche ' . $userId);
+		}
+	}
+
+	public function testActivityNeverWidensBeyondTheVisibleSet(): void {
+		foreach (self::VISIBLE as $userId => $expected) {
+			if ($userId === self::BERT) {
+				$expected = [...$expected, 'b:public/erna', 'b:internal/bert'];
+			}
+			$result = Server::get(ListActivity::class)->call(new AuthenticatedCaller($userId, 'leak-matrix'), ['since' => '2000-01-01']);
+			$seen = array_values(array_unique(array_map(static fn (array $entry): int => $entry['ticket']['id'], $result->structured()['entries'])));
+			sort($seen);
+			$this->assertSame([], array_values(array_diff($seen, $this->fixture->idsFor($expected))), 'list_activity ' . $userId);
+			if ($expected !== []) {
+				$this->assertNotSame([], $seen, 'list_activity liefert für ' . $userId . ' überhaupt etwas');
+			}
+
+			$onBoard = Server::get(ListActivity::class)->call(new AuthenticatedCaller($userId, 'leak-matrix'), ['since' => '2000-01-01', 'board_id' => $this->fixture->boardId]);
+			if ($userId === self::FREMD) {
+				$this->assertTrue($onBoard->isError(), 'list_activity mit fremdem Board');
+			} else {
+				$onBoardSeen = array_map(static fn (array $entry): int => $entry['ticket']['id'], $onBoard->structured()['entries']);
+				$this->assertSame([], array_values(array_diff($onBoardSeen, $this->fixture->idsFor($expected))), 'list_activity mit Board ' . $userId);
+			}
 		}
 	}
 
