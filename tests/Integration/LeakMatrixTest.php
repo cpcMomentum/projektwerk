@@ -2245,7 +2245,11 @@ class LeakMatrixTest extends IntegrationTestCase {
 			$this->assertSame($restBoards, $mcpBoards, $userId . ': list_boards');
 
 			$columns = Server::get(ListColumns::class)->call($caller, ['board_id' => $boardId]);
-			$tickets = Server::get(ListTickets::class)->call($caller, ['board_id' => $boardId]);
+			$tickets = Server::get(ListTickets::class)->call($caller, ['board_id' => $boardId, 'include_closed' => true]);
+
+			$acrossExpected = $userId === self::BERT ? [...$expected, 'b:public/erna', 'b:internal/bert'] : $expected;
+			$across = Server::get(ListTickets::class)->call($caller, ['include_closed' => true])->structured()['tickets'];
+			$this->assertSame($this->fixture->idsFor($acrossExpected), $this->sorted(array_column($across, 'id')), $userId . ': list_tickets ohne Board');
 			$members = Server::get(ListMembers::class)->call($caller, ['board_id' => $boardId]);
 			if ($userId === self::FREMD) {
 				$this->assertSame($notFound, ToolResult::encode($members->toArray()), 'list_members für das Nichtmitglied');
