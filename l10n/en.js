@@ -147,7 +147,6 @@ OC.L10N.register(
     "Dateiablage" : "File storage",
     "Anhänge an Vorgängen landen in diesen Ordnern. Ohne Ordner sind an den betreffenden Vorgängen keine Anhänge möglich." : "Attachments on tickets are stored in these folders. Without a folder, the tickets concerned cannot have attachments.",
     "Ordner für Vorgänge, die alle Beteiligten sehen" : "Folder for tickets everyone involved can see",
-    "Die Kundenseite hat Zugriff. Leer lassen heißt: an diesen Vorgängen sind keine Anhänge möglich." : "The customer side has access. Leaving it empty means these tickets cannot have attachments.",
     "Ordner für interne Vorgänge" : "Folder for internal tickets",
     "Nur die eigene Seite hat Zugriff. Leer lassen heißt: an internen Vorgängen sind keine Anhänge möglich." : "Only your own side has access. Leaving it empty means internal tickets cannot have attachments.",
     "Übernehmen" : "Apply",
@@ -772,6 +771,10 @@ OC.L10N.register(
     "_{date} (noch %n Tag)_::_{date} (noch %n Tage)_" : ["{date} (%n day left)","{date} (%n days left)"],
     "Mit WerkPlus freischalten" : "Unlock with WerkPlus",
     "Der WerkPlus-Testzeitraum endet am %s." : "The WerkPlus trial ends on %s.",
-    "Der WerkPlus-Testzeitraum ist beendet. ProjektWerk läuft im freien Umfang weiter, deine Daten bleiben erhalten." : "The WerkPlus trial has ended. ProjektWerk continues in the free scope, your data is kept."
+    "Der WerkPlus-Testzeitraum ist beendet. ProjektWerk läuft im freien Umfang weiter, deine Daten bleiben erhalten." : "The WerkPlus trial has ended. ProjektWerk continues in the free scope, your data is kept.",
+    "Wähle zuerst den Projektordner. Danach lässt sich dieser Ordner hier mit dem Standardnamen anlegen." : "Choose the project folder first. Then this folder can be created here with its standard name.",
+    "Die Kundenseite hat Zugriff. Leer lassen heißt: an diesen Vorgängen sind keine Anhänge möglich. Die App legt keine Freigaben an, diesen Ordner gibst du selbst an die Kundenseite frei." : "The customer side has access. Leaving it empty means these tickets cannot have attachments. The app does not create shares; share this folder with the customer side yourself.",
+    "Im Projektordner fehlen dir die Schreibrechte, um diesen Ordner anzulegen." : "You do not have write access in the project folder to create this folder.",
+    "Den Projektordner gibt es unter diesem Pfad nicht mehr. Bitte lade die Seite neu." : "The project folder no longer exists at this path. Please reload the page."
 },
 "nplurals=2; plural=(n != 1);");

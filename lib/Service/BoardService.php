@@ -552,15 +552,25 @@ class BoardService {
 	}
 
 	/**
-	 * Der Projektordner (#351): Datei-ID zum Öffnen, Pfad zur Anzeige; null ohne Ordner.
+	 * Der Projektordner (#351): Datei-ID zum Öffnen, Pfad im Baum des Betrachters; null ohne Ordner.
 	 *
-	 * @return array{id: int, path: string}|null
+	 * @return array{id: int, path: string, reachable: bool}|null
 	 */
 	public function projectFolder(ViewerContext $viewer): ?array {
 		$project = $this->projects->findForViewer($viewer);
 		$id = $project->getFolderRootId();
+		if ($id === null) {
+			return null;
+		}
 
-		return $id === null ? null : ['id' => (int)$id, 'path' => (string)$project->getFolderRootPath()];
+		try {
+			$folder = $this->folders->resolve($viewer->userId, (int)$id);
+		} catch (\OCP\Files\NotPermittedException) {
+			return ['id' => (int)$id, 'path' => (string)$project->getFolderRootPath(), 'reachable' => false];
+		}
+
+		// Eine Freigabe kann bei jeder Person woanders hängen; Anlegen braucht den eigenen Pfad.
+		return ['id' => (int)$id, 'path' => $this->folders->displayPath($viewer->userId, $folder), 'reachable' => true];
 	}
 
 	/**

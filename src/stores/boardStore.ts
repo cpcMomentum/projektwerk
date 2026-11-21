@@ -54,7 +54,7 @@ interface State {
 	/** Projekt-ID → zuletzt genutztes Board, gespiegelt aus dem Browser-Speicher. */
 	lastBoards: Record<string, number>
 	/** Der Projektordner des geöffneten Boards (#351), oder null. */
-	projectFolder: { id: number, path: string } | null
+	projectFolder: { id: number, path: string, reachable: boolean } | null
 	/** Ob der Betrachter das geöffnete Board jetzt löschen dürfte. */
 	deletable: boolean
 	tickets: Map<number, Ticket>
