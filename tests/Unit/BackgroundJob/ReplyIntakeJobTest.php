@@ -26,6 +26,8 @@ use OCP\IL10N;
 use OCP\IUser;
 use OCP\IUserManager;
 use OCP\L10N\IFactory;
+use OCP\Security\RateLimiting\ILimiter;
+use OCP\Security\RateLimiting\IRateLimitExceededException;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\AbstractLogger;
@@ -63,6 +65,9 @@ class ReplyIntakeJobTest extends TestCase {
 	private array $geholt = [];
 
 	private AbstractLogger $logger;
+
+	/** @var array<string, int> Anfragen je Konto, wie der Nextcloud-Zähler über mehrere Läufe hinweg */
+	private array $stunde = [];
 
 	protected function setUp(): void {
 		parent::setUp();
@@ -132,7 +137,24 @@ class ReplyIntakeJobTest extends TestCase {
 					$this->zeilen[] = (string)$message;
 				}
 			},
+			$this->limiter(),
 		);
+	}
+
+	private function limiter(): ILimiter {
+		$limiter = $this->createMock(ILimiter::class);
+		$limiter->method('registerUserRequest')->willReturnCallback(
+			function (string $id, int $limit, int $period, IUser $user): void {
+				$this->assertSame(3600, $period);
+				$this->stunde[$id] = ($this->stunde[$id] ?? 0) + 1;
+				if ($this->stunde[$id] > $limit) {
+					throw new class('Stundengrenze') extends \RuntimeException implements IRateLimitExceededException {
+					};
+				}
+			},
+		);
+
+		return $limiter;
 	}
 
 	/**
@@ -149,18 +171,24 @@ class ReplyIntakeJobTest extends TestCase {
 		return implode("\r\n", $lines) . "\r\n\r\n" . $body;
 	}
 
-	/**
-	 * Die private {@see ReplyIntakeJob::verarbeiten()} mit einem IMAP-Doppel rufen,
-	 * das genau eine rohe Mail liefert.
-	 *
-	 * @param array<string, int> $jeAbsender Der laufende Absender-Zähler (per Referenz).
-	 */
-	private function verarbeiten(string $raw, array &$jeAbsender): ImapClient&MockObject {
+	/** Die private {@see ReplyIntakeJob::verarbeiten()} mit einem IMAP-Doppel rufen, das genau eine rohe Mail liefert. */
+	private function verarbeiten(string $raw, ?ImapClient $client = null): ImapClient {
+		if ($client === null) {
+			$client = $this->createMock(ImapClient::class);
+			$client->method('uidFetchRaw')->willReturn($raw);
+		}
+
+		(new ReflectionMethod(ReplyIntakeJob::class, 'verarbeiten'))->invoke($this->job, $client, 1);
+
+		return $client;
+	}
+
+	/** Postfach-Doppel mit Ordnerhierarchie „/“; `$vorhanden` sind die schon angelegten Ordner. */
+	private function postfach(string $raw, array $vorhanden = []): ImapClient&MockObject {
 		$client = $this->createMock(ImapClient::class);
 		$client->method('uidFetchRaw')->willReturn($raw);
-
-		$ref = new ReflectionMethod(ReplyIntakeJob::class, 'verarbeiten');
-		$ref->invokeArgs($this->job, [$client, 1, &$jeAbsender]);
+		$client->method('hierarchyDelimiter')->willReturn('/');
+		$client->method('listFolders')->willReturn(['INBOX', ...$vorhanden]);
 
 		return $client;
 	}
@@ -178,13 +206,10 @@ class ReplyIntakeJobTest extends TestCase {
 				'Ja, bitte umsetzen.',
 			);
 
-		$counter = [];
 		$client = $this->verarbeiten(
 			$this->raw(self::RECIPIENT_MAIL, $this->betreff(), 'Ja, bitte umsetzen.'),
-			$counter,
 		);
 
-		// Nach erfolgreichem Kommentar wird die Mail gelesen markiert.
 		$this->assertInstanceOf(ImapClient::class, $client);
 	}
 
@@ -197,10 +222,8 @@ class ReplyIntakeJobTest extends TestCase {
 				$this->stringContains('[Anhang aus E-Mail nicht übernommen'),
 			);
 
-		$counter = [];
 		$this->verarbeiten(
 			$this->raw(self::RECIPIENT_MAIL, $this->betreff(), 'Passt.', ['Content-Disposition' => 'attachment; filename="x.pdf"']),
-			$counter,
 		);
 	}
 
@@ -212,16 +235,14 @@ class ReplyIntakeJobTest extends TestCase {
 		$client->method('uidFetchRaw')->willReturn($this->raw(self::RECIPIENT_MAIL, $this->betreff(), 'Spät, aber doch.'));
 		$client->expects($this->once())->method('markSeen')->with(1);
 
-		$counter = [];
-		(new ReflectionMethod(ReplyIntakeJob::class, 'verarbeiten'))->invokeArgs($this->job, [$client, 1, &$counter]);
+		$this->verarbeiten('', $client);
 	}
 
 	public function testAReplyExactlySevenDaysAfterSendingIsStillAccepted(): void {
 		$this->zeile->setSentAt((new \DateTime())->setTimestamp(self::NOW - ReplyIntakeJob::TOKEN_GUELTIG_SEKUNDEN));
 		$this->comments->expects($this->once())->method('create');
 
-		$counter = [];
-		$this->verarbeiten($this->raw(self::RECIPIENT_MAIL, $this->betreff(), 'Auf den Tag genau.'), $counter);
+		$this->verarbeiten($this->raw(self::RECIPIENT_MAIL, $this->betreff(), 'Auf den Tag genau.'));
 	}
 
 	public function testAnUnsentRowCountsFromItsCreation(): void {
@@ -229,17 +250,14 @@ class ReplyIntakeJobTest extends TestCase {
 		$this->zeile->setCreatedAt((new \DateTime())->setTimestamp(self::NOW - 3600));
 		$this->comments->expects($this->once())->method('create');
 
-		$counter = [];
-		$this->verarbeiten($this->raw(self::RECIPIENT_MAIL, $this->betreff(), 'Gerade noch.'), $counter);
+		$this->verarbeiten($this->raw(self::RECIPIENT_MAIL, $this->betreff(), 'Gerade noch.'));
 	}
 
 	public function testAutoSubmittedIsDroppedBeforeMatching(): void {
 		$this->comments->expects($this->never())->method('create');
 
-		$counter = [];
 		$client = $this->verarbeiten(
 			$this->raw(self::RECIPIENT_MAIL, $this->betreff(), 'Bin im Urlaub.', ['Auto-Submitted' => 'auto-replied']),
-			$counter,
 		);
 		$this->assertInstanceOf(ImapClient::class, $client);
 	}
@@ -247,20 +265,16 @@ class ReplyIntakeJobTest extends TestCase {
 	public function testBulkPrecedenceIsDropped(): void {
 		$this->comments->expects($this->never())->method('create');
 
-		$counter = [];
 		$this->verarbeiten(
 			$this->raw(self::RECIPIENT_MAIL, $this->betreff(), 'Newsletter.', ['Precedence' => 'bulk']),
-			$counter,
 		);
 	}
 
 	public function testOwnAddressLoopIsDropped(): void {
 		$this->comments->expects($this->never())->method('create');
 
-		$counter = [];
 		$this->verarbeiten(
 			$this->raw('projekte@firma.de', $this->betreff(), 'Schleife.'),
-			$counter,
 		);
 	}
 
@@ -268,10 +282,8 @@ class ReplyIntakeJobTest extends TestCase {
 		$this->archiviert = true;
 		$this->comments->expects($this->never())->method('create');
 
-		$counter = [];
 		$client = $this->verarbeiten(
 			$this->raw(self::RECIPIENT_MAIL, $this->betreff(), 'Ja, bitte umsetzen.'),
-			$counter,
 		);
 		$this->assertInstanceOf(ImapClient::class, $client);
 	}
@@ -279,10 +291,8 @@ class ReplyIntakeJobTest extends TestCase {
 	public function testMissingTokenIsUnmatched(): void {
 		$this->comments->expects($this->never())->method('create');
 
-		$counter = [];
 		$this->verarbeiten(
 			$this->raw(self::RECIPIENT_MAIL, 'Re: irgendein Betreff ohne Token', 'Hallo.'),
-			$counter,
 		);
 	}
 
@@ -290,20 +300,16 @@ class ReplyIntakeJobTest extends TestCase {
 		// Echter Token, aber die From-Adresse gehört nicht zum Empfänger-Konto.
 		$this->comments->expects($this->never())->method('create');
 
-		$counter = [];
 		$this->verarbeiten(
 			$this->raw('angreifer@fremd.de', $this->betreff(), 'Ich bin nicht Carla.'),
-			$counter,
 		);
 	}
 
 	public function testEmptyBodyAfterQuoteStripIsUnmatched(): void {
 		$this->comments->expects($this->never())->method('create');
 
-		$counter = [];
 		$this->verarbeiten(
 			$this->raw(self::RECIPIENT_MAIL, $this->betreff(), "> nur zitierter Text\n> zweite Zeile"),
-			$counter,
 		);
 	}
 
@@ -366,8 +372,8 @@ class ReplyIntakeJobTest extends TestCase {
 		$this->assertSame([...array_slice($treffer, 0, $batch), ...range(1, $batch)], $this->geholt);
 	}
 
-	public function testTheSenderLimitSpansRepliesAndTheRest(): void {
-		$max = (new \ReflectionClassConstant(ReplyIntakeJob::class, 'MAX_JE_ABSENDER'))->getValue();
+	public function testTheHourlyLimitSpansRepliesAndTheRest(): void {
+		$max = ReplyIntakeJob::MAX_JE_STUNDE;
 		$alle = range(1, $max + 1);
 		$this->comments->expects($this->exactly($max))->method('create');
 
@@ -399,31 +405,153 @@ class ReplyIntakeJobTest extends TestCase {
 		$this->lauf([7], new ImapException('IMAP: Antwortzeile ueberschreitet das Limit'), [7]);
 	}
 
-	public function testRateLimitCapsCommentsPerSenderPerRun(): void {
-		// Über MAX_JE_ABSENDER hinaus wird kein weiterer Kommentar angelegt.
-		$max = (new \ReflectionClassConstant(ReplyIntakeJob::class, 'MAX_JE_ABSENDER'))->getValue();
+	public function testTheHourlyLimitHoldsAcrossRuns(): void {
+		$max = ReplyIntakeJob::MAX_JE_STUNDE;
 		$this->comments->expects($this->exactly($max))->method('create');
 
-		$counter = [];
-		for ($i = 0; $i <= $max; $i++) {
-			$this->verarbeiten(
-				$this->raw(self::RECIPIENT_MAIL, $this->betreff(), 'Antwort ' . $i),
-				$counter,
-			);
-		}
+		$this->lauf(range(1, 15), range(1, 15), range(1, 15));
+		$this->lauf(range(16, 30), range(16, 30), range(16, 30));
 	}
 
-	public function testTheRunLimitIsLoggedWithTheAccountNotTheMailAddress(): void {
-		$max = (new \ReflectionClassConstant(ReplyIntakeJob::class, 'MAX_JE_ABSENDER'))->getValue();
-
-		$counter = [];
-		for ($i = 0; $i <= $max; $i++) {
-			$this->verarbeiten($this->raw(self::RECIPIENT_MAIL, $this->betreff(), 'Antwort ' . $i), $counter);
+	public function testAMailOverTheHourlyLimitGoesToNotMatchedAndTheLogNamesTheAccount(): void {
+		$max = ReplyIntakeJob::MAX_JE_STUNDE;
+		for ($i = 0; $i < $max; $i++) {
+			$this->verarbeiten($this->raw(self::RECIPIENT_MAIL, $this->betreff(), 'Antwort ' . $i));
 		}
+		$client = $this->postfach($this->raw(self::RECIPIENT_MAIL, $this->betreff(), 'Eine zu viel'), ['INBOX/ProjektWerk/Nicht zugeordnet']);
+		$client->expects($this->once())->method('uidMove')->with(1, 'INBOX/ProjektWerk/Nicht zugeordnet');
+		$client->expects($this->never())->method('markSeen');
 
-		$grenze = array_values(array_filter($this->logger->zeilen, static fn (string $z): bool => str_contains($z, 'Lauf-Grenze')));
+		$this->verarbeiten('', $client);
+
+		$grenze = array_values(array_filter($this->logger->zeilen, static fn (string $z): bool => str_contains($z, 'Stunden-Grenze')));
 		$this->assertCount(1, $grenze);
 		$this->assertStringContainsString(self::RECIPIENT, $grenze[0]);
 		$this->assertStringNotContainsString(self::RECIPIENT_MAIL, implode("\n", $this->logger->zeilen));
+	}
+
+	public function testATakenOverReplyIsMovedToProcessedAndTheFolderIsCreated(): void {
+		$this->comments->expects($this->once())->method('create');
+		$client = $this->postfach($this->raw(self::RECIPIENT_MAIL, $this->betreff(), 'Ja.'));
+		$client->expects($this->once())->method('createFolder')->with('INBOX/ProjektWerk/Verarbeitet');
+		$client->expects($this->once())->method('subscribe')->with('INBOX/ProjektWerk/Verarbeitet');
+		$client->expects($this->once())->method('uidMove')->with(1, 'INBOX/ProjektWerk/Verarbeitet');
+		$client->expects($this->once())->method('markSeen')->with(1);
+
+		$this->verarbeiten('', $client);
+	}
+
+	public function testAnUnmatchedMailIsMovedToNotMatchedIntoTheExistingFolder(): void {
+		$this->comments->expects($this->never())->method('create');
+		$client = $this->postfach($this->raw('angreifer@fremd.de', $this->betreff(), 'Ich bin nicht Carla.'), ['INBOX/ProjektWerk/Nicht zugeordnet']);
+		$client->expects($this->never())->method('createFolder');
+		$client->expects($this->once())->method('uidMove')->with(1, 'INBOX/ProjektWerk/Nicht zugeordnet');
+		$client->expects($this->never())->method('markSeen');
+
+		$this->verarbeiten('', $client);
+	}
+
+	public function testAnAutoReplyIsMovedToNotMatched(): void {
+		$client = $this->postfach($this->raw(self::RECIPIENT_MAIL, $this->betreff(), 'Bin im Urlaub.', ['Auto-Submitted' => 'auto-replied']));
+		$client->expects($this->once())->method('uidMove')->with(1, 'INBOX/ProjektWerk/Nicht zugeordnet');
+
+		$this->verarbeiten('', $client);
+	}
+
+	public function testWhenTheMoveFailsTheMailIsOnlyMarkedSeen(): void {
+		$this->comments->expects($this->once())->method('create');
+		$client = $this->postfach($this->raw(self::RECIPIENT_MAIL, $this->betreff(), 'Ja.'));
+		$client->method('uidMove')->willThrowException(new ImapException('IMAP: weder MOVE- noch UIDPLUS-Capability'));
+		$client->expects($this->once())->method('markSeen')->with(1);
+
+		$this->verarbeiten('', $client);
+	}
+
+	public function testWhenTheFolderCannotBeCreatedTheMailIsOnlyMarkedSeen(): void {
+		$client = $this->postfach($this->raw('fremd@example.org', 'Werbung', 'Kein Bezug'));
+		$client->method('createFolder')->willThrowException(new ImapCommandRejectedException('IMAP A005 NO'));
+		$client->expects($this->never())->method('uidMove');
+		$client->expects($this->once())->method('markSeen')->with(1);
+
+		$this->verarbeiten('', $client);
+	}
+
+	public function testAServerWithoutFolderHierarchyOnlyMarksSeen(): void {
+		$client = $this->createMock(ImapClient::class);
+		$client->method('uidFetchRaw')->willReturn($this->raw('fremd@example.org', 'Werbung', 'Kein Bezug'));
+		$client->method('hierarchyDelimiter')->willReturn(null);
+		$client->expects($this->never())->method('uidMove');
+		$client->expects($this->once())->method('markSeen')->with(1);
+
+		$this->verarbeiten('', $client);
+	}
+
+	public function testTheCommentComesBeforeTheMailIsMarkedAndMoved(): void {
+		$folge = [];
+		$this->comments->method('create')->willReturnCallback(static function () use (&$folge) {
+			$folge[] = 'create';
+
+			return new \OCA\Projektwerk\Db\Comment();
+		});
+		$client = $this->postfach($this->raw(self::RECIPIENT_MAIL, $this->betreff(), 'Ja.'), ['INBOX/ProjektWerk/Verarbeitet']);
+		$client->method('markSeen')->willReturnCallback(static function () use (&$folge): void {
+			$folge[] = 'markSeen';
+		});
+		$client->method('uidMove')->willReturnCallback(static function () use (&$folge): void {
+			$folge[] = 'uidMove';
+		});
+
+		$this->verarbeiten('', $client);
+
+		$this->assertSame(['create', 'markSeen', 'uidMove'], $folge);
+	}
+
+	public function testAPoisonMailGoesUnseenToNotMatchedAndTheRunContinues(): void {
+		$this->comments->expects($this->once())->method('create');
+		$client = $this->createMock(ImapClient::class);
+		$client->method('uidSearch')->willReturnCallback(static fn (string $k): array => $k === 'UNSEEN' ? [1, 2] : []);
+		$client->method('uidFetchRaw')->willReturnCallback(fn (int $uid): string => $uid === 1
+			? throw new ImapException('IMAP: Antwortzeile ueberschreitet das Limit')
+			: $this->raw(self::RECIPIENT_MAIL, $this->betreff(), 'Ja.'));
+		$client->method('hierarchyDelimiter')->willReturn('/');
+		$client->method('listFolders')->willReturn(['INBOX', 'INBOX/ProjektWerk/Verarbeitet', 'INBOX/ProjektWerk/Nicht zugeordnet']);
+		$bewegt = [];
+		$client->method('uidMove')->willReturnCallback(static function (int $uid, string $ziel) use (&$bewegt): void {
+			$bewegt[$uid] = $ziel;
+		});
+		$client->expects($this->once())->method('markSeen')->with(2);
+
+		(new ReflectionMethod(ReplyIntakeJob::class, 'abarbeiten'))->invoke($this->job, $client);
+
+		$this->assertSame([1 => 'INBOX/ProjektWerk/Nicht zugeordnet', 2 => 'INBOX/ProjektWerk/Verarbeitet'], $bewegt);
+	}
+
+	public function testAFolderTheServerAlreadyHasUnderADifferentSpellingIsStillUsed(): void {
+		$client = $this->postfach($this->raw('fremd@example.org', 'Werbung', 'Kein Bezug'), ['INBOX/ProjektWerk/nicht zugeordnet']);
+		$client->expects($this->never())->method('createFolder');
+		$client->expects($this->once())->method('uidMove')->with(1, 'INBOX/ProjektWerk/nicht zugeordnet');
+
+		$this->verarbeiten('', $client);
+	}
+
+	public function testAnAlreadyExistsAnswerStillAllowsTheMove(): void {
+		$client = $this->postfach($this->raw('fremd@example.org', 'Werbung', 'Kein Bezug'));
+		$client->method('createFolder')->willThrowException(new ImapCommandRejectedException('IMAP A005 NO [ALREADYEXISTS] Mailbox already exists'));
+		$client->expects($this->once())->method('uidMove')->with(1, 'INBOX/ProjektWerk/Nicht zugeordnet');
+		$client->expects($this->never())->method('markSeen');
+
+		$this->verarbeiten('', $client);
+	}
+
+	public function testEachFolderIsCreatedOnlyOncePerRun(): void {
+		$client = $this->createMock(ImapClient::class);
+		$client->method('uidSearch')->willReturnCallback(static fn (string $k): array => $k === 'UNSEEN' ? [1, 2, 3] : []);
+		$client->method('uidFetchRaw')->willReturn($this->raw('fremd@example.org', 'Werbung', 'Kein Bezug'));
+		$client->method('hierarchyDelimiter')->willReturn('.');
+		$client->method('listFolders')->willReturn(['INBOX']);
+		$client->expects($this->once())->method('createFolder')->with('INBOX.ProjektWerk.Nicht zugeordnet');
+		$client->expects($this->exactly(3))->method('uidMove');
+
+		(new ReflectionMethod(ReplyIntakeJob::class, 'abarbeiten'))->invoke($this->job, $client);
 	}
 }
