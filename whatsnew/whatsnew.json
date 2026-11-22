@@ -1,4 +1,74 @@
 {
+	"0.6.1": [
+		{
+			"title": {
+				"de": "Dateien und Ordner verknüpfen",
+				"en": "Link files and folders"
+			},
+			"text": {
+				"de": "Eine Datei oder ein Ordner aus Nextcloud lässt sich mit einem Vorgang verknüpfen, ohne Kopie. Sie bleibt an ihrem Platz, ein Klick öffnet sie. Angezeigt wird die Verknüpfung nur Personen, die die Datei selbst öffnen können.",
+				"en": "A file or folder from Nextcloud can be linked to a ticket without making a copy. It stays where it is, and one click opens it. The link is only shown to people who can open the file themselves."
+			},
+			"icon": "folder",
+			"where": {
+				"de": "Im Vorgang unter Anhänge › Verknüpfen",
+				"en": "In the ticket under Attachments › Link"
+			},
+			"adminOnly": false,
+			"plus": false
+		},
+		{
+			"title": {
+				"de": "Standardordner per Knopf anlegen",
+				"en": "Create standard folders with one click"
+			},
+			"text": {
+				"de": "Fehlen die Ordner für den Austausch mit dem Kunden und für interne Vorgänge, legt ein Knopf sie im Projektordner an.",
+				"en": "If the folders for sharing with the customer and for internal tickets are missing, one button creates them in the project folder."
+			},
+			"icon": "folder",
+			"where": {
+				"de": "Einstellungen › Projekt › Dateiablage",
+				"en": "Settings › Project › File storage"
+			},
+			"adminOnly": false,
+			"plus": false
+		},
+		{
+			"title": {
+				"de": "Suche findet auch die Beschreibung",
+				"en": "Search also finds the description"
+			},
+			"text": {
+				"de": "Die Nextcloud-Suche findet Vorgänge jetzt auch über Wörter aus der Beschreibung, nicht nur über den Titel.",
+				"en": "The Nextcloud search now also finds tickets by words in the description, not only by the title."
+			},
+			"icon": "magnify",
+			"where": {
+				"de": "Nextcloud-Suche oben rechts",
+				"en": "Nextcloud search, top right"
+			},
+			"adminOnly": false,
+			"plus": false
+		},
+		{
+			"title": {
+				"de": "KI-Zugriff kann mehr",
+				"en": "More from AI access"
+			},
+			"text": {
+				"de": "Über den KI-Zugriff lassen sich Vorgänge über alle Projekte suchen und filtern, etwa nach Überfälligem oder nach eigenen Vorgängen, und neue Kommentare und Änderungen seit einem Zeitpunkt abrufen. Dateien lassen sich verknüpfen. Die Sichtbarkeit lässt sich ändern; für Kundenvorgänge nur, wenn die Verwaltung das erlaubt.",
+				"en": "Through AI access, tickets can be searched and filtered across all projects, for example by overdue or own tickets, and new comments and changes since a given time can be retrieved. Files can be linked. Visibility can be changed; for customer tickets only if the administration allows it."
+			},
+			"icon": "star",
+			"where": {
+				"de": "In Claude und anderen KI-Werkzeugen",
+				"en": "In Claude and other AI tools"
+			},
+			"adminOnly": false,
+			"plus": true
+		}
+	],
 	"0.6.0": [
 		{
 			"title": {
