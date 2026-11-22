@@ -61,4 +61,49 @@ class ImapClientTest extends TestCase {
 			$this->assertNotInstanceOf(ImapCommandRejectedException::class, $e);
 		}
 	}
+
+	/** @return array{ImapClient, resource} */
+	private function clientMitGesendet(string $antwort): array {
+		$client = $this->clientMit($antwort);
+
+		return [$client, $this->gegenstelle];
+	}
+
+	/** @param resource $gegenstelle */
+	private function gesendet($gegenstelle): string {
+		stream_set_blocking($gegenstelle, false);
+
+		return (string)stream_get_contents($gegenstelle);
+	}
+
+	public function testTheDelimiterComesFromTheListOfTheFolder(): void {
+		[$client, $dort] = $this->clientMitGesendet("* LIST (\\HasChildren) \".\" \"INBOX\"\r\nA001 OK done\r\n");
+
+		$this->assertSame('.', $client->hierarchyDelimiter('INBOX'));
+		$this->assertSame("A001 LIST \"\" \"INBOX\"\r\n", $this->gesendet($dort));
+	}
+
+	public function testAnEscapedBackslashDelimiterIsUnescaped(): void {
+		$client = $this->clientMit("* LIST () \"\\\\\" \"INBOX\"\r\nA001 OK done\r\n");
+
+		$this->assertSame('\\', $client->hierarchyDelimiter('INBOX'));
+	}
+
+	public function testAServerWithoutHierarchyHasNoDelimiter(): void {
+		$client = $this->clientMit("* LIST () NIL \"INBOX\"\r\nA001 OK done\r\n");
+
+		$this->assertNull($client->hierarchyDelimiter('INBOX'));
+	}
+
+	public function testAFolderNameWithASpaceIsQuoted(): void {
+		[$client, $dort] = $this->clientMitGesendet("A001 OK done\r\nA002 OK done\r\n");
+
+		$client->createFolder('INBOX/ProjektWerk/Nicht zugeordnet');
+		$client->subscribe('INBOX/ProjektWerk/Nicht zugeordnet');
+
+		$this->assertSame(
+			"A001 CREATE \"INBOX/ProjektWerk/Nicht zugeordnet\"\r\nA002 SUBSCRIBE \"INBOX/ProjektWerk/Nicht zugeordnet\"\r\n",
+			$this->gesendet($dort),
+		);
+	}
 }

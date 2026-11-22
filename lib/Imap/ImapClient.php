@@ -18,8 +18,8 @@ namespace OCA\Projektwerk\Imap;
  * optional UID MOVE for the opt-in cleanup. No extra dependency, no ext-imap.
  *
  * Strictly non-destructive on the read path: SELECT is read-write but only
- * BODY.PEEK[] is fetched, so messages are never flagged \Seen. Mutations happen
- * only in uidMove(), guarded by an explicit capability check.
+ * BODY.PEEK[] is fetched, so reading never flags \Seen. Mutations happen only in
+ * markSeen(), uidMove() (guarded by a capability check), createFolder() and subscribe().
  */
 class ImapClient {
 
@@ -122,6 +122,23 @@ class ImapClient {
 		return $folders;
 	}
 
+	/** The hierarchy separator of the given mailbox, or null if the server has no folder hierarchy. */
+	public function hierarchyDelimiter(string $folder): ?string {
+		$resp = $this->command('LIST "" ' . $this->quote($folder));
+		if (preg_match('/^\* LIST \([^)]*\) "((?:[^"\\\\]|\\\\.)*)"/mi', $resp['raw'], $m)) {
+			return stripslashes($m[1]);
+		}
+		return null;
+	}
+
+	public function createFolder(string $folder): void {
+		$this->command('CREATE ' . $this->quote($folder));
+	}
+
+	public function subscribe(string $folder): void {
+		$this->command('SUBSCRIBE ' . $this->quote($folder));
+	}
+
 	/** Select a mailbox read-write and return its message count (EXISTS). */
 	public function select(string $folder): int {
 		$resp = $this->command('SELECT ' . $this->quote($folder));
@@ -174,15 +191,7 @@ class ImapClient {
 		$this->command('UID EXPUNGE ' . $uid);
 	}
 
-	/**
-	 * Mark a message as \Seen (read) without moving it.
-	 *
-	 * Für ProjektWerks Einlese-Job (#287): eine verarbeitete oder unzuordenbare
-	 * Antwort wird gelesen markiert, damit der nächste Lauf sie nicht erneut
-	 * anfasst — sie bleibt aber im Postfach (nichts wird gelöscht). Bewusst kein
-	 * Verschieben in Unterordner: das setzte deren Anlage voraus und machte den
-	 * Job an einer Nebensache zerbrechlich.
-	 */
+	/** Mark a message as \Seen (read) without moving it; the fallback when a move is not possible. */
 	public function markSeen(int $uid): void {
 		$this->command('UID STORE ' . $uid . ' +FLAGS (\\Seen)');
 	}

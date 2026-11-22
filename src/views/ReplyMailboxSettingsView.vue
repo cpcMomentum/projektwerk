@@ -118,6 +118,9 @@
 						<h4>
 							{{ t('projektwerk', 'Posteingang (IMAP)') }}
 						</h4>
+						<p class="pw-settings__hint">
+							{{ t('projektwerk', 'ProjektWerk liest neue Mails aus dem angegebenen Ordner. Übernommene Antworten verschiebt es danach in den Unterordner „ProjektWerk/Verarbeitet“, alle anderen Mails nach „ProjektWerk/Nicht zugeordnet“. Gelöscht wird nichts.') }}
+						</p>
 
 						<div class="pw-feld-reihe pw-replymail__server">
 							<div class="pw-feld">

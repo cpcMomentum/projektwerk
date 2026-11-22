@@ -841,7 +841,8 @@
 		"Diese Datei oder dieser Ordner ist nicht erreichbar.": "This file or folder is not accessible.",
 		"hat eine Datei oder einen Ordner verknüpft": "linked a file or folder",
 		"hat eine Verknüpfung entfernt": "removed a link",
-		"Ist der Schalter aus, lehnt ProjektWerk jede KI-Änderung an Vorgängen ab, die der Kunde sieht, und die KI kann keinen Vorgang für den Kunden sichtbar machen. Ist er an, muss die KI vor jeder solchen Änderung nachfragen. Dateien aus der Nextcloud hängt die KI nie an kundensichtbare Vorgänge an.": "When the switch is off, ProjektWerk refuses every AI change to tickets the customer sees, and the AI cannot make a ticket visible to the customer. When it is on, the AI must ask before every such change. The AI never attaches files from Nextcloud to customer-visible tickets."
+		"Ist der Schalter aus, lehnt ProjektWerk jede KI-Änderung an Vorgängen ab, die der Kunde sieht, und die KI kann keinen Vorgang für den Kunden sichtbar machen. Ist er an, muss die KI vor jeder solchen Änderung nachfragen. Dateien aus der Nextcloud hängt die KI nie an kundensichtbare Vorgänge an.": "When the switch is off, ProjektWerk refuses every AI change to tickets the customer sees, and the AI cannot make a ticket visible to the customer. When it is on, the AI must ask before every such change. The AI never attaches files from Nextcloud to customer-visible tickets.",
+		"ProjektWerk liest neue Mails aus dem angegebenen Ordner. Übernommene Antworten verschiebt es danach in den Unterordner „ProjektWerk/Verarbeitet“, alle anderen Mails nach „ProjektWerk/Nicht zugeordnet“. Gelöscht wird nichts.": "ProjektWerk reads new mail from the given folder. Replies it takes over are then moved to the subfolder “ProjektWerk/Verarbeitet”, all other mail to “ProjektWerk/Nicht zugeordnet”. Nothing is deleted."
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }
