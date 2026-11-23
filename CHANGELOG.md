@@ -6,6 +6,36 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-11-23
+
+### Added
+
+- **Verknüpfungen**: Dateien und Ordner aus der eigenen Nextcloud lassen sich mit einem Vorgang
+  verknüpfen, ohne Kopie. Angezeigt wird die Verknüpfung nur Personen, die die Datei selbst öffnen
+  können (#519).
+- **Dateiablage**: Der Knopf „Anlegen“ erzeugt die Standardordner `90_Austausch` und
+  `91_Tickets_intern` im Projektordner und trägt sie ein (#518).
+- **Suche**: Die Nextcloud-Suche und der Smart Picker finden Vorgänge auch über die Beschreibung (#520).
+- **KI-Werkzeuge (MCP)**: `search_tickets` durchsucht Titel, Beschreibung und Nummer (#520),
+  `list_activity` liefert Kommentare und Änderungen seit einem Zeitpunkt (#523), `link_file`
+  verknüpft Dateien (#519). `list_tickets` filtert nach Verantwortlichen, Fälligkeit und Änderung,
+  auch über alle Projekte (#521). `update_ticket` ändert die Sichtbarkeit; bei kundensichtbaren
+  Vorgängen nur mit dem Admin-Schalter (#524).
+
+### Changed
+
+- **Antwort-Postfach**: Übernommene Antworten wandern gelesen nach „ProjektWerk/Verarbeitet“, alle
+  anderen Mails ungelesen nach „ProjektWerk/Nicht zugeordnet“. Die Grenze gegen Mail-Fluten gilt pro
+  Konto und Stunde (20) statt pro Abruf (#287).
+- **KI-Werkzeuge (MCP)**: `list_tickets` liefert abgeschlossene Vorgänge nur noch mit
+  `include_closed: true` (#521).
+
+### Fixed
+
+- **Navigation**: „Neuerungen“ springt nicht mehr auf die Startseite (#501).
+- **Oberfläche**: Name und Version der App werden aus `info.xml` gelesen, statt fest auf 0.1.0 zu
+  stehen (#336).
+
 ## [0.6.0] - 2026-11-18
 
 ### Added
