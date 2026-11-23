@@ -67,6 +67,23 @@
 			},
 			"adminOnly": false,
 			"plus": true
+		},
+		{
+			"title": {
+				"de": "Antwort-Mails werden einsortiert",
+				"en": "Reply mails are sorted into folders"
+			},
+			"text": {
+				"de": "Übernommene Antworten verschiebt ProjektWerk im Postfach nach „ProjektWerk/Verarbeitet“, alle anderen Mails nach „ProjektWerk/Nicht zugeordnet“. Gelöscht wird nichts. Pro Person werden höchstens 20 Antworten pro Stunde übernommen, damit eine Mailflut den Vorgang nicht überschwemmt.",
+				"en": "ProjektWerk moves accepted replies in the mailbox to \"ProjektWerk/Verarbeitet\" and all other mails to \"ProjektWerk/Nicht zugeordnet\". Nothing is deleted. At most 20 replies per person and hour are accepted, so a flood of mails cannot swamp a ticket."
+			},
+			"icon": "email",
+			"where": {
+				"de": "Verwaltung › Antworten per E-Mail",
+				"en": "Administration › Replies by email"
+			},
+			"adminOnly": true,
+			"plus": false
 		}
 	],
 	"0.6.0": [
