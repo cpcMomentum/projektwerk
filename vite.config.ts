@@ -1,6 +1,15 @@
 import vue from '@vitejs/plugin-vue'
+import { readFileSync } from 'fs'
 import { resolve } from 'path'
 import { defineConfig } from 'vite'
+
+// @nextcloud/vue sucht die App per ID in der App-Liste; info.xml ist die führende Quelle für ID und Version.
+const infoXml = readFileSync(resolve(import.meta.dirname, 'appinfo/info.xml'), 'utf8')
+const appId = infoXml.match(/<id>([^<]+)<\/id>/)?.[1]
+const appVersion = infoXml.match(/<version>([^<]+)<\/version>/)?.[1]
+if (!appId || !appVersion) {
+	throw new Error('vite.config.ts: <id> oder <version> fehlt in appinfo/info.xml')
+}
 
 export default defineConfig(({ mode }) => ({
 	plugins: [vue()],
@@ -18,8 +27,8 @@ export default defineConfig(({ mode }) => ({
 		__VUE_OPTIONS_API__: true,
 		__VUE_PROD_DEVTOOLS__: false,
 		__VUE_PROD_HYDRATION_MISMATCH_DETAILS__: false,
-		appName: JSON.stringify('PROJEKTWERK'),
-		appVersion: JSON.stringify('0.1.0'),
+		appName: JSON.stringify(appId),
+		appVersion: JSON.stringify(appVersion),
 	},
 	resolve: {
 		alias: {

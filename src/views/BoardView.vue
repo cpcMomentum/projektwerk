@@ -350,6 +350,7 @@
 			:steps="openSteps"
 			:comments="openComments"
 			:attachments="openAttachments"
+			:fileLinks="openFileLinks"
 			:dependsOn="openLinks.dependsOn"
 			:neededBy="openLinks.neededBy"
 			:boardTickets="boardTicketList"
@@ -466,7 +467,7 @@
 import type { TicketChanges } from '@/services/tickets'
 import type { OutboxEntry, SavedEvent, TicketEntry } from '@/stores/outboxStore'
 import type { Column, Visibility } from '@/types/board'
-import type { Attachment, Comment, Step, Ticket, TicketLinks } from '@/types/ticket'
+import type { Attachment, Comment, FileLink, Step, Ticket, TicketLinks } from '@/types/ticket'
 
 import { n, t } from '@nextcloud/l10n'
 import { generateUrl } from '@nextcloud/router'
@@ -534,6 +535,7 @@ export default defineComponent({
 			openSteps: [] as Step[],
 			openComments: [] as Comment[],
 			openAttachments: [] as Attachment[],
+			openFileLinks: [] as FileLink[],
 			openLinks: { dependsOn: [], neededBy: [] } as TicketLinks,
 			// Die frisch angelegte Karte, die gerade kurz hervorgehoben wird (#165),
 			// und ihr Ablauf-Timer — beides rein lokal und vergänglich.
@@ -891,6 +893,7 @@ export default defineComponent({
 				this.openSteps = []
 				this.openComments = []
 				this.openAttachments = []
+				this.openFileLinks = []
 				this.openLinks = { dependsOn: [], neededBy: [] }
 				return
 			}
@@ -900,6 +903,7 @@ export default defineComponent({
 			this.openSteps = []
 			this.openComments = []
 			this.openAttachments = []
+			this.openFileLinks = []
 			this.openLinks = { dependsOn: [], neededBy: [] }
 			// Öffnen heisst gelesen (#79): Der Punkt geht sofort aus. Ohne await
 			// — der Vermerk soll das Laden des Vorgangs nicht aufhalten.
@@ -922,11 +926,13 @@ export default defineComponent({
 				this.openSteps = detail.steps
 				this.openComments = detail.comments
 				this.openAttachments = detail.attachments
+				this.openFileLinks = detail.links ?? []
 				this.openLinks = { dependsOn: detail.dependsOn ?? [], neededBy: detail.neededBy ?? [] }
 			} catch {
 				this.openSteps = []
 				this.openComments = []
 				this.openAttachments = []
+				this.openFileLinks = []
 				this.openLinks = { dependsOn: [], neededBy: [] }
 			}
 		},
@@ -1004,6 +1010,7 @@ export default defineComponent({
 				this.openSteps = detail.steps
 				this.openComments = detail.comments
 				this.openAttachments = detail.attachments
+				this.openFileLinks = detail.links ?? []
 				this.openLinks = { dependsOn: detail.dependsOn ?? [], neededBy: detail.neededBy ?? [] }
 				this.store.markRead(wanted)
 			} catch {
@@ -1299,6 +1306,7 @@ export default defineComponent({
 					this.openSteps = detail.steps
 					this.openComments = detail.comments
 					this.openAttachments = detail.attachments
+					this.openFileLinks = detail.links ?? []
 					this.openLinks = { dependsOn: detail.dependsOn ?? [], neededBy: detail.neededBy ?? [] }
 				}
 			} catch {

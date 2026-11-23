@@ -36,6 +36,11 @@ class PublicGuard {
 		return [$ticket, $this->refusal((string)$ticket->getVisibility(), 'Ticket #' . $ticket->getNumber(), $arguments)];
 	}
 
+	/** @param array<string, mixed> $arguments Ein Wechsel auf `public` braucht dieselbe Freigabe wie eine Änderung an einem kundensichtbaren Vorgang. */
+	public function forTargetVisibility(Ticket $ticket, string $visibility, array $arguments): ?ToolResult {
+		return $this->refusal($visibility, 'Making ticket #' . $ticket->getNumber() . ' customer-visible', $arguments);
+	}
+
 	/**
 	 * @param array<string, mixed> $arguments
 	 */

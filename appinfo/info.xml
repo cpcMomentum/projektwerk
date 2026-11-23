@@ -4,32 +4,32 @@
 
     <id>projektwerk</id>
     <name>ProjektWerk</name>
-    <summary>Projekte gemeinsam mit dem Kunden fuehren</summary>
+    <summary>Projekte gemeinsam mit dem Kunden führen</summary>
     <description><![CDATA[
 # ProjektWerk
 
-Kanban-Werkzeug fuer die eigene Nextcloud, mit dem ein Dienstleister seine Projekte **gemeinsam mit dem Kunden** fuehrt: ein Board pro Projekt, auf dem interne und kundensichtbare Vorgaenge nebeneinander liegen, getrennt durch eine Sichtbarkeit am einzelnen Ticket.
+Kanban-Werkzeug für die eigene Nextcloud, mit dem ein Dienstleister seine Projekte **gemeinsam mit dem Kunden** führt: ein Board pro Projekt, auf dem interne und kundensichtbare Vorgänge nebeneinander liegen, getrennt durch eine Sichtbarkeit am einzelnen Ticket.
 
-Der eigentliche Zweck ist nicht das Board, sondern die **sichtbare Zustaendigkeit**: Liegt ein Vorgang beim Kunden, steht das am Ticket — als geteilter Zustand, den beide Seiten sehen, statt als Behauptung in einer E-Mail.
+Der eigentliche Zweck ist nicht das Board, sondern die **sichtbare Zuständigkeit**: Liegt ein Vorgang beim Kunden, steht das am Ticket — als geteilter Zustand, den beide Seiten sehen, statt als Behauptung in einer E-Mail.
 
 ## Features
 
 - **Ein Board, zwei Sichten** — Sichtbarkeit am einzelnen Ticket (Alle Beteiligten / Intern / Nur ich) statt zweier getrennter Boards
-- **Symmetrisch** — auch die Kundenseite hat interne Vorgaenge; es gibt keine Admin-Ausnahme
+- **Symmetrisch** — auch die Kundenseite hat interne Vorgänge; es gibt keine Admin-Ausnahme
 - **Wartet auf Kunde** — abgeleiteter, beidseitig sichtbarer Zustand mit Datum, statt Nachfassen per E-Mail
-- **Arbeitsschritte** — einzeln zuweisbar, ausdruecklich auch an Personen der Kundenseite
-- **Dateien bleiben Dateien** — Anhaenge liegen in den echten Projektordnern, der Ablageort ist die Sichtbarkeit
-- **Meine Aufgaben** — projektuebergreifende Sicht ueber Tickets und Arbeitsschritte
+- **Arbeitsschritte** — einzeln zuweisbar, ausdrücklich auch an Personen der Kundenseite
+- **Dateien bleiben Dateien** — Anhänge liegen in den echten Projektordnern, der Ablageort ist die Sichtbarkeit
+- **Meine Aufgaben** — projektübergreifende Sicht über Tickets und Arbeitsschritte
 - **Kunden ohne Fremdkonto** — Zusammenarbeit auf der eigenen Nextcloud, wahlweise per Gastzugang
 
 ## Freier Umfang und WerkPlus
 
-Frei enthalten sind zehn aktive Projekte mit je einem Board und ein Kundenprojekt. WerkPlus schaltet weitere Projekte, Kundenprojekte und Boards frei, dazu Antworten per E-Mail und den KI-Zugriff ueber MCP.
+Frei enthalten sind zehn aktive Projekte mit je einem Board und ein Kundenprojekt. WerkPlus schaltet weitere Projekte, Kundenprojekte und Boards frei, dazu Antworten per E-Mail und den KI-Zugriff über MCP.
 
-Fuer die Lizenzpruefung gehen nur der WerkPlus-Schluessel, eine aus der Nextcloud abgeleitete Kennung und die Versionen der aktivierten Werk-Apps an api.werkwolke.de. Ein Schluessel gilt fuer alle Werk-Apps einer Nextcloud. Niemals Vorgaenge, Kommentare, Dateien, Namen, Adressen, Benutzer- oder Datei-IDs.
+Für die Lizenzprüfung gehen nur der WerkPlus-Schlüssel, eine aus der Nextcloud abgeleitete Kennung und die Versionen der aktivierten Werk-Apps an api.werkwolke.de. Ein Schlüssel gilt für alle Werk-Apps einer Nextcloud. Niemals Vorgänge, Kommentare, Dateien, Namen, Adressen, Benutzer- oder Datei-IDs.
     ]]></description>
 
-    <version>0.6.0</version>
+    <version>0.6.1</version>
     <licence>AGPL-3.0-or-later</licence>
 
     <author mail="axel.deffner@cpcmomentum.com" homepage="https://github.com/cpcMomentum">Axel Deffner</author>

@@ -217,12 +217,9 @@ export default {
 			}
 		},
 
-		/**
-		 * Das „Was ist neu?"-Fenster im Archiv-Modus öffnen (#329) — alle
-		 * bisherigen Neuerungen. Über die Template-Referenz auf den Dialog, der
-		 * `openArchive` per `defineExpose` bereitstellt.
-		 */
-		openWhatsNew() {
+		// Der Punkt hat kein Router-Ziel; ohne preventDefault springt href="#" auf die Startseite.
+		openWhatsNew(event) {
+			event?.preventDefault()
 			this.closeNavigationOnMobile()
 			this.$refs.whatsNew?.openArchive()
 		},

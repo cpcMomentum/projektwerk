@@ -22,6 +22,20 @@ class McpAudit {
 	) {
 	}
 
+	public function recordVisibility(AuthenticatedCaller $caller, int $boardId, int $ticketId, string $from, string $to): void {
+		$this->events->dispatchTyped(new CriticalActionPerformedEvent(
+			'ProjektWerk MCP: visibility of ticket %s on board %s changed from %s to %s by %s via client %s',
+			[
+				'ticket' => (string)$ticketId,
+				'board' => (string)$boardId,
+				'from' => $from,
+				'to' => $to,
+				'user' => $caller->userId,
+				'client' => $caller->clientId,
+			],
+		));
+	}
+
 	public function record(AuthenticatedCaller $caller, string $tool, int $boardId, int $ticketId): void {
 		$this->events->dispatchTyped(new CriticalActionPerformedEvent(
 			'ProjektWerk MCP: %s by %s on board %s ticket %s via client %s',

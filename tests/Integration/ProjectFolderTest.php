@@ -48,7 +48,29 @@ class ProjectFolderTest extends IntegrationTestCase {
 
 		$this->boards->update($viewer, ['folderRootPath' => '/' . self::FOLDER . '//']);
 
-		$this->assertSame(['id' => (int)$folder->getId(), 'path' => self::FOLDER], $this->boards->projectFolder($viewer));
+		$this->assertSame(['id' => (int)$folder->getId(), 'path' => self::FOLDER, 'reachable' => true], $this->boards->projectFolder($viewer));
+	}
+
+	public function testThePathIsResolvedInTheViewersTreeNotTakenFromStorage(): void {
+		$folder = $this->home->newFolder(self::FOLDER);
+		$viewer = $this->viewer();
+		$this->boards->update($viewer, ['folderRootPath' => self::FOLDER]);
+		$id = (int)$folder->getId();
+
+		$this->home->get(self::FOLDER)->move($this->home->getPath() . '/' . self::FOLDER . '_moved');
+
+		$this->assertSame(['id' => $id, 'path' => self::FOLDER . '_moved', 'reachable' => true], $this->boards->projectFolder($viewer));
+	}
+
+	public function testAnUnreachableProjectFolderKeepsTheStoredPathAndSaysSo(): void {
+		$folder = $this->home->newFolder(self::FOLDER);
+		$viewer = $this->viewer();
+		$this->boards->update($viewer, ['folderRootPath' => self::FOLDER]);
+		$id = (int)$folder->getId();
+
+		$folder->delete();
+
+		$this->assertSame(['id' => $id, 'path' => self::FOLDER, 'reachable' => false], $this->boards->projectFolder($viewer));
 	}
 
 	public function testAnEmptyPathClearsTheProjectFolder(): void {
@@ -72,9 +94,11 @@ class ProjectFolderTest extends IntegrationTestCase {
 	}
 
 	private function removeFolder(): void {
-		try {
-			$this->home->get(self::FOLDER)->delete();
-		} catch (NotFoundException) {
+		foreach ([self::FOLDER, self::FOLDER . '_moved'] as $name) {
+			try {
+				$this->home->get($name)->delete();
+			} catch (NotFoundException) {
+			}
 		}
 	}
 }

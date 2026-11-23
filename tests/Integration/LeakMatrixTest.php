@@ -22,6 +22,7 @@ use OCA\Projektwerk\Controller\SettingsController;
 use OCA\Projektwerk\Controller\TaskController;
 use OCA\Projektwerk\Controller\TicketController;
 use OCA\Projektwerk\Db\AttachmentMapper;
+use OCA\Projektwerk\Db\FileLinkMapper;
 use OCA\Projektwerk\Db\BoardMapper;
 use OCA\Projektwerk\Db\ColumnMapper;
 use OCA\Projektwerk\Db\CommentMapper;
@@ -48,7 +49,9 @@ use OCA\Projektwerk\Mcp\Tools\GetTicket;
 use OCA\Projektwerk\Mcp\Tools\ListBoards;
 use OCA\Projektwerk\Mcp\Tools\ListColumns;
 use OCA\Projektwerk\Mcp\Tools\ListMembers;
+use OCA\Projektwerk\Mcp\Tools\ListActivity;
 use OCA\Projektwerk\Mcp\Tools\ListTickets;
+use OCA\Projektwerk\Mcp\Tools\SearchTickets;
 use OCA\Projektwerk\Service\BoardPinService;
 use OCA\Projektwerk\Service\BoardReadModel;
 use OCA\Projektwerk\Service\BoardService;
@@ -284,10 +287,14 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'CommentMapper::findForTickets' => 'testChildrenFollowTheFilteredTicketSet',
 		'CommentMapper::countForTickets' => 'testChildCountersFollowTheFilteredTicketSet',
 		'CommentMapper::findNewestForTickets' => 'testNewestCommentFollowsTheFilteredTicketSet',
+		'CommentMapper::findForTicketsSince' => 'testActivityNeverWidensBeyondTheVisibleSet',
+		'TicketLogMapper::findForTicketsSince' => 'testActivityNeverWidensBeyondTheVisibleSet',
 		'StepMapper::findForTickets' => 'testChildrenFollowTheFilteredTicketSet',
 		'StepMapper::countForTickets' => 'testChildCountersFollowTheFilteredTicketSet',
 		'AttachmentMapper::findForTickets' => 'testChildrenFollowTheFilteredTicketSet',
 		'AttachmentMapper::countForTickets' => 'testChildCountersFollowTheFilteredTicketSet',
+		'FileLinkMapper::findForTickets' => 'testChildrenFollowTheFilteredTicketSet',
+		'FileLinkMapper::countForTickets' => 'testChildCountersFollowTheFilteredTicketSet',
 		'TicketUserMapper::findForTickets' => 'testChildrenFollowTheFilteredTicketSet',
 		'TicketUserMapper::countForTickets' => 'testChildCountersFollowTheFilteredTicketSet',
 		'TicketLogMapper::findForTickets' => 'testChildrenFollowTheFilteredTicketSet',
@@ -341,6 +348,8 @@ class LeakMatrixTest extends IntegrationTestCase {
 		'list_tickets' => 'testMcpToolsMatchTheirRestTwins',
 		'get_ticket' => 'testMcpToolsMatchTheirRestTwins',
 		'list_members' => 'testMcpToolsMatchTheirRestTwins',
+		'search_tickets' => 'testSearchToolNeverWidensBeyondTheVisibleSet',
+		'list_activity' => 'testActivityNeverWidensBeyondTheVisibleSet',
 	];
 
 	/**
@@ -2037,6 +2046,46 @@ class LeakMatrixTest extends IntegrationTestCase {
 		}
 	}
 
+	public function testActivityNeverWidensBeyondTheVisibleSet(): void {
+		foreach (self::VISIBLE as $userId => $expected) {
+			if ($userId === self::BERT) {
+				$expected = [...$expected, 'b:public/erna', 'b:internal/bert'];
+			}
+			$result = Server::get(ListActivity::class)->call(new AuthenticatedCaller($userId, 'leak-matrix'), ['since' => '2000-01-01']);
+			$seen = array_values(array_unique(array_map(static fn (array $entry): int => $entry['ticket']['id'], $result->structured()['entries'])));
+			sort($seen);
+			$this->assertSame([], array_values(array_diff($seen, $this->fixture->idsFor($expected))), 'list_activity ' . $userId);
+			if ($expected !== []) {
+				$this->assertNotSame([], $seen, 'list_activity liefert für ' . $userId . ' überhaupt etwas');
+			}
+
+			$onBoard = Server::get(ListActivity::class)->call(new AuthenticatedCaller($userId, 'leak-matrix'), ['since' => '2000-01-01', 'board_id' => $this->fixture->boardId]);
+			if ($userId === self::FREMD) {
+				$this->assertTrue($onBoard->isError(), 'list_activity mit fremdem Board');
+			} else {
+				$onBoardSeen = array_map(static fn (array $entry): int => $entry['ticket']['id'], $onBoard->structured()['entries']);
+				$this->assertSame([], array_values(array_diff($onBoardSeen, $this->fixture->idsFor($expected))), 'list_activity mit Board ' . $userId);
+			}
+		}
+	}
+
+	public function testSearchToolNeverWidensBeyondTheVisibleSet(): void {
+		foreach (self::VISIBLE as $userId => $expected) {
+			if ($userId === self::BERT) {
+				$expected = [...$expected, 'b:public/erna', 'b:internal/bert'];
+			}
+			$result = Server::get(SearchTickets::class)->call(new AuthenticatedCaller($userId, 'leak-matrix'), ['query' => '/']);
+			$this->assertSame($this->fixture->idsFor($expected), $this->sorted(array_column($result->structured()['tickets'], 'id')), 'search_tickets ' . $userId);
+
+			$onBoard = Server::get(SearchTickets::class)->call(new AuthenticatedCaller($userId, 'leak-matrix'), ['query' => '/', 'board_id' => $this->fixture->boardId]);
+			if ($userId === self::FREMD) {
+				$this->assertTrue($onBoard->isError(), 'search_tickets mit fremdem Board');
+			} else {
+				$this->assertSame([$this->fixture->boardId], array_values(array_unique(array_column($onBoard->structured()['tickets'], 'boardId'))), 'search_tickets bleibt im Board');
+			}
+		}
+	}
+
 	/**
 	 * Der Deep-Link-Lesepfad: dieselbe Menge, nur ohne Board-Einschraenkung.
 	 *
@@ -2223,7 +2272,11 @@ class LeakMatrixTest extends IntegrationTestCase {
 			$this->assertSame($restBoards, $mcpBoards, $userId . ': list_boards');
 
 			$columns = Server::get(ListColumns::class)->call($caller, ['board_id' => $boardId]);
-			$tickets = Server::get(ListTickets::class)->call($caller, ['board_id' => $boardId]);
+			$tickets = Server::get(ListTickets::class)->call($caller, ['board_id' => $boardId, 'include_closed' => true]);
+
+			$acrossExpected = $userId === self::BERT ? [...$expected, 'b:public/erna', 'b:internal/bert'] : $expected;
+			$across = Server::get(ListTickets::class)->call($caller, ['include_closed' => true])->structured()['tickets'];
+			$this->assertSame($this->fixture->idsFor($acrossExpected), $this->sorted(array_column($across, 'id')), $userId . ': list_tickets ohne Board');
 			$members = Server::get(ListMembers::class)->call($caller, ['board_id' => $boardId]);
 			if ($userId === self::FREMD) {
 				$this->assertSame($notFound, ToolResult::encode($members->toArray()), 'list_members für das Nichtmitglied');
@@ -2435,6 +2488,7 @@ class LeakMatrixTest extends IntegrationTestCase {
 			'Kommentare' => Server::get(CommentMapper::class),
 			'Arbeitsschritte' => Server::get(StepMapper::class),
 			'Anhaenge' => Server::get(AttachmentMapper::class),
+			'Verknuepfungen' => Server::get(FileLinkMapper::class),
 			'Mitarbeitende' => Server::get(TicketUserMapper::class),
 			'Verlauf' => Server::get(TicketLogMapper::class),
 		];

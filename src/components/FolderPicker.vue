@@ -1,7 +1,7 @@
 <template>
 	<NcDialog
 		:open="open"
-		:name="t('projektwerk', 'Ordner wählen')"
+		:name="allowFiles ? t('projektwerk', 'Datei oder Ordner wählen') : t('projektwerk', 'Ordner wählen')"
 		size="normal"
 		@update:open="$emit('update:open', $event)">
 		<div class="app-projektwerk">
@@ -30,14 +30,26 @@
 					{{ error }}
 				</div>
 				<div v-else-if="entries.length === 0" class="pw-folderpick__note">
-					{{ t('projektwerk', 'Hier gibt es keine Unterordner.') }}
+					{{ allowFiles ? t('projektwerk', 'Dieser Ordner ist leer.') : t('projektwerk', 'Hier gibt es keine Unterordner.') }}
 				</div>
 				<ul v-else class="pw-folderpick__list">
 					<li v-for="entry in entries" :key="entry.path">
-						<button type="button" class="pw-folderpick__item" @click="enter(entry)">
+						<button
+							v-if="entry.isFolder !== false"
+							type="button"
+							class="pw-folderpick__item"
+							@click="enter(entry)">
 							<FolderIcon :size="20" />
 							<span>{{ entry.name }}</span>
 							<ChevronRightIcon :size="20" class="pw-folderpick__chev" />
+						</button>
+						<button
+							v-else
+							type="button"
+							class="pw-folderpick__item"
+							@click="chooseFile(entry)">
+							<FileIcon :size="20" />
+							<span>{{ entry.name }}</span>
 						</button>
 					</li>
 				</ul>
@@ -46,7 +58,7 @@
 				Anlegen sitzt im Wähler selbst: Wer den Zielordner noch nicht hat,
 				legt ihn dort an, wo er gerade steht, und ist gleich drin.
 			-->
-				<div class="pw-folderpick__new">
+				<div v-if="!allowFiles" class="pw-folderpick__new">
 					<NcTextField
 						v-model="newName"
 						:labelOutside="true"
@@ -90,6 +102,7 @@ import NcDialog from '@nextcloud/vue/components/NcDialog'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
 import ArrowUpIcon from 'vue-material-design-icons/ArrowUp.vue'
 import ChevronRightIcon from 'vue-material-design-icons/ChevronRight.vue'
+import FileIcon from 'vue-material-design-icons/FileOutline.vue'
 import FolderIcon from 'vue-material-design-icons/Folder.vue'
 import { createFolder, folderChildren } from '@/services/folders'
 
@@ -137,12 +150,13 @@ function isValidFolderName(name: string): boolean {
 export default defineComponent({
 	name: 'FolderPicker',
 
-	components: { NcButton, NcDialog, NcTextField, ArrowUpIcon, ChevronRightIcon, FolderIcon },
+	components: { NcButton, NcDialog, NcTextField, ArrowUpIcon, ChevronRightIcon, FileIcon, FolderIcon },
 
 	props: {
 		open: { type: Boolean, default: false },
 		/** Der Ordner, in dem der Wähler öffnet — leer heißt Wurzel. */
 		startPath: { type: String, default: '' },
+		allowFiles: { type: Boolean, default: false },
 	},
 
 	emits: ['update:open', 'select'],
@@ -187,7 +201,7 @@ export default defineComponent({
 			this.loading = true
 			this.error = null
 			try {
-				this.entries = await folderChildren(path)
+				this.entries = await folderChildren(path, this.allowFiles)
 				this.current = path.replace(/\/+$/, '').replace(/^\/+/, '')
 			} catch (e) {
 				if (path !== '') {
@@ -231,6 +245,11 @@ export default defineComponent({
 			} finally {
 				this.creating = false
 			}
+		},
+
+		chooseFile(entry: FolderEntry): void {
+			this.$emit('select', entry.path)
+			this.$emit('update:open', false)
 		},
 
 		choose(): void {

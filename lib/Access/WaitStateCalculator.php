@@ -148,7 +148,7 @@ class WaitStateCalculator {
 	 * der Tag in der Zeitzone des Nutzers, sonst widersprechen sich Marke und
 	 * Karte in den Stunden nach Mitternacht.
 	 */
-	private function isOverdue(Ticket $ticket): bool {
+	public function isOverdue(Ticket $ticket): bool {
 		$dueDate = $ticket->getDueDate();
 		if ($dueDate === null) {
 			return false;

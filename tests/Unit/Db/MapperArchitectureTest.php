@@ -12,6 +12,7 @@ namespace OCA\Projektwerk\Tests\Unit\Db;
 use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Db\AttachmentMapper;
 use OCA\Projektwerk\Db\CommentMapper;
+use OCA\Projektwerk\Db\FileLinkMapper;
 use OCA\Projektwerk\Db\StepMapper;
 use OCA\Projektwerk\Db\TicketChildMapper;
 use OCA\Projektwerk\Db\TicketMapper;
@@ -39,6 +40,7 @@ class MapperArchitectureTest extends TestCase {
 		CommentMapper::class,
 		StepMapper::class,
 		AttachmentMapper::class,
+		FileLinkMapper::class,
 		TicketUserMapper::class,
 		TicketLogMapper::class,
 	];
@@ -59,6 +61,8 @@ class MapperArchitectureTest extends TestCase {
 		// gefahren (testNewestCommentFollowsTheFilteredTicketSet). Die Uniformität
 		// der uebrigen drei Kinder-Mapper bleibt unangetastet.
 		'CommentMapper::findNewestForTickets' => 'Jüngster Kommentar je Vorgang (#79), leak-matrix-geprüft.',
+		'CommentMapper::findForTicketsSince' => 'Aktivität ab einem Zeitpunkt, über die gefilterte Menge, leak-matrix-geprüft.',
+		'TicketLogMapper::findForTicketsSince' => 'Aktivität ab einem Zeitpunkt, über die gefilterte Menge, leak-matrix-geprüft.',
 	];
 
 	/**

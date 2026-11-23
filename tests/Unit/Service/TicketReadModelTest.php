@@ -75,6 +75,8 @@ class TicketReadModelTest extends TestCase {
 			$this->createStub(WaitStateCalculator::class),
 			$highlighter,
 			$this->createStub(TicketLogService::class),
+			$this->createStub(\OCA\Projektwerk\Db\FileLinkMapper::class),
+			$this->createStub(\OCA\Projektwerk\Service\FileLinkService::class),
 		);
 
 		$data = $model->index(ViewerContext::forMember('u', 1, 9, ViewerContext::ROLE_INTERNAL, false, false));

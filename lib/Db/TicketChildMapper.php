@@ -141,6 +141,28 @@ abstract class TicketChildMapper extends QBMapper {
 		return $counts;
 	}
 
+	/** @return T[] wie findForTickets(), nur ab einem Zeitpunkt; die Kind-Mapper geben das gezielt frei */
+	protected function findForTicketsCreatedSince(array $ticketIds, \DateTimeInterface $since): array {
+		$ids = $this->normalizeIds($ticketIds);
+		if ($ids === []) {
+			return [];
+		}
+
+		$entities = [];
+		foreach (array_chunk($ids, self::CHUNK_SIZE) as $chunk) {
+			$qb = $this->db->getQueryBuilder();
+			$qb->select('*')
+				->from($this->tableName)
+				->where($qb->expr()->in('ticket_id', $qb->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)))
+				->andWhere($qb->expr()->gte('created_at', $qb->createNamedParameter(\DateTime::createFromInterface($since), IQueryBuilder::PARAM_DATETIME_MUTABLE)));
+			foreach ($this->findEntities($qb) as $entity) {
+				$entities[] = $entity;
+			}
+		}
+
+		return $this->sortEntities($entities);
+	}
+
 	/**
 	 * Die Eigenschaft, nach der innerhalb eines Tickets sortiert wird.
 	 *

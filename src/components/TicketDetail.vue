@@ -523,6 +523,7 @@
 						:boardId="ticket.boardId"
 						:ticketId="ticket.id"
 						:attachments="attachments"
+						:fileLinks="fileLinks"
 						:members="members"
 						@changed="$emit('attachmentsChanged')" />
 				</fieldset>
@@ -657,7 +658,7 @@ import type { PropType } from 'vue'
 import type { TicketChanges } from '@/services/tickets'
 import type { TicketEntry } from '@/stores/outboxStore'
 import type { Column, Member, ViewerInfo } from '@/types/board'
-import type { Attachment, Comment, Step, Ticket, TicketLink, WaitState } from '@/types/ticket'
+import type { Attachment, Comment, FileLink, Step, Ticket, TicketLink, WaitState } from '@/types/ticket'
 
 import { t } from '@nextcloud/l10n'
 import { defineComponent } from 'vue'
@@ -732,6 +733,7 @@ export default defineComponent({
 		steps: { type: Array as PropType<Step[]>, default: () => [] },
 		comments: { type: Array as PropType<Comment[]>, default: () => [] },
 		attachments: { type: Array as PropType<Attachment[]>, default: () => [] },
+		fileLinks: { type: Array as PropType<FileLink[]>, default: () => [] },
 		dependsOn: { type: Array as PropType<TicketLink[]>, default: () => [] },
 		neededBy: { type: Array as PropType<TicketLink[]>, default: () => [] },
 		boardTickets: { type: Array as PropType<Ticket[]>, default: () => [] },

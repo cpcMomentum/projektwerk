@@ -17,12 +17,14 @@
  */
 
 import axios from '@nextcloud/axios'
+import { t } from '@nextcloud/l10n'
 import { generateRemoteUrl } from '@nextcloud/router'
 
 /** Ein Ordnereintrag: Anzeigename und der Pfad relativ zur Files-Wurzel. */
 export interface FolderEntry {
 	name: string
 	path: string
+	isFolder?: boolean
 }
 
 /** Die Kennung der angemeldeten Person — aus dem Kopf, ohne zusätzliche Abhängigkeit. */
@@ -73,16 +75,13 @@ function pathFromHref(href: string): string {
 }
 
 /**
- * Die Unterordner eines Verzeichnisses, alphabetisch.
- *
- * Nur Ordner, keine Dateien: Der Wähler soll einen Ablageort bestimmen, keine
- * Datei. Der Eintrag zum Verzeichnis selbst (der erste in der Antwort) fällt
- * heraus.
+ * Die Unterordner eines Verzeichnisses, Ordner zuerst, dann alphabetisch; mit `withFiles` auch die Dateien.
  *
  * @param path Pfad relativ zur Files-Wurzel; leer heißt Wurzel.
- * @return Die Unterordner mit Anzeigename und Pfad.
+ * @param withFiles Auch Dateien liefern (`isFolder: false`).
+ * @return Die Einträge mit Anzeigename und Pfad.
  */
-export async function folderChildren(path: string): Promise<FolderEntry[]> {
+export async function folderChildren(path: string, withFiles = false): Promise<FolderEntry[]> {
 	const body = '<?xml version="1.0"?>'
 		+ '<d:propfind xmlns:d="DAV:"><d:prop>'
 		+ '<d:resourcetype/><d:displayname/>'
@@ -107,7 +106,7 @@ export async function folderChildren(path: string): Promise<FolderEntry[]> {
 
 	for (const node of Array.from(doc.getElementsByTagNameNS('DAV:', 'response'))) {
 		const isFolder = node.getElementsByTagNameNS('DAV:', 'collection').length > 0
-		if (!isFolder) {
+		if (!isFolder && !withFiles) {
 			continue
 		}
 		const href = node.getElementsByTagNameNS('DAV:', 'href')[0]?.textContent ?? ''
@@ -121,10 +120,10 @@ export async function folderChildren(path: string): Promise<FolderEntry[]> {
 			continue
 		}
 		const name = childPath.split('/').pop() ?? childPath
-		entries.push({ name, path: childPath })
+		entries.push({ name, path: childPath, isFolder })
 	}
 
-	entries.sort((a, b) => a.name.localeCompare(b.name))
+	entries.sort((a, b) => Number(b.isFolder) - Number(a.isFolder) || a.name.localeCompare(b.name))
 	return entries
 }
 
@@ -135,4 +134,32 @@ export async function folderChildren(path: string): Promise<FolderEntry[]> {
  */
 export async function createFolder(path: string): Promise<void> {
 	await axios.request({ method: 'MKCOL', url: toUrl(path) })
+}
+
+/** Feste Ordnernamen, in keiner Sprache übersetzt: Es sind Ordner, keine Texte. */
+export const STANDARD_FOLDERS = { public: '90_Austausch', internal: '91_Tickets_intern' } as const
+
+/** Pfad des Standardordners unter dem Projektordner, unabhängig von dessen Schreibweise. */
+export function standardFolderPath(root: string, slot: keyof typeof STANDARD_FOLDERS): string {
+	const base = root.replace(/^\/+|\/+$/g, '')
+	return base === '' ? STANDARD_FOLDERS[slot] : base + '/' + STANDARD_FOLDERS[slot]
+}
+
+/** Ordner anlegen oder einen vorhandenen übernehmen, damit „Anlegen“ zweimal gefahrlos ist. */
+export async function ensureFolder(path: string): Promise<void> {
+	try {
+		await createFolder(path)
+	} catch (e) {
+		const status = (e as { response?: { status?: number } })?.response?.status
+		// 405: Der Name ist schon belegt; ob es ein Ordner ist, prüft der Server beim Speichern.
+		if (status === 405) {
+			return
+		}
+		const message = status === 403
+			? t('projektwerk', 'Im Projektordner fehlen dir die Schreibrechte, um diesen Ordner anzulegen.')
+			: status === 409
+				? t('projektwerk', 'Den Projektordner gibt es unter diesem Pfad nicht mehr. Bitte lade die Seite neu.')
+				: t('projektwerk', 'Der Ordner konnte nicht angelegt werden.')
+		throw new Error(message, { cause: e })
+	}
 }

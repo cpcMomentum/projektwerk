@@ -80,21 +80,29 @@ die Person auch in der Weboberfläche sieht.
 
 ## Was der KI-Zugang darf
 
-Lesen: Boards, Spalten, Mitglieder, Vorgänge mit Schritten, Anhängen und Kommentaren.
+Lesen: Boards, Spalten, Mitglieder, Vorgänge mit Schritten, Anhängen und Kommentaren. `search_tickets`
+durchsucht Titel, Beschreibung und Nummer über alle sichtbaren Boards, auch abgeschlossene Vorgänge,
+damit die KI vor dem Anlegen Doppelte findet. `list_tickets` geht ohne `board_id` über alle Projekte und
+filtert nach Verantwortlichen (`me`), Fälligkeit (`due_before`), `overdue` und `changed_since` (ein neuer
+Kommentar zählt als Änderung); abgeschlossene nur mit `include_closed`.
+`list_activity` listet Kommentare und Änderungen seit einem Zeitpunkt (`since`, Pflicht), eingrenzbar auf
+Projekt, Board, Art (`comments`/`changes`), Seite (`internal`/`external`) und Person; mit Herkunft
+(`ui`, `mail`, `tool`) und nur für Vorgänge, die man sehen darf.
 
 Schreiben (dieselben Rechte und Regeln wie im Browser, über dieselben Dienste):
 
 | Werkzeug | Was |
 |---|---|
-| `create_ticket`, `update_ticket` | Vorgang anlegen/ändern, mit Zuständigem und Fälligkeit |
+| `create_ticket`, `update_ticket` | Vorgang anlegen/ändern, mit Zuständigem, Fälligkeit und Sichtbarkeit. Ein Wechsel von oder nach „Alle Beteiligten“ (`public`) nur mit eingeschaltetem Schalter und Bestätigung; er steht im Verlauf (Herkunft KI-Werkzeug) und im Admin-Log. Zwischen intern und privat ohne Schalter |
 | `move_ticket`, `close_ticket` | ans Ende einer Spalte schieben; als erledigt/verworfen abschließen |
 | `add_step`, `update_step` | Arbeitsschritt anlegen, zuweisen, Frist, abhaken |
 | `add_comment` | Kommentar, `@kennung` benachrichtigt |
 | `add_attachment` | Datei mitschicken (≤ 1 MB je Anfrage) |
 | `attach_file` | Datei aus der eigenen Nextcloud kopieren, **nur an interne und private Vorgänge** |
+| `link_file` | Datei oder Ordner aus der eigenen Nextcloud verknüpfen, ohne Kopie; jede Person sieht nur Ziele, die sie selbst öffnen kann. An kundensichtbaren Vorgängen nur mit Bestätigung und eingeschaltetem Schalter |
 | `transfer_to_github` | als GitHub-Issue übertragen (nur interne Seite) |
 
-Nicht über den KI-Zugang: löschen, wiederöffnen, Sichtbarkeit ändern, Kommentare bearbeiten,
+Nicht über den KI-Zugang: löschen, wiederöffnen, Kommentare bearbeiten,
 Mitglieder und Board-Einstellungen.
 
 - **Kundensichtbares ab Werk gesperrt:** Solange in ProjektWerk unter Verwaltung › KI-Zugriff der

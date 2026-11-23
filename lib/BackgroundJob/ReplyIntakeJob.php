@@ -23,6 +23,8 @@ use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\BackgroundJob\TimedJob;
 use OCP\IUserManager;
 use OCP\L10N\IFactory;
+use OCP\Security\RateLimiting\ILimiter;
+use OCP\Security\RateLimiting\IRateLimitExceededException;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -51,11 +53,7 @@ use Psr\Log\LoggerInterface;
  *    Benachrichtigung an die Gegenseite läuft dadurch den normalen Weg, samt
  *    30-Minuten-Drossel.
  *
- * **Verworfene und unzuordenbare Mails werden gelesen markiert, nicht
- * gelöscht** — sie bleiben zur Nachschau im Postfach, der Grund steht im Log.
- * Ein Verschieben in Unterordner (`ProjektWerk/unmatched`) setzte deren Anlage
- * voraus und machte den Job an einer Nebensache zerbrechlich; das ist eine
- * spätere Ausbaustufe.
+ * Mails werden verschoben, nie gelöscht; ohne Ordner-Unterstützung nur gelesen markiert.
  */
 class ReplyIntakeJob extends TimedJob {
 
@@ -65,13 +63,22 @@ class ReplyIntakeJob extends TimedJob {
 	/** Wie viele ungelesene Mails ein Lauf höchstens anfasst, je für Antworten und für den Rest. */
 	private const BATCH = 30;
 
-	/**
-	 * Höchstzahl Kommentare je Absender **und Lauf** — der einfache Zähler gegen
-	 * Amok-Postfächer aus der Anweisung. Bewusst pro Lauf statt pro Stunde: ein
-	 * persistenter Stundenzähler wäre ein zweiter Zustand; der Lauf-Deckel
-	 * bremst den Ausbruch mit einem Bruchteil des Aufwands.
-	 */
-	private const MAX_JE_ABSENDER = 20;
+	/** Höchstzahl Kommentare per Mail je Konto und Stunde, über alle Läufe hinweg. */
+	public const MAX_JE_STUNDE = 20;
+
+	private const LIMIT_ID = 'projektwerk-mail-reply';
+
+	public const ORDNER_ELTERN = 'ProjektWerk';
+	public const ORDNER_VERARBEITET = 'Verarbeitet';
+	public const ORDNER_NICHT_ZUGEORDNET = 'Nicht zugeordnet';
+
+	private string $quellOrdner = 'INBOX';
+
+	/** @var array<string, string|false> Zielordner je Art für diesen Lauf; false = nicht nutzbar */
+	private array $ziele = [];
+
+	/** @var list<string>|null */
+	private ?array $vorhandeneOrdner = null;
 
 	public const TOKEN_GUELTIG_SEKUNDEN = 7 * 86400;
 
@@ -85,6 +92,7 @@ class ReplyIntakeJob extends TimedJob {
 		private IUserManager $users,
 		private IFactory $l10nFactory,
 		private LoggerInterface $logger,
+		private ILimiter $limiter,
 	) {
 		parent::__construct($time);
 		$this->setInterval(self::INTERVALL_SEKUNDEN);
@@ -108,6 +116,9 @@ class ReplyIntakeJob extends TimedJob {
 			$client->connect();
 			$client->login($cfg['user'], $cfg['password']);
 			$client->select($cfg['folder']);
+			$this->quellOrdner = $cfg['folder'];
+			$this->ziele = [];
+			$this->vorhandeneOrdner = null;
 
 			$this->abarbeiten($client);
 		} catch (\Throwable $e) {
@@ -121,34 +132,27 @@ class ReplyIntakeJob extends TimedJob {
 
 	/** Antworten zuerst und mit eigenem Kontingent, damit fremde Mails im Postfach sie nicht verdrängen. */
 	private function abarbeiten(ImapClient $client): void {
-		$jeAbsender = [];
-
 		try {
 			$antworten = $client->uidSearch('UNSEEN SUBJECT "[PW-"');
 		} catch (ImapCommandRejectedException) {
 			$this->logger->info('ProjektWerk: Postfach kann nicht im Betreff suchen, Antworten ohne Vorrang');
 			$antworten = [];
 		}
-		$this->stapel($client, $antworten, $jeAbsender);
+		$this->stapel($client, $antworten);
 
 		// Erst danach: Die Liste aller ungelesenen Mails kann bei einem vollen Postfach scheitern.
-		$this->stapel($client, array_values(array_diff($client->uidSearch('UNSEEN'), $antworten)), $jeAbsender);
+		$this->stapel($client, array_values(array_diff($client->uidSearch('UNSEEN'), $antworten)));
 	}
 
-	/**
-	 * @param int[] $uids
-	 * @param array<string, int> $jeAbsender
-	 */
-	private function stapel(ImapClient $client, array $uids, array &$jeAbsender): void {
+	/** @param int[] $uids */
+	private function stapel(ImapClient $client, array $uids): void {
 		foreach (array_slice($uids, 0, self::BATCH) as $uid) {
 			try {
-				$this->verarbeiten($client, $uid, $jeAbsender);
+				$this->verarbeiten($client, $uid);
 			} catch (\Throwable $e) {
-				// Eine Mail darf den Lauf nicht beenden — und ein
-				// „Giftbrief" nicht jeden Lauf erneut kosten: gelesen
-				// markieren, damit der nächste Lauf ihn übergeht.
+				// Ein „Giftbrief" darf weder den Lauf beenden noch jeden Lauf erneut kosten.
 				$this->logger->warning('ProjektWerk: Antwort-Einlesen an UID ' . $uid . ' gescheitert', ['exception' => $e]);
-				$this->stillMarkieren($client, $uid);
+				$this->ablegen($client, $uid, self::ORDNER_NICHT_ZUGEORDNET);
 			}
 		}
 	}
@@ -158,9 +162,8 @@ class ReplyIntakeJob extends TimedJob {
 	 *
 	 * @param ImapClient $client Die offene Verbindung.
 	 * @param int $uid Die UID der Mail im gewählten Ordner.
-	 * @param array<string, int> $jeAbsender Zähler je Absenderadresse für diesen Lauf.
 	 */
-	private function verarbeiten(ImapClient $client, int $uid, array &$jeAbsender): void {
+	private function verarbeiten(ImapClient $client, int $uid): void {
 		$raw = $client->uidFetchRaw($uid);
 		if (trim($raw) === '') {
 			$this->abschliessen($client, $uid, 'leere Mail');
@@ -222,7 +225,7 @@ class ReplyIntakeJob extends TimedJob {
 		// 3a. Absender == hinterlegte Adresse genau dieses Kontos.
 		$empfaenger = $this->users->get($recipientUid);
 		$kontoAdresse = strtolower(trim((string)($empfaenger?->getEMailAddress() ?? '')));
-		if ($kontoAdresse === '' || $from !== $kontoAdresse) {
+		if ($empfaenger === null || $kontoAdresse === '' || $from !== $kontoAdresse) {
 			$this->unmatched($client, $uid, 'Absender entspricht nicht der Adresse des Kontos');
 
 			return;
@@ -238,15 +241,6 @@ class ReplyIntakeJob extends TimedJob {
 		}
 		$boardId = (int)$ticket->getBoardId();
 
-		// Amok-Bremse: höchstens MAX_JE_ABSENDER je Absender und Lauf.
-		$jeAbsender[$from] = ($jeAbsender[$from] ?? 0) + 1;
-		if ($jeAbsender[$from] > self::MAX_JE_ABSENDER) {
-			$this->logger->warning('ProjektWerk: Konto ' . $recipientUid . ' über der Lauf-Grenze — Mail zurückgestellt (gelesen markiert)');
-			$this->stillMarkieren($client, $uid);
-
-			return;
-		}
-
 		// 4. Text ohne Zitat/Signatur.
 		$body = ReplyTextExtractor::extract($mail['text']);
 		if ($body === '') {
@@ -259,7 +253,7 @@ class ReplyIntakeJob extends TimedJob {
 		if ($mail['hasAttachments']) {
 			$l = $this->l10nFactory->get(
 				Application::APP_ID,
-				$empfaenger !== null ? $this->l10nFactory->getUserLanguage($empfaenger) : null,
+				$this->l10nFactory->getUserLanguage($empfaenger),
 			);
 			$body .= "\n\n" . $l->t('[Anhang aus E-Mail nicht übernommen – bitte im Vorgang hochladen]');
 		}
@@ -271,18 +265,18 @@ class ReplyIntakeJob extends TimedJob {
 
 			return;
 		}
+		try {
+			$this->limiter->registerUserRequest(self::LIMIT_ID, self::MAX_JE_STUNDE, 3600, $empfaenger);
+		} catch (IRateLimitExceededException) {
+			$this->logger->warning('ProjektWerk: Konto ' . $recipientUid . ' über der Stunden-Grenze, Mail nach „' . self::ORDNER_NICHT_ZUGEORDNET . '“');
+			$this->ablegen($client, $uid, self::ORDNER_NICHT_ZUGEORDNET);
+
+			return;
+		}
 		$this->comments->create($viewer, $ticketId, $body);
 
-		// **Erst der Kommentar, dann `markSeen` — bewusst diese Richtung** (PR-Review
-		// #295). Scheitert das `markSeen` nach erfolgreichem Kommentar, greift der
-		// Lauf-Catch, und der nächste Lauf sieht die Mail erneut: dann entsteht ein
-		// **zweiter** Kommentar. Das ist der gewollte Ausfall — ein doppelter
-		// Kommentar ist sichtbar und löschbar, während die umgekehrte Reihenfolge
-		// (erst `markSeen`, dann Kommentar) bei einem Fehlschlag die Kundenantwort
-		// **still verlöre**. Für ein Produkt über sichtbare Zuständigkeit ist die
-		// stille Lücke der teurere Fehler. Das Zeitfenster ist schmal (ein
-		// IMAP-Fehler genau zwischen Kommentar und Flag).
-		$client->markSeen($uid);
+		// Erst der Kommentar, dann das Ablegen: ein doppelter Kommentar ist sichtbar, eine verlorene Antwort nicht.
+		$this->ablegen($client, $uid, self::ORDNER_VERARBEITET);
 		$this->logger->info('ProjektWerk: Antwort per E-Mail als Kommentar am Vorgang ' . $ticketId . ' übernommen');
 	}
 
@@ -295,31 +289,113 @@ class ReplyIntakeJob extends TimedJob {
 		return preg_match('/\[PW-([0-9a-f]{32})\]/', $betreff, $m) === 1 ? $m[1] : null;
 	}
 
-	/**
-	 * Verworfen (Automat/Schleife/leer): gelesen markieren, auf Info-Ebene loggen.
-	 */
+	/** Verworfen (Automat/Schleife/leer): ablegen, auf Info-Ebene loggen. */
 	private function abschliessen(ImapClient $client, int $uid, string $grund): void {
 		$this->logger->info('ProjektWerk: Antwort-Mail übergangen (' . $grund . ')');
-		$this->stillMarkieren($client, $uid);
+		$this->ablegen($client, $uid, self::ORDNER_NICHT_ZUGEORDNET);
+	}
+
+	/** Unzuordenbar oder abgelehnt: ablegen, auf Warn-Ebene loggen, damit der Betreiber den Fall findet. */
+	private function unmatched(ImapClient $client, int $uid, string $grund): void {
+		$this->logger->warning('ProjektWerk: Antwort-Mail unzuordenbar (' . $grund . '), nach „' . self::ORDNER_NICHT_ZUGEORDNET . '“');
+		$this->ablegen($client, $uid, self::ORDNER_NICHT_ZUGEORDNET);
+	}
+
+	/** In den Unterordner verschieben; geht das nicht, nur gelesen markieren. Ungelesen in „Nicht zugeordnet“ zeigt, wo jemand nachsehen sollte. */
+	private function ablegen(ImapClient $client, int $uid, string $art): void {
+		$gelesen = $art === self::ORDNER_VERARBEITET && $this->stillMarkieren($client, $uid);
+		$ziel = $this->zielordner($client, $art);
+		if ($ziel !== null) {
+			try {
+				$client->uidMove($uid, $ziel);
+
+				return;
+			} catch (\Throwable $e) {
+				$this->logger->warning('ProjektWerk: UID ' . $uid . ' ließ sich nicht nach „' . $ziel . '“ verschieben, nur gelesen markiert', ['exception' => $e]);
+			}
+		}
+		if (!$gelesen) {
+			$this->stillMarkieren($client, $uid);
+		}
+	}
+
+	/** Der Pfad des Unterordners, beim ersten Bedarf im Lauf angelegt; null, wenn das nicht geht. */
+	private function zielordner(ImapClient $client, string $art): ?string {
+		if (!array_key_exists($art, $this->ziele)) {
+			$this->ziele[$art] = $this->ordnerBereitstellen($client, $art) ?? false;
+		}
+
+		return $this->ziele[$art] === false ? null : $this->ziele[$art];
+	}
+
+	private function ordnerBereitstellen(ImapClient $client, string $art): ?string {
+		try {
+			$trenner = $client->hierarchyDelimiter($this->quellOrdner);
+			if ($trenner === null || $trenner === '') {
+				return null;
+			}
+			$pfad = $this->quellOrdner . $trenner . self::ORDNER_ELTERN . $trenner . $art;
+			$this->vorhandeneOrdner ??= $client->listFolders();
+			$vorhanden = self::finden($this->vorhandeneOrdner, $pfad);
+			if ($vorhanden !== null) {
+				return $vorhanden;
+			}
+			try {
+				$client->createFolder($pfad);
+			} catch (ImapCommandRejectedException $e) {
+				// Der Server schreibt INBOX evtl. anders, oder jemand legte den Ordner gerade an.
+				$vorhanden = self::finden($client->listFolders(), $pfad);
+				if ($vorhanden !== null) {
+					return $vorhanden;
+				}
+				if (!str_contains($e->getMessage(), '[ALREADYEXISTS]')) {
+					throw $e;
+				}
+
+				return $pfad;
+			}
+			$this->vorhandeneOrdner[] = $pfad;
+			try {
+				$client->subscribe($pfad);
+			} catch (\Throwable) {
+				// Ohne Abo bleibt der Ordner nutzbar, nur manche Mailprogramme blenden ihn aus.
+			}
+
+			return $pfad;
+		} catch (\Throwable $e) {
+			$this->logger->warning('ProjektWerk: Ordner „' . $art . '“ im Antwort-Postfach nicht verfügbar, Mails werden nur gelesen markiert', ['exception' => $e]);
+
+			return null;
+		}
 	}
 
 	/**
-	 * Unzuordenbar oder abgelehnt: gelesen markieren (nicht löschen), auf
-	 * Warn-Ebene loggen, damit der Betreiber den Fall findet.
+	 * Der Ordner in der Schreibweise des Servers, oder null.
+	 *
+	 * @param list<string> $ordner
 	 */
-	private function unmatched(ImapClient $client, int $uid, string $grund): void {
-		$this->logger->warning('ProjektWerk: Antwort-Mail unzuordenbar (' . $grund . ') — bleibt im Postfach, gelesen markiert');
-		$this->stillMarkieren($client, $uid);
+	private static function finden(array $ordner, string $pfad): ?string {
+		foreach ($ordner as $name) {
+			if (strcasecmp($name, $pfad) === 0) {
+				return $name;
+			}
+		}
+
+		return null;
 	}
 
 	/**
 	 * Gelesen markieren, ohne den Lauf an einem IMAP-Fehler scheitern zu lassen.
 	 */
-	private function stillMarkieren(ImapClient $client, int $uid): void {
+	private function stillMarkieren(ImapClient $client, int $uid): bool {
 		try {
 			$client->markSeen($uid);
+
+			return true;
 		} catch (\Throwable $e) {
 			$this->logger->warning('ProjektWerk: UID ' . $uid . ' ließ sich nicht als gelesen markieren', ['exception' => $e]);
+
+			return false;
 		}
 	}
 }

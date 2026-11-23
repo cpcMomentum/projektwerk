@@ -14,7 +14,9 @@ use OCA\Projektwerk\Access\ViewerContext;
 use OCA\Projektwerk\Access\WaitStateCalculator;
 use OCA\Projektwerk\Db\AttachmentMapper;
 use OCA\Projektwerk\Db\CommentMapper;
+use OCA\Projektwerk\Db\FileLinkMapper;
 use OCA\Projektwerk\Db\StepMapper;
+use OCA\Projektwerk\Db\TaskFilter;
 use OCA\Projektwerk\Db\Ticket;
 use OCA\Projektwerk\Db\TicketMapper;
 use OCA\Projektwerk\Db\TicketReadMapper;
@@ -40,6 +42,8 @@ class TicketReadModel {
 		private WaitStateCalculator $waitState,
 		private ChangeHighlighter $highlighter,
 		private TicketLogService $log,
+		private FileLinkMapper $fileLinks,
+		private FileLinkService $fileLinkService,
 	) {
 	}
 
@@ -49,7 +53,22 @@ class TicketReadModel {
 	 * @return array{tickets: Ticket[], waiting: array<int, mixed>, counts: array<string, array<int, int>>, stepTitles: array<int, string[]>, changed: array<int, true>}
 	 */
 	public function index(ViewerContext $viewer, ?int $columnId = null, bool $includeArchived = false): array {
-		$tickets = $this->tickets->findVisibleInBoard($viewer, $columnId, !$includeArchived);
+		return $this->indexOf($viewer->userId, $this->tickets->findVisibleInBoard($viewer, $columnId, !$includeArchived));
+	}
+
+	/** Dieselbe Form wie index(), über die übergebenen aktiven Boards; Archiviertes bleibt wie im Überblick draußen. */
+	public function indexAcrossBoards(string $userId, bool $includeClosed, array $activeBoardIds): array {
+		$active = array_flip($activeBoardIds);
+		$tickets = array_values(array_filter(
+			$this->tickets->findVisibleAcrossBoardsAll($userId, $includeClosed ? TaskFilter::withClosed() : TaskFilter::openOnly()),
+			static fn (Ticket $ticket): bool => $ticket->getArchivedAt() === null && isset($active[(int)$ticket->getBoardId()]),
+		));
+
+		return $this->indexOf($userId, $tickets);
+	}
+
+	/** @param Ticket[] $tickets bereits gefiltert */
+	private function indexOf(string $userId, array $tickets): array {
 		$ids = array_map(static fn (Ticket $ticket): int => (int)$ticket->getId(), $tickets);
 		$steps = $this->steps->findForTickets($ids);
 
@@ -66,7 +85,7 @@ class TicketReadModel {
 			],
 			// Für die Suche im Board (#373); dieselben Zeilen wie oben.
 			'stepTitles' => $this->stepTitles($steps),
-			'changed' => $this->changedSince($viewer, $tickets, $ids),
+			'changed' => $this->changedSince($userId, $tickets, $ids),
 		];
 	}
 
@@ -111,6 +130,7 @@ class TicketReadModel {
 			'comments' => $this->comments->findForTickets($ids),
 			'steps' => $steps,
 			'attachments' => $this->attachmentService->withPresence($viewer, $this->attachments->findForTickets($ids)),
+			'links' => $this->fileLinkService->forViewer($viewer, $this->fileLinks->findForTickets($ids)),
 			'collaborators' => $this->ticketUsers->findForTickets($ids),
 			'dependsOn' => self::linkSummaries($this->tickets->findVisibleDependencies($viewer, $ids[0])),
 			'neededBy' => self::linkSummaries($this->tickets->findVisibleDependents($viewer, $ids[0])),
@@ -174,12 +194,12 @@ class TicketReadModel {
 	 * @param int[] $ids
 	 * @return array<int, true> Nur die hervorzuhebenden Vorgänge.
 	 */
-	private function changedSince(ViewerContext $viewer, array $tickets, array $ids): array {
+	private function changedSince(string $userId, array $tickets, array $ids): array {
 		return $this->highlighter->detect(
 			$tickets,
-			$this->reads->findSeenForTickets($viewer->userId, $ids),
+			$this->reads->findSeenForTickets($userId, $ids),
 			$this->comments->findNewestForTickets($ids),
-			$viewer->userId,
+			$userId,
 		);
 	}
 }
