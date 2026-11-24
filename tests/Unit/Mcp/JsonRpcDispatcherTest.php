@@ -176,6 +176,27 @@ class JsonRpcDispatcherTest extends TestCase {
 		$this->assertSame(-32601, $unknown->body['error']['code']);
 	}
 
+	public function testModernListAndDiscoverCarryPrivateCacheHints(): void {
+		foreach (['tools/list', 'server/discover'] as $method) {
+			$result = $this->resultOf($this->dispatcher->dispatch($this->request($method, [], self::MODERN), $this->headers(self::MODERN, $method, ''), $this->caller));
+
+			$this->assertSame(0, $result['ttlMs'] ?? null, $method);
+			$this->assertSame('private', $result['cacheScope'] ?? null, $method);
+		}
+
+		$ping = $this->resultOf($this->dispatcher->dispatch($this->request('ping', [], self::MODERN), $this->headers(self::MODERN, 'ping', ''), $this->caller));
+		$this->assertArrayNotHasKey('ttlMs', $ping);
+		$this->assertArrayNotHasKey('cacheScope', $ping);
+	}
+
+	public function testLegacyToolsListCarriesNoCacheHints(): void {
+		$result = $this->resultOf($this->dispatcher->dispatch($this->request('tools/list'), $this->legacyHeaders(), $this->caller));
+
+		$this->assertArrayNotHasKey('ttlMs', $result);
+		$this->assertArrayNotHasKey('cacheScope', $result);
+		$this->assertArrayNotHasKey('resultType', $result);
+	}
+
 	public function testLegacyUnknownMethodStays200SoClientsDoNotReinitialise(): void {
 		$response = $this->dispatcher->dispatch($this->request('resources/list'), $this->legacyHeaders(), $this->caller);
 

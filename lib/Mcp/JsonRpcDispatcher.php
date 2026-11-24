@@ -35,6 +35,7 @@ class JsonRpcDispatcher {
 	public const UNSUPPORTED_VERSION = -32022;
 
 	private const META_VERSION = 'io.modelcontextprotocol/protocolVersion';
+	private const CACHEABLE = ['server/discover', 'tools/list'];
 
 	public function __construct(
 		private ToolRegistry $tools,
@@ -105,9 +106,13 @@ class JsonRpcDispatcher {
 		};
 
 		if ($modern && $response->status === 200 && isset($response->body['result'])) {
-			$result = (array)$response->body['result'];
+			$result = ['resultType' => 'complete'] + (array)$response->body['result'];
+			if (in_array($method, self::CACHEABLE, true)) {
+				// Antworten hängen von Konto und Admin-Schalter ab, darum nie über Konten hinweg cachen.
+				$result += ['ttlMs' => 0, 'cacheScope' => 'private'];
+			}
 
-			return McpResponse::result($id, ['resultType' => 'complete'] + $result);
+			return McpResponse::result($id, $result);
 		}
 
 		return $response;
