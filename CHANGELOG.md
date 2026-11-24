@@ -6,6 +6,14 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-11-24
+
+### Fixed
+
+- **KI-Werkzeuge (MCP)**: Clients mit Protokollversion 2026-07-28 (z. B. opencode) lehnten die
+  Werkzeugliste ab. `tools/list` und `server/discover` liefern jetzt die Pflichtfelder `ttlMs` und
+  `cacheScope` (`0` bzw. `private`). Ältere Protokollversionen sind unverändert (#540).
+
 ## [0.6.1] - 2026-11-23
 
 ### Added
